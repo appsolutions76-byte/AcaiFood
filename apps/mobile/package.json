@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@expo/metro-runtime": "^56.0.16",
     "@expo/ui": "~56.0.18",
     "@supabase/supabase-js": "^2.110.0",
     "expo": "~56.0.12",
