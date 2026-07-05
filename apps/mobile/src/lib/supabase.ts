@@ -1,33 +1,17 @@
-import 'react-native-url-polyfill/auto';
-import { createClient } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
+import { createClient } from "@supabase/supabase-js";
 
-const ExpoSecureStoreAdapter = {
-  getItem: (key: string) => {
-    return SecureStore.getItemAsync(key);
-  },
-  setItem: (key: string, value: string) => {
-    SecureStore.setItemAsync(key, value);
-  },
-  removeItem: (key: string) => {
-    SecureStore.deleteItemAsync(key);
-  },
-};
+// Usando variáveis de ambiente do Next.js
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 
-// Using the .env file that we just created
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string;
+// Só lança erro se estiver no cliente e as variáveis estiverem ausentes para não quebrar a build estática
+if (!supabaseUrl || !supabaseAnonKey) {
+  if (typeof window !== "undefined") {
+    console.warn("Faltam variáveis de ambiente do Supabase (NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY)");
+  }
+}
 
-// Prevent crashing if user forgets to paste the keys
-const isValidUrl = supabaseUrl && supabaseUrl.startsWith('http');
-
-export const supabase = isValidUrl 
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        storage: ExpoSecureStoreAdapter as any,
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
-      },
-    })
-  : null;
+export const supabase = createClient(
+  supabaseUrl || "https://placeholder.supabase.co", 
+  supabaseAnonKey || "placeholder-key"
+);
