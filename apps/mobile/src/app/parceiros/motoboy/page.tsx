@@ -2,11 +2,13 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Bike } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 
 export default function MotoboyDashboard() {
+  const router = useRouter();
   const store = useAppStore();
   const currentUser = store.currentUser;
   

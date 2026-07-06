@@ -2,11 +2,13 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Truck } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 
 export default function CaminhaoDashboard() {
+  const router = useRouter();
   const store = useAppStore();
   const currentUser = store.currentUser;
   

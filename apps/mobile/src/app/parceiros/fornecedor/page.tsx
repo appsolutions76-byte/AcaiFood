@@ -8,6 +8,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 
 export default function FornecedorDashboard() {
+  const router = useRouter();
   const store = useAppStore();
   const currentUser = store.currentUser;
   
