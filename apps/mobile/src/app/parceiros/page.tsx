@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Store, Truck, Bike, PackageOpen, ArrowLeft, User, ShieldCheck } from "lucide-react";
+import { Store, Truck, Bike, PackageOpen, ArrowLeft, User, ShieldCheck, Recycle } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 
 export default function ParceirosOnboarding() {
@@ -130,6 +130,21 @@ export default function ParceirosOnboarding() {
               </div>
             </div>
           </div>
+          
+          {/* Caçamba Logística Reversa */}
+          <div onClick={() => handleRoleSelect('/parceiros/caminhao', 'Caçamba (Logística Reversa)', 'mot_3')} className="group">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-amber-500 dark:hover:border-amber-500 hover:shadow-lg transition-all cursor-pointer flex items-start gap-4 h-full">
+              <div className="bg-amber-100 dark:bg-amber-900/30 p-4 rounded-xl text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                <Recycle size={32} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Caçamba Logística Reversa</h3>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Retirada de caroço de açaí nas batedeiras para levar ao ecoponto.
+                </p>
+              </div>
+            </div>
+          </div>
 
         </div>
       </main>
@@ -157,6 +172,13 @@ export default function ParceirosOnboarding() {
                 className="w-full bg-[#009EE3] hover:bg-[#008ACB] text-white font-bold py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 mb-3 active:scale-95"
               >
                 Autorizar com Mercado Pago
+              </button>
+
+              <button 
+                onClick={handleAuthorize}
+                className="w-full bg-zinc-800 hover:bg-zinc-900 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-bold py-3 rounded-xl transition shadow mb-3 active:scale-95"
+              >
+                Pular e Acessar Painel (Modo Teste)
               </button>
               
               <button 
