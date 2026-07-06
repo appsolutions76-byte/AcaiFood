@@ -218,6 +218,6 @@ export const useAppStore = create<AppState>()(
 
       clearData: () => set({ orders: [], orderCounter: 1, rates: DB_DEFAULTS.rates })
     }),
-    { name: 'acaifood-storage' }
+    { name: 'acaifood-storage-v2' }
   )
 );
