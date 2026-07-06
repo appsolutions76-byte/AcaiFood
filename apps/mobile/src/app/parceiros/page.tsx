@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Store, Truck, Bike, PackageOpen, ArrowLeft } from "lucide-react";
+import { Store, Truck, Bike, PackageOpen, ArrowLeft, User } from "lucide-react";
 
 export default function ParceirosOnboarding() {
   return (
@@ -24,7 +24,22 @@ export default function ParceirosOnboarding() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          
+          {/* Cliente */}
+          <Link href="/" className="group md:col-span-2 lg:col-span-3 mb-2">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-pink-500 dark:hover:border-pink-500 hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-4 h-full">
+              <div className="bg-pink-100 dark:bg-pink-900/30 p-4 rounded-xl text-pink-600 dark:text-pink-400 group-hover:scale-110 transition-transform">
+                <User size={32} />
+              </div>
+              <div className="text-left">
+                <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">Cliente (Consumidor Final)</h3>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Quero apenas pedir açaí para mim ou para minha família.
+                </p>
+              </div>
+            </div>
+          </Link>
           
           {/* Batedeira */}
           <Link href="/parceiros/batedeira" className="group">
@@ -78,7 +93,7 @@ export default function ParceirosOnboarding() {
                 <Truck size={32} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Transporte (Caçamba)</h3>
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Caminhão Fruto Açaí</h3>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
                   Logística pesada B2B. Transporte cargas de fruto e caixas até as lojas.
                 </p>
