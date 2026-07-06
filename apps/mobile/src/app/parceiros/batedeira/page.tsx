@@ -13,6 +13,21 @@ export default function BatedeiraDashboard() {
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
+  const [priceModalOpen, setPriceModalOpen] = useState(false);
+  const [prices, setPrices] = useState(currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
+
+  const isPaused = currentUser?.status === 'paused';
+  const handleToggleStatus = () => {
+    if (!currentUser) return;
+    store.updateUserStatus(currentUser.id, isPaused ? 'active' : 'paused');
+  };
+
+  const handleSavePrices = () => {
+    if (!currentUser) return;
+    store.updateUserPrice(currentUser.id, prices);
+    setPriceModalOpen(false);
+    alert('Preços atualizados com sucesso!');
+  };
 
   const router = useRouter();
 
@@ -33,7 +48,7 @@ export default function BatedeiraDashboard() {
 
   const meusPedidos = store.orders.filter(o => o.lojaId === currentUser.id);
   const vendasHoje = meusPedidos.filter(o => o.status === 'entregue' && o.type === 'B2C').reduce((acc, curr) => acc + curr.taxas.repasse, 0);
-  const fornecedores = Object.values(store.users).filter(u => u.role === 'fornecedor');
+  const fornecedores = Object.values(store.users).filter(u => u.role === 'fornecedor' && u.status !== 'paused' && u.status !== 'blocked');
   
   const distColeta = (currentUser.lat && store.users.ecoponto.lat) ? haversineKm(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat, store.users.ecoponto.lng!) : 0;
   const freteColeta = distColeta * store.rates.col_km;
@@ -78,6 +93,19 @@ export default function BatedeiraDashboard() {
 
           {/* Controles da Loja */}
           <div className="col-span-1 md:col-span-2 bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <div>
+                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🏪 Status e Produtos</h3>
+                      <p className="text-[10px] text-zinc-500">Controle se a loja está aberta e edite seus preços.</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                      <button onClick={handleToggleStatus} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
+                          {isPaused ? 'Loja Fechada 🚫' : 'Loja Aberta ✅'}
+                      </button>
+                      <button onClick={() => setPriceModalOpen(true)} className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border border-purple-200">Editar Preços</button>
+                  </div>
+              </div>
+
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
                   <div>
                       <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">⚙️ Marketing (Subsídio de Frete)</h3>
@@ -203,6 +231,37 @@ export default function BatedeiraDashboard() {
         destinoId={mapModal.destino} 
         motoristaId={mapModal.motorista} 
       />
+
+      {priceModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
+            <div className="bg-purple-900 text-white p-5 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-lg">✏️ Editar Preços do Açaí</h3>
+                <button onClick={() => setPriceModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                  <label className="text-xs uppercase text-zinc-500 font-bold">Açaí Popular (R$)</label>
+                  <input type="number" step="0.1" value={prices.popular} onChange={e => setPrices({...prices, popular: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 mt-1 font-bold text-lg"/>
+              </div>
+              <div>
+                  <label className="text-xs uppercase text-zinc-500 font-bold">Açaí Médio (R$)</label>
+                  <input type="number" step="0.1" value={prices.medio} onChange={e => setPrices({...prices, medio: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 mt-1 font-bold text-lg"/>
+              </div>
+              <div>
+                  <label className="text-xs uppercase text-zinc-500 font-bold">Açaí Grosso Especial (R$)</label>
+                  <input type="number" step="0.1" value={prices.grosso} onChange={e => setPrices({...prices, grosso: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 mt-1 font-bold text-lg"/>
+              </div>
+            </div>
+
+            <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
+                <button onClick={() => setPriceModalOpen(false)} className="px-5 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
+                <button onClick={handleSavePrices} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition">Salvar Preços</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

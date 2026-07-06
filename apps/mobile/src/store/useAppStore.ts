@@ -24,9 +24,10 @@ export interface User {
   priceB2C?: { popular: number; medio: number; grosso: number };
   priceB2B?: number;
   freteSubsidyPct?: number;
-  mercadoPagoToken?: string; // NOVO: Token do Mercado Pago
+  mercadoPagoToken?: string;
   email?: string;
   password?: string;
+  status?: 'active' | 'paused' | 'blocked';
 }
 
 export interface Order {
@@ -78,6 +79,9 @@ interface AppState {
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: 'popular'|'medio'|'grosso') => void;
   acaoPedido: (orderId: string, action: string) => void;
   setFreteSubsidy: (userId: string, pct: number) => void;
+  updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => void;
+  deleteUser: (userId: string) => void;
+  updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => void;
   clearData: () => void;
 }
 
@@ -117,6 +121,10 @@ export const useAppStore = create<AppState>()(
         const state = get();
         const user = Object.values(state.users).find(u => u.email === email && u.password === pass);
         if (user) {
+          if (user.status === 'blocked') {
+            alert('Conta bloqueada pelo administrador.');
+            return false;
+          }
           set({ currentUser: user });
           return true;
         }
@@ -149,6 +157,27 @@ export const useAppStore = create<AppState>()(
         const user = state.users[userId];
         if (!user) return state;
         return { users: { ...state.users, [userId]: { ...user, freteSubsidyPct: pct } } };
+      }),
+
+      updateUserStatus: (userId, status) => set((state) => {
+        const user = state.users[userId];
+        if (!user) return state;
+        return { users: { ...state.users, [userId]: { ...user, status } } };
+      }),
+
+      deleteUser: (userId) => set((state) => {
+        const newUsers = { ...state.users };
+        delete newUsers[userId];
+        return { users: newUsers };
+      }),
+
+      updateUserPrice: (userId, b2cPrices, b2bPrice) => set((state) => {
+        const user = state.users[userId];
+        if (!user) return state;
+        const updatedUser = { ...user };
+        if (b2cPrices) updatedUser.priceB2C = b2cPrices;
+        if (b2bPrice !== undefined) updatedUser.priceB2B = b2bPrice;
+        return { users: { ...state.users, [userId]: updatedUser } };
       }),
 
       criarPedido: (tipo, targetId, subTipoMenu) => {

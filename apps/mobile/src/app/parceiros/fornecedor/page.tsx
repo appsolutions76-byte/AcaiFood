@@ -14,6 +14,21 @@ export default function FornecedorDashboard() {
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
+  const [priceModalOpen, setPriceModalOpen] = useState(false);
+  const [b2bPrice, setB2bPrice] = useState(currentUser?.priceB2B || 140);
+
+  const isPaused = currentUser?.status === 'paused';
+  const handleToggleStatus = () => {
+    if (!currentUser) return;
+    store.updateUserStatus(currentUser.id, isPaused ? 'active' : 'paused');
+  };
+
+  const handleSavePrices = () => {
+    if (!currentUser) return;
+    store.updateUserPrice(currentUser.id, undefined, b2bPrice);
+    setPriceModalOpen(false);
+    alert('Preço do Fruto atualizado com sucesso!');
+  };
 
   if (!currentUser || currentUser.role !== 'fornecedor') {
     return (
@@ -73,6 +88,19 @@ export default function FornecedorDashboard() {
 
           {/* Controles */}
           <div className="col-span-1 md:col-span-2 bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center gap-3">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <div>
+                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🏭 Status e Fruto</h3>
+                      <p className="text-[10px] text-zinc-500">Controle se sua usina está recebendo pedidos e edite seu preço.</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                      <button onClick={handleToggleStatus} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
+                          {isPaused ? 'Pausado 🚫' : 'Operando ✅'}
+                      </button>
+                      <button onClick={() => setPriceModalOpen(true)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border border-emerald-200">Editar Preço</button>
+                  </div>
+              </div>
+
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                   <div>
                       <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">⚙️ Marketing (Subsídio de Frete)</h3>
@@ -139,6 +167,29 @@ export default function FornecedorDashboard() {
         destinoId={mapModal.destino} 
         motoristaId={mapModal.motorista} 
       />
+
+      {priceModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
+            <div className="bg-emerald-900 text-white p-5 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-lg">✏️ Editar Preço do Fruto</h3>
+                <button onClick={() => setPriceModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                  <label className="text-xs uppercase text-zinc-500 font-bold">Lote/Paneiro B2B (R$)</label>
+                  <input type="number" step="0.1" value={b2bPrice} onChange={e => setB2bPrice(Number(e.target.value))} className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-emerald-500 mt-1 font-bold text-lg"/>
+              </div>
+            </div>
+
+            <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
+                <button onClick={() => setPriceModalOpen(false)} className="px-5 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
+                <button onClick={handleSavePrices} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition">Salvar Preço</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

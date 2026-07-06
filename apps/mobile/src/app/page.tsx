@@ -39,7 +39,7 @@ export default function StorefrontPage() {
   }
 
   const meusPedidos = currentUser ? store.orders.filter(o => o.clienteId === currentUser.id) : [];
-  const batedeiras = Object.values(store.users).filter(u => u.role === 'loja');
+  const batedeiras = Object.values(store.users).filter(u => u.role === 'loja' && u.status !== 'paused' && u.status !== 'blocked');
 
   const calcFreteCliente = (lojaId: string) => {
     const loja = store.users[lojaId];

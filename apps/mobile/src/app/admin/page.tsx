@@ -14,6 +14,16 @@ export default function AdminDashboard() {
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState(store.rates);
+  
+  const [userFilterRole, setUserFilterRole] = useState<string>('all');
+  const [userFilterText, setUserFilterText] = useState<string>('');
+
+  const filteredUsers = Object.values(store.users).filter(u => {
+    if (userFilterRole !== 'all' && u.role !== userFilterRole) return false;
+    const search = userFilterText.toLowerCase();
+    if (search && !u.name.toLowerCase().includes(search) && !u.email?.toLowerCase().includes(search) && !u.bairro?.toLowerCase().includes(search)) return false;
+    return true;
+  });
 
   const router = useRouter();
 
@@ -252,6 +262,77 @@ export default function AdminDashboard() {
                     ))}
                     {store.orders.length === 0 && (
                         <tr><td colSpan={5} className="text-center p-6 text-zinc-500">Nenhum pedido gerado na plataforma ainda.</td></tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+
+        <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mt-8 border-b border-zinc-200 dark:border-zinc-800 pb-2">👥 Gestão de Usuários e Parceiros</h3>
+        
+        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+            <input type="text" placeholder="Buscar por Nome, E-mail ou Bairro..." value={userFilterText} onChange={e => setUserFilterText(e.target.value)} className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500" />
+            <select value={userFilterRole} onChange={e => setUserFilterRole(e.target.value)} className="w-full sm:w-auto border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                <option value="all">Todos os Tipos</option>
+                <option value="cliente">Clientes</option>
+                <option value="loja">Batedeiras (Lojas)</option>
+                <option value="fornecedor">Fornecedores</option>
+                <option value="motorista">Motoristas / Logística</option>
+            </select>
+        </div>
+
+        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-x-auto mt-4 mb-10">
+            <table className="w-full text-left text-sm min-w-max">
+                <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+                    <tr><th className="p-4">Usuário</th><th className="p-4">Contato / Local</th><th className="p-4">Tipo</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {filteredUsers.map(u => (
+                        <tr key={u.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                            <td className="p-4">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xl">{u.icon}</span>
+                                    <div>
+                                        <p className="font-bold text-zinc-800 dark:text-zinc-200">{u.name}</p>
+                                        <p className="text-[10px] text-zinc-500 font-mono">{u.id}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="p-4 text-xs text-zinc-600 dark:text-zinc-400">
+                                <div>{u.email || 'Sem e-mail'}</div>
+                                <div className="font-bold mt-0.5">{u.bairro || 'Sem bairro'}</div>
+                            </td>
+                            <td className="p-4">
+                                <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold text-zinc-700 dark:text-zinc-300 capitalize">{u.role}</span>
+                                {u.veiculo && <span className="ml-1 text-[10px] text-zinc-500">({u.veiculo})</span>}
+                            </td>
+                            <td className="p-4">
+                                {!u.status || u.status === 'active' ? <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Ativo</span> : 
+                                 u.status === 'paused' ? <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pausado</span> : 
+                                 <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Bloqueado</span>}
+                            </td>
+                            <td className="p-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                    {(u.role === 'loja' || u.role === 'fornecedor') && (
+                                        <button onClick={() => store.updateUserStatus(u.id, u.status === 'paused' ? 'active' : 'paused')} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${u.status === 'paused' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-200'}`}>
+                                            {u.status === 'paused' ? '▶️ Ativar' : '⏸️ Pausar'}
+                                        </button>
+                                    )}
+                                    {u.role !== 'admin' && (
+                                        <button onClick={() => store.updateUserStatus(u.id, u.status === 'blocked' ? 'active' : 'blocked')} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${u.status === 'blocked' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}`}>
+                                            {u.status === 'blocked' ? '🔓 Desbloquear' : '🚫 Bloquear'}
+                                        </button>
+                                    )}
+                                    {u.role !== 'admin' && (
+                                        <button onClick={() => { if(confirm('Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.')) store.deleteUser(u.id); }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
+                                            🗑️
+                                        </button>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                    {filteredUsers.length === 0 && (
+                        <tr><td colSpan={5} className="text-center p-6 text-zinc-500">Nenhum usuário encontrado com estes filtros.</td></tr>
                     )}
                 </tbody>
             </table>
