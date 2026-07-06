@@ -15,6 +15,8 @@ export default function AdminDashboard() {
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState(store.rates);
   
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos'>('dashboard');
+  
   const [userFilterRole, setUserFilterRole] = useState<string>('all');
   const [userFilterText, setUserFilterText] = useState<string>('');
 
@@ -154,9 +156,19 @@ export default function AdminDashboard() {
         </div>
       </header>
 
+      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
+        <div className="max-w-7xl mx-auto px-4 flex gap-6 overflow-x-auto">
+          <button onClick={() => setActiveTab('dashboard')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'dashboard' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
+          <button onClick={() => setActiveTab('usuarios')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'usuarios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>👥 Usuários</button>
+          <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
+        </div>
+      </div>
+
       <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
         
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
             <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800">
                 <p className="text-zinc-500 dark:text-zinc-400 text-[11px] uppercase font-bold">Volume Total</p>
                 <p className="text-xl font-bold text-zinc-900 dark:text-white">{totais.pedidos}</p>
@@ -231,10 +243,15 @@ export default function AdminDashboard() {
                     <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(fatLiqCaminhoes)}</p></div>
                 </div>
             </div>
-        </div>
+          </div>
+          </div>
+        )}
 
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-x-auto mt-6">
-            <table className="w-full text-left text-sm min-w-max">
+        {activeTab === 'pedidos' && (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">🛒 Gestão de Pedidos</h3>
+            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-x-auto">
+                <table className="w-full text-left text-sm min-w-max">
                 <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
                     <tr><th className="p-4">ID / Rota</th><th className="p-4">Tipo</th><th className="p-4">Valores</th><th className="p-4">Atores</th><th className="p-4">Status</th></tr>
                 </thead>
@@ -265,11 +282,15 @@ export default function AdminDashboard() {
                     )}
                 </tbody>
             </table>
-        </div>
+            </div>
+          </div>
+        )}
 
-        <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mt-8 border-b border-zinc-200 dark:border-zinc-800 pb-2">👥 Gestão de Usuários e Parceiros</h3>
-        
-        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+        {activeTab === 'usuarios' && (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">👥 Gestão de Usuários e Parceiros</h3>
+            
+            <div className="flex flex-col sm:flex-row gap-3 mt-4">
             <input type="text" placeholder="Buscar por Nome, E-mail ou Bairro..." value={userFilterText} onChange={e => setUserFilterText(e.target.value)} className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500" />
             <select value={userFilterRole} onChange={e => setUserFilterRole(e.target.value)} className="w-full sm:w-auto border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500">
                 <option value="all">Todos os Tipos</option>
@@ -336,7 +357,9 @@ export default function AdminDashboard() {
                     )}
                 </tbody>
             </table>
-        </div>
+            </div>
+          </div>
+        )}
 
       </main>
 

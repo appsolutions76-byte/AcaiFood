@@ -12,6 +12,12 @@ export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: numb
 
 export type Role = 'admin' | 'loja' | 'cliente' | 'motorista' | 'fornecedor' | 'ecoponto';
 
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface User {
   id: string;
   role: Role;
@@ -28,6 +34,7 @@ export interface User {
   email?: string;
   password?: string;
   status?: 'active' | 'paused' | 'blocked';
+  products?: Product[];
 }
 
 export interface Order {
@@ -76,12 +83,14 @@ interface AppState {
   logout: () => void;
   authorizeMercadoPago: (userId: string, token: string) => void;
   saveRates: (newRates: Partial<AppState['rates']>) => void;
-  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: 'popular'|'medio'|'grosso') => void;
+  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string) => void;
   acaoPedido: (orderId: string, action: string) => void;
   setFreteSubsidy: (userId: string, pct: number) => void;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => void;
   deleteUser: (userId: string) => void;
   updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => void;
+  addProduct: (userId: string, product: Product) => void;
+  removeProduct: (userId: string, productId: string) => void;
   clearData: () => void;
 }
 
@@ -180,6 +189,19 @@ export const useAppStore = create<AppState>()(
         return { users: { ...state.users, [userId]: updatedUser } };
       }),
 
+      addProduct: (userId, product) => set((state) => {
+        const user = state.users[userId];
+        if (!user) return state;
+        const currentProducts = user.products || [];
+        return { users: { ...state.users, [userId]: { ...user, products: [...currentProducts, product] } } };
+      }),
+
+      removeProduct: (userId, productId) => set((state) => {
+        const user = state.users[userId];
+        if (!user || !user.products) return state;
+        return { users: { ...state.users, [userId]: { ...user, products: user.products.filter(p => p.id !== productId) } } };
+      }),
+
       criarPedido: (tipo, targetId, subTipoMenu) => {
         const state = get();
         if (!state.currentUser) return;
@@ -218,10 +240,26 @@ export const useAppStore = create<AppState>()(
 
         if (tipo === 'B2C' && subTipoMenu && targetId) {
           const loja = state.users[targetId];
-          novoPedido.title = `Açaí ${subTipoMenu} (${loja.name})`;
+          let productPrice = 0;
+          let productName = '';
+          let isCustomProduct = false;
+
+          if (subTipoMenu === 'popular' || subTipoMenu === 'medio' || subTipoMenu === 'grosso') {
+              productPrice = loja.priceB2C![subTipoMenu as keyof typeof loja.priceB2C] || 0;
+              productName = subTipoMenu;
+          } else {
+              const customProd = loja.products?.find(p => p.id === subTipoMenu);
+              if (customProd) {
+                  isCustomProduct = true;
+                  productPrice = customProd.price;
+                  productName = customProd.name;
+              }
+          }
+
+          novoPedido.title = isCustomProduct ? `${productName} (${loja.name})` : `Açaí ${productName} (${loja.name})`;
           novoPedido.clienteId = currentUser.id;
           novoPedido.lojaId = targetId;
-          novoPedido.valor = loja.priceB2C![subTipoMenu] || 0;
+          novoPedido.valor = productPrice;
           novoPedido.taxas.entregaTotal = calcFrete('B2C', distKM);
           novoPedido.taxas.entregaLoja = novoPedido.taxas.entregaTotal * ((loja.freteSubsidyPct || 0) / 100);
           novoPedido.taxas.entregaCliente = novoPedido.taxas.entregaTotal - novoPedido.taxas.entregaLoja;

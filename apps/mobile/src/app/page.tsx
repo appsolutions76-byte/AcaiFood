@@ -20,7 +20,17 @@ export default function StorefrontPage() {
   const router = useRouter();
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
-  const [cartModal, setCartModal] = useState<{ open: boolean; lojaId: string; tipo: 'popular'|'medio'|'grosso' }>({ open: false, lojaId: '', tipo: 'medio' });
+  const [cartModal, setCartModal] = useState<{ open: boolean; lojaId: string; tipo: string }>({ open: false, lojaId: '', tipo: 'medio' });
+
+  const getCartPrice = (lojaId: string, tipo: string) => {
+    const loja = store.users[lojaId];
+    if (!loja) return 0;
+    if (tipo === 'popular' || tipo === 'medio' || tipo === 'grosso') {
+        return loja.priceB2C![tipo as keyof typeof loja.priceB2C] || 0;
+    }
+    const customProd = loja.products?.find(p => p.id === tipo);
+    return customProd ? customProd.price : 0;
+  };
 
   useEffect(() => {
     if (!currentUser) {
@@ -198,21 +208,31 @@ export default function StorefrontPage() {
                   <p className="text-xs text-zinc-500 font-bold uppercase mb-1">Loja selecionada</p>
                   <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{store.users[cartModal.lojaId]?.name}</h4>
                   
-                  <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Escolha a qualidade do Açaí (1L):</label>
+                  <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Escolha seu Produto:</label>
                   <select 
                     value={cartModal.tipo} 
-                    onChange={e => setCartModal({ ...cartModal, tipo: e.target.value as any })}
+                    onChange={e => setCartModal({ ...cartModal, tipo: e.target.value })}
                     className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-6"
                   >
-                      <option value="popular">Açaí Popular</option>
-                      <option value="medio">Açaí Médio</option>
-                      <option value="grosso">Açaí Grosso (Especial)</option>
+                      <optgroup label="Açaí Padrão (1L)">
+                          <option value="popular">Açaí Popular</option>
+                          <option value="medio">Açaí Médio</option>
+                          <option value="grosso">Açaí Grosso (Especial)</option>
+                      </optgroup>
+                      
+                      {store.users[cartModal.lojaId]?.products && store.users[cartModal.lojaId].products!.length > 0 && (
+                          <optgroup label="Produtos Extras">
+                              {store.users[cartModal.lojaId].products!.map(p => (
+                                  <option key={p.id} value={p.id}>{p.name}</option>
+                              ))}
+                          </optgroup>
+                      )}
                   </select>
                   
                   <div className="space-y-3 mb-6 text-sm text-zinc-600 dark:text-zinc-400">
                       <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                          <span>Valor do Açaí:</span>
-                          <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(store.users[cartModal.lojaId]?.priceB2C![cartModal.tipo] || 0)}</span>
+                          <span>Valor do Produto:</span>
+                          <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(getCartPrice(cartModal.lojaId, cartModal.tipo))}</span>
                       </div>
                       <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
                           <span>Frete (sua parte):</span>
@@ -220,7 +240,7 @@ export default function StorefrontPage() {
                       </div>
                       <div className="flex justify-between pt-2 text-lg">
                           <span className="font-bold text-zinc-800 dark:text-white">Total a Pagar:</span>
-                          <span className="font-bold text-purple-600 dark:text-purple-400">{formatMoney((store.users[cartModal.lojaId]?.priceB2C![cartModal.tipo] || 0) + calcFreteCliente(cartModal.lojaId).freteCliente)}</span>
+                          <span className="font-bold text-purple-600 dark:text-purple-400">{formatMoney(getCartPrice(cartModal.lojaId, cartModal.tipo) + calcFreteCliente(cartModal.lojaId).freteCliente)}</span>
                       </div>
                   </div>
                   

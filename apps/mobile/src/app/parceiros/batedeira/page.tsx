@@ -16,6 +16,9 @@ export default function BatedeiraDashboard() {
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [prices, setPrices] = useState(currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
 
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductPrice, setNewProductPrice] = useState('');
+
   const isPaused = currentUser?.status === 'paused';
   const handleToggleStatus = () => {
     if (!currentUser) return;
@@ -27,6 +30,17 @@ export default function BatedeiraDashboard() {
     store.updateUserPrice(currentUser.id, prices);
     setPriceModalOpen(false);
     alert('Preços atualizados com sucesso!');
+  };
+
+  const handleAddProduct = () => {
+      if (!currentUser || !newProductName || !newProductPrice) return;
+      store.addProduct(currentUser.id, {
+          id: `prod_${Date.now()}`,
+          name: newProductName,
+          price: Number(newProductPrice)
+      });
+      setNewProductName('');
+      setNewProductPrice('');
   };
 
   const router = useRouter();
@@ -128,9 +142,37 @@ export default function BatedeiraDashboard() {
                       </button>
                   </div>
               </div>
+          </div>
 
-              <hr className="border-zinc-100 dark:border-zinc-800" />
-              
+          <div className="col-span-1 md:col-span-2 bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+              <div className="border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                  <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">📦 Produtos Extras</h3>
+                  <p className="text-[10px] text-zinc-500">Cadastre outros itens para os clientes adicionarem ao pedido.</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                  <input type="text" placeholder="Nome do Produto" value={newProductName} onChange={e => setNewProductName(e.target.value)} className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:border-purple-500" />
+                  <input type="number" step="0.1" placeholder="Preço (R$)" value={newProductPrice} onChange={e => setNewProductPrice(e.target.value)} className="w-full sm:w-32 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:border-purple-500" />
+                  <button onClick={handleAddProduct} className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition shrink-0">Adicionar</button>
+              </div>
+
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 mt-2">
+                  {currentUser?.products?.map(p => (
+                      <li key={p.id} className="flex justify-between items-center py-2">
+                          <div>
+                              <p className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">{p.name}</p>
+                              <p className="text-purple-600 text-xs font-bold">R$ {p.price.toFixed(2)}</p>
+                          </div>
+                          <button onClick={() => store.removeProduct(currentUser.id, p.id)} className="text-red-500 hover:text-red-700 p-2 bg-red-50 rounded-lg transition">🗑️</button>
+                      </li>
+                  ))}
+                  {(!currentUser?.products || currentUser.products.length === 0) && (
+                      <p className="text-xs text-zinc-500 text-center py-4">Nenhum produto extra cadastrado.</p>
+                  )}
+              </ul>
+          </div>
+          
+          <div className="col-span-1 md:col-span-2 bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3">
               <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Comprar Fruto (Fornecedores B2B)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {fornecedores.map(forn => {
