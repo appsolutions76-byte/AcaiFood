@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Store, ShoppingCart, UserCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 
@@ -16,12 +17,26 @@ export default function StorefrontPage() {
   // }, []);
 
   const currentUser = store.currentUser;
+  const router = useRouter();
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [cartModal, setCartModal] = useState<{ open: boolean; lojaId: string; tipo: 'popular'|'medio'|'grosso' }>({ open: false, lojaId: '', tipo: 'medio' });
 
-  // Não retornar vazio se não estiver logado, pois a vitrine é pública.
-  // if (!currentUser || currentUser.role !== 'cliente') return <div className="p-10 text-center">Carregando Storefront...</div>;
+  useEffect(() => {
+    if (!currentUser) {
+      router.replace('/cadastro');
+    } else {
+      if (currentUser.role === 'admin') router.replace('/admin');
+      else if (currentUser.role === 'loja') router.replace('/parceiros/batedeira');
+      else if (currentUser.role === 'fornecedor') router.replace('/parceiros/fornecedor');
+      else if (currentUser.role === 'motorista' && currentUser.veiculo === 'Moto') router.replace('/parceiros/motoboy');
+      else if (currentUser.role === 'motorista' && (currentUser.veiculo === 'Caminhão' || currentUser.veiculo === 'Caçamba')) router.replace('/parceiros/caminhao');
+    }
+  }, [currentUser, router]);
+
+  if (!currentUser || currentUser.role !== 'cliente') {
+    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;
+  }
 
   const meusPedidos = currentUser ? store.orders.filter(o => o.clienteId === currentUser.id) : [];
   const batedeiras = Object.values(store.users).filter(u => u.role === 'loja');
@@ -63,9 +78,6 @@ export default function StorefrontPage() {
              ) : (
                <div className="flex items-center gap-3">
                  <span className="text-sm font-medium">Olá, {currentUser.name.split(' ')[0]}</span>
-                 {currentUser.role === 'admin' && (
-                   <Link href="/admin" className="bg-purple-800 hover:bg-purple-700 px-2 py-1 rounded text-xs font-bold border border-purple-700">Admin</Link>
-                 )}
                  <button onClick={() => store.logout()} className="text-xs text-purple-200 hover:text-white underline">Sair</button>
                </div>
              )}

@@ -100,11 +100,7 @@ export default function LoginPage() {
             </div>
           </form>
           
-          <div className="mt-6">
-            <Link href="/" className="flex items-center justify-center gap-2 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition">
-              <ArrowLeft size={16} /> Voltar para a loja
-            </Link>
-          </div>
+          {/* Remover link voltar loja pois a loja agora é privada */}
         </div>
       </div>
     </div>
