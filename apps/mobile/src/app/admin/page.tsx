@@ -15,32 +15,86 @@ export default function AdminDashboard() {
   const [localRates, setLocalRates] = useState(store.rates);
 
   const concluidos = store.orders.filter(o => o.status === 'entregue');
+  const getDynamicTaxes = (o: any) => {
+    let repasseLoja = 0, repasseForn = 0, repasseMoto = 0, platVenda = 0, platEntrega = 0, entregaTotal = 0;
+    const dist = o.distancia;
+    
+    if (o.type === 'B2C') {
+        entregaTotal = dist * store.rates.b2c_km;
+        const sub = (store.users[o.lojaId]?.freteSubsidyPct || 0) / 100;
+        const freteLoja = entregaTotal * sub;
+        
+        platVenda = o.valor * (store.rates.b2c_plat / 100);
+        platEntrega = entregaTotal * (store.rates.b2c_mot_plat / 100);
+        
+        repasseLoja = o.valor - platVenda - freteLoja;
+        repasseMoto = entregaTotal - platEntrega;
+    } else if (o.type === 'B2B') {
+        entregaTotal = dist * store.rates.b2b_km;
+        const sub = (store.users[o.fornecedorId]?.freteSubsidyPct || 0) / 100;
+        const freteForn = entregaTotal * sub;
+        
+        platVenda = o.valor * (store.rates.b2b_plat / 100);
+        platEntrega = entregaTotal * (store.rates.b2b_mot_plat / 100);
+        
+        repasseForn = o.valor - platVenda - freteForn;
+        repasseMoto = entregaTotal - platEntrega;
+    } else if (o.type === 'COLETA') {
+        entregaTotal = dist * store.rates.col_km;
+        platEntrega = entregaTotal * (store.rates.col_mot_plat / 100);
+        repasseMoto = entregaTotal - platEntrega;
+    }
+    
+    return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };
+  };
+
+  const isMoto = (motId: string | null) => { const m = motId ? store.users[motId] : null; return m && m.veiculo === 'Moto'; };
+  const isCaminhao = (motId: string | null) => { const m = motId ? store.users[motId] : null; return m && (m.veiculo === 'Caminhão' || m.veiculo === 'Caçamba'); };
+
+  let totaisVendas = 0;
+  let totaisFretes = 0;
+  let fatLiqBatedeiras = 0;
+  let fatBrutoBatedeiras = 0;
+  let fatLiqMotos = 0;
+  let fatBrutoMotos = 0;
+  let fatLiqCaminhoes = 0;
+  let fatBrutoCaminhoes = 0;
+  let fatLiqFornecedores = 0;
+  let fatBrutoFornecedores = 0;
+  let movimentacaoTotal = 0;
+
+  concluidos.forEach(o => {
+      const dyn = getDynamicTaxes(o);
+      totaisVendas += dyn.platVenda;
+      totaisFretes += dyn.platEntrega;
+      movimentacaoTotal += (o.valor || 0) + dyn.entregaTotal;
+      
+      if (o.type === 'B2C') {
+          fatLiqBatedeiras += dyn.repasseLoja;
+          fatBrutoBatedeiras += (o.valor || 0);
+      } else if (o.type === 'B2B') {
+          fatLiqFornecedores += dyn.repasseForn;
+          fatBrutoFornecedores += (o.valor || 0);
+      }
+      
+      if (isMoto(o.motoristaId)) {
+          fatLiqMotos += dyn.repasseMoto;
+          fatBrutoMotos += dyn.entregaTotal;
+      } else if (isCaminhao(o.motoristaId)) {
+          fatLiqCaminhoes += dyn.repasseMoto;
+          fatBrutoCaminhoes += dyn.entregaTotal;
+      }
+  });
+
   const totais = {
       pedidos: store.orders.length,
       aceitos: store.orders.filter(o => ['preparo', 'em_rota', 'entregue'].includes(o.status)).length,
       cancelados: store.orders.filter(o => o.status === 'cancelado').length,
       concluidos: concluidos.length,
       emRota: store.orders.filter(o => o.status === 'em_rota').length,
-      receitaVendas: concluidos.reduce((a, b) => a + (b.taxas.plataformaVenda || 0), 0),
-      receitaFretes: concluidos.reduce((a, b) => a + (b.taxas.plataformaEntrega || 0), 0)
+      receitaVendas: totaisVendas,
+      receitaFretes: totaisFretes
   };
-
-  const isMoto = (motId: string | null) => { const m = motId ? store.users[motId] : null; return m && m.veiculo === 'Moto'; };
-  const isCaminhao = (motId: string | null) => { const m = motId ? store.users[motId] : null; return m && (m.veiculo === 'Caminhão' || m.veiculo === 'Caçamba'); };
-  
-  const fatLiqBatedeiras  = concluidos.filter(o => o.type === 'B2C').reduce((a, b) => a + (b.taxas.repasse || 0), 0);
-  const fatBrutoBatedeiras = concluidos.filter(o => o.type === 'B2C').reduce((a, b) => a + (b.valor || 0), 0);
-  
-  const fatLiqMotos    = concluidos.filter(o => isMoto(o.motoristaId)).reduce((a, b) => a + (b.taxas.entregaMotorista || 0), 0);
-  const fatBrutoMotos  = concluidos.filter(o => isMoto(o.motoristaId)).reduce((a, b) => a + (b.taxas.entregaTotal || 0), 0);
-  
-  const fatLiqCaminhoes   = concluidos.filter(o => isCaminhao(o.motoristaId)).reduce((a, b) => a + (b.taxas.entregaMotorista || 0), 0);
-  const fatBrutoCaminhoes = concluidos.filter(o => isCaminhao(o.motoristaId)).reduce((a, b) => a + (b.taxas.entregaTotal || 0), 0);
-  
-  const fatLiqFornecedores  = concluidos.filter(o => o.type === 'B2B').reduce((a, b) => a + (b.taxas.repasse || 0), 0);
-  const fatBrutoFornecedores = concluidos.filter(o => o.type === 'B2B').reduce((a, b) => a + (b.valor || 0), 0);
-  
-  const movimentacaoTotal = concluidos.reduce((a, b) => a + (b.valor || 0) + (b.taxas.entregaTotal || 0), 0);
 
   const handleSaveRates = () => {
     store.saveRates(localRates);
@@ -168,7 +222,7 @@ export default function AdminDashboard() {
                                 <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">🗺️ Ver {o.distancia.toFixed(1)} km</button>
                             </td>
                             <td className="p-4"><span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold text-zinc-700 dark:text-zinc-300">{o.type}</span></td>
-                            <td className="p-4 text-xs text-zinc-600 dark:text-zinc-400">Prod: {formatMoney(o.valor)}<br/>Frete: {formatMoney(o.taxas.entregaTotal)}</td>
+                            <td className="p-4 text-xs text-zinc-600 dark:text-zinc-400">Prod: {formatMoney(o.valor)}<br/>Frete: {formatMoney(getDynamicTaxes(o).entregaTotal)}</td>
                             <td className="p-4 text-xs text-zinc-500">
                                 <span className="block">Orig: {store.users[o.origemId]?.name || '—'}</span>
                                 <span className="block text-purple-600 dark:text-purple-400 font-medium">Mot: {o.motoristaId ? store.users[o.motoristaId]?.name : '---'}</span>
