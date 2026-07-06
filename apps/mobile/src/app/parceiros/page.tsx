@@ -1,10 +1,40 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
-import { Store, Truck, Bike, PackageOpen, ArrowLeft, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Store, Truck, Bike, PackageOpen, ArrowLeft, User, ShieldCheck } from "lucide-react";
+import { useAppStore } from "@/store/useAppStore";
 
 export default function ParceirosOnboarding() {
+  const router = useRouter();
+  const authorizeMercadoPago = useAppStore(state => state.authorizeMercadoPago);
+  const login = useAppStore(state => state.login);
+  
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<{ path: string; name: string; mockUserId: string } | null>(null);
+
+  const handleRoleSelect = (path: string, name: string, mockUserId: string) => {
+    setSelectedRole({ path, name, mockUserId });
+    setModalOpen(true);
+  };
+
+  const handleAuthorize = () => {
+    if (!selectedRole) return;
+    
+    // Simular o fluxo OAuth do Mercado Pago
+    const mockToken = `APP_USR-${Math.random().toString(36).substring(2, 15)}`;
+    authorizeMercadoPago(selectedRole.mockUserId, mockToken);
+    
+    // Fazer login na loja (como se o backend tivesse logado o usuário recém criado)
+    login(selectedRole.mockUserId);
+    
+    setModalOpen(false);
+    router.push(selectedRole.path);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col relative">
       <header className="p-4 flex items-center gap-3">
         <Link href="/">
           <div className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-full transition">
@@ -42,7 +72,7 @@ export default function ParceirosOnboarding() {
           </Link>
           
           {/* Batedeira */}
-          <Link href="/parceiros/batedeira" className="group">
+          <div onClick={() => handleRoleSelect('/parceiros/batedeira', 'Batedeira', 'loja_1')} className="group">
             <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-lg transition-all cursor-pointer flex items-start gap-4 h-full">
               <div className="bg-purple-100 dark:bg-purple-900/30 p-4 rounded-xl text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
                 <Store size={32} />
@@ -54,10 +84,10 @@ export default function ParceirosOnboarding() {
                 </p>
               </div>
             </div>
-          </Link>
+          </div>
 
           {/* Fornecedor */}
-          <Link href="/parceiros/fornecedor" className="group">
+          <div onClick={() => handleRoleSelect('/parceiros/fornecedor', 'Fornecedor', 'forn_1')} className="group">
             <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-lg transition-all cursor-pointer flex items-start gap-4 h-full">
               <div className="bg-emerald-100 dark:bg-emerald-900/30 p-4 rounded-xl text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
                 <PackageOpen size={32} />
@@ -69,10 +99,10 @@ export default function ParceirosOnboarding() {
                 </p>
               </div>
             </div>
-          </Link>
+          </div>
 
           {/* Motoboy */}
-          <Link href="/parceiros/motoboy" className="group">
+          <div onClick={() => handleRoleSelect('/parceiros/motoboy', 'Entregador (Motoboy)', 'mot_1')} className="group">
             <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-amber-500 dark:hover:border-amber-500 hover:shadow-lg transition-all cursor-pointer flex items-start gap-4 h-full">
               <div className="bg-amber-100 dark:bg-amber-900/30 p-4 rounded-xl text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
                 <Bike size={32} />
@@ -84,10 +114,10 @@ export default function ParceirosOnboarding() {
                 </p>
               </div>
             </div>
-          </Link>
+          </div>
 
           {/* Caminhão */}
-          <Link href="/parceiros/caminhao" className="group">
+          <div onClick={() => handleRoleSelect('/parceiros/caminhao', 'Caminhão Fruto Açaí', 'mot_2')} className="group">
             <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer flex items-start gap-4 h-full">
               <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-xl text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
                 <Truck size={32} />
@@ -99,10 +129,46 @@ export default function ParceirosOnboarding() {
                 </p>
               </div>
             </div>
-          </Link>
+          </div>
 
         </div>
       </main>
+
+      {/* Mercado Pago OAuth Modal */}
+      {modalOpen && selectedRole && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="bg-blue-600 p-6 text-white text-center shrink-0">
+              <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                <ShieldCheck size={32} />
+              </div>
+              <h3 className="text-xl font-bold">Conectar Mercado Pago</h3>
+              <p className="text-blue-100 text-sm mt-1">Garantia do Triplo Split</p>
+            </div>
+            
+            <div className="p-6 text-center">
+              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
+                Para atuar como <strong className="text-zinc-900 dark:text-white">{selectedRole.name}</strong>, você precisa vincular sua conta bancária. 
+                Isso garante que sua comissão caia direto na sua conta instantaneamente a cada venda!
+              </p>
+              
+              <button 
+                onClick={handleAuthorize}
+                className="w-full bg-[#009EE3] hover:bg-[#008ACB] text-white font-bold py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 mb-3 active:scale-95"
+              >
+                Autorizar com Mercado Pago
+              </button>
+              
+              <button 
+                onClick={() => setModalOpen(false)}
+                className="w-full bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-3 rounded-xl transition"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,26 +1,139 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, PackageOpen, LayoutList } from "lucide-react";
+import { ArrowLeft, PackageOpen } from "lucide-react";
+import { useAppStore } from "@/store/useAppStore";
+import { MapModal } from "@/components/MapModal";
 
 export default function FornecedorDashboard() {
+  const store = useAppStore();
+  const currentUser = store.currentUser;
+  
+  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
+
+  if (!currentUser || currentUser.role !== 'fornecedor') {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
+        <PackageOpen size={48} className="text-emerald-600 mb-4" />
+        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Acesso Restrito</h2>
+        <p className="text-zinc-500 mb-6">Você precisa conectar seu Mercado Pago no Portal de Parceiros para acessar esta área.</p>
+        <Link href="/parceiros" className="bg-emerald-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-emerald-700 transition">
+          Voltar ao Portal
+        </Link>
+      </div>
+    );
+  }
+
+  const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const meusPedidos = store.orders.filter(o => o.fornecedorId === currentUser.id && o.status !== 'cancelado');
+  const vendasHoje = meusPedidos.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.repasse, 0);
+
+  const handleSaveSubsidy = () => {
+    store.setFreteSubsidy(currentUser.id, parseFloat(subsidyInput) || 0);
+    alert('Subsídio salvo com sucesso!');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
-      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4">
-        <div className="flex items-center gap-3">
-          <Link href="/parceiros">
-            <ArrowLeft className="text-zinc-600 dark:text-zinc-400" />
-          </Link>
-          <PackageOpen className="text-emerald-600" />
-          <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Painel do Atacado</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
+      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
+        <div className="flex justify-between items-center max-w-5xl mx-auto">
+          <div className="flex items-center gap-3">
+            <Link href="/parceiros">
+              <ArrowLeft className="text-zinc-600 dark:text-zinc-400" />
+            </Link>
+            <PackageOpen className="text-emerald-600" />
+            <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Painel do Fornecedor (B2B)</h1>
+          </div>
+          {currentUser.mercadoPagoToken && (
+             <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200">MP Ativo ✅</span>
+          )}
         </div>
       </header>
-      <main className="p-6">
-        <div className="bg-white dark:bg-zinc-900 rounded-xl p-6 border border-zinc-200 dark:border-zinc-800 shadow-sm text-center">
-          <LayoutList className="mx-auto text-zinc-400 mb-4" size={48} />
-          <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Estoque B2B</h2>
-          <p className="text-zinc-500 dark:text-zinc-400 mt-2">Cadastre seus lotes de fruto ou caixas de açaí para as lojas comprarem.</p>
+      
+      <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Resumo */}
+          <div className="bg-emerald-900 text-white p-5 rounded-xl shadow">
+              <h2 className="text-xl font-bold">{currentUser.name}</h2>
+              <p className="text-emerald-300 text-xs mt-1">📍 {currentUser.bairro}</p>
+              <div className="mt-4 pt-4 border-t border-emerald-700">
+                  <p className="text-sm text-emerald-200">Saldo Líquido (Sessão)</p>
+                  <p className="text-2xl font-bold text-green-400">{formatMoney(vendasHoje)}</p>
+              </div>
+          </div>
+
+          {/* Controles */}
+          <div className="col-span-1 md:col-span-2 bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center gap-3">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">⚙️ Marketing (Subsídio de Frete)</h3>
+                      <p className="text-[10px] text-zinc-500">Defina a porcentagem do frete que você quer pagar para atrair as batedeiras.</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                      <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Você Paga:</label>
+                      <input type="number" min="0" max="100" value={subsidyInput} onChange={e => setSubsidyInput(e.target.value)} className="w-16 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded p-1.5 text-center font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                      <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">%</span>
+                      <button onClick={handleSaveSubsidy} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ml-1">Salvar</button>
+                  </div>
+              </div>
+          </div>
         </div>
+
+        <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">Gestão de Pedidos (Vendas B2B)</h3>
+        
+        <div className="space-y-4">
+          {meusPedidos.length === 0 ? (
+             <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
+                <span className="text-4xl mb-3 opacity-50">🚢</span>
+                <p className="text-zinc-500 font-medium">Nenhum pedido de batedeira no momento.</p>
+            </div>
+          ) : meusPedidos.map(o => (
+            <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-xl shadow-sm border border-l-4 border-l-emerald-500 border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="w-full sm:w-auto">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">{o.type}</span>
+                        <span className="font-bold text-zinc-800 dark:text-white text-sm">Pedido #{o.id} - Loja: {store.users[o.lojaId!]?.name || '—'}</span>
+                        <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId })} className="text-[10px] text-blue-500 hover:underline">🗺️ Ver Rota de {o.distancia.toFixed(1)} km</button>
+                    </div>
+                    <p className="text-xs text-zinc-500 mt-1">
+                        Bruto: {formatMoney(o.valor)} |
+                        Sub. Frete: {formatMoney(o.taxas.entregaFornecedor || 0)} |
+                        Líquido: {formatMoney(o.taxas.repasse)}
+                    </p>
+                </div>
+                
+                <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
+                    {/* Status Badges */}
+                    {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Você</span>}
+                    {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Separação</span>}
+                    {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
+                    {o.status === 'entregue' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>}
+                    
+                    {/* Interações */}
+                    {o.status === 'pendente' && (
+                      <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                          <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
+                          <button onClick={() => store.acaoPedido(o.id, 'aceitar_forn')} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Separar Fruto</button>
+                      </div>
+                    )}
+                </div>
+            </div>
+          ))}
+        </div>
+
       </main>
+
+      <MapModal 
+        isOpen={mapModal.open} 
+        onClose={() => setMapModal(prev => ({ ...prev, open: false }))} 
+        origemId={mapModal.origem} 
+        destinoId={mapModal.destino} 
+        motoristaId={mapModal.motorista} 
+      />
     </div>
   );
 }

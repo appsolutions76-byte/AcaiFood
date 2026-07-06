@@ -2,186 +2,246 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Settings, Trash2 } from "lucide-react";
+import { useAppStore } from "@/store/useAppStore";
+import { MapModal } from "@/components/MapModal";
 
 export default function AdminDashboard() {
-  // Triple Split Settings
-  const [b2cFee, setB2cFee] = useState("5.00");
-  const [b2bFee, setB2bFee] = useState("3.00");
-  const [motoboyKm, setMotoboyKm] = useState("1.50");
-  const [truckKm, setTruckKm] = useState("5.00");
-  const [motoboyPlatformFee, setMotoboyPlatformFee] = useState("10.00");
-  const [truckPlatformFee, setTruckPlatformFee] = useState("10.00");
+  const store = useAppStore();
+  const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [ratesModalOpen, setRatesModalOpen] = useState(false);
+  const [localRates, setLocalRates] = useState(store.rates);
+
+  const concluidos = store.orders.filter(o => o.status === 'entregue');
+  const totais = {
+      pedidos: store.orders.length,
+      aceitos: store.orders.filter(o => ['preparo', 'em_rota', 'entregue'].includes(o.status)).length,
+      cancelados: store.orders.filter(o => o.status === 'cancelado').length,
+      concluidos: concluidos.length,
+      emRota: store.orders.filter(o => o.status === 'em_rota').length,
+      receitaVendas: concluidos.reduce((a, b) => a + (b.taxas.plataformaVenda || 0), 0),
+      receitaFretes: concluidos.reduce((a, b) => a + (b.taxas.plataformaEntrega || 0), 0)
+  };
+
+  const isMoto = (motId: string | null) => { const m = motId ? store.users[motId] : null; return m && m.veiculo === 'Moto'; };
+  const isCaminhao = (motId: string | null) => { const m = motId ? store.users[motId] : null; return m && (m.veiculo === 'Caminhão' || m.veiculo === 'Caçamba'); };
+  
+  const fatLiqBatedeiras  = concluidos.filter(o => o.type === 'B2C').reduce((a, b) => a + (b.taxas.repasse || 0), 0);
+  const fatBrutoBatedeiras = concluidos.filter(o => o.type === 'B2C').reduce((a, b) => a + (b.valor || 0), 0);
+  
+  const fatLiqMotos    = concluidos.filter(o => isMoto(o.motoristaId)).reduce((a, b) => a + (b.taxas.entregaMotorista || 0), 0);
+  const fatBrutoMotos  = concluidos.filter(o => isMoto(o.motoristaId)).reduce((a, b) => a + (b.taxas.entregaTotal || 0), 0);
+  
+  const fatLiqCaminhoes   = concluidos.filter(o => isCaminhao(o.motoristaId)).reduce((a, b) => a + (b.taxas.entregaMotorista || 0), 0);
+  const fatBrutoCaminhoes = concluidos.filter(o => isCaminhao(o.motoristaId)).reduce((a, b) => a + (b.taxas.entregaTotal || 0), 0);
+  
+  const fatLiqFornecedores  = concluidos.filter(o => o.type === 'B2B').reduce((a, b) => a + (b.taxas.repasse || 0), 0);
+  const fatBrutoFornecedores = concluidos.filter(o => o.type === 'B2B').reduce((a, b) => a + (b.valor || 0), 0);
+  
+  const movimentacaoTotal = concluidos.reduce((a, b) => a + (b.valor || 0) + (b.taxas.entregaTotal || 0), 0);
+
+  const handleSaveRates = () => {
+    store.saveRates(localRates);
+    setRatesModalOpen(false);
+    alert("Taxas do Triplo Split atualizadas com sucesso!");
+  };
+
+  const handleClearData = () => {
+    if (confirm("Tem certeza que deseja apagar todos os pedidos da sessão?")) {
+      store.clearData();
+    }
+  };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-zinc-950">
-      {/* Navbar */}
-      <header className="sticky top-0 z-10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
+      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
+        <div className="flex justify-between items-center max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <Link href="/">
-              <div className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition">
-                <ArrowLeft size={20} className="text-zinc-600 dark:text-zinc-400" />
-              </div>
+              <ArrowLeft className="text-zinc-600 dark:text-zinc-400" />
             </Link>
-            <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center">
-              <span className="text-white font-bold">A</span>
-            </div>
-            <span className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">AçaíFood Admin</span>
+            <Settings className="text-purple-600" />
+            <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hidden sm:block">Master Admin</span>
-            <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700"></div>
+          <div className="flex gap-2">
+              <button onClick={() => setRatesModalOpen(true)} className="bg-purple-800 hover:bg-purple-900 text-white px-4 py-2 rounded-xl font-bold shadow flex items-center gap-2 transition text-sm">
+                  ⚙️ Tabela de taxas
+              </button>
+              <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition text-sm">
+                  <Trash2 size={16} /> Limpar
+              </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+      <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
         
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Visão Geral</h1>
-          <p className="text-zinc-500 dark:text-zinc-400 mt-1">Bem-vindo ao painel de controle logístico e financeiro.</p>
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800">
+                <p className="text-zinc-500 dark:text-zinc-400 text-[11px] uppercase font-bold">Volume Total</p>
+                <p className="text-xl font-bold text-zinc-900 dark:text-white">{totais.pedidos}</p>
+            </div>
+            <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-xl shadow-sm border border-green-200 dark:border-green-900/50">
+                <p className="text-green-700 dark:text-green-500 text-[11px] uppercase font-bold">Aceitos</p>
+                <p className="text-xl font-bold text-green-700 dark:text-green-400">{totais.aceitos}</p>
+            </div>
+            <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl shadow-sm border border-red-200 dark:border-red-900/50">
+                <p className="text-red-700 dark:text-red-500 text-[11px] uppercase font-bold">Cancelados</p>
+                <p className="text-xl font-bold text-red-700 dark:text-red-400">{totais.cancelados}</p>
+            </div>
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800">
+                <p className="text-zinc-500 dark:text-zinc-400 text-[11px] uppercase font-bold">Em Logística</p>
+                <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{totais.emRota}</p>
+            </div>
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800">
+                <p className="text-zinc-500 dark:text-zinc-400 text-[11px] uppercase font-bold">Concluídos</p>
+                <p className="text-xl font-bold text-zinc-800 dark:text-zinc-200">{totais.concluidos}</p>
+            </div>
+            <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-xl shadow-sm border border-purple-200 dark:border-purple-900/50">
+                <p className="text-purple-700 dark:text-purple-400 text-[11px] uppercase font-bold">Receita App</p>
+                <p className="text-xl font-bold text-purple-800 dark:text-purple-300">{formatMoney(totais.receitaVendas + totais.receitaFretes)}</p>
+            </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white dark:bg-zinc-900 rounded-xl p-5 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-            <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">Faturamento (Taxa B2C)</div>
-            <div className="text-2xl font-bold text-violet-600 dark:text-violet-500">R$ 14.590,00</div>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 rounded-xl p-5 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-            <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">Faturamento (Taxa B2B)</div>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-500">R$ 38.200,00</div>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 rounded-xl p-5 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-            <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">Motoboys Ativos</div>
-            <div className="text-2xl font-bold text-zinc-900 dark:text-white">142</div>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 rounded-xl p-5 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-            <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">Caminhões Ativos</div>
-            <div className="text-2xl font-bold text-zinc-900 dark:text-white">18</div>
-          </div>
+        <div className="bg-gradient-to-r from-indigo-900 to-purple-800 text-white p-6 rounded-xl shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+                <h3 className="text-lg font-bold flex items-center gap-2">🌍 Movimentação Total da Cadeia do Açaí</h3>
+                <p className="text-purple-200 text-xs mt-1">Volume Financeiro Total (Produto + Frete transacionados com sucesso)</p>
+            </div>
+            <div className="text-left sm:text-right">
+                <p className="text-4xl font-extrabold text-green-400">{formatMoney(movimentacaoTotal)}</p>
+            </div>
         </div>
 
-        {/* Global Settings Section (Triplo Split) */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden mb-8">
-          <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Taxas da Plataforma (Configuração Individual)</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Ajuste as taxas que compõem o Triplo Split para vendas e logística.</p>
-          </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-            
-            {/* Sales Split */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-2">Split de Vendas (Plataforma vs Lojas)</h3>
-              
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Taxa Vendas B2C (%)</label>
-                <div className="relative">
-                  <input 
-                    type="number" 
-                    value={b2cFee}
-                    onChange={(e) => setB2cFee(e.target.value)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                    <span className="text-zinc-500">%</span>
-                  </div>
+        <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mt-6 border-b border-zinc-200 dark:border-zinc-800 pb-2">💰 Faturamento dos Parceiros (Bruto x Líquido)</h3>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Fornecedores */}
+            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-5 rounded-xl shadow-sm border border-emerald-200 dark:border-emerald-900 flex flex-col justify-center">
+                <p className="text-emerald-800 dark:text-emerald-400 text-sm font-bold flex items-center justify-center gap-1 mb-3"><span>👨🌾</span> Fornecedores</p>
+                <div className="flex justify-between items-center w-full">
+                    <div><p className="text-[10px] text-emerald-600 dark:text-emerald-500 uppercase font-bold">Bruto</p><p className="text-lg font-bold text-emerald-900 dark:text-emerald-100">{formatMoney(fatBrutoFornecedores)}</p></div>
+                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(fatLiqFornecedores)}</p></div>
                 </div>
-                <p className="text-xs text-zinc-500 mt-1">Taxa retida pela plataforma em vendas Cliente Final {'->'} Batedeira.</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Taxa Vendas B2B (%)</label>
-                <div className="relative">
-                  <input 
-                    type="number" 
-                    value={b2bFee}
-                    onChange={(e) => setB2bFee(e.target.value)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                    <span className="text-zinc-500">%</span>
-                  </div>
-                </div>
-                <p className="text-xs text-zinc-500 mt-1">Taxa retida pela plataforma em vendas Batedeira {'->'} Fornecedor.</p>
-              </div>
             </div>
             
-            {/* Delivery Split */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-zinc-800 pb-2">Split Logístico (Entregadores)</h3>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Frete Motoboy (R$ / KM)</label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-zinc-500">R$</span>
-                    </div>
-                    <input 
-                      type="number" 
-                      value={motoboyKm}
-                      onChange={(e) => setMotoboyKm(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="relative w-28">
-                    <input 
-                      type="number" 
-                      value={motoboyPlatformFee}
-                      onChange={(e) => setMotoboyPlatformFee(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                      <span className="text-zinc-500">%</span>
-                    </div>
-                  </div>
+            {/* Batedeiras */}
+            <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-xl shadow-sm border border-indigo-200 dark:border-indigo-900 flex flex-col justify-center">
+                <p className="text-indigo-800 dark:text-indigo-400 text-sm font-bold flex items-center justify-center gap-1 mb-3"><span>🏪</span> Batedeiras</p>
+                <div className="flex justify-between items-center w-full">
+                    <div><p className="text-[10px] text-indigo-500 uppercase font-bold">Bruto</p><p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{formatMoney(fatBrutoBatedeiras)}</p></div>
+                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(fatLiqBatedeiras)}</p></div>
                 </div>
-                <p className="text-xs text-zinc-500 mt-1">Valor por KM cobrado do cliente, e a % que fica para a plataforma.</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Frete Caminhão (R$ / KM)</label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-zinc-500">R$</span>
-                    </div>
-                    <input 
-                      type="number" 
-                      value={truckKm}
-                      onChange={(e) => setTruckKm(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="relative w-28">
-                    <input 
-                      type="number" 
-                      value={truckPlatformFee}
-                      onChange={(e) => setTruckPlatformFee(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                      <span className="text-zinc-500">%</span>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-zinc-500 mt-1">Valor por KM cobrado da loja, e a % que fica para a plataforma.</p>
-              </div>
             </div>
             
-            <div className="md:col-span-2 flex justify-end mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-              <button className="bg-violet-600 hover:bg-violet-700 text-white font-medium py-2 px-8 rounded-lg transition-colors shadow-sm">
-                Salvar Configurações Globais
-              </button>
+            {/* Motoboys */}
+            <div className="bg-amber-50 dark:bg-amber-900/10 p-5 rounded-xl shadow-sm border border-amber-200 dark:border-amber-900 flex flex-col justify-center">
+                <p className="text-amber-800 dark:text-amber-400 text-sm font-bold flex items-center justify-center gap-1 mb-3"><span>🛵</span> Motociclistas</p>
+                <div className="flex justify-between items-center w-full">
+                    <div><p className="text-[10px] text-amber-600 dark:text-amber-500 uppercase font-bold">Frete Bruto</p><p className="text-lg font-bold text-amber-900 dark:text-amber-100">{formatMoney(fatBrutoMotos)}</p></div>
+                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(fatLiqMotos)}</p></div>
+                </div>
             </div>
-          </div>
+            
+            {/* Caminhões */}
+            <div className="bg-blue-50 dark:bg-blue-900/10 p-5 rounded-xl shadow-sm border border-blue-200 dark:border-blue-900 flex flex-col justify-center">
+                <p className="text-blue-800 dark:text-blue-400 text-sm font-bold flex items-center justify-center gap-1 mb-3"><span>🚚</span> Caminhões</p>
+                <div className="flex justify-between items-center w-full">
+                    <div><p className="text-[10px] text-blue-500 uppercase font-bold">Frete Bruto</p><p className="text-lg font-bold text-blue-900 dark:text-blue-100">{formatMoney(fatBrutoCaminhoes)}</p></div>
+                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(fatLiqCaminhoes)}</p></div>
+                </div>
+            </div>
+        </div>
+
+        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-x-auto mt-6">
+            <table className="w-full text-left text-sm min-w-max">
+                <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+                    <tr><th className="p-4">ID / Rota</th><th className="p-4">Tipo</th><th className="p-4">Valores</th><th className="p-4">Atores</th><th className="p-4">Status</th></tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {store.orders.map(o => (
+                        <tr key={o.id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${o.status === 'cancelado' ? 'opacity-50' : ''}`}>
+                            <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">
+                                {o.id}<br/>
+                                <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">🗺️ Ver {o.distancia.toFixed(1)} km</button>
+                            </td>
+                            <td className="p-4"><span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold text-zinc-700 dark:text-zinc-300">{o.type}</span></td>
+                            <td className="p-4 text-xs text-zinc-600 dark:text-zinc-400">Prod: {formatMoney(o.valor)}<br/>Frete: {formatMoney(o.taxas.entregaTotal)}</td>
+                            <td className="p-4 text-xs text-zinc-500">
+                                <span className="block">Orig: {store.users[o.origemId]?.name || '—'}</span>
+                                <span className="block text-purple-600 dark:text-purple-400 font-medium">Mot: {o.motoristaId ? store.users[o.motoristaId]?.name : '---'}</span>
+                            </td>
+                            <td className="p-4">
+                                {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pendente</span>}
+                                {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Preparo</span>}
+                                {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
+                                {o.status === 'entregue' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>}
+                                {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
+                            </td>
+                        </tr>
+                    ))}
+                    {store.orders.length === 0 && (
+                        <tr><td colSpan={5} className="text-center p-6 text-zinc-500">Nenhum pedido gerado na plataforma ainda.</td></tr>
+                    )}
+                </tbody>
+            </table>
         </div>
 
       </main>
+
+      <MapModal 
+        isOpen={mapModal.open} 
+        onClose={() => setMapModal(prev => ({ ...prev, open: false }))} 
+        origemId={mapModal.origem} 
+        destinoId={mapModal.destino} 
+        motoristaId={mapModal.motorista} 
+      />
+
+      {ratesModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-purple-900 text-white p-5 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-lg">⚙️ Configuração do Triplo Split</h3>
+                <button onClick={() => setRatesModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div className="p-6 space-y-6 overflow-y-auto">
+              <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>🛵</span> B2C (Açaí Pronto)</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">App na Venda (%)</label><input type="number" value={localRates.b2c_plat} onChange={e => setLocalRates({...localRates, b2c_plat: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Valor por KM (R$)</label><input type="number" step="0.1" value={localRates.b2c_km} onChange={e => setLocalRates({...localRates, b2c_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates.b2c_mot_plat} onChange={e => setLocalRates({...localRates, b2c_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                  </div>
+              </div>
+              <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>🚚</span> B2B (Fruto)</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">App na Venda (%)</label><input type="number" value={localRates.b2b_plat} onChange={e => setLocalRates({...localRates, b2b_plat: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Valor por KM (R$)</label><input type="number" step="0.1" value={localRates.b2b_km} onChange={e => setLocalRates({...localRates, b2b_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates.b2b_mot_plat} onChange={e => setLocalRates({...localRates, b2b_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                  </div>
+              </div>
+              <div className="pb-2">
+                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>🚛</span> Coleta Log. Reversa (Caroço)</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                      <div><label className="text-[10px] uppercase text-amber-600 font-bold">Serviço Fixo (R$)</label><input type="number" value={localRates.col_valor} onChange={e => setLocalRates({...localRates, col_valor: Number(e.target.value)})} className="w-full border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"/></div>
+                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Valor por KM (R$)</label><input type="number" step="0.1" value={localRates.col_km} onChange={e => setLocalRates({...localRates, col_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates.col_mot_plat} onChange={e => setLocalRates({...localRates, col_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                  </div>
+              </div>
+            </div>
+
+            <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
+                <button onClick={() => setRatesModalOpen(false)} className="px-5 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
+                <button onClick={handleSaveRates} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition">Salvar Triplo Split</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

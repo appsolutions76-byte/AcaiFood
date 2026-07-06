@@ -1,125 +1,212 @@
 "use client";
 
-import React, { useState } from "react";
-import { ShoppingBag, Search, Star, Package, User, MapPin } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { Store, ShoppingCart, UserCheck } from "lucide-react";
+import { useAppStore, haversineKm } from "@/store/useAppStore";
+import { MapModal } from "@/components/MapModal";
 
-const PRODUCTS = [
-  { id: 1, name: "Açaí Tradicional 500ml", price: 18.90, category: "Varejo", rating: 4.8, img: "https://images.unsplash.com/photo-1555122189-9a2c307e5e26?auto=format&fit=crop&q=80&w=400&h=300" },
-  { id: 2, name: "Açaí com Morango 700ml", price: 24.90, category: "Varejo", rating: 4.9, img: "https://images.unsplash.com/photo-1626200419189-3b58be40cad6?auto=format&fit=crop&q=80&w=400&h=300" },
-  { id: 3, name: "Caixa Açaí Puro 10 Litros", price: 120.00, category: "Atacado", rating: 5.0, img: "https://images.unsplash.com/photo-1590393802688-29bfcfdfbfae?auto=format&fit=crop&q=80&w=400&h=300" },
-  { id: 4, name: "Combo Açaí + Acompanhamentos", price: 35.00, category: "Varejo", rating: 4.7, img: "https://images.unsplash.com/photo-1596645089304-43403d6d028e?auto=format&fit=crop&q=80&w=400&h=300" },
-];
+export default function StorefrontPage() {
+  const store = useAppStore();
+  const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export default function Storefront() {
-  const [activeTab, setActiveTab] = useState<"Varejo" | "Atacado">("Varejo");
-  const [cartCount, setCartCount] = useState(0);
+  // Forçar login como Maria (cli_1) ao acessar o app cliente
+  useEffect(() => {
+    store.login('cli_1');
+  }, []);
 
-  const filteredProducts = PRODUCTS.filter(p => p.category === activeTab);
+  const currentUser = store.currentUser;
+  
+  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [cartModal, setCartModal] = useState<{ open: boolean; lojaId: string; tipo: 'popular'|'medio'|'grosso' }>({ open: false, lojaId: '', tipo: 'medio' });
+
+  if (!currentUser || currentUser.role !== 'cliente') return <div className="p-10 text-center">Carregando Storefront...</div>;
+
+  const meusPedidos = store.orders.filter(o => o.clienteId === currentUser.id);
+  const batedeiras = Object.values(store.users).filter(u => u.role === 'loja');
+
+  const calcFreteCliente = (lojaId: string) => {
+    const loja = store.users[lojaId];
+    if (!loja || !loja.lat || !currentUser.lat) return { freteCliente: 0, dist: 0, subsidy: 0 };
+    const dist = haversineKm(loja.lat, loja.lng!, currentUser.lat, currentUser.lng!);
+    const freteTotal = dist * store.rates.b2c_km;
+    const subsidy = loja.freteSubsidyPct || 0;
+    const freteCliente = freteTotal * (1 - subsidy / 100);
+    return { freteCliente, dist, subsidy };
+  };
+
+  const handleConfirmCart = () => {
+    store.criarPedido('B2C', cartModal.lojaId, cartModal.tipo);
+    setCartModal({ open: false, lojaId: '', tipo: 'medio' });
+    alert("Pedido enviado para a loja!");
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <header className="bg-purple-900 text-white p-4 sticky top-0 z-50 shadow-md">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
+      <header className="bg-purple-900 text-white p-4 sticky top-0 z-30 shadow-md">
         <div className="flex justify-between items-center max-w-5xl mx-auto">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-purple-100">Açaí<span className="text-white">Food</span></h1>
-            <p className="text-xs text-purple-300 flex items-center gap-1 mt-1">
-              <MapPin size={12} /> Entregando em Belém, PA
-            </p>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🥣</span>
+            <h1 className="text-xl font-bold">AppAçaíBelém</h1>
           </div>
-          <div className="relative">
-            <Link href="/checkout">
-              <div className="bg-purple-800 p-2 rounded-full cursor-pointer hover:bg-purple-700 transition">
-                <ShoppingBag size={24} />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
-                    {cartCount}
-                  </span>
-                )}
-              </div>
-            </Link>
+          <div className="flex gap-3">
+             <Link href="/parceiros" className="bg-purple-800 hover:bg-purple-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-700 transition">
+               Sou Parceiro
+             </Link>
+             <Link href="/admin" className="bg-purple-800 hover:bg-purple-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-700 transition">
+               Admin
+             </Link>
           </div>
         </div>
       </header>
 
-      {/* Search Bar */}
-      <div className="bg-purple-900 px-4 pb-6 pt-2 rounded-b-3xl shadow-sm">
-        <div className="max-w-5xl mx-auto relative">
-          <input 
-            type="text" 
-            placeholder="Buscar açaí, combos, caixas..." 
-            className="w-full pl-12 pr-4 py-3 rounded-2xl text-gray-800 outline-none shadow-inner"
-          />
-          <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
-        </div>
-      </div>
-
-      <main className="max-w-5xl mx-auto px-4 mt-6">
-        {/* Toggle Varejo / Atacado */}
-        <div className="flex bg-gray-200 p-1 rounded-2xl mb-6">
-          <button 
-            onClick={() => setActiveTab("Varejo")}
-            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "Varejo" ? "bg-white text-purple-900 shadow-sm" : "text-gray-500"}`}
-          >
-            Para Consumo (Varejo)
-          </button>
-          <button 
-            onClick={() => setActiveTab("Atacado")}
-            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 ${activeTab === "Atacado" ? "bg-purple-100 text-purple-900 shadow-sm" : "text-gray-500"}`}
-          >
-            <Package size={16} /> Para Revenda (Atacado)
-          </button>
+      <main className="p-4 sm:p-6 max-w-3xl mx-auto space-y-8">
+        
+        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
+            <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a), {currentUser.name}!</h2>
+            <p className="text-zinc-500 dark:text-zinc-400">O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</p>
         </div>
 
-        <h2 className="text-xl font-bold text-gray-800 mb-4">
-          {activeTab === "Varejo" ? "Mais Pedidos da Região" : "Caixas & Distribuidores"}
-        </h2>
-
-        {/* Product Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {filteredProducts.map(product => (
-            <div key={product.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition">
-              <div className="h-32 bg-gray-200 overflow-hidden relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={product.img} alt={product.name} className="w-full h-full object-cover" />
-                <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Star size={12} className="text-yellow-500 fill-yellow-500" />
-                  <span className="text-xs font-bold text-gray-700">{product.rating}</span>
-                </div>
-              </div>
-              <div className="p-3">
-                <h3 className="font-semibold text-gray-800 text-sm leading-tight h-10">{product.name}</h3>
-                <div className="flex justify-between items-center mt-3">
-                  <span className="font-bold text-purple-900">R$ {product.price.toFixed(2).replace('.', ',')}</span>
-                  <button 
-                    onClick={() => setCartCount(c => c + 1)}
-                    className="bg-purple-900 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold hover:bg-purple-800 active:scale-95 transition"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
+        <div>
+            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Batedeiras Próximas</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {batedeiras.map(loja => {
+                const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
+                return (
+                  <div key={loja.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-purple-100 dark:border-purple-900/30 flex flex-col transition hover:shadow-md">
+                      <div className="flex justify-between items-center mb-3">
+                          <div className="flex items-center gap-2">
+                              <span className="text-3xl">{loja.icon}</span>
+                              <div>
+                                  <p className="font-bold text-zinc-800 dark:text-white leading-tight">{loja.name}</p>
+                                  <p className="text-[10px] text-zinc-500">{loja.bairro}</p>
+                              </div>
+                          </div>
+                          <button onClick={() => setMapModal({ open: true, origem: loja.id, destino: currentUser.id })} className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">🗺️ {dist.toFixed(1)} km</button>
+                      </div>
+                      
+                      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded flex flex-col gap-1 text-sm mb-4 border border-zinc-100 dark:border-zinc-800">
+                          <span className="text-zinc-500 text-[10px] uppercase font-bold">A partir de {formatMoney(loja.priceB2C?.popular || 0)}</span>
+                          <span className="text-zinc-600 dark:text-zinc-400 text-xs flex justify-between">
+                            <span>Frete Estimado:</span>
+                            {subsidy > 0 && <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded uppercase font-bold">Loja paga {subsidy}%</span>}
+                          </span>
+                          <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
+                      </div>
+                      
+                      <button onClick={() => setCartModal({ open: true, lojaId: loja.id, tipo: 'medio' })} className="w-full mt-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2">
+                          <ShoppingCart size={18} /> Pedir Agora
+                      </button>
+                  </div>
+                );
+              })}
             </div>
-          ))}
         </div>
+
+        <div>
+            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Meus Pedidos em Andamento</h3>
+            <div className="space-y-4">
+              {meusPedidos.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center opacity-70">
+                    <span className="text-4xl mb-3">🛒</span>
+                    <p className="text-zinc-500 font-medium">Você ainda não fez nenhum pedido hoje.</p>
+                </div>
+              ) : meusPedidos.map(o => {
+                const isWaitingDriver = o.status === 'em_rota' && !o.confirmacao.entregador;
+                const canConfirm = o.status === 'em_rota' && o.confirmacao.entregador && !o.confirmacao.recebedor;
+                const isCanceled = o.status === 'cancelado';
+                
+                return (
+                  <div key={o.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-xl shadow-sm border ${canConfirm ? 'border-green-400 shadow-green-100 dark:shadow-none' : isCanceled ? 'border-red-200 opacity-60' : 'border-zinc-200 dark:border-zinc-800'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
+                      <div className="w-full sm:w-auto">
+                          <p className="font-bold text-zinc-800 dark:text-white">{o.title} <span className="text-xs text-zinc-500">({o.id})</span></p>
+                          <p className="text-xs text-zinc-500 mt-1">Total: {formatMoney(o.valor + o.taxas.entregaCliente)} (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
+                          {!isCanceled && (
+                            <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded inline-flex items-center gap-1">🗺️ Ver Rota ({o.distancia.toFixed(1)} km)</button>
+                          )}
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row items-center justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
+                          {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Loja</span>}
+                          {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Preparo</span>}
+                          {o.status === 'entregue' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Entregue</span>}
+                          {isCanceled && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
+
+                          {!isCanceled && o.status === 'pendente' && (
+                            <button onClick={() => store.acaoPedido(o.id, 'cancelar_cliente')} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
+                          )}
+                          
+                          {isWaitingDriver && (
+                            <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Moto a caminho</span>
+                          )}
+                          
+                          {canConfirm && (
+                            <button onClick={() => store.acaoPedido(o.id, 'conf_recebedor')} className="bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md transition active:scale-95 w-full sm:w-auto">✅ Confirmar Recebimento</button>
+                          )}
+                      </div>
+                  </div>
+                )
+              })}
+            </div>
+        </div>
+
       </main>
 
-      {/* Bottom Navigation (Mobile Feel) */}
-      <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around p-3 md:hidden z-50">
-        <div className="flex flex-col items-center text-purple-900">
-          <ShoppingBag size={24} />
-          <span className="text-[10px] font-semibold mt-1">Loja</span>
+      {/* Cart Modal */}
+      {cartModal.open && (
+        <div className="fixed inset-0 bg-black/70 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95">
+              <div className="bg-purple-900 text-white p-4 sm:p-5 flex justify-between items-center">
+                  <h3 className="font-bold text-lg">🛒 Carrinho de Compras</h3>
+                  <button onClick={() => setCartModal({ ...cartModal, open: false })} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+              </div>
+              
+              <div className="p-6">
+                  <p className="text-xs text-zinc-500 font-bold uppercase mb-1">Loja selecionada</p>
+                  <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{store.users[cartModal.lojaId]?.name}</h4>
+                  
+                  <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Escolha a qualidade do Açaí (1L):</label>
+                  <select 
+                    value={cartModal.tipo} 
+                    onChange={e => setCartModal({ ...cartModal, tipo: e.target.value as any })}
+                    className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-6"
+                  >
+                      <option value="popular">Açaí Popular</option>
+                      <option value="medio">Açaí Médio</option>
+                      <option value="grosso">Açaí Grosso (Especial)</option>
+                  </select>
+                  
+                  <div className="space-y-3 mb-6 text-sm text-zinc-600 dark:text-zinc-400">
+                      <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span>Valor do Açaí:</span>
+                          <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(store.users[cartModal.lojaId]?.priceB2C![cartModal.tipo] || 0)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span>Frete (sua parte):</span>
+                          <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(calcFreteCliente(cartModal.lojaId).freteCliente)}</span>
+                      </div>
+                      <div className="flex justify-between pt-2 text-lg">
+                          <span className="font-bold text-zinc-800 dark:text-white">Total a Pagar:</span>
+                          <span className="font-bold text-purple-600 dark:text-purple-400">{formatMoney((store.users[cartModal.lojaId]?.priceB2C![cartModal.tipo] || 0) + calcFreteCliente(cartModal.lojaId).freteCliente)}</span>
+                      </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                      <button onClick={() => setCartModal({ ...cartModal, open: false })} className="flex-1 px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition">Cancelar</button>
+                      <button onClick={handleConfirmCart} className="flex-1 px-4 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-lg hover:bg-purple-700 active:scale-95 transition">Confirmar Pedido</button>
+                  </div>
+              </div>
+          </div>
         </div>
-        <div className="flex flex-col items-center text-gray-400 hover:text-purple-900 transition">
-          <Package size={24} />
-          <span className="text-[10px] font-semibold mt-1">Pedidos</span>
-        </div>
-        <div className="flex flex-col items-center text-gray-400 hover:text-purple-900 transition">
-          <User size={24} />
-          <span className="text-[10px] font-semibold mt-1">Perfil</span>
-        </div>
-      </nav>
+      )}
+
+      <MapModal 
+        isOpen={mapModal.open} 
+        onClose={() => setMapModal(prev => ({ ...prev, open: false }))} 
+        origemId={mapModal.origem} 
+        destinoId={mapModal.destino} 
+        motoristaId={mapModal.motorista} 
+      />
     </div>
   );
 }
