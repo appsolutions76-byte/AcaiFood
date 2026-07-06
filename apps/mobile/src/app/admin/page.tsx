@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Settings, Trash2 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
@@ -13,6 +14,18 @@ export default function AdminDashboard() {
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState(store.rates);
+
+  const router = useRouter();
+
+  if (!store.currentUser || store.currentUser.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+        <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
+        <p className="text-zinc-500 mb-6">Você precisa estar logado como Administrador para acessar esta página.</p>
+        <button onClick={() => router.push('/login')} className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold">Ir para Login</button>
+      </div>
+    );
+  }
 
   const concluidos = store.orders.filter(o => o.status === 'entregue');
   const getDynamicTaxes = (o: any) => {

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Store } from "lucide-react";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
@@ -13,15 +14,17 @@ export default function BatedeiraDashboard() {
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
 
+  const router = useRouter();
+
   if (!currentUser || currentUser.role !== 'loja') {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <Store size={48} className="text-purple-600 mb-4" />
         <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Acesso Restrito</h2>
-        <p className="text-zinc-500 mb-6">Você precisa conectar seu Mercado Pago no Portal de Parceiros para acessar esta área.</p>
-        <Link href="/parceiros" className="bg-purple-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-purple-700 transition">
-          Volter ao Portal
-        </Link>
+        <p className="text-zinc-500 mb-6">Você precisa estar logado como Batedeira para acessar este painel.</p>
+        <button onClick={() => router.push('/login')} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-purple-700 transition">
+          Fazer Login
+        </button>
       </div>
     );
   }

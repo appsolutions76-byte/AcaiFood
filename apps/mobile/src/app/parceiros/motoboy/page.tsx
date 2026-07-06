@@ -17,10 +17,10 @@ export default function MotoboyDashboard() {
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <Bike size={48} className="text-amber-600 mb-4" />
         <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Acesso Restrito</h2>
-        <p className="text-zinc-500 mb-6">Você precisa conectar seu Mercado Pago no Portal de Parceiros para acessar esta área.</p>
-        <Link href="/parceiros" className="bg-amber-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-amber-700 transition">
-          Voltar ao Portal
-        </Link>
+        <p className="text-zinc-500 mb-6">Você precisa estar logado como Motoboy para acessar este painel.</p>
+        <button onClick={() => router.push('/login')} className="bg-amber-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-amber-700 transition">
+          Fazer Login
+        </button>
       </div>
     );
   }

@@ -25,6 +25,8 @@ export interface User {
   priceB2B?: number;
   freteSubsidyPct?: number;
   mercadoPagoToken?: string; // NOVO: Token do Mercado Pago
+  email?: string;
+  password?: string;
 }
 
 export interface Order {
@@ -68,6 +70,9 @@ interface AppState {
   
   // Ações
   login: (userId: string) => void;
+  loginWithCredentials: (email: string, pass: string) => boolean;
+  registerUser: (data: Omit<User, 'id'>) => User;
+  logout: () => void;
   authorizeMercadoPago: (userId: string, token: string) => void;
   saveRates: (newRates: Partial<AppState['rates']>) => void;
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: 'popular'|'medio'|'grosso') => void;
@@ -83,14 +88,14 @@ const DB_DEFAULTS = {
     col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00
   },
   users: {
-    admin:    { id: 'admin',    role: 'admin' as Role,       name: 'Administração',          icon: '🛠️' },
-    loja_1:   { id: 'loja_1',   role: 'loja' as Role,        name: 'Batedeira Ponto Certo',  bairro: 'Guamá',      icon: '🏪', priceB2C: { popular: 20, medio: 26, grosso: 35 }, freteSubsidyPct: 50,  lat: -1.469, lng: -48.499 },
-    cli_1:    { id: 'cli_1',    role: 'cliente' as Role,     name: 'Maria Oliveira',         bairro: 'Nazaré',     icon: '👤', lat: -1.455, lng: -48.488 },
-    mot_1:    { id: 'mot_1',    role: 'motorista' as Role,   name: 'Ana',                    bairro: 'Sacramenta', icon: '🛵', veiculo: 'Moto',    lat: -1.440, lng: -48.468 },
-    mot_2:    { id: 'mot_2',    role: 'motorista' as Role,   name: 'Beto',                   bairro: 'Entroncamento', icon: '🚚', veiculo: 'Caminhão', lat: -1.396, lng: -48.450 },
-    mot_3:    { id: 'mot_3',    role: 'motorista' as Role,   name: 'Júlio',                  bairro: 'Icoaraci',      icon: '🚛', veiculo: 'Caçamba',  lat: -1.300, lng: -48.480 },
-    forn_1:   { id: 'forn_1',   role: 'fornecedor' as Role,  name: 'Coop. Ribeirinha',       bairro: 'Ver-o-Peso', icon: '👨🌾', priceB2B: 150.00, freteSubsidyPct: 20, lat: -1.455, lng: -48.502 },
-    ecoponto: { id: 'ecoponto', role: 'ecoponto' as Role,    name: 'Ecoponto Municipal',     bairro: 'Aurá',      icon: '♻️', lat: -1.510, lng: -48.428 }
+    admin:    { id: 'admin',    role: 'admin' as Role,       name: 'Administração',          icon: '🛠️', email: 'appsolutions76@gmail.com', password: '2953938' },
+    loja_1:   { id: 'loja_1',   role: 'loja' as Role,        name: 'Batedeira Ponto Certo',  bairro: 'Guamá',      icon: '🏪', priceB2C: { popular: 20, medio: 26, grosso: 35 }, freteSubsidyPct: 50,  lat: -1.469, lng: -48.499, email: 'loja@teste.com', password: '123' },
+    cli_1:    { id: 'cli_1',    role: 'cliente' as Role,     name: 'Maria Oliveira',         bairro: 'Nazaré',     icon: '👤', lat: -1.455, lng: -48.488, email: 'cliente@teste.com', password: '123' },
+    mot_1:    { id: 'mot_1',    role: 'motorista' as Role,   name: 'Ana',                    bairro: 'Sacramenta', icon: '🛵', veiculo: 'Moto',    lat: -1.440, lng: -48.468, email: 'moto@teste.com', password: '123' },
+    mot_2:    { id: 'mot_2',    role: 'motorista' as Role,   name: 'Beto',                   bairro: 'Entroncamento', icon: '🚚', veiculo: 'Caminhão', lat: -1.396, lng: -48.450, email: 'caminhao@teste.com', password: '123' },
+    mot_3:    { id: 'mot_3',    role: 'motorista' as Role,   name: 'Júlio',                  bairro: 'Icoaraci',      icon: '🚛', veiculo: 'Caçamba',  lat: -1.300, lng: -48.480, email: 'cacamba@teste.com', password: '123' },
+    forn_1:   { id: 'forn_1',   role: 'fornecedor' as Role,  name: 'Coop. Ribeirinha',       bairro: 'Ver-o-Peso', icon: '👨🌾', priceB2B: 150.00, freteSubsidyPct: 20, lat: -1.455, lng: -48.502, email: 'fornecedor@teste.com', password: '123' },
+    ecoponto: { id: 'ecoponto', role: 'ecoponto' as Role,    name: 'Ecoponto Municipal',     bairro: 'Aurá',      icon: '♻️', lat: -1.510, lng: -48.428, email: 'ecoponto@teste.com', password: '123' }
   }
 };
 
@@ -106,6 +111,26 @@ export const useAppStore = create<AppState>()(
       login: (userId) => {
         const user = get().users[userId];
         if (user) set({ currentUser: user });
+      },
+
+      loginWithCredentials: (email, pass) => {
+        const state = get();
+        const user = Object.values(state.users).find(u => u.email === email && u.password === pass);
+        if (user) {
+          set({ currentUser: user });
+          return true;
+        }
+        return false;
+      },
+
+      logout: () => set({ currentUser: null }),
+
+      registerUser: (data) => {
+        const state = get();
+        const newId = `${data.role}_${Date.now()}`;
+        const newUser: User = { ...data, id: newId };
+        set({ users: { ...state.users, [newId]: newUser }, currentUser: newUser });
+        return newUser;
       },
 
       authorizeMercadoPago: (userId, token) => {
@@ -221,6 +246,6 @@ export const useAppStore = create<AppState>()(
 
       clearData: () => set({ orders: [], orderCounter: 1, rates: DB_DEFAULTS.rates })
     }),
-    { name: 'acaifood-storage-v3' }
+    { name: 'acaifood-storage-v4' }
   )
 );

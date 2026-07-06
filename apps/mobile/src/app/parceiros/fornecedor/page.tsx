@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, PackageOpen } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
@@ -18,10 +19,10 @@ export default function FornecedorDashboard() {
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <PackageOpen size={48} className="text-emerald-600 mb-4" />
         <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Acesso Restrito</h2>
-        <p className="text-zinc-500 mb-6">Você precisa conectar seu Mercado Pago no Portal de Parceiros para acessar esta área.</p>
-        <Link href="/parceiros" className="bg-emerald-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-emerald-700 transition">
-          Voltar ao Portal
-        </Link>
+        <p className="text-zinc-500 mb-6">Você precisa estar logado como Fornecedor para acessar este painel.</p>
+        <button onClick={() => router.push('/login')} className="bg-emerald-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-emerald-700 transition">
+          Fazer Login
+        </button>
       </div>
     );
   }

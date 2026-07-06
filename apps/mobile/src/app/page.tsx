@@ -10,24 +10,25 @@ export default function StorefrontPage() {
   const store = useAppStore();
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  // Forçar login como Maria (cli_1) ao acessar o app cliente
-  useEffect(() => {
-    store.login('cli_1');
-  }, []);
+  // Remover auto-login
+  // useEffect(() => {
+  //   store.login('cli_1');
+  // }, []);
 
   const currentUser = store.currentUser;
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [cartModal, setCartModal] = useState<{ open: boolean; lojaId: string; tipo: 'popular'|'medio'|'grosso' }>({ open: false, lojaId: '', tipo: 'medio' });
 
-  if (!currentUser || currentUser.role !== 'cliente') return <div className="p-10 text-center">Carregando Storefront...</div>;
+  // Não retornar vazio se não estiver logado, pois a vitrine é pública.
+  // if (!currentUser || currentUser.role !== 'cliente') return <div className="p-10 text-center">Carregando Storefront...</div>;
 
-  const meusPedidos = store.orders.filter(o => o.clienteId === currentUser.id);
+  const meusPedidos = currentUser ? store.orders.filter(o => o.clienteId === currentUser.id) : [];
   const batedeiras = Object.values(store.users).filter(u => u.role === 'loja');
 
   const calcFreteCliente = (lojaId: string) => {
     const loja = store.users[lojaId];
-    if (!loja || !loja.lat || !currentUser.lat) return { freteCliente: 0, dist: 0, subsidy: 0 };
+    if (!loja || !loja.lat || !currentUser?.lat) return { freteCliente: 0, dist: 0, subsidy: 0 };
     const dist = haversineKm(loja.lat, loja.lng!, currentUser.lat, currentUser.lng!);
     const freteTotal = dist * store.rates.b2c_km;
     const subsidy = loja.freteSubsidyPct || 0;
@@ -49,13 +50,25 @@ export default function StorefrontPage() {
             <span className="text-2xl">🥣</span>
             <h1 className="text-xl font-bold">AppAçaíBelém</h1>
           </div>
-          <div className="flex gap-3">
-             <Link href="/parceiros" className="bg-purple-800 hover:bg-purple-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-700 transition">
-               Sou Parceiro
-             </Link>
-             <Link href="/admin" className="bg-purple-800 hover:bg-purple-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-700 transition">
-               Admin
-             </Link>
+          <div className="flex gap-2">
+             {!currentUser ? (
+               <>
+                 <Link href="/login" className="bg-transparent hover:bg-purple-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-400 transition">
+                   Entrar
+                 </Link>
+                 <Link href="/cadastro" className="bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-500 transition">
+                   Criar Conta
+                 </Link>
+               </>
+             ) : (
+               <div className="flex items-center gap-3">
+                 <span className="text-sm font-medium">Olá, {currentUser.name.split(' ')[0]}</span>
+                 {currentUser.role === 'admin' && (
+                   <Link href="/admin" className="bg-purple-800 hover:bg-purple-700 px-2 py-1 rounded text-xs font-bold border border-purple-700">Admin</Link>
+                 )}
+                 <button onClick={() => store.logout()} className="text-xs text-purple-200 hover:text-white underline">Sair</button>
+               </div>
+             )}
           </div>
         </div>
       </header>
@@ -63,7 +76,7 @@ export default function StorefrontPage() {
       <main className="p-4 sm:p-6 max-w-3xl mx-auto space-y-8">
         
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
-            <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a), {currentUser.name}!</h2>
+            <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a) ao AçaíFood!</h2>
             <p className="text-zinc-500 dark:text-zinc-400">O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</p>
         </div>
 
@@ -82,7 +95,7 @@ export default function StorefrontPage() {
                                   <p className="text-[10px] text-zinc-500">{loja.bairro}</p>
                               </div>
                           </div>
-                          <button onClick={() => setMapModal({ open: true, origem: loja.id, destino: currentUser.id })} className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">🗺️ {dist.toFixed(1)} km</button>
+                          {currentUser && <button onClick={() => setMapModal({ open: true, origem: loja.id, destino: currentUser.id })} className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">🗺️ {dist.toFixed(1)} km</button>}
                       </div>
                       
                       <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded flex flex-col gap-1 text-sm mb-4 border border-zinc-100 dark:border-zinc-800">
@@ -94,61 +107,69 @@ export default function StorefrontPage() {
                           <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
                       </div>
                       
-                      <button onClick={() => setCartModal({ open: true, lojaId: loja.id, tipo: 'medio' })} className="w-full mt-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2">
-                          <ShoppingCart size={18} /> Pedir Agora
-                      </button>
+                      {currentUser ? (
+                          <button onClick={() => setCartModal({ open: true, lojaId: loja.id, tipo: 'medio' })} className="w-full mt-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2">
+                              <ShoppingCart size={18} /> Pedir Agora
+                          </button>
+                      ) : (
+                          <Link href="/login" className="w-full mt-auto bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-3 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2">
+                              Fazer Login para Pedir
+                          </Link>
+                      )}
                   </div>
                 );
               })}
             </div>
         </div>
 
-        <div>
-            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Meus Pedidos em Andamento</h3>
-            <div className="space-y-4">
-              {meusPedidos.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center opacity-70">
-                    <span className="text-4xl mb-3">🛒</span>
-                    <p className="text-zinc-500 font-medium">Você ainda não fez nenhum pedido hoje.</p>
-                </div>
-              ) : meusPedidos.map(o => {
-                const isWaitingDriver = o.status === 'em_rota' && !o.confirmacao.entregador;
-                const canConfirm = o.status === 'em_rota' && o.confirmacao.entregador && !o.confirmacao.recebedor;
-                const isCanceled = o.status === 'cancelado';
-                
-                return (
-                  <div key={o.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-xl shadow-sm border ${canConfirm ? 'border-green-400 shadow-green-100 dark:shadow-none' : isCanceled ? 'border-red-200 opacity-60' : 'border-zinc-200 dark:border-zinc-800'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
-                      <div className="w-full sm:w-auto">
-                          <p className="font-bold text-zinc-800 dark:text-white">{o.title} <span className="text-xs text-zinc-500">({o.id})</span></p>
-                          <p className="text-xs text-zinc-500 mt-1">Total: {formatMoney(o.valor + o.taxas.entregaCliente)} (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
-                          {!isCanceled && (
-                            <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded inline-flex items-center gap-1">🗺️ Ver Rota ({o.distancia.toFixed(1)} km)</button>
-                          )}
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row items-center justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
-                          {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Loja</span>}
-                          {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Preparo</span>}
-                          {o.status === 'entregue' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Entregue</span>}
-                          {isCanceled && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
-
-                          {!isCanceled && o.status === 'pendente' && (
-                            <button onClick={() => store.acaoPedido(o.id, 'cancelar_cliente')} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
-                          )}
-                          
-                          {isWaitingDriver && (
-                            <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Moto a caminho</span>
-                          )}
-                          
-                          {canConfirm && (
-                            <button onClick={() => store.acaoPedido(o.id, 'conf_recebedor')} className="bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md transition active:scale-95 w-full sm:w-auto">✅ Confirmar Recebimento</button>
-                          )}
-                      </div>
+        {currentUser && (
+          <div>
+              <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Meus Pedidos em Andamento</h3>
+              <div className="space-y-4">
+                {meusPedidos.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center opacity-70">
+                      <span className="text-4xl mb-3">🛒</span>
+                      <p className="text-zinc-500 font-medium">Você ainda não fez nenhum pedido hoje.</p>
                   </div>
-                )
-              })}
-            </div>
-        </div>
+                ) : meusPedidos.map(o => {
+                  const isWaitingDriver = o.status === 'em_rota' && !o.confirmacao.entregador;
+                  const canConfirm = o.status === 'em_rota' && o.confirmacao.entregador && !o.confirmacao.recebedor;
+                  const isCanceled = o.status === 'cancelado';
+                  
+                  return (
+                    <div key={o.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-xl shadow-sm border ${canConfirm ? 'border-green-400 shadow-green-100 dark:shadow-none' : isCanceled ? 'border-red-200 opacity-60' : 'border-zinc-200 dark:border-zinc-800'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
+                        <div className="w-full sm:w-auto">
+                            <p className="font-bold text-zinc-800 dark:text-white">{o.title} <span className="text-xs text-zinc-500">({o.id})</span></p>
+                            <p className="text-xs text-zinc-500 mt-1">Total: {formatMoney(o.valor + o.taxas.entregaCliente)} (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
+                            {!isCanceled && (
+                              <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded inline-flex items-center gap-1">🗺️ Ver Rota ({o.distancia.toFixed(1)} km)</button>
+                            )}
+                        </div>
+                        
+                        <div className="flex flex-col sm:flex-row items-center justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
+                            {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Loja</span>}
+                            {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Preparo</span>}
+                            {o.status === 'entregue' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Entregue</span>}
+                            {isCanceled && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
+  
+                            {!isCanceled && o.status === 'pendente' && (
+                              <button onClick={() => store.acaoPedido(o.id, 'cancelar_cliente')} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
+                            )}
+                            
+                            {isWaitingDriver && (
+                              <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Moto a caminho</span>
+                            )}
+                            
+                            {canConfirm && (
+                              <button onClick={() => store.acaoPedido(o.id, 'conf_recebedor')} className="bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md transition active:scale-95 w-full sm:w-auto">✅ Confirmar Recebimento</button>
+                            )}
+                        </div>
+                    </div>
+                  )
+                })}
+              </div>
+          </div>
+        )}
 
       </main>
 
