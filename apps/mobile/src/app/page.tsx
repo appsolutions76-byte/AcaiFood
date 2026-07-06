@@ -71,9 +71,9 @@ export default function StorefrontPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
       <header className="bg-purple-900 text-white p-4 sticky top-0 z-30 shadow-md">
         <div className="flex justify-between items-center max-w-5xl mx-auto">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-white">
             <span className="text-2xl">🥣</span>
-            <h1 className="text-xl font-bold">AppAçaíBelém</h1>
+            <h1 className="text-xl font-bold">AçaíFood</h1>
           </div>
           <div className="flex gap-2">
              {!currentUser ? (

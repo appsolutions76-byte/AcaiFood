@@ -38,9 +38,6 @@ export default function MotoboyDashboard() {
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
         <div className="flex justify-between items-center max-w-4xl mx-auto">
           <div className="flex items-center gap-3">
-            <Link href="/parceiros">
-              <ArrowLeft className="text-zinc-600 dark:text-zinc-400" />
-            </Link>
             <Bike className="text-amber-600" />
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Corridas (B2C)</h1>
           </div>

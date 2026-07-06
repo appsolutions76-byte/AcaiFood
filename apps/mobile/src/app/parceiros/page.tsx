@@ -13,11 +13,6 @@ export default function ParceirosOnboarding() {
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col relative">
       <header className="p-4 flex justify-between items-center max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-3">
-          <Link href="/">
-            <div className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-full transition">
-              <ArrowLeft className="text-zinc-600 dark:text-zinc-400" />
-            </div>
-          </Link>
           <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Portal do Parceiro</h1>
         </div>
         <Link href="/login" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
