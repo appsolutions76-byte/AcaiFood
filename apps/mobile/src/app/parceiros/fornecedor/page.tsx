@@ -117,7 +117,7 @@ export default function FornecedorDashboard() {
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                   <div>
-                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">⚙️ Marketing (Subsídio de Frete)</h3>
+                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🚚 Participação no Frete (%)</h3>
                       <p className="text-[10px] text-zinc-500">Defina a porcentagem do frete que você quer pagar para atrair as batedeiras.</p>
                   </div>
                   <div className="flex items-center gap-2 mt-2 sm:mt-0">

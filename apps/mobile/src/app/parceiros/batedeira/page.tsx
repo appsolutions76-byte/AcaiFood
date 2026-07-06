@@ -122,8 +122,8 @@ export default function BatedeiraDashboard() {
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
                   <div>
-                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">⚙️ Marketing (Subsídio de Frete)</h3>
-                      <p className="text-[10px] text-zinc-500">Defina a porcentagem do frete que você quer pagar para os clientes.</p>
+                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🚚 Participação no Frete (%)</h3>
+                      <p className="text-[10px] text-zinc-500">Defina a porcentagem do frete que você quer pagar para atrair mais clientes.</p>
                   </div>
                   <div className="flex items-center gap-2 mt-2 sm:mt-0">
                       <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Você Paga:</label>
