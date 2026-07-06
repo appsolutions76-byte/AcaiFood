@@ -171,7 +171,7 @@ export default function BatedeiraDashboard() {
                         </div>
                       )}
                       
-                      {!isCanceled && (o.type === 'B2B' || o.type === 'COLETA') && o.status === 'pendente' && (
+                      {!isCanceled && (o.type === 'B2B' || o.type === 'COLETA') && (o.status === 'pendente' || (o.type === 'COLETA' && o.status === 'preparo' && !o.motoristaId)) && (
                         <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
                       )}
 

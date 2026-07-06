@@ -151,7 +151,7 @@ export const useAppStore = create<AppState>()(
         const novoPedido: Order = {
           id: `PED-${String(state.orderCounter).padStart(3, '0')}`,
           type: tipo,
-          status: 'pendente',
+          status: tipo === 'COLETA' ? 'preparo' : 'pendente',
           criadoPor: currentUser.id,
           origemId: originId,
           destinoId: destId,
@@ -206,7 +206,10 @@ export const useAppStore = create<AppState>()(
             if (action === 'cancelar_pedido') newOrder.status = 'cancelado';
             if (action === 'aceitar_loja' || action === 'aceitar_forn') newOrder.status = 'preparo';
             if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; }
-            if (action === 'conf_motorista') newOrder.confirmacao.entregador = true;
+            if (action === 'conf_motorista') {
+              newOrder.confirmacao.entregador = true;
+              if (newOrder.type === 'COLETA') newOrder.confirmacao.recebedor = true;
+            }
             if (action === 'conf_recebedor') newOrder.confirmacao.recebedor = true;
             
             if (newOrder.confirmacao.entregador && newOrder.confirmacao.recebedor) newOrder.status = 'entregue';
@@ -218,6 +221,6 @@ export const useAppStore = create<AppState>()(
 
       clearData: () => set({ orders: [], orderCounter: 1, rates: DB_DEFAULTS.rates })
     }),
-    { name: 'acaifood-storage-v2' }
+    { name: 'acaifood-storage-v3' }
   )
 );
