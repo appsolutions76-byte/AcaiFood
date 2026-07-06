@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default function AdminDashboard() {
   // Triple Split Settings
@@ -12,18 +14,23 @@ export default function AdminDashboard() {
   const [truckPlatformFee, setTruckPlatformFee] = useState("10.00");
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-zinc-950">
       {/* Navbar */}
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <Link href="/">
+              <div className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition">
+                <ArrowLeft size={20} className="text-zinc-600 dark:text-zinc-400" />
+              </div>
+            </Link>
             <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center">
               <span className="text-white font-bold">A</span>
             </div>
-            <span className="text-xl font-bold tracking-tight">AçaíFood Admin (Triplo Split)</span>
+            <span className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">AçaíFood Admin</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Master Admin</span>
+            <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hidden sm:block">Master Admin</span>
             <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700"></div>
           </div>
         </div>
@@ -34,7 +41,7 @@ export default function AdminDashboard() {
         
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Visão Geral</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Visão Geral</h1>
           <p className="text-zinc-500 dark:text-zinc-400 mt-1">Bem-vindo ao painel de controle logístico e financeiro.</p>
         </div>
 
@@ -61,7 +68,7 @@ export default function AdminDashboard() {
         {/* Global Settings Section (Triplo Split) */}
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden mb-8">
           <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
-            <h2 className="text-lg font-bold">Taxas da Plataforma (Configuração Individual)</h2>
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Taxas da Plataforma (Configuração Individual)</h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Ajuste as taxas que compõem o Triplo Split para vendas e logística.</p>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -77,7 +84,7 @@ export default function AdminDashboard() {
                     type="number" 
                     value={b2cFee}
                     onChange={(e) => setB2cFee(e.target.value)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
                   />
                   <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                     <span className="text-zinc-500">%</span>
@@ -93,7 +100,7 @@ export default function AdminDashboard() {
                     type="number" 
                     value={b2bFee}
                     onChange={(e) => setB2bFee(e.target.value)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
                   />
                   <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                     <span className="text-zinc-500">%</span>
@@ -118,7 +125,7 @@ export default function AdminDashboard() {
                       type="number" 
                       value={motoboyKm}
                       onChange={(e) => setMotoboyKm(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
                     />
                   </div>
                   <div className="relative w-28">
@@ -126,7 +133,7 @@ export default function AdminDashboard() {
                       type="number" 
                       value={motoboyPlatformFee}
                       onChange={(e) => setMotoboyPlatformFee(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
                     />
                     <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                       <span className="text-zinc-500">%</span>
@@ -147,7 +154,7 @@ export default function AdminDashboard() {
                       type="number" 
                       value={truckKm}
                       onChange={(e) => setTruckKm(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
                     />
                   </div>
                   <div className="relative w-28">
@@ -155,7 +162,7 @@ export default function AdminDashboard() {
                       type="number" 
                       value={truckPlatformFee}
                       onChange={(e) => setTruckPlatformFee(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-900 dark:text-white"
                     />
                     <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                       <span className="text-zinc-500">%</span>
@@ -167,7 +174,7 @@ export default function AdminDashboard() {
             </div>
             
             <div className="md:col-span-2 flex justify-end mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-              <button className="bg-violet-600 hover:bg-violet-700 text-white font-medium py-2 px-8 rounded-lg transition-colors">
+              <button className="bg-violet-600 hover:bg-violet-700 text-white font-medium py-2 px-8 rounded-lg transition-colors shadow-sm">
                 Salvar Configurações Globais
               </button>
             </div>
