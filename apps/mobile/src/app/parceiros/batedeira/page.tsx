@@ -54,9 +54,12 @@ export default function BatedeiraDashboard() {
             <Store className="text-purple-600" />
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Painel da Loja</h1>
           </div>
-          {currentUser.mercadoPagoToken && (
-             <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200">MP Ativo ✅</span>
-          )}
+          <div className="flex items-center gap-3">
+            {currentUser.mercadoPagoToken && (
+               <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200">MP Ativo ✅</span>
+            )}
+            <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 underline">Sair</button>
+          </div>
         </div>
       </header>
       

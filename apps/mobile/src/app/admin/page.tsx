@@ -139,6 +139,7 @@ export default function AdminDashboard() {
               <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition text-sm">
                   <Trash2 size={16} /> Limpar
               </button>
+              <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 ml-2 underline">Sair</button>
           </div>
         </div>
       </header>
