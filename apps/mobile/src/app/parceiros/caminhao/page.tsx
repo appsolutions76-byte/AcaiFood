@@ -29,7 +29,7 @@ export default function CaminhaoDashboard() {
 
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const corridasDisponiveis = store.orders.filter(o => o.status === 'preparo' && o.motoristaId === null && (o.type === 'B2B' || o.type === 'COLETA'));
+  const corridasDisponiveis = store.orders.filter(o => o.status === 'preparo' && o.motoristaId === null && (o.type === 'B2B' || o.type === 'COLETA') && store.users[o.origemId]?.cidade === currentUser.cidade);
   const minhasCorridas = store.orders.filter(o => o.motoristaId === currentUser.id);
   const ganhosHoje = minhasCorridas.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.entregaMotorista, 0);
 

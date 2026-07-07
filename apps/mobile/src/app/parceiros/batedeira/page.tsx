@@ -62,7 +62,13 @@ export default function BatedeiraDashboard() {
 
   const meusPedidos = store.orders.filter(o => o.lojaId === currentUser.id);
   const vendasHoje = meusPedidos.filter(o => o.status === 'entregue' && o.type === 'B2C').reduce((acc, curr) => acc + curr.taxas.repasse, 0);
-  const fornecedores = Object.values(store.users).filter(u => u.role === 'fornecedor' && u.status !== 'paused' && u.status !== 'blocked');
+  const fornecedores = Object.values(store.users)
+    .filter(u => u.role === 'fornecedor' && u.status !== 'paused' && u.status !== 'blocked' && u.cidade === currentUser.cidade)
+    .sort((a, b) => {
+      const distA = (a.lat && currentUser.lat) ? haversineKm(a.lat, a.lng!, currentUser.lat, currentUser.lng!) : 999;
+      const distB = (b.lat && currentUser.lat) ? haversineKm(b.lat, b.lng!, currentUser.lat, currentUser.lng!) : 999;
+      return distA - distB;
+    });
   
   const distColeta = (currentUser.lat && store.users.ecoponto.lat) ? haversineKm(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat, store.users.ecoponto.lng!) : 0;
   const freteColeta = distColeta * store.rates.col_km;

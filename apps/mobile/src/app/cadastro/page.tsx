@@ -20,6 +20,7 @@ function CadastroForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [cidade, setCidade] = useState("Belém");
   const [bairro, setBairro] = useState("");
   
   const [step, setStep] = useState(1); // 1 = Formulario, 2 = Mercado Pago (apenas parceiros)
@@ -40,7 +41,7 @@ function CadastroForm() {
     const lng = -48.48 + (Math.random() * 0.05 - 0.025);
 
     const data: any = {
-      role, name, email, password, bairro, icon, lat, lng
+      role, name, email, password, cidade, bairro, icon, lat, lng
     };
     
     if (role === 'motorista') data.veiculo = veiculo;
@@ -123,6 +124,21 @@ function CadastroForm() {
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Nome ou Razão Social</label>
                   <input type="text" required value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Cidade Base</label>
+                  <select 
+                    value={cidade} 
+                    onChange={e => setCidade(e.target.value)}
+                    className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  >
+                    <option value="Belém">Belém</option>
+                    <option value="Ananindeua">Ananindeua</option>
+                    <option value="Marituba">Marituba</option>
+                    <option value="Castanhal">Castanhal</option>
+                    <option value="Benevides">Benevides</option>
+                    <option value="Santa Bárbara do Pará">Santa Bárbara do Pará</option>
+                  </select>
                 </div>
                 
                 <div>
