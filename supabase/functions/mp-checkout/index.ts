@@ -28,30 +28,51 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     if (authError || !user) throw new Error('Unauthorized: Invalid token');
 
-    // 2. Segurança Financeira: Validar produtos contra o Banco de Dados
+    // 2. Fetch Order First to get seller ID
+    let { data: order, error: orderError } = await supabaseClient
+      .from('orders')
+      .select('*, seller_storefront_id, buyer_id, driver_id')
+      .eq('id', orderId)
+      .single();
+    
+    if (orderError || !order) throw new Error('Order not found');
+
+    // 3. Segurança Financeira: Validar produtos contra o Banco de Dados
     let verifiedSubtotal = null;
     if (cartItems && cartItems.length > 0) {
       verifiedSubtotal = 0;
       for (const item of cartItems) {
         if (!item.id || !item.quantity) continue;
-        const { data: product } = await supabaseClient.from('products').select('price').eq('id', item.id).single();
-        if (product && product.price) {
-          verifiedSubtotal += (product.price * item.quantity);
+
+        if (['popular', 'medio', 'grosso'].includes(item.id)) {
+           // B2C Standard Açaí
+           const { data: store } = await supabaseClient.from('storefronts').select(`price_b2c_${item.id}`).eq('id', order.seller_storefront_id).single();
+           if (store && store[`price_b2c_${item.id}`]) {
+              verifiedSubtotal += (store[`price_b2c_${item.id}`] * item.quantity);
+           }
+        } else if (item.id === 'B2B') {
+           // Lote Fruto B2B
+           const { data: store } = await supabaseClient.from('storefronts').select('price_b2b').eq('id', order.seller_storefront_id).single();
+           if (store && store.price_b2b) {
+              verifiedSubtotal += (store.price_b2b * item.quantity);
+           }
+        } else {
+           // Custom Product
+           const { data: product } = await supabaseClient.from('products').select('price').eq('id', item.id).single();
+           if (product && product.price) {
+             verifiedSubtotal += (product.price * item.quantity);
+           }
         }
       }
       
       // Update order with secure server-calculated subtotal
       if (verifiedSubtotal > 0) {
         await supabaseClient.from('orders').update({ products_subtotal: verifiedSubtotal }).eq('id', orderId);
+        // Refresh order
+        const refreshed = await supabaseClient.from('orders').select('*').eq('id', orderId).single();
+        if (refreshed.data) order = refreshed.data;
       }
     }
-
-    // 3. Fetch Order with Triple Split details
-    const { data: order, error: orderError } = await supabaseClient
-      .from('orders')
-      .select('*, seller_storefront_id, buyer_id, driver_id')
-      .eq('id', orderId)
-      .single();
 
     if (orderError || !order) throw new Error('Order not found');
 
