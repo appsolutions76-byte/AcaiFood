@@ -229,6 +229,7 @@ export const useAppStore = create<AppState>()(
 
         if (dbError) {
           console.error("DB Insert Error:", dbError);
+          alert(`Erro ao salvar perfil no banco de dados: ${dbError.message || JSON.stringify(dbError)}`);
           return null;
         }
 
