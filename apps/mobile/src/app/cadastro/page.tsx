@@ -28,7 +28,7 @@ function CadastroForm() {
   const [step, setStep] = useState(1); // 1 = Formulario, 2 = Mercado Pago (apenas parceiros)
   const [newUserId, setNewUserId] = useState("");
 
-  const handleCadastro = (e: React.FormEvent) => {
+  const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!termosAceitos) {
@@ -61,13 +61,17 @@ function CadastroForm() {
       data.freteSubsidyPct = 0;
     }
 
-    const newUser = registerUser(data);
+    const newUser = await registerUser(data);
     
-    if (role === 'cliente') {
-      router.push('/');
+    if (newUser) {
+      if (role === 'cliente') {
+        router.push('/');
+      } else {
+        setNewUserId(newUser.id);
+        setStep(2); // Vai para o passo de MP
+      }
     } else {
-      setNewUserId(newUser.id);
-      setStep(2); // Vai para o passo de MP
+      alert("Erro ao criar conta.");
     }
   };
 

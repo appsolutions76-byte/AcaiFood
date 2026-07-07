@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '@/lib/supabase';
 
 // --- UTILITÁRIOS: Haversine e Coordenadas de Belém ---
 export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -79,8 +80,8 @@ interface AppState {
   
   // Ações
   login: (userId: string) => void;
-  loginWithCredentials: (email: string, pass: string) => boolean;
-  registerUser: (data: Omit<User, 'id'>) => User;
+  loginWithCredentials: (email: string, pass: string) => Promise<boolean>;
+  registerUser: (data: Omit<User, 'id'>) => Promise<User | null>;
   logout: () => void;
   authorizeMercadoPago: (userId: string, token: string) => void;
   saveRates: (newRates: Partial<AppState['rates']>) => void;
@@ -128,27 +129,115 @@ export const useAppStore = create<AppState>()(
         if (user) set({ currentUser: user });
       },
 
-      loginWithCredentials: (email, pass) => {
-        const state = get();
-        const user = Object.values(state.users).find(u => u.email === email && u.password === pass);
-        if (user) {
-          if (user.status === 'blocked') {
+      loginWithCredentials: async (email, pass) => {
+        // Fallback for hardcoded mock admin (optional, if you want to keep it)
+        if (email === 'appsolutions76@gmail.com' && pass === '2953938') {
+            const adminUser = Object.values(get().users).find(u => u.role === 'admin');
+            if (adminUser) {
+                set({ currentUser: adminUser });
+                return true;
+            }
+        }
+
+        const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (error || !authData.user) {
+          console.error("Login Error:", error);
+          // Try local fallback for mocked users
+          const localUser = Object.values(get().users).find(u => u.email === email && u.password === pass);
+          if (localUser) {
+              set({ currentUser: localUser });
+              return true;
+          }
+          return false;
+        }
+
+        const { data: userProfile } = await supabase.from('users').select('*').eq('id', authData.user.id).single();
+        if (userProfile) {
+          if (userProfile.status === 'blocked') {
             alert('Conta bloqueada pelo administrador.');
             return false;
           }
-          set({ currentUser: user });
+          
+          // Map DB user to AppUser
+          const loggedUser: User = {
+            id: userProfile.id,
+            role: userProfile.role.toLowerCase() as Role,
+            name: userProfile.name,
+            email: userProfile.email,
+            cidade: userProfile.cidade,
+            bairro: userProfile.bairro,
+            lat: userProfile.latitude || 0,
+            lng: userProfile.longitude || 0,
+            icon: '👤', // Default, we could map based on role
+            veiculo: userProfile.vehicle_type === 'MOTO' ? 'Moto' : userProfile.vehicle_type === 'TRUCK' ? 'Caminhão' : userProfile.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined,
+            status: userProfile.status as 'active'|'paused'|'blocked'
+          };
+          
+          set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
           return true;
         }
+
         return false;
       },
 
       logout: () => set({ currentUser: null }),
 
-      registerUser: (data) => {
+      registerUser: async (data) => {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: data.email || '',
+          password: data.password || '123456',
+        });
+
+        if (authError || !authData.user) {
+          console.error("Auth Signup Error:", authError);
+          alert(`Erro ao registrar: ${authError?.message}`);
+          return null;
+        }
+
+        const newUser: User = { ...data, id: authData.user.id };
+        
+        // Insert into public.users
+        const dbRole = newUser.role === 'loja' ? 'PARTNER' : 
+                       newUser.role === 'fornecedor' ? 'SUPPLIER' : 
+                       newUser.role === 'motorista' ? 'COURIER' : 'CLIENT';
+                       
+        const vehicleType = newUser.veiculo === 'Moto' ? 'MOTO' : 
+                            newUser.veiculo === 'Caminhão' ? 'TRUCK' : 
+                            newUser.veiculo === 'Caçamba' ? 'DUMP_TRUCK' : null;
+
+        const { error: dbError } = await supabase.from('users').insert({
+          id: newUser.id,
+          role: dbRole,
+          name: newUser.name,
+          email: newUser.email,
+          cidade: newUser.cidade,
+          bairro: newUser.bairro,
+          latitude: newUser.lat,
+          longitude: newUser.lng,
+          vehicle_type: vehicleType,
+          status: 'active'
+        });
+
+        if (dbError) {
+          console.error("DB Insert Error:", dbError);
+          return null;
+        }
+
+        // If it's a partner, create storefront
+        if (dbRole === 'PARTNER' || dbRole === 'SUPPLIER') {
+            await supabase.from('storefronts').insert({
+                partner_id: newUser.id,
+                store_name: newUser.name,
+                frete_subsidy_pct: newUser.freteSubsidyPct || 0,
+                price_b2b: newUser.priceB2B,
+                price_b2c_popular: newUser.priceB2C?.popular,
+                price_b2c_medio: newUser.priceB2C?.medio,
+                price_b2c_grosso: newUser.priceB2C?.grosso
+            });
+        }
+
         const state = get();
-        const newId = `${data.role}_${Date.now()}`;
-        const newUser: User = { ...data, id: newId };
-        set({ users: { ...state.users, [newId]: newUser }, currentUser: newUser });
+        set({ users: { ...state.users, [newUser.id]: newUser }, currentUser: newUser });
         return newUser;
       },
 
