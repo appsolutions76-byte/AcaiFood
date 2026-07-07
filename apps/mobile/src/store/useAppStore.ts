@@ -82,6 +82,7 @@ interface AppState {
   login: (userId: string) => void;
   loginWithCredentials: (email: string, pass: string) => Promise<boolean>;
   registerUser: (data: Omit<User, 'id'>) => Promise<User | null>;
+  fetchLojas: () => Promise<void>;
   logout: () => void;
   authorizeMercadoPago: (userId: string, token: string) => void;
   saveRates: (newRates: Partial<AppState['rates']>) => void;
@@ -105,12 +106,10 @@ const DB_DEFAULTS = {
   },
   users: {
     admin:    { id: 'admin',    role: 'admin' as Role,       name: 'Administração',          icon: '🛠️', email: 'appsolutions76@gmail.com', password: '2953938' },
-    loja_1:   { id: 'loja_1',   role: 'loja' as Role,        name: 'Batedeira Ponto Certo',  cidade: 'Belém', bairro: 'Guamá',      icon: '🏪', priceB2C: { popular: 20, medio: 26, grosso: 35 }, freteSubsidyPct: 50,  lat: -1.469, lng: -48.499, email: 'loja@teste.com', password: '123' },
     cli_1:    { id: 'cli_1',    role: 'cliente' as Role,     name: 'Maria Oliveira',         cidade: 'Belém', bairro: 'Nazaré',     icon: '👤', lat: -1.455, lng: -48.488, email: 'cliente@teste.com', password: '123' },
     mot_1:    { id: 'mot_1',    role: 'motorista' as Role,   name: 'Ana',                    cidade: 'Belém', bairro: 'Sacramenta', icon: '🛵', veiculo: 'Moto',    lat: -1.440, lng: -48.468, email: 'moto@teste.com', password: '123' },
     mot_2:    { id: 'mot_2',    role: 'motorista' as Role,   name: 'Beto',                   cidade: 'Belém', bairro: 'Entroncamento', icon: '🚚', veiculo: 'Caminhão', lat: -1.396, lng: -48.450, email: 'caminhao@teste.com', password: '123' },
     mot_3:    { id: 'mot_3',    role: 'motorista' as Role,   name: 'Júlio',                  cidade: 'Belém', bairro: 'Icoaraci',      icon: '🚛', veiculo: 'Caçamba',  lat: -1.300, lng: -48.480, email: 'cacamba@teste.com', password: '123' },
-    forn_1:   { id: 'forn_1',   role: 'fornecedor' as Role,  name: 'Coop. Ribeirinha',       cidade: 'Belém', bairro: 'Ver-o-Peso', icon: '👨🌾', priceB2B: 150.00, freteSubsidyPct: 20, lat: -1.455, lng: -48.502, email: 'fornecedor@teste.com', password: '123' },
     ecoponto: { id: 'ecoponto', role: 'ecoponto' as Role,    name: 'Ecoponto Municipal',     cidade: 'Belém', bairro: 'Aurá',      icon: '♻️', lat: -1.510, lng: -48.428, email: 'ecoponto@teste.com', password: '123' }
   }
 };
@@ -249,6 +248,46 @@ export const useAppStore = create<AppState>()(
         const state = get();
         set({ users: { ...state.users, [newUser.id]: newUser }, currentUser: newUser });
         return newUser;
+      },
+
+      fetchLojas: async () => {
+        const { data: dbLojas, error } = await supabase
+            .from('users')
+            .select('*, storefronts(*)')
+            .eq('role', 'PARTNER');
+            
+        if (error) {
+            console.error("Erro ao buscar lojas reais:", error);
+            return;
+        }
+
+        if (dbLojas) {
+            set((state) => {
+                const newUsers = { ...state.users };
+                dbLojas.forEach(dbUser => {
+                    const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[0] : null;
+                    newUsers[dbUser.id] = {
+                        id: dbUser.id,
+                        role: 'loja',
+                        name: sf?.store_name || dbUser.name,
+                        email: dbUser.email,
+                        cidade: dbUser.cidade,
+                        bairro: dbUser.bairro,
+                        lat: dbUser.latitude || 0,
+                        lng: dbUser.longitude || 0,
+                        icon: '🏪',
+                        status: dbUser.status as 'active',
+                        priceB2C: {
+                            popular: sf?.price_b2c_popular || 20,
+                            medio: sf?.price_b2c_medio || 26,
+                            grosso: sf?.price_b2c_grosso || 35
+                        },
+                        freteSubsidyPct: sf?.frete_subsidy_pct || 0
+                    };
+                });
+                return { users: newUsers };
+            });
+        }
       },
 
       authorizeMercadoPago: (userId, token) => {

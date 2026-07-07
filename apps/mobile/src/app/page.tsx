@@ -33,6 +33,8 @@ export default function StorefrontPage() {
   };
 
   useEffect(() => {
+    store.fetchLojas();
+    
     if (!currentUser) {
       router.replace('/cadastro');
     } else {
