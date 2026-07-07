@@ -33,6 +33,11 @@ export default function MotoboyDashboard() {
   const minhasCorridas = store.orders.filter(o => o.motoristaId === currentUser.id);
   const ganhosHoje = minhasCorridas.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.entregaMotorista, 0);
 
+  const isPaused = currentUser.status === 'paused';
+  const handleToggleStatus = () => {
+    store.updateUserStatus(currentUser.id, isPaused ? 'active' : 'paused');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
@@ -59,6 +64,9 @@ export default function MotoboyDashboard() {
             <div className="text-right">
                 <p className="text-sm text-zinc-400">Ganhos (Sessão)</p>
                 <p className="text-2xl font-bold text-green-400">{formatMoney(ganhosHoje)}</p>
+                <button onClick={handleToggleStatus} className={`mt-2 px-3 py-1 rounded-lg text-xs font-bold transition border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
+                    {isPaused ? 'Offline 🚫' : 'Online ✅'}
+                </button>
             </div>
         </div>
 
