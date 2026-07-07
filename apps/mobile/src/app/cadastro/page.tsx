@@ -22,12 +22,19 @@ function CadastroForm() {
   const [password, setPassword] = useState("");
   const [cidade, setCidade] = useState("Belém");
   const [bairro, setBairro] = useState("");
+  const [termosAceitos, setTermosAceitos] = useState(false);
+  const [termosModalOpen, setTermosModalOpen] = useState(false);
   
   const [step, setStep] = useState(1); // 1 = Formulario, 2 = Mercado Pago (apenas parceiros)
   const [newUserId, setNewUserId] = useState("");
 
   const handleCadastro = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!termosAceitos) {
+      alert("Você deve ler e aceitar os Termos de Uso para continuar.");
+      return;
+    }
     
     let icon = '👤';
     if (role === 'loja') icon = '🏪';
@@ -73,6 +80,38 @@ function CadastroForm() {
     if (role === 'fornecedor') router.push('/parceiros/fornecedor');
     if (role === 'motorista' && (veiculo === 'Caminhão' || veiculo === 'Caçamba')) router.push('/parceiros/caminhao');
     if (role === 'motorista' && veiculo === 'Moto') router.push('/parceiros/motoboy');
+  };
+
+  const getTermosText = () => {
+    switch(role) {
+      case 'cliente':
+        return (
+          <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
+            <p><strong>1. Uso da Plataforma:</strong> O AçaíFood atua exclusivamente como intermediador tecnológico entre você (cliente) e as lojas cadastradas.</p>
+            <p><strong>2. Responsabilidade do Produto:</strong> A qualidade, o preparo, a integridade e o cumprimento das normas sanitárias do açaí e demais produtos são de inteira e exclusiva responsabilidade da Batedeira (Loja) que preparou o pedido. O AçaíFood não manuseia alimentos.</p>
+            <p><strong>3. Entregas:</strong> O tempo de entrega é uma estimativa e pode variar devido a condições climáticas, trânsito ou demanda da loja.</p>
+          </div>
+        );
+      case 'loja':
+      case 'fornecedor':
+        return (
+          <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
+            <p><strong>1. Qualidade e Legalidade:</strong> Você assume total responsabilidade pela qualidade do produto fornecido, garantindo que ele segue todas as normas sanitárias e da vigilância em saúde locais.</p>
+            <p><strong>2. Obrigações Fiscais:</strong> A emissão de notas fiscais e o recolhimento de impostos sobre a venda dos produtos é de sua responsabilidade exclusiva. O AçaíFood apenas emite recibos pelas taxas de uso da plataforma.</p>
+            <p><strong>3. Vínculo:</strong> A utilização desta plataforma não cria vínculo empregatício, societário ou de franquia entre o Parceiro e o AçaíFood. A plataforma cobra apenas um comissionamento (Split) sobre as vendas intermediadas.</p>
+          </div>
+        );
+      case 'motorista':
+        return (
+          <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
+            <p><strong>1. Trabalho Autônomo:</strong> Você atua como profissional independente (autônomo), sem qualquer vínculo empregatício, subordinação ou exclusividade com o AçaíFood ou com as Lojas parceiras.</p>
+            <p><strong>2. Responsabilidade Veicular:</strong> É de sua inteira responsabilidade a manutenção do veículo utilizado, os custos operacionais (combustível, internet) e a manutenção de sua CNH regularizada.</p>
+            <p><strong>3. Acidentes e Infrações:</strong> O AçaíFood é isento de responsabilidades civis ou criminais decorrentes de acidentes de trânsito, infrações ou danos a terceiros ocorridos durante o trajeto. Conduza com prudência.</p>
+          </div>
+        );
+      default:
+        return <p className="text-sm text-zinc-500">Ao usar a plataforma, você concorda com nossas políticas de privacidade e conduta.</p>;
+    }
   };
 
   return (
@@ -156,6 +195,20 @@ function CadastroForm() {
                   <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
                 </div>
 
+                <div className="flex items-start gap-2 pt-2">
+                  <input 
+                    type="checkbox" 
+                    id="termos" 
+                    required 
+                    checked={termosAceitos} 
+                    onChange={e => setTermosAceitos(e.target.checked)} 
+                    className="mt-1 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer" 
+                  />
+                  <label htmlFor="termos" className="text-sm text-zinc-600 dark:text-zinc-400">
+                    Li e concordo com os <button type="button" onClick={() => setTermosModalOpen(true)} className="text-purple-600 font-bold hover:underline">Termos de Uso e Responsabilidades</button>.
+                  </label>
+                </div>
+
                 <div className="pt-2">
                   <button type="submit" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition active:scale-95">
                     {role === 'cliente' ? 'Criar Conta e Começar' : 'Criar Conta Parceira'}
@@ -195,6 +248,29 @@ function CadastroForm() {
               <p className="text-xs text-zinc-400 mt-4">
                 No ambiente de simulação, clicar neste botão aprova imediatamente e o redireciona.
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {termosModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="bg-zinc-800 text-white p-5 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-lg">📜 Termos de Uso e Responsabilidade</h3>
+                <button type="button" onClick={() => setTermosModalOpen(false)} className="text-zinc-400 hover:text-white font-bold text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto">
+              <h4 className="font-bold text-zinc-800 dark:text-white mb-4 text-lg border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                Para o Perfil: <span className="capitalize text-purple-600">{role}</span>
+              </h4>
+              {getTermosText()}
+            </div>
+
+            <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
+                <button type="button" onClick={() => setTermosModalOpen(false)} className="px-5 py-2.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Fechar</button>
+                <button type="button" onClick={() => { setTermosAceitos(true); setTermosModalOpen(false); }} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition shadow-sm">Li e Concordo</button>
             </div>
           </div>
         </div>
