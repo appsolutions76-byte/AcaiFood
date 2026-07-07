@@ -399,10 +399,10 @@ export const useAppStore = create<AppState>()(
             order_type: tipo,
             status: 'PENDING',
             products_subtotal: novoPedido.valor,
-            delivery_distance_km: novoPedido.taxas.distancia || 0,
-            applied_platform_fee_percent: novoPedido.taxas.plataformaLojaPct || 5.0,
-            applied_delivery_fee_per_km: novoPedido.taxas.entregaKm || 1.5,
-            applied_delivery_platform_fee_percent: 10.0
+            delivery_distance_km: novoPedido.distancia || 0,
+            applied_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_plat : state.rates.b2b_plat,
+            applied_delivery_fee_per_km: tipo === 'B2C' ? state.rates.b2c_km : state.rates.b2b_km,
+            applied_delivery_platform_fee_percent: state.rates.b2c_mot_plat
           }).select().single();
 
           if (dbError) {
@@ -415,10 +415,10 @@ export const useAppStore = create<AppState>()(
           const { data: mpData, error: mpError } = await supabase.functions.invoke('mp-checkout', {
             body: { 
               orderId: dbOrder.id,
-              cartItems: novoPedido.itens.map(item => ({
-                id: item.produto.id,
-                quantity: item.quantidade
-              }))
+              cartItems: [{
+                id: subTipoMenu || tipo,
+                quantity: 1
+              }]
             },
             headers: {
               Authorization: `Bearer ${session?.access_token || ''}`
