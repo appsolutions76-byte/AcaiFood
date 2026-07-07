@@ -158,10 +158,15 @@ export const useAppStore = create<AppState>()(
             return false;
           }
           
+          const appRole = userProfile.role === 'PARTNER' ? 'loja' :
+                          userProfile.role === 'SUPPLIER' ? 'fornecedor' :
+                          userProfile.role === 'COURIER' ? 'motorista' :
+                          userProfile.role === 'ADMIN' ? 'admin' : 'cliente';
+          
           // Map DB user to AppUser
           const loggedUser: User = {
             id: userProfile.id,
-            role: userProfile.role.toLowerCase() as Role,
+            role: appRole as Role,
             name: userProfile.name,
             email: userProfile.email,
             cidade: userProfile.cidade,
