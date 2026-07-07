@@ -388,15 +388,20 @@ export const useAppStore = create<AppState>()(
         set({ orders: [novoPedido, ...state.orders], orderCounter: state.orderCounter + 1 });
         
         // 1. Insert into Supabase Orders table
-        // (Assuming you have configured the schema exactly as requested)
         try {
+          let sellerStorefrontId = targetId;
+          
+          if (targetId) {
+             const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', targetId).single();
+             if (sf) {
+                 sellerStorefrontId = sf.id;
+             }
+          }
+
           const { data: dbOrder, error: dbError } = await supabase.from('orders').insert({
-            // Supabase uses UUIDs, so we'll let it auto-generate, but we can pass our custom string ID for reference or use the DB generated one
-            // We'll use the UUID for external ref, but for now we store our internal ID in a metadata field or just rely on UUID.
-            // For simplicity, let's just insert the fields we have in the schema.
             buyer_id: currentUser.id,
-            seller_storefront_id: targetId,
-            order_type: tipo,
+            seller_storefront_id: sellerStorefrontId,
+            order_type: tipo === 'COLETA' ? 'B2C' : tipo, // Evita crash de constraint
             status: 'PENDING',
             products_subtotal: novoPedido.valor,
             delivery_distance_km: novoPedido.distancia || 0,
