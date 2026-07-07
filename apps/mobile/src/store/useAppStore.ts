@@ -89,6 +89,7 @@ interface AppState {
   setFreteSubsidy: (userId: string, pct: number) => void;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => void;
   deleteUser: (userId: string) => void;
+  changePassword: (userId: string, newPassword: string) => void;
   updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => void;
   addProduct: (userId: string, product: Product) => void;
   removeProduct: (userId: string, productId: string) => void;
@@ -179,6 +180,12 @@ export const useAppStore = create<AppState>()(
         const newUsers = { ...state.users };
         delete newUsers[userId];
         return { users: newUsers };
+      }),
+
+      changePassword: (userId, newPassword) => set((state) => {
+        const user = state.users[userId];
+        if (!user) return state;
+        return { users: { ...state.users, [userId]: { ...user, password: newPassword } } };
       }),
 
       updateUserPrice: (userId, b2cPrices, b2bPrice) => set((state) => {

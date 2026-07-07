@@ -19,6 +19,9 @@ export default function AdminDashboard() {
   
   const [userFilterRole, setUserFilterRole] = useState<string>('all');
   const [userFilterText, setUserFilterText] = useState<string>('');
+  
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [newAdminPassword, setNewAdminPassword] = useState('');
 
   const filteredUsers = Object.values(store.users).filter(u => {
     if (userFilterRole !== 'all' && u.role !== userFilterRole) return false;
@@ -142,6 +145,9 @@ export default function AdminDashboard() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
           </div>
           <div className="flex gap-2">
+              <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition text-sm">
+                  🔑 Senha
+              </button>
               <button onClick={() => setRatesModalOpen(true)} className="bg-purple-800 hover:bg-purple-900 text-white px-4 py-2 rounded-xl font-bold shadow flex items-center gap-2 transition text-sm">
                   ⚙️ Tabela de taxas
               </button>
@@ -410,6 +416,46 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+      {passwordModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
+            <div className="bg-zinc-800 text-white p-5 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-lg">🔑 Alterar Senha Admin</h3>
+                <button onClick={() => setPasswordModalOpen(false)} className="text-zinc-400 hover:text-white font-bold text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs uppercase text-zinc-500 font-bold mb-1 block">Nova Senha</label>
+                <input 
+                  type="password" 
+                  value={newAdminPassword} 
+                  onChange={e => setNewAdminPassword(e.target.value)} 
+                  className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Digite a nova senha..."
+                />
+              </div>
+            </div>
+
+            <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
+                <button onClick={() => setPasswordModalOpen(false)} className="px-4 py-2 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
+                <button 
+                  onClick={() => {
+                    if (newAdminPassword.length < 3) return alert('A senha deve ter pelo menos 3 caracteres.');
+                    store.changePassword(store.currentUser!.id, newAdminPassword);
+                    setPasswordModalOpen(false);
+                    setNewAdminPassword('');
+                    alert('Senha alterada com sucesso!');
+                  }} 
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition"
+                >
+                  Salvar
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
     </div>
   );
