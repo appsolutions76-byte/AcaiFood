@@ -140,7 +140,10 @@ export default function BatedeiraDashboard() {
                   <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Logística Reversa</h3>
                   <div className="flex items-center gap-2">
                       <button onClick={() => setMapModal({ open: true, origem: currentUser.id, destino: 'ecoponto' })} className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">🗺️ {distColeta.toFixed(1)} km</button>
-                      <button onClick={() => store.criarPedido('COLETA')} className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-1.5 px-3 rounded-lg border border-amber-300 transition text-xs">
+                      <button onClick={async () => {
+                          const url = await store.criarPedido('COLETA');
+                          if(url) window.location.href = url;
+                      }} className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-1.5 px-3 rounded-lg border border-amber-300 transition text-xs">
                           🚛 Chamar Caçamba ({formatMoney(store.rates.col_valor)})
                       </button>
                   </div>
@@ -197,7 +200,10 @@ export default function BatedeiraDashboard() {
                                 <span className="font-bold">{formatMoney(freteLoja)}</span>
                               </div>
                           </div>
-                          <button onClick={() => store.criarPedido('B2B', forn.id)} className="w-full mt-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg transition">Comprar Paneiros</button>
+                          <button onClick={async () => {
+                              const url = await store.criarPedido('B2B', forn.id);
+                              if(url) window.location.href = url;
+                          }} className="w-full mt-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg transition">Comprar Paneiros</button>
                       </div>
                     )
                   })}

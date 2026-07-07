@@ -67,10 +67,13 @@ export default function StorefrontPage() {
     return { freteCliente, dist, subsidy };
   };
 
-  const handleConfirmCart = () => {
-    store.criarPedido('B2C', cartModal.lojaId, cartModal.tipo);
+  const handleConfirmOrder = async () => {
+    if (!cartModal) return;
+    const checkoutUrl = await store.criarPedido('B2C', cartModal.lojaId, cartModal.tipo);
     setCartModal({ open: false, lojaId: '', tipo: 'medio' });
-    alert("Pedido enviado para a loja!");
+    if (checkoutUrl) {
+      window.location.href = checkoutUrl;
+    }
   };
 
   return (
@@ -252,7 +255,7 @@ export default function StorefrontPage() {
                   
                   <div className="flex gap-3">
                       <button onClick={() => setCartModal({ ...cartModal, open: false })} className="flex-1 px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition">Cancelar</button>
-                      <button onClick={handleConfirmCart} className="flex-1 px-4 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-lg hover:bg-purple-700 active:scale-95 transition">Confirmar Pedido</button>
+                      <button onClick={handleConfirmOrder} className="flex-1 px-4 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-lg hover:bg-purple-700 active:scale-95 transition">Confirmar Pedido</button>
                   </div>
               </div>
           </div>

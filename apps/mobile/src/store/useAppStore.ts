@@ -85,7 +85,7 @@ interface AppState {
   logout: () => void;
   authorizeMercadoPago: (userId: string, token: string) => void;
   saveRates: (newRates: Partial<AppState['rates']>) => void;
-  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string) => void;
+  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string) => Promise<string | undefined>;
   acaoPedido: (orderId: string, action: string) => void;
   setFreteSubsidy: (userId: string, pct: number) => void;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => void;
@@ -384,7 +384,50 @@ export const useAppStore = create<AppState>()(
             novoPedido.taxas.repasse = novoPedido.valor - novoPedido.taxas.plataformaVenda - novoPedido.taxas.entregaFornecedor;
         }
 
+        // Save locally for UI feedback (Retrocompatibility)
         set({ orders: [novoPedido, ...state.orders], orderCounter: state.orderCounter + 1 });
+        
+        // 1. Insert into Supabase Orders table
+        // (Assuming you have configured the schema exactly as requested)
+        try {
+          const { data: dbOrder, error: dbError } = await supabase.from('orders').insert({
+            // Supabase uses UUIDs, so we'll let it auto-generate, but we can pass our custom string ID for reference or use the DB generated one
+            // We'll use the UUID for external ref, but for now we store our internal ID in a metadata field or just rely on UUID.
+            // For simplicity, let's just insert the fields we have in the schema.
+            buyer_id: currentUser.id,
+            seller_storefront_id: targetId,
+            status: 'PENDING',
+            total_amount: novoPedido.valor,
+            driver_amount: novoPedido.taxas.entregaMotorista,
+            total_platform_fee_amount: novoPedido.taxas.plataformaTotal,
+            // we'd need to map more fields, but this is the core for MP.
+          }).select().single();
+
+          if (dbError) {
+              console.error("Erro ao salvar pedido no DB:", dbError);
+              return;
+          }
+
+          // 2. Invoke Mercado Pago Edge Function
+          const { data: mpData, error: mpError } = await supabase.functions.invoke('mp-checkout', {
+            body: { orderId: dbOrder.id }
+          });
+
+          if (mpError) {
+            console.error("Erro ao chamar MP Edge Function:", mpError);
+            alert("Erro ao conectar com o Mercado Pago.");
+            return;
+          }
+
+          if (mpData && mpData.init_point) {
+             // Return the checkout URL so the frontend can redirect
+             return mpData.init_point;
+          }
+          
+        } catch(e) {
+            console.error("Fatal exception during checkout:", e);
+        }
+
       },
 
       acaoPedido: (orderId, action) => {
