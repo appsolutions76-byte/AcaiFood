@@ -5,6 +5,13 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing tables to ensure a clean schema reset with new columns
+DROP TABLE IF EXISTS public.orders CASCADE;
+DROP TABLE IF EXISTS public.products CASCADE;
+DROP TABLE IF EXISTS public.storefronts CASCADE;
+DROP TABLE IF EXISTS public.platform_settings CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+
 -- 1. Create Users Table (Partners & Clients & Logistics)
 CREATE TABLE IF NOT EXISTS public.users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -127,28 +134,40 @@ ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
 -- RLS: Platform Settings
+DROP POLICY IF EXISTS "Platform settings are visible to everyone" ON public.platform_settings;
 CREATE POLICY "Platform settings are visible to everyone" 
 ON public.platform_settings FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Only admins can update platform settings" ON public.platform_settings;
 CREATE POLICY "Only admins can update platform settings" 
 ON public.platform_settings FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'ADMIN')
 );
 
 -- RLS: Users
+DROP POLICY IF EXISTS "Users can read all public user profiles" ON public.users;
 CREATE POLICY "Users can read all public user profiles" 
 ON public.users FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can edit their own profile" ON public.users;
 CREATE POLICY "Users can edit their own profile" 
 ON public.users FOR UPDATE USING (auth.uid() = id);
 
 -- RLS: Storefronts
+DROP POLICY IF EXISTS "Storefronts are visible to everyone" ON public.storefronts;
 CREATE POLICY "Storefronts are visible to everyone" 
 ON public.storefronts FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Partners can manage their storefront" ON public.storefronts;
 CREATE POLICY "Partners can manage their storefront" 
 ON public.storefronts FOR ALL USING (auth.uid() = partner_id);
 
 -- RLS: Products
+DROP POLICY IF EXISTS "Products are visible to everyone" ON public.products;
 CREATE POLICY "Products are visible to everyone" 
 ON public.products FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Partners can manage their products" ON public.products;
 CREATE POLICY "Partners can manage their products" 
 ON public.products FOR ALL USING (
   EXISTS (
@@ -158,9 +177,11 @@ ON public.products FOR ALL USING (
 );
 
 -- RLS: Orders (Visibilidade de Triplo Split)
+DROP POLICY IF EXISTS "Buyers can view their orders" ON public.orders;
 CREATE POLICY "Buyers can view their orders" 
 ON public.orders FOR SELECT USING (auth.uid() = buyer_id);
 
+DROP POLICY IF EXISTS "Sellers can view their orders" ON public.orders;
 CREATE POLICY "Sellers can view their orders" 
 ON public.orders FOR SELECT USING (
   EXISTS (
@@ -169,9 +190,11 @@ ON public.orders FOR SELECT USING (
   )
 );
 
+DROP POLICY IF EXISTS "Drivers can view their delivery orders" ON public.orders;
 CREATE POLICY "Drivers can view their delivery orders" 
 ON public.orders FOR SELECT USING (auth.uid() = driver_id);
 
+DROP POLICY IF EXISTS "Buyers can create orders" ON public.orders;
 CREATE POLICY "Buyers can create orders" 
 ON public.orders FOR INSERT WITH CHECK (auth.uid() = buyer_id);
 
