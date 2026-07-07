@@ -8,14 +8,26 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. Create Users Table (Partners & Clients & Logistics)
 CREATE TABLE IF NOT EXISTS public.users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  role TEXT NOT NULL CHECK (role IN ('CLIENT', 'PARTNER', 'ADMIN', 'COURIER', 'SUPPLIER', 'TRANSPORTER')),
+  role TEXT NOT NULL CHECK (role IN ('CLIENT', 'PARTNER', 'ADMIN', 'COURIER', 'SUPPLIER', 'TRANSPORTER', 'ECOPOINT')),
   name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   phone TEXT,
   mp_access_token TEXT, -- Encrypted Mercado Pago Token
   mp_merchant_id TEXT,
-  vehicle_type TEXT CHECK (vehicle_type IN ('MOTO', 'TRUCK')), -- For Courier and Transporter
+  
+  -- Regional Isolation
+  cidade TEXT NOT NULL,
+  bairro TEXT NOT NULL,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
+  
+  -- Logic & Control
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused', 'blocked')),
+  
+  -- Logistics Specific
+  vehicle_type TEXT CHECK (vehicle_type IN ('MOTO', 'TRUCK', 'DUMP_TRUCK')),
   license_plate TEXT,
+  
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -28,8 +40,18 @@ CREATE TABLE IF NOT EXISTS public.storefronts (
   logo_url TEXT,
   banner_url TEXT,
   is_open BOOLEAN DEFAULT true,
-  latitude DOUBLE PRECISION,
-  longitude DOUBLE PRECISION,
+  
+  -- Business Rules
+  frete_subsidy_pct DECIMAL(5,2) DEFAULT 0,
+  
+  -- B2C Prices (For Lojas)
+  price_b2c_popular DECIMAL(10,2),
+  price_b2c_medio DECIMAL(10,2),
+  price_b2c_grosso DECIMAL(10,2),
+  
+  -- B2B Prices (For Fornecedores)
+  price_b2b DECIMAL(10,2),
+  
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
