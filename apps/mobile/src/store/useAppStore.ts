@@ -481,7 +481,7 @@ export const useAppStore = create<AppState>()(
 
           if (mpError) {
             console.error("Erro ao chamar MP Edge Function:", mpError);
-            alert("Erro ao conectar com o Mercado Pago.");
+            alert(`Erro ao conectar com o Mercado Pago: ${mpError.message || JSON.stringify(mpError)}`);
             return;
           }
 
