@@ -50,7 +50,7 @@ export default function StorefrontPage() {
 
   const meusPedidos = currentUser ? store.orders.filter(o => o.clienteId === currentUser.id) : [];
   const batedeiras = Object.values(store.users)
-    .filter(u => u.role === 'loja' && u.status !== 'paused' && u.status !== 'blocked' && u.cidade === currentUser.cidade)
+    .filter(u => u.role === 'loja' && u.status !== 'paused' && u.status !== 'blocked')
     .sort((a, b) => {
       const distA = (a.lat && currentUser.lat) ? haversineKm(a.lat, a.lng!, currentUser.lat, currentUser.lng!) : 999;
       const distB = (b.lat && currentUser.lat) ? haversineKm(b.lat, b.lng!, currentUser.lat, currentUser.lng!) : 999;
