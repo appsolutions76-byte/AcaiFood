@@ -396,11 +396,13 @@ export const useAppStore = create<AppState>()(
             // For simplicity, let's just insert the fields we have in the schema.
             buyer_id: currentUser.id,
             seller_storefront_id: targetId,
+            order_type: tipo,
             status: 'PENDING',
-            total_amount: novoPedido.valor,
-            driver_amount: novoPedido.taxas.entregaMotorista,
-            total_platform_fee_amount: novoPedido.taxas.plataformaTotal,
-            // we'd need to map more fields, but this is the core for MP.
+            products_subtotal: novoPedido.valor,
+            delivery_distance_km: novoPedido.taxas.distancia || 0,
+            applied_platform_fee_percent: novoPedido.taxas.plataformaLojaPct || 5.0,
+            applied_delivery_fee_per_km: novoPedido.taxas.entregaKm || 1.5,
+            applied_delivery_platform_fee_percent: 10.0
           }).select().single();
 
           if (dbError) {
@@ -409,8 +411,18 @@ export const useAppStore = create<AppState>()(
           }
 
           // 2. Invoke Mercado Pago Edge Function
+          const { data: { session } } = await supabase.auth.getSession();
           const { data: mpData, error: mpError } = await supabase.functions.invoke('mp-checkout', {
-            body: { orderId: dbOrder.id }
+            body: { 
+              orderId: dbOrder.id,
+              cartItems: novoPedido.itens.map(item => ({
+                id: item.produto.id,
+                quantity: item.quantidade
+              }))
+            },
+            headers: {
+              Authorization: `Bearer ${session?.access_token || ''}`
+            }
           });
 
           if (mpError) {

@@ -147,11 +147,17 @@ ON public.platform_settings FOR UPDATE USING (
 -- RLS: Users
 DROP POLICY IF EXISTS "Users can read all public user profiles" ON public.users;
 CREATE POLICY "Users can read all public user profiles" 
-ON public.users FOR SELECT USING (true);
+ON public.users FOR SELECT USING (
+  role IN ('PARTNER', 'SUPPLIER') OR auth.uid() = id
+);
 
 DROP POLICY IF EXISTS "Users can edit their own profile" ON public.users;
 CREATE POLICY "Users can edit their own profile" 
 ON public.users FOR UPDATE USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.users;
+CREATE POLICY "Users can insert their own profile" 
+ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- RLS: Storefronts
 DROP POLICY IF EXISTS "Storefronts are visible to everyone" ON public.storefronts;

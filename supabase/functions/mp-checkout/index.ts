@@ -12,15 +12,41 @@ serve(async (req) => {
   }
 
   try {
-    const { orderId } = await req.json();
+    const { orderId, cartItems } = await req.json();
     if (!orderId) throw new Error('Order ID is required');
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) throw new Error('Unauthorized: Missing token');
+    const token = authHeader.replace('Bearer ', '');
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // 1. Fetch Order with Triple Split details
+    // 1. Verify User Token
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    if (authError || !user) throw new Error('Unauthorized: Invalid token');
+
+    // 2. Segurança Financeira: Validar produtos contra o Banco de Dados
+    let verifiedSubtotal = null;
+    if (cartItems && cartItems.length > 0) {
+      verifiedSubtotal = 0;
+      for (const item of cartItems) {
+        if (!item.id || !item.quantity) continue;
+        const { data: product } = await supabaseClient.from('products').select('price').eq('id', item.id).single();
+        if (product && product.price) {
+          verifiedSubtotal += (product.price * item.quantity);
+        }
+      }
+      
+      // Update order with secure server-calculated subtotal
+      if (verifiedSubtotal > 0) {
+        await supabaseClient.from('orders').update({ products_subtotal: verifiedSubtotal }).eq('id', orderId);
+      }
+    }
+
+    // 3. Fetch Order with Triple Split details
     const { data: order, error: orderError } = await supabaseClient
       .from('orders')
       .select('*, seller_storefront_id, buyer_id, driver_id')
@@ -28,6 +54,11 @@ serve(async (req) => {
       .single();
 
     if (orderError || !order) throw new Error('Order not found');
+
+    // 3. Segurança Crítica: Validar se quem chama é o dono do pedido
+    if (order.buyer_id !== user.id) {
+        throw new Error('Forbidden: You can only checkout your own orders');
+    }
 
     // 2. Fetch Seller's MP Token (For testing, we can use the global test token if available)
     const GLOBAL_TEST_TOKEN = Deno.env.get('MP_ACCESS_TOKEN');
