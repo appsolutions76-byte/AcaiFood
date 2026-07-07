@@ -299,7 +299,7 @@ export const useAppStore = create<AppState>()(
         return { users: { ...state.users, [userId]: { ...user, products: user.products.filter(p => p.id !== productId) } } };
       }),
 
-      criarPedido: (tipo, targetId, subTipoMenu) => {
+      criarPedido: async (tipo, targetId, subTipoMenu) => {
         const state = get();
         if (!state.currentUser) return;
         const currentUser = state.currentUser;
