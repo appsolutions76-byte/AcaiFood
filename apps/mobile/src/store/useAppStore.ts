@@ -139,6 +139,8 @@ export const useAppStore = create<AppState>()(
             }
         }
 
+        await supabase.auth.signOut(); // Wipe stale sessions
+
         const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error || !authData.user) {
           console.error("Login Error:", error);
@@ -188,6 +190,8 @@ export const useAppStore = create<AppState>()(
       logout: () => set({ currentUser: null }),
 
       registerUser: async (data) => {
+        await supabase.auth.signOut(); // Wipe any stale sessions from localStorage
+
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: data.email || '',
           password: data.password || '123456',
