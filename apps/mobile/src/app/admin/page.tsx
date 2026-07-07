@@ -336,11 +336,6 @@ export default function AdminDashboard() {
                             </td>
                             <td className="p-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
-                                    {(u.role === 'loja' || u.role === 'fornecedor') && (
-                                        <button onClick={() => store.updateUserStatus(u.id, u.status === 'paused' ? 'active' : 'paused')} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${u.status === 'paused' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-200'}`}>
-                                            {u.status === 'paused' ? '▶️ Ativar' : '⏸️ Pausar'}
-                                        </button>
-                                    )}
                                     {u.role !== 'admin' && (
                                         <button onClick={() => store.updateUserStatus(u.id, u.status === 'blocked' ? 'active' : 'blocked')} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${u.status === 'blocked' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}`}>
                                             {u.status === 'blocked' ? '🔓 Desbloquear' : '🚫 Bloquear'}
