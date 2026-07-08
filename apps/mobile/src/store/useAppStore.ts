@@ -296,6 +296,17 @@ export const useAppStore = create<AppState>()(
       }),
 
       deleteUser: async (userId) => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(userId)) {
+           set((state) => {
+             const newUsers = { ...state.users };
+             delete newUsers[userId];
+             return { users: newUsers };
+           });
+           alert("Usuário de teste local removido do seu aparelho.");
+           return;
+        }
+
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) {
@@ -315,7 +326,7 @@ export const useAppStore = create<AppState>()(
           if (!response.ok) {
              const errorData = await response.json();
              console.error("Erro na deleção:", errorData);
-             alert("Não foi possível excluir o usuário. Verifique se você tem permissões de Administrador.");
+             alert(`Falha ao excluir usuário: ${errorData.error || 'Erro desconhecido'}`);
              return;
           }
 
@@ -531,7 +542,10 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      clearData: () => set({ orders: [], orderCounter: 1, rates: DB_DEFAULTS.rates })
+      clearData: () => set((state) => {
+         const newUsers = state.currentUser ? { [state.currentUser.id]: state.currentUser } : {};
+         return { orders: [], orderCounter: 1, rates: DB_DEFAULTS.rates, users: newUsers };
+      })
     }),
     { name: 'acaifood-storage-v4' }
   )
