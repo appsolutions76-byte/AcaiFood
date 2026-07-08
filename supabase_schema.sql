@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
   
   -- Entities Involved
   buyer_id UUID REFERENCES public.users(id) ON DELETE SET NULL, -- Cliente Final ou Batedeira
-  seller_storefront_id UUID NOT NULL REFERENCES public.storefronts(id), -- Loja da Batedeira ou Fornecedor
+  seller_storefront_id UUID NOT NULL REFERENCES public.storefronts(id) ON DELETE CASCADE, -- Loja da Batedeira ou Fornecedor
   driver_id UUID REFERENCES public.users(id) ON DELETE SET NULL, -- Motoboy ou Caminhoneiro
   
   -- Frozen Rates (at the time of the order, avoiding historical corruption)
