@@ -315,10 +315,7 @@ export const useAppStore = create<AppState>()(
           }
 
           const { data: responseData, error: functionError } = await supabase.functions.invoke('remove-account', {
-            body: { targetUserId: userId },
-            headers: {
-              Authorization: `Bearer ${session.access_token}`
-            }
+            body: { targetUserId: userId }
           });
 
           if (functionError) {

@@ -31,14 +31,13 @@ serve(async (req) => {
     }
 
     // 2. Initialize a client with the caller's JWT to verify their identity
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } }
-    })
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    const jwt = authHeader.replace('Bearer ', '').trim()
 
-    const { data: { user: callerUser }, error: userError } = await supabaseClient.auth.getUser()
+    const { data: { user: callerUser }, error: userError } = await supabaseClient.auth.getUser(jwt)
     
     if (userError || !callerUser) {
-      return new Response(JSON.stringify({ error: 'Unauthorized', details: userError }), { 
+      return new Response(JSON.stringify({ error: `Unauthorized: ${userError?.message || 'User not found'}` }), { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       })
