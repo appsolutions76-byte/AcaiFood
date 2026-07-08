@@ -91,7 +91,7 @@ interface AppState {
   acaoPedido: (orderId: string, action: string) => void;
   setFreteSubsidy: (userId: string, pct: number) => void;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => void;
-  deleteUser: (userId: string) => void;
+  deleteUser: (userId: string) => Promise<void>;
   changePassword: (userId: string, newPassword: string) => void;
   updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => void;
   addProduct: (userId: string, product: Product) => void;
@@ -317,11 +317,42 @@ export const useAppStore = create<AppState>()(
         return { users: { ...state.users, [userId]: { ...user, status } } };
       }),
 
-      deleteUser: (userId) => set((state) => {
-        const newUsers = { ...state.users };
-        delete newUsers[userId];
-        return { users: newUsers };
-      }),
+      deleteUser: async (userId) => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            alert("Sessão expirada. Faça login novamente.");
+            return;
+          }
+
+          const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/admin-delete-user`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ targetUserId: userId })
+          });
+
+          if (!response.ok) {
+             const errorData = await response.json();
+             console.error("Erro na deleção:", errorData);
+             alert("Não foi possível excluir o usuário. Verifique se você tem permissões de Administrador.");
+             return;
+          }
+
+          set((state) => {
+            const newUsers = { ...state.users };
+            delete newUsers[userId];
+            return { users: newUsers };
+          });
+          
+          alert("Usuário excluído com sucesso!");
+        } catch (error) {
+           console.error("Exceção ao excluir usuário:", error);
+           alert("Erro de conexão ao tentar excluir usuário.");
+        }
+      },
 
       changePassword: (userId, newPassword) => set((state) => {
         const user = state.users[userId];
