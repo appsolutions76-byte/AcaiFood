@@ -60,7 +60,8 @@ export default function FornecedorDashboard() {
       }
       
       const clientId = process.env.NEXT_PUBLIC_MP_CLIENT_ID || "7957691912013698";
-      const redirectUri = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mp-oauth`;
+      const baseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, '');
+      const redirectUri = `${baseUrl}/functions/v1/mp-oauth`;
       window.location.href = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&state=${data.state_id}&redirect_uri=${redirectUri}`;
     } catch (err) {
       console.error(err);
