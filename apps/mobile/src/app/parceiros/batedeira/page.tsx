@@ -104,7 +104,7 @@ export default function BatedeiraDashboard() {
               Para receber os pagamentos dos clientes automaticamente via PIX ou Cartão, você precisa vincular sua conta do Mercado Pago.
             </p>
             <a 
-              href={`https://auth.mercadopago.com/authorization?client_id=${process.env.NEXT_PUBLIC_MP_CLIENT_ID || 'COLOQUE_SEU_CLIENT_ID_NO_ENV'}&response_type=code&platform_id=mp&state=${currentUser.id}&redirect_uri=${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mp-oauth`}
+              href={`https://auth.mercadopago.com/authorization?client_id=7957691912013698&response_type=code&platform_id=mp&state=${currentUser.id}&redirect_uri=${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mp-oauth`}
               className="inline-block bg-[#009EE3] text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-[#008ACB] transition"
             >
               🤝 Vincular Conta Mercado Pago
