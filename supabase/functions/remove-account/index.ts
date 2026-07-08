@@ -25,7 +25,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing Authorization header' }), { 
-        status: 401, 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       })
     }
@@ -39,7 +39,7 @@ serve(async (req) => {
     
     if (userError || !callerUser) {
       return new Response(JSON.stringify({ error: 'Unauthorized', details: userError }), { 
-        status: 401, 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       })
     }
@@ -52,8 +52,8 @@ serve(async (req) => {
       .single()
 
     if (profileError || !callerProfile || callerProfile.role !== 'ADMIN') {
-      return new Response(JSON.stringify({ error: 'Forbidden. Admin role required.' }), { 
-        status: 403, 
+      return new Response(JSON.stringify({ error: `Forbidden. Admin role required. Profile error: ${JSON.stringify(profileError)}` }), { 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       })
     }
@@ -62,7 +62,7 @@ serve(async (req) => {
     const { targetUserId } = await req.json()
     if (!targetUserId || typeof targetUserId !== 'string') {
       return new Response(JSON.stringify({ error: 'targetUserId is required and must be a string' }), { 
-        status: 400, 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       })
     }
@@ -70,7 +70,7 @@ serve(async (req) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(targetUserId)) {
       return new Response(JSON.stringify({ error: 'Invalid targetUserId format. Must be a UUID.' }), { 
-        status: 400, 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       })
     }
@@ -84,7 +84,7 @@ serve(async (req) => {
     if (deleteError) {
       console.error("Error deleting user:", deleteError)
       return new Response(JSON.stringify({ error: 'Failed to delete user', details: deleteError }), { 
-        status: 500, 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       })
     }
@@ -95,9 +95,9 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error("Exception in admin-delete-user:", error)
+    console.error("Exception in remove-account:", error)
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
