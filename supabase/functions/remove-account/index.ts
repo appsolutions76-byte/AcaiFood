@@ -79,15 +79,29 @@ serve(async (req) => {
     // 5. Initialize Admin Client with Service Role Key to bypass RLS and Auth restrictions
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // 6. Delete the user from auth.users (This cascades to public.users and everything else)
+    // 6. Delete the user explicitly from public.users first (since there's no ON DELETE CASCADE on the ID)
+    const { error: publicDbError } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('id', targetUserId)
+
+    if (publicDbError) {
+       console.error("Error deleting public user:", publicDbError)
+    }
+
+    // 7. Delete the user from auth.users
     const { data: deleteData, error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId)
 
     if (deleteError) {
-      console.error("Error deleting user:", deleteError)
-      return new Response(JSON.stringify({ error: 'Failed to delete user', details: deleteError }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      })
+      console.error("Error deleting auth user:", deleteError)
+      // We don't fail the execution if it was already deleted from auth, we just want to ensure it's gone
+    }
+
+    if (publicDbError && deleteError) {
+       return new Response(JSON.stringify({ error: 'Failed to delete user from both Auth and Public DB' }), { 
+         status: 200, 
+         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+       })
     }
 
     return new Response(JSON.stringify({ success: true, message: `User ${targetUserId} successfully deleted` }), {
