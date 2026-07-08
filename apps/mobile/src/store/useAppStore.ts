@@ -314,19 +314,22 @@ export const useAppStore = create<AppState>()(
             return;
           }
 
-          const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/admin-delete-user`, {
-            method: 'POST',
+          const { data: responseData, error: functionError } = await supabase.functions.invoke('admin-delete-user', {
+            body: { targetUserId: userId },
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({ targetUserId: userId })
+              Authorization: `Bearer ${session.access_token}`
+            }
           });
 
-          if (!response.ok) {
-             const errorData = await response.json();
-             console.error("Erro na deleção:", errorData);
-             alert(`Falha ao excluir usuário: ${errorData.error || 'Erro desconhecido'}`);
+          if (functionError) {
+             console.error("Erro na deleção (função):", functionError);
+             alert(`Falha de conexão: ${functionError.message || 'CORS ou erro de rede'}`);
+             return;
+          }
+
+          if (responseData && responseData.error) {
+             console.error("Erro na deleção (retorno):", responseData.error);
+             alert(`Falha ao excluir usuário: ${responseData.error}`);
              return;
           }
 
