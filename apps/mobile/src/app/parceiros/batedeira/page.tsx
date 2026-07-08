@@ -87,7 +87,7 @@ export default function BatedeiraDashboard() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Painel da Loja</h1>
           </div>
           <div className="flex items-center gap-3">
-            {currentUser.mercadoPagoToken && (
+            {currentUser.mpLinked && (
                <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200">MP Ativo ✅</span>
             )}
             <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 underline">Sair</button>
@@ -96,6 +96,21 @@ export default function BatedeiraDashboard() {
       </header>
       
       <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+
+        {!currentUser.mpLinked && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6 text-center shadow-sm">
+            <h3 className="text-red-700 dark:text-red-400 font-bold text-lg mb-2">Atenção: Vendas Bloqueadas!</h3>
+            <p className="text-red-600 dark:text-red-300 text-sm mb-4">
+              Para receber os pagamentos dos clientes automaticamente via PIX ou Cartão, você precisa vincular sua conta do Mercado Pago.
+            </p>
+            <a 
+              href={`https://auth.mercadopago.com/authorization?client_id=${process.env.NEXT_PUBLIC_MP_CLIENT_ID || 'COLOQUE_SEU_CLIENT_ID_NO_ENV'}&response_type=code&platform_id=mp&state=${currentUser.id}&redirect_uri=${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mp-oauth`}
+              className="inline-block bg-[#009EE3] text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-[#008ACB] transition"
+            >
+              🤝 Vincular Conta Mercado Pago
+            </a>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Resumo */}

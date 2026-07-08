@@ -36,6 +36,7 @@ export interface User {
   email?: string;
   password?: string;
   status?: 'active' | 'paused' | 'blocked';
+  mpLinked?: boolean;
   products?: Product[];
 }
 
@@ -176,7 +177,8 @@ export const useAppStore = create<AppState>()(
             lng: userProfile.longitude || 0,
             icon: '👤', // Default, we could map based on role
             veiculo: userProfile.vehicle_type === 'MOTO' ? 'Moto' : userProfile.vehicle_type === 'TRUCK' ? 'Caminhão' : userProfile.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined,
-            status: userProfile.status as 'active'|'paused'|'blocked'
+            status: userProfile.status as 'active'|'paused'|'blocked',
+            mpLinked: !!userProfile.mp_merchant_id
           };
           
           set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
@@ -282,7 +284,8 @@ export const useAppStore = create<AppState>()(
                             medio: sf?.price_b2c_medio || 26,
                             grosso: sf?.price_b2c_grosso || 35
                         },
-                        freteSubsidyPct: sf?.frete_subsidy_pct || 0
+                        freteSubsidyPct: sf?.frete_subsidy_pct || 0,
+                        mpLinked: !!dbUser.mp_merchant_id
                     };
                 });
                 return { users: newUsers };

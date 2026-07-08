@@ -81,76 +81,85 @@ serve(async (req) => {
         throw new Error('Forbidden: You can only checkout your own orders');
     }
 
-    // 2. Fetch Seller's MP Token (For testing, we can use the global test token if available)
-    const GLOBAL_TEST_TOKEN = Deno.env.get('MP_ACCESS_TOKEN');
-    let accessToken = GLOBAL_TEST_TOKEN;
+    // 4. Fetch Seller's MP Token (Encrypted in database)
+    let accessToken = '';
+    const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY');
+    if (!ENCRYPTION_KEY) throw new Error('ENCRYPTION_KEY missing in server config');
 
-    // Real life scenario: fetch from seller's user profile (encrypted)
-    if (!accessToken) {
-        const { data: sellerStore } = await supabaseClient.from('storefronts').select('partner_id').eq('id', order.seller_storefront_id).single();
-        if (sellerStore) {
-            const { data: sellerUser } = await supabaseClient.from('users').select('mp_access_token').eq('id', sellerStore.partner_id).single();
-            // In a real scenario, you'd decrypt `sellerUser.mp_access_token` here using ENCRYPTION_KEY
-            // accessToken = decryptToken(sellerUser.mp_access_token, Deno.env.get('ENCRYPTION_KEY'));
-            // For now, if no test token, we fail
-            throw new Error('Seller has not connected Mercado Pago and no TEST token provided');
-        }
+    const { data: sellerStore } = await supabaseClient.from('storefronts').select('partner_id').eq('id', order.seller_storefront_id).single();
+    if (!sellerStore) throw new Error('Seller storefront not found');
+
+    const { data: sellerUser } = await supabaseClient.from('users').select('mp_access_token').eq('id', sellerStore.partner_id).single();
+    if (!sellerUser || !sellerUser.mp_access_token) {
+        throw new Error('Loja não possui conta do Mercado Pago vinculada.');
+    }
+
+    // Decrypt the token
+    const [ivBase64, encryptedBase64] = sellerUser.mp_access_token.split(':');
+    const keyBytes = new Uint8Array(ENCRYPTION_KEY.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
+    const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+    const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+
+    try {
+      const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, encryptedData);
+      accessToken = new TextDecoder().decode(decryptedBuffer);
+    } catch (e) {
+      throw new Error('Falha ao descriptografar token do Mercado Pago da loja');
     }
 
     if (!accessToken) throw new Error('Mercado Pago Access Token not configured');
 
-    // 3. Create MP Preference Payload
-    const totalAmount = Number(order.total_amount);
-    const platformFee = Number(order.total_platform_fee_amount);
-    const driverAmount = Number(order.driver_amount);
+    // 5. Calculate Application Fee (Platform Tax + Driver Fee)
+    // The marketplace_fee must capture the Platform's Sales Fee AND the entire Delivery Fee (since it goes to the Virtual Vault)
+    const itemsTotal = Number(order.products_subtotal);
+    const platformFeePct = Number(order.applied_platform_fee_percent || 0);
+    const platformSalesFeeAmount = (itemsTotal * platformFeePct) / 100;
+    
+    const deliveryDistance = Number(order.delivery_distance_km || 0);
+    const deliveryFeePerKm = Number(order.applied_delivery_fee_per_km || 0);
+    const totalDeliveryFee = deliveryDistance * deliveryFeePerKm;
 
-    const preferenceData: any = {
-      items: [
-        {
-          title: `AçaíFood Order #${order.id.split('-')[0]}`,
-          unit_price: totalAmount,
-          quantity: 1,
-        }
-      ],
-      payment_methods: {
-        excluded_payment_types: [{ id: "ticket" }],
-        installments: 1
-      },
-      marketplace_fee: platformFee,
-      notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mp-webhook`,
-      external_reference: order.id,
-    };
+    const totalApplicationFee = platformSalesFeeAmount + totalDeliveryFee;
+    const finalTotal = itemsTotal + totalDeliveryFee;
 
-    // If there's a driver and a split is needed, we would add the driver to `disbursements` array.
-    // Note: Mercado Pago Advanced Split requires configuring OAuth for the driver as well.
-    // For this prototype, we'll keep it simple (Marketplace Fee -> App, Rest -> Seller).
-    // The seller is responsible for paying the driver manually, OR we use full MP Split.
-    // To use full split, we need driver's collector_id:
-    /*
-    if (driverAmount > 0 && order.driver_id) {
-       // ... fetch driver's collector ID ...
-       preferenceData.disbursements = [{
-          collector_id: driverCollectorId,
-          marketplace_fee: 0,
-          amount: driverAmount
-       }]
-    }
-    */
-
-    const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+    // 6. Create Preference in Mercado Pago
+    const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(preferenceData)
+      body: JSON.stringify({
+        items: [
+          {
+            title: `AçaíFood Order #${orderId.substring(0,8)}`,
+            quantity: 1,
+            unit_price: Number(finalTotal.toFixed(2)),
+            currency_id: 'BRL'
+          }
+        ],
+        marketplace_fee: Number(totalApplicationFee.toFixed(2)),
+        external_reference: orderId,
+        payment_methods: {
+          excluded_payment_types: [{ id: "ticket" }],
+          installments: 1
+        },
+        back_urls: {
+          success: 'https://acaifood.app/success',
+          failure: 'https://acaifood.app/failure',
+          pending: 'https://acaifood.app/pending'
+        },
+        auto_return: 'approved',
+        notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mp-webhook`
+      })
     });
 
-    const preference = await response.json();
+    const preference = await mpResponse.json();
 
-    if (!response.ok) {
-        console.error(preference);
-        throw new Error('Failed to create MP Preference');
+    if (!mpResponse.ok) {
+        console.error("MP Preference Error:", preference);
+        throw new Error(`Failed to create MP Preference: ${preference.message || JSON.stringify(preference)}`);
     }
 
     return new Response(
@@ -164,12 +173,13 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
-    )
+    );
 
   } catch (error) {
+    console.error("Checkout Edge Function Error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
-    })
+    });
   }
-})
+});
