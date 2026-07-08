@@ -314,7 +314,7 @@ export const useAppStore = create<AppState>()(
             return;
           }
 
-          const { data: responseData, error: functionError } = await supabase.functions.invoke('admin-delete-user', {
+          const { data: responseData, error: functionError } = await supabase.functions.invoke('remove-account', {
             body: { targetUserId: userId },
             headers: {
               Authorization: `Bearer ${session.access_token}`
