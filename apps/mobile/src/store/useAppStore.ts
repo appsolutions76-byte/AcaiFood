@@ -504,7 +504,7 @@ export const useAppStore = create<AppState>()(
           const newOrders = state.orders.map(o => {
             if (o.id !== orderId) return o;
             const newOrder = { ...o };
-            if (action === 'cancelar_pedido') newOrder.status = 'cancelado';
+            if (action === 'cancelar_pedido' || action === 'cancelar_cliente') newOrder.status = 'cancelado';
             if (action === 'aceitar_loja' || action === 'aceitar_forn') newOrder.status = 'preparo';
             if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; }
             if (action === 'conf_motorista') {
