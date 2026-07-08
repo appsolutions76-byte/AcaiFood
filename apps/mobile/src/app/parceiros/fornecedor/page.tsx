@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, PackageOpen } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
+import { supabase } from "@/lib/supabase";
 
 export default function FornecedorDashboard() {
   const router = useRouter();
@@ -42,6 +43,29 @@ export default function FornecedorDashboard() {
       });
       setNewProductName('');
       setNewProductPrice('');
+  };
+
+  const handleLinkMercadoPago = async () => {
+    if (!currentUser) return;
+    try {
+      const { data, error } = await supabase
+        .from('mp_oauth_states')
+        .insert({ user_id: currentUser.id })
+        .select('state_id')
+        .single();
+        
+      if (error || !data) {
+        alert("Erro de segurança ao iniciar vínculo. Tente novamente.");
+        return;
+      }
+      
+      const clientId = "7957691912013698";
+      const redirectUri = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mp-oauth`;
+      window.location.href = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&state=${data.state_id}&redirect_uri=${redirectUri}`;
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao conectar com servidor.");
+    }
   };
 
   if (!currentUser || currentUser.role !== 'fornecedor') {
@@ -86,6 +110,21 @@ export default function FornecedorDashboard() {
       
       <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
         
+        {!currentUser.mpLinked && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6 text-center shadow-sm">
+            <h3 className="text-red-700 dark:text-red-400 font-bold text-lg mb-2">Atenção: Vendas Bloqueadas!</h3>
+            <p className="text-red-600 dark:text-red-300 text-sm mb-4">
+              Para receber os pagamentos das lojas automaticamente via PIX ou Cartão, você precisa vincular sua conta do Mercado Pago.
+            </p>
+            <button 
+              onClick={handleLinkMercadoPago}
+              className="inline-block bg-[#009EE3] text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-[#008ACB] transition"
+            >
+              🤝 Vincular Conta Mercado Pago
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Resumo */}
           <div className="bg-emerald-900 text-white p-5 rounded-xl shadow">

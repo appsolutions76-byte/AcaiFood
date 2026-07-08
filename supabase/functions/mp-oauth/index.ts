@@ -37,7 +37,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Code or state missing' }), { headers: corsHeaders, status: 400 });
     }
 
-    const userId = state; // We pass the seller's user.id as state
+    const stateId = state;
     const MP_CLIENT_ID = Deno.env.get('MP_CLIENT_ID');
     const MP_CLIENT_SECRET = Deno.env.get('MP_CLIENT_SECRET');
     const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY');
@@ -45,12 +45,27 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     // Default redirect URI provided by Supabase Edge Functions is exactly the function URL itself
-    // Or we can construct it dynamically:
     const redirectUri = url.origin + url.pathname;
 
     if (!MP_CLIENT_ID || !MP_CLIENT_SECRET || !ENCRYPTION_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       return new Response('Missing server configuration', { status: 500 });
     }
+
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Verify state and get real user ID to prevent IDOR
+    const { data: stateData, error: stateError } = await supabaseClient
+      .from('mp_oauth_states')
+      .select('user_id')
+      .eq('state_id', stateId)
+      .single();
+
+    if (stateError || !stateData) {
+      console.error("Invalid or expired OAuth state:", stateError);
+      return new Response('Sessão inválida ou expirada. Tente novamente pelo aplicativo.', { status: 403, headers: corsHeaders });
+    }
+
+    const userId = stateData.user_id;
 
     // Exchange code for token
     const tokenResponse = await fetch('https://api.mercadopago.com/oauth/token', {
@@ -73,12 +88,14 @@ serve(async (req) => {
     }
 
     const encryptedAccessToken = await encryptToken(tokenData.access_token, ENCRYPTION_KEY);
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { error } = await supabaseClient
       .from('users')
       .update({ mp_access_token: encryptedAccessToken, mp_merchant_id: tokenData.user_id?.toString() })
       .eq('id', userId);
+      
+    // Delete the used state to prevent reuse
+    await supabaseClient.from('mp_oauth_states').delete().eq('state_id', stateId);
 
     if (error) {
       console.error("DB Error:", error);

@@ -126,12 +126,30 @@ CREATE TABLE IF NOT EXISTS public.orders (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 5.5 Create OAuth States Table for Security (IDOR Protection)
+CREATE TABLE IF NOT EXISTS public.mp_oauth_states (
+  state_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- 6. Row Level Security (RLS) setup
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.storefronts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.mp_oauth_states ENABLE ROW LEVEL SECURITY;
+
+-- RLS: mp_oauth_states
+DROP POLICY IF EXISTS "Users can insert their own oauth state" ON public.mp_oauth_states;
+CREATE POLICY "Users can insert their own oauth state" 
+ON public.mp_oauth_states FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can read their own oauth state" ON public.mp_oauth_states;
+CREATE POLICY "Users can read their own oauth state" 
+ON public.mp_oauth_states FOR SELECT USING (auth.uid() = user_id);
 
 -- RLS: Platform Settings
 DROP POLICY IF EXISTS "Platform settings are visible to everyone" ON public.platform_settings;

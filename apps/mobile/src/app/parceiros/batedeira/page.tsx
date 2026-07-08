@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Store } from "lucide-react";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
+import { supabase } from "@/lib/supabase";
 
 export default function BatedeiraDashboard() {
   const store = useAppStore();
@@ -44,6 +45,29 @@ export default function BatedeiraDashboard() {
   };
 
   const router = useRouter();
+
+  const handleLinkMercadoPago = async () => {
+    if (!currentUser) return;
+    try {
+      const { data, error } = await supabase
+        .from('mp_oauth_states')
+        .insert({ user_id: currentUser.id })
+        .select('state_id')
+        .single();
+        
+      if (error || !data) {
+        alert("Erro de segurança ao iniciar vínculo. Tente novamente.");
+        return;
+      }
+      
+      const clientId = "7957691912013698";
+      const redirectUri = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mp-oauth`;
+      window.location.href = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&state=${data.state_id}&redirect_uri=${redirectUri}`;
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao conectar com servidor.");
+    }
+  };
 
   if (!currentUser || currentUser.role !== 'loja') {
     return (
@@ -103,12 +127,12 @@ export default function BatedeiraDashboard() {
             <p className="text-red-600 dark:text-red-300 text-sm mb-4">
               Para receber os pagamentos dos clientes automaticamente via PIX ou Cartão, você precisa vincular sua conta do Mercado Pago.
             </p>
-            <a 
-              href={`https://auth.mercadopago.com/authorization?client_id=7957691912013698&response_type=code&platform_id=mp&state=${currentUser.id}&redirect_uri=${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mp-oauth`}
+            <button 
+              onClick={handleLinkMercadoPago}
               className="inline-block bg-[#009EE3] text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-[#008ACB] transition"
             >
               🤝 Vincular Conta Mercado Pago
-            </a>
+            </button>
           </div>
         )}
         
