@@ -47,9 +47,6 @@ export default function MotoboyDashboard() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Corridas (B2C)</h1>
           </div>
           <div className="flex items-center gap-3">
-            {currentUser.mercadoPagoToken && (
-               <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200">MP Ativo ✅</span>
-            )}
             <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 underline">Sair</button>
           </div>
         </div>
@@ -62,7 +59,7 @@ export default function MotoboyDashboard() {
                 <p className="text-zinc-400 text-xs mt-1">📍 Base: {currentUser.bairro}</p>
             </div>
             <div className="text-right">
-                <p className="text-sm text-zinc-400">Ganhos (Sessão)</p>
+                <p className="text-sm text-zinc-400">Cofre Virtual (A Receber)</p>
                 <p className="text-2xl font-bold text-green-400">{formatMoney(ganhosHoje)}</p>
                 <button onClick={handleToggleStatus} className={`mt-2 px-3 py-1 rounded-lg text-xs font-bold transition border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
                     {isPaused ? 'Offline 🚫' : 'Online ✅'}

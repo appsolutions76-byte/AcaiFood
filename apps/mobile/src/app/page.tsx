@@ -11,10 +11,6 @@ export default function StorefrontPage() {
   const store = useAppStore();
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  // Remover auto-login
-  // useEffect(() => {
-  //   store.login('cli_1');
-  // }, []);
 
   const currentUser = store.currentUser;
   const router = useRouter();

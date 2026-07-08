@@ -60,8 +60,16 @@ serve(async (req) => {
 
     // 4. Parse the request body to get the target user ID
     const { targetUserId } = await req.json()
-    if (!targetUserId) {
-      return new Response(JSON.stringify({ error: 'targetUserId is required' }), { 
+    if (!targetUserId || typeof targetUserId !== 'string') {
+      return new Response(JSON.stringify({ error: 'targetUserId is required and must be a string' }), { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
+    }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(targetUserId)) {
+      return new Response(JSON.stringify({ error: 'Invalid targetUserId format. Must be a UUID.' }), { 
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       })

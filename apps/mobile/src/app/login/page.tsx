@@ -99,8 +99,6 @@ export default function LoginPage() {
               </button>
             </div>
           </form>
-          
-          {/* Remover link voltar loja pois a loja agora é privada */}
         </div>
       </div>
     </div>

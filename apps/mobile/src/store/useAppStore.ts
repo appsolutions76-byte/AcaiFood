@@ -105,14 +105,7 @@ const DB_DEFAULTS = {
     b2b_plat: 10, b2b_km: 4.00, b2b_mot_plat: 10,
     col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00
   },
-  users: {
-    admin:    { id: 'admin',    role: 'admin' as Role,       name: 'Administração',          icon: '🛠️', email: 'appsolutions76@gmail.com', password: '2953938' },
-    cli_1:    { id: 'cli_1',    role: 'cliente' as Role,     name: 'Maria Oliveira',         cidade: 'Belém', bairro: 'Nazaré',     icon: '👤', lat: -1.455, lng: -48.488, email: 'cliente@teste.com', password: '123' },
-    mot_1:    { id: 'mot_1',    role: 'motorista' as Role,   name: 'Ana',                    cidade: 'Belém', bairro: 'Sacramenta', icon: '🛵', veiculo: 'Moto',    lat: -1.440, lng: -48.468, email: 'moto@teste.com', password: '123' },
-    mot_2:    { id: 'mot_2',    role: 'motorista' as Role,   name: 'Beto',                   cidade: 'Belém', bairro: 'Entroncamento', icon: '🚚', veiculo: 'Caminhão', lat: -1.396, lng: -48.450, email: 'caminhao@teste.com', password: '123' },
-    mot_3:    { id: 'mot_3',    role: 'motorista' as Role,   name: 'Júlio',                  cidade: 'Belém', bairro: 'Icoaraci',      icon: '🚛', veiculo: 'Caçamba',  lat: -1.300, lng: -48.480, email: 'cacamba@teste.com', password: '123' },
-    ecoponto: { id: 'ecoponto', role: 'ecoponto' as Role,    name: 'Ecoponto Municipal',     cidade: 'Belém', bairro: 'Aurá',      icon: '♻️', lat: -1.510, lng: -48.428, email: 'ecoponto@teste.com', password: '123' }
-  }
+  users: {} // Remover usuários fixos para prevenir vazamento de credenciais
 };
 
 export const useAppStore = create<AppState>()(
@@ -130,26 +123,11 @@ export const useAppStore = create<AppState>()(
       },
 
       loginWithCredentials: async (email, pass) => {
-        // Fallback for hardcoded mock admin (optional, if you want to keep it)
-        if (email === 'appsolutions76@gmail.com' && pass === '2953938') {
-            const adminUser = Object.values(get().users).find(u => u.role === 'admin');
-            if (adminUser) {
-                set({ currentUser: adminUser });
-                return true;
-            }
-        }
-
         await supabase.auth.signOut(); // Wipe stale sessions
 
         const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error || !authData.user) {
           console.error("Login Error:", error);
-          // Try local fallback for mocked users
-          const localUser = Object.values(get().users).find(u => u.email === email && u.password === pass);
-          if (localUser) {
-              set({ currentUser: localUser });
-              return true;
-          }
           return false;
         }
 
@@ -467,8 +445,7 @@ export const useAppStore = create<AppState>()(
             novoPedido.taxas.repasse = novoPedido.valor - novoPedido.taxas.plataformaVenda - novoPedido.taxas.entregaFornecedor;
         }
 
-        // Save locally for UI feedback (Retrocompatibility)
-        set({ orders: [novoPedido, ...state.orders], orderCounter: state.orderCounter + 1 });
+        // Apenas salva localmente após o sucesso e com o ID real
         
         // 1. Insert into Supabase Orders table
         try {
@@ -520,6 +497,9 @@ export const useAppStore = create<AppState>()(
           }
 
           if (mpData && mpData.init_point) {
+             // Save to local state using DB generated ID
+             const finalPedido = { ...novoPedido, id: dbOrder.id };
+             set({ orders: [finalPedido, ...get().orders], orderCounter: get().orderCounter + 1 });
              // Return the checkout URL so the frontend can redirect
              return mpData.init_point;
           }
