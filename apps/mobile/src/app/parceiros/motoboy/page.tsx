@@ -19,7 +19,10 @@ export default function MotoboyDashboard() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (store.currentUser?.role === 'motorista') {
+        store.fetchAllUsers();
+    }
+  }, [store.currentUser?.role]);
 
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
