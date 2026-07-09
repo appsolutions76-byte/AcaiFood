@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Store, Truck, Bike, PackageOpen, ArrowLeft, User, ShieldCheck, Recycle } from "lucide-react";
-import { useAppStore } from "@/store/useAppStore";
+import { Store, Truck, Bike, PackageOpen, User, Recycle } from "lucide-react";
+
 
 export default function ParceirosOnboarding() {
-  const router = useRouter();
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col relative">

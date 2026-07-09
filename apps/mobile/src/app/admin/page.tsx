@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Settings, Trash2 } from "lucide-react";
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore, Order } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 
 export default function AdminDashboard() {
@@ -43,13 +43,13 @@ export default function AdminDashboard() {
   }
 
   const concluidos = store.orders.filter(o => o.status === 'entregue');
-  const getDynamicTaxes = (o: any) => {
+  const getDynamicTaxes = (o: Order) => {
     let repasseLoja = 0, repasseForn = 0, repasseMoto = 0, platVenda = 0, platEntrega = 0, entregaTotal = 0;
     const dist = o.distancia;
     
     if (o.type === 'B2C') {
         entregaTotal = dist * store.rates.b2c_km;
-        const sub = (store.users[o.lojaId]?.freteSubsidyPct || 0) / 100;
+        const sub = (o.lojaId ? store.users[o.lojaId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteLoja = entregaTotal * sub;
         
         platVenda = o.valor * (store.rates.b2c_plat / 100);
@@ -59,7 +59,7 @@ export default function AdminDashboard() {
         repasseMoto = entregaTotal - platEntrega;
     } else if (o.type === 'B2B') {
         entregaTotal = dist * store.rates.b2b_km;
-        const sub = (store.users[o.fornecedorId]?.freteSubsidyPct || 0) / 100;
+        const sub = (o.fornecedorId ? store.users[o.fornecedorId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteForn = entregaTotal * sub;
         
         platVenda = o.valor * (store.rates.b2b_plat / 100);

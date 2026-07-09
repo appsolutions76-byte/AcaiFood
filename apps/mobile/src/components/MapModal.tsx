@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore, haversineKm } from "@/store/useAppStore";
 
 interface MapModalProps {
   isOpen: boolean;
@@ -28,10 +28,9 @@ export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: 
   const p2 = users[destinoId];
   const pm = motoristaId ? users[motoristaId] : null;
 
-  if (!p1 || !p2 || !p1.lat || !p2.lat) return null;
+  if (!p1 || !p2 || !p1.lat || !p2.lat || !p1.lng || !p2.lng) return null;
 
-  // Import local de haversine
-  const { haversineKm } = require("@/store/useAppStore");
+
   const dist = haversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
 
   const pos1 = latLngToMapPct(p1.lat, p1.lng!);

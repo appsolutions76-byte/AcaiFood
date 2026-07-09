@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAppStore, Role } from "@/store/useAppStore";
+import { useAppStore, Role, User } from "@/store/useAppStore";
 import { ArrowLeft, UserPlus, ShieldCheck } from "lucide-react";
 
 function CadastroForm() {
@@ -47,7 +47,7 @@ function CadastroForm() {
     const lat = -1.45 + (Math.random() * 0.05 - 0.025);
     const lng = -48.48 + (Math.random() * 0.05 - 0.025);
 
-    const data: any = {
+    const data: Partial<User> = {
       role, name, email, password, cidade, bairro, icon, lat, lng
     };
     
@@ -61,7 +61,7 @@ function CadastroForm() {
       data.freteSubsidyPct = 0;
     }
 
-    const newUser = await registerUser(data);
+    const newUser = await registerUser(data as Omit<User, "id">);
     
     if (newUser) {
       if (role === 'cliente') {
