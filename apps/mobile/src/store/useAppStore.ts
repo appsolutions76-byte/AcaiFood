@@ -90,11 +90,11 @@ interface AppState {
   saveRates: (newRates: Partial<AppState['rates']>) => void;
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string, quantity?: number) => Promise<string | undefined>;
   acaoPedido: (orderId: string, action: string) => void;
-  setFreteSubsidy: (userId: string, pct: number) => void;
-  updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => void;
+  setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
+  updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   changePassword: (userId: string, newPassword: string) => void;
-  updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => void;
+  updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => Promise<void>;
   addProduct: (userId: string, product: Product) => void;
   removeProduct: (userId: string, productId: string) => void;
   clearData: () => void;
@@ -287,27 +287,35 @@ export const useAppStore = create<AppState>()(
 
       saveRates: (newRates) => set((state) => ({ rates: { ...state.rates, ...newRates } })),
       
-      setFreteSubsidy: (userId, pct) => set((state) => {
-        const user = state.users[userId];
-        if (!user) return state;
-        const updatedUser = { ...user, freteSubsidyPct: pct };
-        const isCurrent = state.currentUser?.id === userId;
-        return { 
-          users: { ...state.users, [userId]: updatedUser },
-          currentUser: isCurrent ? updatedUser : state.currentUser
-        };
-      }),
+      setFreteSubsidy: async (userId, pct) => {
+        set((state) => {
+          const user = state.users[userId];
+          if (!user) return state;
+          const updatedUser = { ...user, freteSubsidyPct: pct };
+          const isCurrent = state.currentUser?.id === userId;
+          return { 
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
+        const { error } = await supabase.from('storefronts').update({ frete_subsidy_pct: pct }).eq('partner_id', userId);
+        if (error) console.error("Error updating subsidy in DB:", error);
+      },
 
-      updateUserStatus: (userId, status) => set((state) => {
-        const user = state.users[userId];
-        if (!user) return state;
-        const updatedUser = { ...user, status };
-        const isCurrent = state.currentUser?.id === userId;
-        return { 
-          users: { ...state.users, [userId]: updatedUser },
-          currentUser: isCurrent ? updatedUser : state.currentUser
-        };
-      }),
+      updateUserStatus: async (userId, status) => {
+        set((state) => {
+          const user = state.users[userId];
+          if (!user) return state;
+          const updatedUser = { ...user, status };
+          const isCurrent = state.currentUser?.id === userId;
+          return { 
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
+        const { error } = await supabase.from('users').update({ status }).eq('id', userId);
+        if (error) console.error("Error updating status in DB:", error);
+      },
 
       deleteUser: async (userId) => {
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -368,18 +376,33 @@ export const useAppStore = create<AppState>()(
         };
       }),
 
-      updateUserPrice: (userId, b2cPrices, b2bPrice) => set((state) => {
-        const user = state.users[userId];
-        if (!user) return state;
-        const updatedUser = { ...user };
-        if (b2cPrices) updatedUser.priceB2C = b2cPrices;
-        if (b2bPrice !== undefined) updatedUser.priceB2B = b2bPrice;
-        const isCurrent = state.currentUser?.id === userId;
-        return { 
-          users: { ...state.users, [userId]: updatedUser },
-          currentUser: isCurrent ? updatedUser : state.currentUser
-        };
-      }),
+      updateUserPrice: async (userId, b2cPrices, b2bPrice) => {
+        set((state) => {
+          const user = state.users[userId];
+          if (!user) return state;
+          const updatedUser = { ...user };
+          if (b2cPrices) updatedUser.priceB2C = b2cPrices;
+          if (b2bPrice !== undefined) updatedUser.priceB2B = b2bPrice;
+          const isCurrent = state.currentUser?.id === userId;
+          return { 
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
+
+        const updates: any = {};
+        if (b2cPrices) {
+            if (b2cPrices.popular !== undefined) updates.price_b2c_popular = b2cPrices.popular;
+            if (b2cPrices.medio !== undefined) updates.price_b2c_medio = b2cPrices.medio;
+            if (b2cPrices.grosso !== undefined) updates.price_b2c_grosso = b2cPrices.grosso;
+        }
+        if (b2bPrice !== undefined) updates.price_b2b = b2bPrice;
+
+        if (Object.keys(updates).length > 0) {
+            const { error } = await supabase.from('storefronts').update(updates).eq('partner_id', userId);
+            if (error) console.error("Error updating prices in DB:", error);
+        }
+      },
 
       addProduct: (userId, product) => set((state) => {
         const user = state.users[userId];
