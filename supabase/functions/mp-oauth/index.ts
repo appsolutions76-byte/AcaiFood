@@ -105,8 +105,10 @@ serve(async (req) => {
     // Redirect user back to the app (App Solutions domain or Vercel domain)
     // We can use a deep link if mobile, or just a success page.
     const htmlResponse = `
+      <!DOCTYPE html>
       <html>
         <head>
+          <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Conta Vinculada!</title>
         </head>
@@ -118,8 +120,11 @@ serve(async (req) => {
       </html>
     `;
 
+    const responseHeaders = new Headers(corsHeaders);
+    responseHeaders.set('Content-Type', 'text/html; charset=utf-8');
+
     return new Response(htmlResponse, {
-      headers: { ...corsHeaders, 'Content-Type': 'text/html' },
+      headers: responseHeaders,
       status: 200,
     });
 
