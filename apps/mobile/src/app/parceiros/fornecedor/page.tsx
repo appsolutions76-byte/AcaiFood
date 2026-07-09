@@ -25,6 +25,13 @@ export default function FornecedorDashboard() {
   const [b2bPrice, setB2bPrice] = useState(currentUser?.priceB2B || 140);
   const [activeTab, setActiveTab] = useState('geral');
 
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.priceB2B !== undefined) setB2bPrice(currentUser.priceB2B);
+      if (currentUser.freteSubsidyPct !== undefined) setSubsidyInput(currentUser.freteSubsidyPct.toString());
+    }
+  }, [currentUser?.priceB2B, currentUser?.freteSubsidyPct]);
+
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
 

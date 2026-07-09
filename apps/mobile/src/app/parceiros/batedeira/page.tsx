@@ -19,6 +19,13 @@ export default function BatedeiraDashboard() {
   const [prices, setPrices] = useState(currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
   const [activeTab, setActiveTab] = useState('geral');
 
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.priceB2C) setPrices(currentUser.priceB2C);
+      if (currentUser.freteSubsidyPct !== undefined) setSubsidyInput(currentUser.freteSubsidyPct.toString());
+    }
+  }, [currentUser?.priceB2C, currentUser?.freteSubsidyPct]);
+
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
   const [cartModalB2B, setCartModalB2B] = useState<{ open: boolean; fornId: string; quantity: number }>({ open: false, fornId: '', quantity: 1 });
