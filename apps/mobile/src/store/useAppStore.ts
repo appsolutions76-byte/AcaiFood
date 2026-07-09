@@ -644,7 +644,8 @@ export const useAppStore = create<AppState>()(
               cartItems: [{
                 id: subTipoMenu || tipo,
                 quantity: quantity
-              }]
+              }],
+              origin: typeof window !== 'undefined' ? window.location.origin : ''
             },
             headers: {
               Authorization: `Bearer ${session?.access_token || ''}`

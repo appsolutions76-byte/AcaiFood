@@ -20,7 +20,8 @@ serve(async (req) => {
   }
 
   try {
-    const { orderId, cartItems } = await req.json();
+    const { orderId, cartItems, origin } = await req.json();
+    const requestOrigin = origin || 'https://acaifood.app';
     if (!orderId) throw new Error('Order ID is required');
 
     const authHeader = req.headers.get('Authorization');
@@ -174,9 +175,9 @@ serve(async (req) => {
           installments: 1
         },
         back_urls: {
-          success: 'https://acaifood.app/success',
-          failure: 'https://acaifood.app/failure',
-          pending: 'https://acaifood.app/pending'
+          success: `${requestOrigin}/?payment=success`,
+          failure: `${requestOrigin}/?payment=failure`,
+          pending: `${requestOrigin}/?payment=pending`
         },
         auto_return: 'approved',
         notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mp-webhook?seller_id=${sellerStore.partner_id}`

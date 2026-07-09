@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Store, ShoppingCart, UserCheck } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -15,6 +15,21 @@ export default function StorefrontPage() {
 
   const currentUser = store.currentUser;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    if (paymentStatus === 'success') {
+      alert('Pagamento aprovado pelo Mercado Pago! A loja já está preparando seu pedido.');
+      router.replace('/');
+    } else if (paymentStatus === 'failure') {
+      alert('Houve um problema com o pagamento.');
+      router.replace('/');
+    } else if (paymentStatus === 'pending') {
+      alert('Seu pagamento está em análise ou aguardando confirmação (PIX).');
+      router.replace('/');
+    }
+  }, [searchParams, router]);
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [cartModal, setCartModal] = useState<{ open: boolean; lojaId: string; tipo: string }>({ open: false, lojaId: '', tipo: 'medio' });
