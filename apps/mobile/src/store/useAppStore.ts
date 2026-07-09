@@ -100,7 +100,7 @@ interface AppState {
   fetchOrders: (userId: string) => Promise<void>;
   fetchAllUsers: () => Promise<void>;
   setupRealtime: (userId: string) => void;
-  clearData: () => void;
+  clearData: () => Promise<void>;
 }
 
 const DB_DEFAULTS = {
@@ -816,10 +816,29 @@ export const useAppStore = create<AppState>()(
             .subscribe();
       },
 
-      clearData: () => set((state) => {
-         const newUsers = state.currentUser ? { [state.currentUser.id]: state.currentUser } : {};
-         return { orders: [], orderCounter: 1, rates: DB_DEFAULTS.rates, users: newUsers };
-      })
+      clearData: async () => {
+         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+               const { error } = await supabase.functions.invoke('clear-orders', {
+                  headers: { Authorization: `Bearer ${session.access_token}` }
+               });
+               if (error) {
+                  console.error("Error clearing orders from DB:", error);
+                  alert("Erro ao limpar pedidos no banco de dados.");
+                  return;
+               }
+               alert("Todos os pedidos foram excluídos do banco de dados com sucesso!");
+            }
+         } catch(e) {
+            console.error("Exception clearing orders:", e);
+         }
+
+         set((state) => {
+            const newUsers = state.currentUser ? { [state.currentUser.id]: state.currentUser } : {};
+            return { orders: [], orderCounter: 1, rates: DB_DEFAULTS.rates, users: newUsers };
+         });
+      }
     }),
     { name: 'acaifood-storage-v4' }
   )
