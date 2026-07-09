@@ -708,6 +708,22 @@ export const useAppStore = create<AppState>()(
            const { error } = await supabase.from('orders').update(updates).eq('id', orderId);
            if (error) console.error("Error updating order in DB:", error);
         }
+
+        if (newDbStatus === 'CANCELLED') {
+           try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session) {
+                 const { data, error } = await supabase.functions.invoke('mp-refund', {
+                    body: { orderId },
+                    headers: { Authorization: `Bearer ${session.access_token}` }
+                 });
+                 if (error) console.error("Error invoking mp-refund:", error);
+                 else console.log("Refund response:", data);
+              }
+           } catch(e) {
+              console.error("Exception invoking mp-refund:", e);
+           }
+        }
       },
 
       fetchOrders: async (userId) => {
