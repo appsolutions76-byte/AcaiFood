@@ -45,7 +45,7 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     // Default redirect URI provided by Supabase Edge Functions is exactly the function URL itself
-    const redirectUri = url.origin + url.pathname;
+    const redirectUri = `${SUPABASE_URL.trim().replace(/\/$/, '')}/functions/v1/mp-oauth`;
 
     if (!MP_CLIENT_ID || !MP_CLIENT_SECRET || !ENCRYPTION_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       return new Response('Missing server configuration', { status: 500 });
