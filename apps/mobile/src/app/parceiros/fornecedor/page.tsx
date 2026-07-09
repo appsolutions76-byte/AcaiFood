@@ -166,11 +166,15 @@ export default function FornecedorDashboard() {
                       <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🏭 Status e Fruto</h3>
                       <p className="text-[10px] text-zinc-500">Controle se sua usina está recebendo pedidos e edite seu preço.</p>
                   </div>
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                  <div className="flex items-center gap-3 mt-2 sm:mt-0">
                       <button onClick={handleToggleStatus} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
                           {isPaused ? 'Pausado 🚫' : 'Operando ✅'}
                       </button>
-                      <button onClick={() => setPriceModalOpen(true)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border border-emerald-200">Editar Preço</button>
+                      <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                          <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Lata Açaí:</span>
+                          <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{formatMoney(b2bPrice)}</span>
+                      </div>
+                      <button onClick={() => setPriceModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">Editar Preço</button>
                   </div>
               </div>
 
