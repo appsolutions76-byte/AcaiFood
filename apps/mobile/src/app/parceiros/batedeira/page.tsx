@@ -17,6 +17,7 @@ export default function BatedeiraDashboard() {
   const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [prices, setPrices] = useState(currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
+  const [activeTab, setActiveTab] = useState('geral');
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
@@ -133,6 +134,14 @@ export default function BatedeiraDashboard() {
         </div>
       </header>
       
+      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
+        <div className="max-w-5xl mx-auto px-4 flex gap-6 overflow-x-auto">
+          <button onClick={() => setActiveTab('geral')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'geral' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
+          <button onClick={() => setActiveTab('abastecimento')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'abastecimento' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Abastecimento B2B</button>
+          <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📦 Histórico e Pedidos</button>
+        </div>
+      </div>
+
       <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
 
         {!currentUser.mpLinked && (
@@ -150,8 +159,9 @@ export default function BatedeiraDashboard() {
           </div>
         )}
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Resumo */}
+        {activeTab === 'geral' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in zoom-in-95 duration-300">
+            {/* Resumo */}
           <div className="bg-purple-900 text-white p-5 rounded-xl shadow">
               <h2 className="text-xl font-bold">{currentUser.name}</h2>
               <p className="text-purple-300 text-xs mt-1">📍 {currentUser.bairro}</p>
@@ -229,9 +239,12 @@ export default function BatedeiraDashboard() {
                       <p className="text-xs text-zinc-500 text-center py-4">Nenhum produto extra cadastrado.</p>
                   )}
               </ul>
+            </div>
           </div>
+        )}
           
-          <div className="col-span-1 md:col-span-2 bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3">
+        {activeTab === 'abastecimento' && (
+          <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-300">
               <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Comprar Fruto (Fornecedores B2B)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {fornecedores.map(forn => {
@@ -259,11 +272,13 @@ export default function BatedeiraDashboard() {
                   })}
               </div>
           </div>
-        </div>
+        )}
 
-        <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">Gestão de Pedidos (Vendas e Abastecimento)</h3>
-        
-        <div className="grid grid-cols-1 gap-4">
+        {activeTab === 'pedidos' && (
+          <div className="animate-in fade-in zoom-in-95 duration-300">
+            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">Gestão de Pedidos (Vendas e Abastecimento)</h3>
+            
+            <div className="grid grid-cols-1 gap-4">
           {meusPedidos.length === 0 ? (
              <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
                 <span className="text-4xl mb-3 opacity-50">📋</span>
@@ -321,8 +336,9 @@ export default function BatedeiraDashboard() {
               </div>
             )
           })}
+          </div>
         </div>
-
+        )}
       </main>
 
       <MapModal 

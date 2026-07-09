@@ -14,6 +14,7 @@ export default function MotoboyDashboard() {
   const currentUser = store.currentUser;
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [activeTab, setActiveTab] = useState('geral');
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -63,6 +64,14 @@ export default function MotoboyDashboard() {
         </div>
       </header>
 
+      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
+        <div className="max-w-4xl mx-auto px-4 flex gap-6 overflow-x-auto">
+          <button onClick={() => setActiveTab('geral')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'geral' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
+          <button onClick={() => setActiveTab('radar')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'radar' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🚨 Radar B2C</button>
+          <button onClick={() => setActiveTab('historico')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'historico' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📦 Minhas Corridas</button>
+        </div>
+      </div>
+
       <main className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
         <div className="bg-zinc-800 dark:bg-zinc-900 text-white p-5 rounded-xl shadow flex justify-between items-center border border-zinc-700 dark:border-zinc-800">
             <div>
@@ -78,7 +87,8 @@ export default function MotoboyDashboard() {
             </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {activeTab === 'radar' && (
+        <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
             <div>
                 <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">🚨 Radar de Corridas</h3>
                 <div className="space-y-4">
@@ -107,7 +117,11 @@ export default function MotoboyDashboard() {
                   })}
                 </div>
             </div>
+        </div>
+        )}
             
+        {activeTab === 'historico' && (
+        <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
             <div>
                 <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">📦 Em Andamento</h3>
                 <div className="space-y-4">
@@ -136,6 +150,7 @@ export default function MotoboyDashboard() {
                 </div>
             </div>
         </div>
+        )}
       </main>
 
       <MapModal 

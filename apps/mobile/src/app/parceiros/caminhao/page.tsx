@@ -14,6 +14,7 @@ export default function CaminhaoDashboard() {
   const currentUser = store.currentUser;
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [activeTab, setActiveTab] = useState('geral');
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -63,8 +64,17 @@ export default function CaminhaoDashboard() {
         </div>
       </header>
 
+      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
+        <div className="max-w-4xl mx-auto px-4 flex gap-6 overflow-x-auto">
+          <button onClick={() => setActiveTab('geral')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'geral' ? 'border-blue-600 text-blue-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
+          <button onClick={() => setActiveTab('radar')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'radar' ? 'border-blue-600 text-blue-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📡 Radar de Fretes</button>
+          <button onClick={() => setActiveTab('historico')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'historico' ? 'border-blue-600 text-blue-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🚚 Meus Fretes</button>
+        </div>
+      </div>
+
       <main className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
-        <div className="bg-blue-950 text-white p-5 rounded-xl shadow flex justify-between items-center border border-blue-900">
+        {activeTab === 'geral' && (
+        <div className="bg-blue-950 text-white p-5 rounded-xl shadow flex justify-between items-center border border-blue-900 animate-in fade-in zoom-in-95 duration-300">
             <div>
                 <h2 className="text-xl font-bold">{currentUser.icon} {currentUser.name} ({currentUser.veiculo})</h2>
                 <p className="text-blue-300 text-xs mt-1">📍 Base: {currentUser.bairro}</p>
@@ -77,8 +87,10 @@ export default function CaminhaoDashboard() {
                 </button>
             </div>
         </div>
+        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {activeTab === 'radar' && (
+        <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
             <div>
                 <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">🚨 Radar de Fretes</h3>
                 <div className="space-y-4">
@@ -107,7 +119,11 @@ export default function CaminhaoDashboard() {
                   })}
                 </div>
             </div>
+        </div>
+        )}
             
+        {activeTab === 'historico' && (
+        <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
             <div>
                 <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">📦 Em Andamento</h3>
                 <div className="space-y-4">
@@ -136,6 +152,7 @@ export default function CaminhaoDashboard() {
                 </div>
             </div>
         </div>
+        )}
       </main>
 
       <MapModal 
