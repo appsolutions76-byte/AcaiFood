@@ -750,6 +750,8 @@ export const useAppStore = create<AppState>()(
             query = query.eq('buyer_id', currentUser.id);
          } else if (currentUser.role === 'motorista') {
             query = query.or(`status.in.("PREPARING","DELIVERING","IN_TRANSIT"),driver_id.eq.${currentUser.id}`);
+         } else if (currentUser.role === 'admin') {
+            // Admin sees all orders
          } else {
             return;
          }
@@ -758,17 +760,7 @@ export const useAppStore = create<AppState>()(
          const { data: dbOrders, error } = await query;
          
          if (dbOrders && !error) {
-             let inactiveCount = 0;
-             const filteredDbOrders = dbOrders.filter((dbOrder: any) => {
-                 const isInactive = dbOrder.status === 'COMPLETED' || dbOrder.status === 'DELIVERED' || dbOrder.status === 'CANCELLED';
-                 if (isInactive) {
-                     if (inactiveCount >= 3) return false;
-                     inactiveCount++;
-                 }
-                 return true;
-             });
-
-             const mappedOrders = filteredDbOrders.map((dbOrder: any) => {
+             const mappedOrders = dbOrders.map((dbOrder: any) => {
                 let appStatus = 'pendente';
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';

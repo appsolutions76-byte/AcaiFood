@@ -44,8 +44,12 @@ export default function MotoboyDashboard() {
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const corridasDisponiveis = store.orders.filter(o => o.status === 'preparo' && o.motoristaId === null && o.type === 'B2C' && store.users[o.origemId]?.cidade === currentUser.cidade);
-  const minhasCorridas = store.orders.filter(o => o.motoristaId === currentUser.id);
-  const ganhosHoje = minhasCorridas.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.entregaMotorista, 0);
+  const minhasCorridasAll = store.orders.filter(o => o.motoristaId === currentUser.id);
+  const ganhosHoje = minhasCorridasAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.entregaMotorista, 0);
+
+  const motoActiveOrders = minhasCorridasAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado');
+  const motoHistoryOrders = minhasCorridasAll.filter(o => o.status === 'entregue' || o.status === 'cancelado').slice(0, 3);
+  const minhasCorridas = [...motoActiveOrders, ...motoHistoryOrders];
 
   const isPaused = currentUser.status === 'paused';
   const handleToggleStatus = () => {

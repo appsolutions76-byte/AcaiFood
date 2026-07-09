@@ -105,8 +105,12 @@ export default function BatedeiraDashboard() {
 
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const meusPedidos = store.orders.filter(o => o.lojaId === currentUser.id);
-  const vendasHoje = meusPedidos.filter(o => o.status === 'entregue' && o.type === 'B2C').reduce((acc, curr) => acc + curr.taxas.repasse, 0);
+  const meusPedidosAll = store.orders.filter(o => o.lojaId === currentUser.id);
+  const vendasHoje = meusPedidosAll.filter(o => o.status === 'entregue' && o.type === 'B2C').reduce((acc, curr) => acc + curr.taxas.repasse, 0);
+  
+  const batedeiraActiveOrders = meusPedidosAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado');
+  const batedeiraHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado').slice(0, 3);
+  const meusPedidos = [...batedeiraActiveOrders, ...batedeiraHistoryOrders];
   const fornecedores = Object.values(store.users)
     .filter(u => u.role === 'fornecedor' && u.status !== 'paused' && u.status !== 'blocked' && u.cidade === currentUser.cidade)
     .sort((a, b) => {

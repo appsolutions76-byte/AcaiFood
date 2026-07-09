@@ -103,8 +103,12 @@ export default function FornecedorDashboard() {
 
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const meusPedidos = store.orders.filter(o => o.fornecedorId === currentUser.id && o.status !== 'cancelado');
-  const vendasHoje = meusPedidos.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.repasse, 0);
+  const meusPedidosAll = store.orders.filter(o => o.fornecedorId === currentUser.id);
+  const vendasHoje = meusPedidosAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.repasse, 0);
+
+  const fornActiveOrders = meusPedidosAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado');
+  const fornHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado').slice(0, 3);
+  const meusPedidos = [...fornActiveOrders, ...fornHistoryOrders];
 
   const handleSaveSubsidy = () => {
     store.setFreteSubsidy(currentUser.id, parseFloat(subsidyInput) || 0);
