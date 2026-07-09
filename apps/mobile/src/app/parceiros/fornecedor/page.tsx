@@ -242,7 +242,7 @@ export default function FornecedorDashboard() {
                     {o.status === 'pendente' && (
                       <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                           <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
-                          <button onClick={() => store.acaoPedido(o.id, 'aceitar_forn')} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Separar Fruto</button>
+                          <button onClick={() => store.acaoPedido(o.id, 'aceitar_forn')} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Separar</button>
                       </div>
                     )}
                 </div>

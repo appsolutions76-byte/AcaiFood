@@ -20,6 +20,7 @@ export default function BatedeiraDashboard() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+  const [cartModalB2B, setCartModalB2B] = useState<{ open: boolean; fornId: string; quantity: number }>({ open: false, fornId: '', quantity: 1 });
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -252,10 +253,7 @@ export default function BatedeiraDashboard() {
                                 <span className="font-bold">{formatMoney(freteLoja)}</span>
                               </div>
                           </div>
-                          <button onClick={async () => {
-                              const url = await store.criarPedido('B2B', forn.id);
-                              if(url) window.location.href = url;
-                          }} className="w-full mt-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg transition">Comprar Paneiros</button>
+                          <button onClick={() => setCartModalB2B({ open: true, fornId: forn.id, quantity: 1 })} className="w-full mt-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg transition">Comprar Paneiros</button>
                       </div>
                     )
                   })}
@@ -317,7 +315,7 @@ export default function BatedeiraDashboard() {
                       )}
 
                       {!isCanceled && o.type === 'B2B' && o.status === 'em_rota' && o.confirmacao.entregador && !o.confirmacao.recebedor && (
-                        <button onClick={() => store.acaoPedido(o.id, 'conf_recebedor')} className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow-md transition w-full sm:w-auto mt-2 sm:mt-0">✅ Confirmar Chegada</button>
+                        <button onClick={() => store.acaoPedido(o.id, 'conf_recebedor')} className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow-md transition w-full sm:w-auto mt-2 sm:mt-0">✅ Confirmar Recebimento</button>
                       )}
                   </div>
               </div>
@@ -362,6 +360,71 @@ export default function BatedeiraDashboard() {
                 <button onClick={() => setPriceModalOpen(false)} className="px-5 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
                 <button onClick={handleSavePrices} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition">Salvar Preços</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* B2B Cart Modal */}
+      {cartModalB2B.open && (
+        <div className="fixed inset-0 bg-black/70 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95">
+              <div className="bg-emerald-700 text-white p-4 sm:p-5 flex justify-between items-center">
+                  <h3 className="font-bold text-lg">🛒 Comprar Fruto (B2B)</h3>
+                  <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+              </div>
+              
+              <div className="p-6">
+                  {(() => {
+                      const forn = store.users[cartModalB2B.fornId];
+                      if (!forn) return <p>Fornecedor não encontrado</p>;
+                      
+                      const dist = (forn.lat && currentUser?.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
+                      const freteTotal = dist * store.rates.b2b_km;
+                      const subsidy = forn.freteSubsidyPct || 0;
+                      const freteLoja = freteTotal * (1 - subsidy / 100);
+                      const unitPrice = forn.priceB2B || 0;
+                      const subtotal = unitPrice * cartModalB2B.quantity;
+                      const totalToPay = subtotal + freteLoja;
+
+                      return (
+                          <>
+                              <p className="text-xs text-zinc-500 font-bold uppercase mb-1">Fornecedor Selecionado</p>
+                              <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{forn.name}</h4>
+                              
+                              <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Quantidade de Paneiros / Latas:</label>
+                              <div className="flex items-center gap-4 mb-6">
+                                  <button onClick={() => setCartModalB2B(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1)}))} className="bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 w-10 h-10 rounded-full font-bold text-xl flex items-center justify-center hover:bg-zinc-300 transition">-</button>
+                                  <span className="text-2xl font-bold text-zinc-900 dark:text-white w-8 text-center">{cartModalB2B.quantity}</span>
+                                  <button onClick={() => setCartModalB2B(prev => ({ ...prev, quantity: prev.quantity + 1}))} className="bg-emerald-100 text-emerald-700 w-10 h-10 rounded-full font-bold text-xl flex items-center justify-center hover:bg-emerald-200 transition">+</button>
+                              </div>
+                              
+                              <div className="space-y-3 mb-6 text-sm text-zinc-600 dark:text-zinc-400">
+                                  <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                                      <span>Valor do Produto ({cartModalB2B.quantity}x {formatMoney(unitPrice)}):</span>
+                                      <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(subtotal)}</span>
+                                  </div>
+                                  <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                                      <span>Frete (sua parte):</span>
+                                      <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(freteLoja)}</span>
+                                  </div>
+                                  <div className="flex justify-between pt-2 text-lg">
+                                      <span className="font-bold text-zinc-800 dark:text-white">Total a Pagar:</span>
+                                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(totalToPay)}</span>
+                                  </div>
+                              </div>
+                              
+                              <div className="flex gap-3">
+                                  <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="flex-1 px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition">Cancelar</button>
+                                  <button onClick={async () => {
+                                      const url = await store.criarPedido('B2B', forn.id, undefined, cartModalB2B.quantity);
+                                      setCartModalB2B({ ...cartModalB2B, open: false });
+                                      if(url) window.location.href = url;
+                                  }} className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-700 active:scale-95 transition">Confirmar Pedido</button>
+                              </div>
+                          </>
+                      );
+                  })()}
+              </div>
           </div>
         </div>
       )}

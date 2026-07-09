@@ -44,6 +44,7 @@ export interface Order {
   id: string;
   type: 'B2C' | 'B2B' | 'COLETA';
   title?: string;
+  quantity?: number;
   status: 'pendente' | 'preparo' | 'em_rota' | 'entregue' | 'cancelado';
   criadoPor: string;
   origemId: string;
@@ -87,7 +88,7 @@ interface AppState {
   logout: () => void;
   authorizeMercadoPago: (userId: string, token: string) => void;
   saveRates: (newRates: Partial<AppState['rates']>) => void;
-  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string) => Promise<string | undefined>;
+  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string, quantity?: number) => Promise<string | undefined>;
   acaoPedido: (orderId: string, action: string) => void;
   setFreteSubsidy: (userId: string, pct: number) => void;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => void;
@@ -403,7 +404,7 @@ export const useAppStore = create<AppState>()(
         };
       }),
 
-      criarPedido: async (tipo, targetId, subTipoMenu) => {
+      criarPedido: async (tipo, targetId, subTipoMenu, quantity = 1) => {
         const state = get();
         if (!state.currentUser) return;
         const currentUser = state.currentUser;
@@ -436,6 +437,7 @@ export const useAppStore = create<AppState>()(
           confirmacao: { entregador: false, recebedor: false },
           motoristaId: null,
           valor: 0,
+          quantity,
           taxas: { entregaTotal: 0, entregaMotorista: 0, entregaCliente: 0, entregaLoja: 0, entregaFornecedor: 0, plataformaVenda: 0, plataformaEntrega: 0, plataformaTotal: 0, repasse: 0 }
         };
 
@@ -474,8 +476,8 @@ export const useAppStore = create<AppState>()(
         // Simulação rápida para B2B e Coleta
         if (tipo === 'B2B' && targetId) {
             const forn = state.users[targetId];
-            novoPedido.title = `Lote de Fruto (${forn.name})`;
-            novoPedido.valor = forn.priceB2B || 0;
+            novoPedido.title = `${quantity}x Paneiros (${forn.name})`;
+            novoPedido.valor = (forn.priceB2B || 0) * quantity;
             novoPedido.lojaId = currentUser.id;
             novoPedido.fornecedorId = targetId;
             novoPedido.taxas.entregaTotal = calcFrete('B2B', distKM);
@@ -525,7 +527,7 @@ export const useAppStore = create<AppState>()(
               orderId: dbOrder.id,
               cartItems: [{
                 id: subTipoMenu || tipo,
-                quantity: 1
+                quantity: quantity
               }]
             },
             headers: {
