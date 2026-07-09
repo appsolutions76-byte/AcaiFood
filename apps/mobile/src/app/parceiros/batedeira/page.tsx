@@ -60,10 +60,11 @@ export default function BatedeiraDashboard() {
         return;
       }
       
-      const clientId = process.env.NEXT_PUBLIC_MP_CLIENT_ID || "7957691912013698";
-      const baseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, '');
-      const redirectUri = `${baseUrl}/functions/v1/mp-oauth`;
-      window.location.href = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&state=${data.state_id}&redirect_uri=${redirectUri}`;
+      const clientId = (process.env.NEXT_PUBLIC_MP_CLIENT_ID || "7957691912013698").trim();
+      const baseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, '');
+      const redirectUri = encodeURIComponent(`${baseUrl}/functions/v1/mp-oauth`);
+      const authUrl = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&state=${data.state_id}&redirect_uri=${redirectUri}`;
+      window.location.href = authUrl;
     } catch (err) {
       console.error(err);
       alert("Erro ao conectar com servidor.");
