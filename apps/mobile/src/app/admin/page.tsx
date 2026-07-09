@@ -144,7 +144,24 @@ export default function AdminDashboard() {
   };
 
   const handleClearData = () => {
-    if (confirm("Tem certeza que deseja apagar todos os pedidos da sessão?")) {
+    if (!store.clearPassword) {
+       const newPwd = prompt("Crie uma senha de segurança para habilitar o botão Limpar:");
+       if (newPwd) {
+          store.setClearPassword(newPwd);
+          alert("Senha de segurança criada! Clique em Limpar novamente para prosseguir.");
+       }
+       return;
+    }
+
+    const pwd = prompt("Digite a senha de segurança para limpar o banco de dados:");
+    if (pwd === null) return; // User cancelled
+    
+    if (pwd !== store.clearPassword) {
+       alert("Senha incorreta!");
+       return;
+    }
+
+    if (confirm("🚨 ATENÇÃO: Tem certeza que deseja apagar DEFINITIVAMENTE todos os pedidos do banco de dados?")) {
       store.clearData();
     }
   };

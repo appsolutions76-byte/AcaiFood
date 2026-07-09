@@ -79,6 +79,7 @@ interface AppState {
   orders: Order[];
   orderCounter: number;
   currentUser: User | null;
+  clearPassword?: string;
   
   // Ações
   login: (userId: string) => void;
@@ -101,6 +102,7 @@ interface AppState {
   fetchAllUsers: () => Promise<void>;
   setupRealtime: (userId: string) => void;
   clearData: () => Promise<void>;
+  setClearPassword: (pwd: string) => void;
 }
 
 const DB_DEFAULTS = {
@@ -838,7 +840,9 @@ export const useAppStore = create<AppState>()(
             const newUsers = state.currentUser ? { [state.currentUser.id]: state.currentUser } : {};
             return { orders: [], orderCounter: 1, rates: DB_DEFAULTS.rates, users: newUsers };
          });
-      }
+      },
+
+      setClearPassword: (pwd) => set({ clearPassword: pwd })
     }),
     { name: 'acaifood-storage-v4' }
   )
