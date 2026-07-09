@@ -137,8 +137,10 @@ export default function MotoboyDashboard() {
                         <span className="text-4xl mb-3 opacity-50">✅</span>
                         <p className="text-zinc-500 font-medium">Você está livre.</p>
                     </div>
-                  ) : minhasCorridas.map(o => (
-                    <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-purple-400 dark:border-purple-600' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                  ) : minhasCorridas.map(o => {
+                    const isCanceled = o.status === 'cancelado';
+                    return (
+                    <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-purple-400 dark:border-purple-600' : isCanceled ? 'border-red-300 opacity-60 border-l-4 border-l-red-400' : 'border-zinc-200 dark:border-zinc-800'}`}>
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-bold text-zinc-800 dark:text-white text-sm">{o.title}</span>
                             <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: currentUser.id })} className="text-[10px] text-blue-500 hover:underline">🗺️ {o.distancia.toFixed(1)} km</button>
@@ -149,11 +151,16 @@ export default function MotoboyDashboard() {
                             <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-3 rounded-lg shadow transition">📍 Confirmar Chegada</button>
                         ) : o.status === 'em_rota' && o.confirmacao.entregador ? (
                             <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 text-xs p-2 rounded text-center font-bold">Aguardando cliente confirmar...</div>
-                        ) : (
+                        ) : o.status === 'entregue' ? (
                             <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-2 rounded text-center font-bold">✅ Finalizado</div>
-                        )}
+                        ) : isCanceled ? (
+                            <div className="flex flex-col gap-2">
+                               <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 text-xs p-2 rounded text-center font-bold">Cancelado</div>
+                               <button onClick={() => { if(confirm('Deseja excluir esta corrida do seu histórico?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="w-full text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold py-2 rounded-lg transition">🗑️ Excluir</button>
+                            </div>
+                        ) : null}
                     </div>
-                  ))}
+                  )})}
                 </div>
             </div>
         </div>

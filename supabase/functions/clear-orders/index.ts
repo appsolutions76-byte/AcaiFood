@@ -35,8 +35,8 @@ serve(async (req) => {
     }
 
     // Delete all orders
-    // The neq('id', '0') is a hack to delete all rows since delete() requires a filter in PostgREST
-    const { error: deleteError } = await systemClient.from('orders').delete().neq('id', '0');
+    // Use a valid dummy UUID to safely bypass PostgREST requiring a filter for delete()
+    const { error: deleteError } = await systemClient.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     
     if (deleteError) {
         throw new Error(`Failed to delete orders: ${deleteError.message}`);

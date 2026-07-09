@@ -324,6 +324,10 @@ export default function BatedeiraDashboard() {
                       {o.status === 'entregue' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>}
                       {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
                       
+                      {isCanceled && (
+                        <button onClick={() => { if(confirm('Deseja excluir este pedido permanentemente?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-lg transition mt-2 sm:mt-0">🗑️ Excluir</button>
+                      )}
+
                       {/* Interações */}
                       {!isCanceled && o.type === 'B2C' && o.status === 'pendente' && (
                         <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">

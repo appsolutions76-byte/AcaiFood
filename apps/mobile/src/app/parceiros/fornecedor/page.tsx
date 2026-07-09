@@ -248,8 +248,10 @@ export default function FornecedorDashboard() {
                 <span className="text-4xl mb-3 opacity-50">🚢</span>
                 <p className="text-zinc-500 font-medium">Nenhum pedido de batedeira no momento.</p>
             </div>
-          ) : meusPedidos.map(o => (
-            <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-xl shadow-sm border border-l-4 border-l-emerald-500 border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          ) : meusPedidos.map(o => {
+            const isCanceled = o.status === 'cancelado';
+            return (
+            <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-xl shadow-sm border border-l-4 ${isCanceled ? 'border-red-300 opacity-60 border-l-red-400' : 'border-l-emerald-500'} border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
                 <div className="w-full sm:w-auto">
                     <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">{o.type}</span>
@@ -269,9 +271,14 @@ export default function FornecedorDashboard() {
                     {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Separação</span>}
                     {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
                     {o.status === 'entregue' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>}
+                    {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
                     
+                    {isCanceled && (
+                      <button onClick={() => { if(confirm('Deseja excluir este pedido permanentemente?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-lg transition mt-2 sm:mt-0">🗑️ Excluir</button>
+                    )}
+
                     {/* Interações */}
-                    {o.status === 'pendente' && (
+                    {!isCanceled && o.status === 'pendente' && (
                       <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                           <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
                           <button onClick={() => store.acaoPedido(o.id, 'aceitar_forn')} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Separar</button>
@@ -279,7 +286,7 @@ export default function FornecedorDashboard() {
                     )}
                 </div>
             </div>
-          ))}
+          )})}
           </div>
         </div>
         )}

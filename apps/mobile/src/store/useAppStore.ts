@@ -681,6 +681,17 @@ export const useAppStore = create<AppState>()(
       },
 
       acaoPedido: async (orderId, action) => {
+        if (action === 'deletar_pedido') {
+            const { error } = await supabase.from('orders').delete().eq('id', orderId);
+            if (!error) {
+                set((state) => ({ orders: state.orders.filter(o => o.id !== orderId) }));
+            } else {
+                console.error("Error deleting order:", error);
+                alert("Erro ao excluir pedido.");
+            }
+            return;
+        }
+
         let newDbStatus = '';
         let driverId = null;
 

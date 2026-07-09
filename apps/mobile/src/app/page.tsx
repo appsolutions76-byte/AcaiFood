@@ -212,6 +212,10 @@ export default function StorefrontPage() {
                             {!isCanceled && o.status === 'pendente' && (
                               <button onClick={() => store.acaoPedido(o.id, 'cancelar_cliente')} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
                             )}
+
+                            {isCanceled && (
+                              <button onClick={() => { if(confirm('Deseja excluir este pedido do seu histórico?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">🗑️ Excluir</button>
+                            )}
                             
                             {isWaitingDriver && (
                               <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Moto a caminho</span>
