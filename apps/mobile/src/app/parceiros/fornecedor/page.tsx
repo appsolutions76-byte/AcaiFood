@@ -20,6 +20,9 @@ export default function FornecedorDashboard() {
   useEffect(() => {
     setMounted(true);
   }, []);
+  const batedeiras = Object.values(store.users).filter(u => u.type === 'batedeira');
+  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  
   const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [b2bPrice, setB2bPrice] = useState(currentUser?.priceB2B || 140);
@@ -125,6 +128,7 @@ export default function FornecedorDashboard() {
       <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
         <div className="max-w-5xl mx-auto px-4 flex gap-6 overflow-x-auto">
           <button onClick={() => setActiveTab('geral')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'geral' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
+          <button onClick={() => setActiveTab('vender')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'vender' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Vender Fruto</button>
           <button onClick={() => setActiveTab('produtos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'produtos' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>➕ Produtos Extras</button>
           <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🚚 Gestão de Pedidos</button>
         </div>
@@ -192,6 +196,68 @@ export default function FornecedorDashboard() {
               </div>
           </div>
         </div>
+        )}
+
+        {activeTab === 'vender' && (
+          <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-300">
+              <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Vender Fruto (Para Lojas)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {batedeiras.map(loja => {
+                    const dist = (loja.lat && currentUser.lat) ? haversineKm(loja.lat, loja.lng!, currentUser.lat, currentUser.lng!) : 0;
+                    const freteTotal = dist * store.rates.b2b_km;
+                    const subsidy = currentUser.freteSubsidyPct || 0;
+                    const freteLoja = freteTotal * (1 - subsidy / 100);
+
+                    return (
+                      <div key={loja.id} className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900 rounded-lg p-3 flex flex-col">
+                          <div className="flex justify-between items-start mb-2">
+                              <div className="flex gap-2 items-center"><span className="text-2xl">{loja.icon}</span><span className="font-bold text-sm text-emerald-900 dark:text-emerald-400">{loja.name}</span></div>
+                              <button onClick={() => setMapModal({ open: true, origem: currentUser.id, destino: loja.id })} className="text-[10px] font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">🗺️ {dist.toFixed(1)} km</button>
+                          </div>
+                          <div className="bg-white/60 dark:bg-black/20 p-2 rounded mb-3 text-xs text-emerald-800 dark:text-emerald-200">
+                              <div className="flex justify-between mb-1"><span>Seu Fruto (Lata):</span> <span className="font-bold">{formatMoney(b2bPrice)}</span></div>
+                              <div className="flex justify-between">
+                                <span>Frete Batedeira paga:</span> 
+                                <span className="font-bold">{formatMoney(freteLoja)}</span>
+                              </div>
+                          </div>
+                          <button onClick={() => alert('Em breve! O envio de ofertas diretamente para as lojas estará disponível na próxima atualização.')} className="w-full mt-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg transition">Vender Paneiros</button>
+                      </div>
+                    )
+                  })}
+              </div>
+          </div>
+        )}
+
+        {activeTab === 'vender' && (
+          <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-300">
+              <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Vender Fruto (Para Lojas)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {batedeiras.map(loja => {
+                    const dist = (loja.lat && currentUser.lat) ? haversineKm(loja.lat, loja.lng!, currentUser.lat, currentUser.lng!) : 0;
+                    const freteTotal = dist * store.rates.b2b_km;
+                    const subsidy = currentUser.freteSubsidyPct || 0;
+                    const freteLoja = freteTotal * (1 - subsidy / 100);
+
+                    return (
+                      <div key={loja.id} className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900 rounded-lg p-3 flex flex-col">
+                          <div className="flex justify-between items-start mb-2">
+                              <div className="flex gap-2 items-center"><span className="text-2xl">{loja.icon}</span><span className="font-bold text-sm text-emerald-900 dark:text-emerald-400">{loja.name}</span></div>
+                              <button onClick={() => setMapModal({ open: true, origem: currentUser.id, destino: loja.id })} className="text-[10px] font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">🗺️ {dist.toFixed(1)} km</button>
+                          </div>
+                          <div className="bg-white/60 dark:bg-black/20 p-2 rounded mb-3 text-xs text-emerald-800 dark:text-emerald-200">
+                              <div className="flex justify-between mb-1"><span>Seu Fruto (Lata):</span> <span className="font-bold">{formatMoney(b2bPrice)}</span></div>
+                              <div className="flex justify-between">
+                                <span>Frete Batedeira paga:</span> 
+                                <span className="font-bold">{formatMoney(freteLoja)}</span>
+                              </div>
+                          </div>
+                          <button onClick={() => alert('Em breve! O envio de ofertas diretamente para as lojas estará disponível na próxima atualização.')} className="w-full mt-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg transition">Vender Paneiros</button>
+                      </div>
+                    )
+                  })}
+              </div>
+          </div>
         )}
           
         {activeTab === 'produtos' && (
