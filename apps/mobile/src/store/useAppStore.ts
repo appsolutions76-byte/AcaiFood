@@ -274,10 +274,13 @@ export const useAppStore = create<AppState>()(
       authorizeMercadoPago: (userId, token) => {
         set((state) => {
           const user = state.users[userId];
-          if (user) {
-            user.mercadoPagoToken = token;
-          }
-          return { users: { ...state.users, [userId]: { ...user } } };
+          if (!user) return state;
+          const updatedUser = { ...user, mercadoPagoToken: token };
+          const isCurrent = state.currentUser?.id === userId;
+          return { 
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
         });
       },
 
@@ -286,13 +289,23 @@ export const useAppStore = create<AppState>()(
       setFreteSubsidy: (userId, pct) => set((state) => {
         const user = state.users[userId];
         if (!user) return state;
-        return { users: { ...state.users, [userId]: { ...user, freteSubsidyPct: pct } } };
+        const updatedUser = { ...user, freteSubsidyPct: pct };
+        const isCurrent = state.currentUser?.id === userId;
+        return { 
+          users: { ...state.users, [userId]: updatedUser },
+          currentUser: isCurrent ? updatedUser : state.currentUser
+        };
       }),
 
       updateUserStatus: (userId, status) => set((state) => {
         const user = state.users[userId];
         if (!user) return state;
-        return { users: { ...state.users, [userId]: { ...user, status } } };
+        const updatedUser = { ...user, status };
+        const isCurrent = state.currentUser?.id === userId;
+        return { 
+          users: { ...state.users, [userId]: updatedUser },
+          currentUser: isCurrent ? updatedUser : state.currentUser
+        };
       }),
 
       deleteUser: async (userId) => {
@@ -346,7 +359,12 @@ export const useAppStore = create<AppState>()(
       changePassword: (userId, newPassword) => set((state) => {
         const user = state.users[userId];
         if (!user) return state;
-        return { users: { ...state.users, [userId]: { ...user, password: newPassword } } };
+        const updatedUser = { ...user, password: newPassword };
+        const isCurrent = state.currentUser?.id === userId;
+        return { 
+          users: { ...state.users, [userId]: updatedUser },
+          currentUser: isCurrent ? updatedUser : state.currentUser
+        };
       }),
 
       updateUserPrice: (userId, b2cPrices, b2bPrice) => set((state) => {
@@ -355,20 +373,34 @@ export const useAppStore = create<AppState>()(
         const updatedUser = { ...user };
         if (b2cPrices) updatedUser.priceB2C = b2cPrices;
         if (b2bPrice !== undefined) updatedUser.priceB2B = b2bPrice;
-        return { users: { ...state.users, [userId]: updatedUser } };
+        const isCurrent = state.currentUser?.id === userId;
+        return { 
+          users: { ...state.users, [userId]: updatedUser },
+          currentUser: isCurrent ? updatedUser : state.currentUser
+        };
       }),
 
       addProduct: (userId, product) => set((state) => {
         const user = state.users[userId];
         if (!user) return state;
         const currentProducts = user.products || [];
-        return { users: { ...state.users, [userId]: { ...user, products: [...currentProducts, product] } } };
+        const updatedUser = { ...user, products: [...currentProducts, product] };
+        const isCurrent = state.currentUser?.id === userId;
+        return { 
+          users: { ...state.users, [userId]: updatedUser },
+          currentUser: isCurrent ? updatedUser : state.currentUser
+        };
       }),
 
       removeProduct: (userId, productId) => set((state) => {
         const user = state.users[userId];
         if (!user || !user.products) return state;
-        return { users: { ...state.users, [userId]: { ...user, products: user.products.filter(p => p.id !== productId) } } };
+        const updatedUser = { ...user, products: user.products.filter(p => p.id !== productId) };
+        const isCurrent = state.currentUser?.id === userId;
+        return { 
+          users: { ...state.users, [userId]: updatedUser },
+          currentUser: isCurrent ? updatedUser : state.currentUser
+        };
       }),
 
       criarPedido: async (tipo, targetId, subTipoMenu) => {

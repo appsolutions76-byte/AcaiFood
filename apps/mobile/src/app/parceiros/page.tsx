@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Store, Truck, Bike, PackageOpen, User, Recycle } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 
 export default function ParceirosOnboarding() {
@@ -15,9 +16,12 @@ export default function ParceirosOnboarding() {
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Portal do Parceiro</h1>
         </div>
-        <Link href="/login" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
-          Já sou parceiro (Entrar)
-        </Link>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Link href="/login" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
+            Já sou parceiro (Entrar)
+          </Link>
+        </div>
       </header>
 
       <main className="flex-1 max-w-3xl mx-auto w-full p-6 flex flex-col justify-center">

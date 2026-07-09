@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, Role, User } from "@/store/useAppStore";
 import { ArrowLeft, UserPlus, ShieldCheck } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 function CadastroForm() {
   const router = useRouter();
@@ -285,7 +286,10 @@ function CadastroForm() {
 
 export default function CadastroPage() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <Suspense fallback={<div className="text-center">Carregando...</div>}>
         <CadastroForm />
       </Suspense>

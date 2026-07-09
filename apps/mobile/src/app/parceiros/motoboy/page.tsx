@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Bike } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function MotoboyDashboard() {
   const router = useRouter();
@@ -56,6 +57,7 @@ export default function MotoboyDashboard() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Corridas (B2C)</h1>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 underline">Sair</button>
           </div>
         </div>

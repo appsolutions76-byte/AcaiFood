@@ -6,6 +6,7 @@ import { Store, ShoppingCart, UserCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function StorefrontPage() {
   const store = useAppStore();
@@ -95,6 +96,7 @@ export default function StorefrontPage() {
              ) : (
                <div className="flex items-center gap-3">
                  <span className="text-sm font-medium">Olá, {currentUser.name.split(' ')[0]}</span>
+                 <ThemeToggle />
                  <button onClick={() => store.logout()} className="text-xs text-purple-200 hover:text-white underline">Sair</button>
                </div>
              )}

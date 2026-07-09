@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Settings, Trash2 } from "lucide-react";
 import { useAppStore, Order } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function AdminDashboard() {
   const store = useAppStore();
@@ -154,6 +155,7 @@ export default function AdminDashboard() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
           </div>
           <div className="flex gap-2">
+              <ThemeToggle />
               <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition text-sm">
                   🔑 Senha
               </button>

@@ -7,6 +7,7 @@ import { ArrowLeft, PackageOpen } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { supabase } from "@/lib/supabase";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function FornecedorDashboard() {
   const router = useRouter();
@@ -114,6 +115,7 @@ export default function FornecedorDashboard() {
             {currentUser.mercadoPagoToken && (
                <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200">MP Ativo ✅</span>
             )}
+            <ThemeToggle />
             <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 underline">Sair</button>
           </div>
         </div>
