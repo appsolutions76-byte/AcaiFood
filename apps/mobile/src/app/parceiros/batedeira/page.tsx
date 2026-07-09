@@ -245,7 +245,7 @@ export default function BatedeiraDashboard() {
           
         {activeTab === 'abastecimento' && (
           <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-300">
-              <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Comprar Fruto (Fornecedores B2B)</h3>
+              <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Comprar Lata Açaí (Fornecedores B2B)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {fornecedores.map(forn => {
                     const dist = (forn.lat && currentUser.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
@@ -260,7 +260,7 @@ export default function BatedeiraDashboard() {
                               <button onClick={() => setMapModal({ open: true, origem: forn.id, destino: currentUser.id })} className="text-[10px] font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">🗺️ {dist.toFixed(1)} km</button>
                           </div>
                           <div className="bg-white/60 dark:bg-black/20 p-2 rounded mb-3 text-xs text-emerald-800 dark:text-emerald-200">
-                              <div className="flex justify-between mb-1"><span>Fruto:</span> <span className="font-bold">{formatMoney(forn.priceB2B || 0)}</span></div>
+                              <div className="flex justify-between mb-1"><span>Lata Açaí:</span> <span className="font-bold">{formatMoney(forn.priceB2B || 0)}</span></div>
                               <div className="flex justify-between">
                                 <span>Frete {subsidy > 0 ? <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded uppercase font-bold ml-1">Forn. paga {subsidy}%</span> : ''}</span> 
                                 <span className="font-bold">{formatMoney(freteLoja)}</span>
@@ -289,7 +289,7 @@ export default function BatedeiraDashboard() {
             
             let financeText = '';
             if (o.type === 'B2C') financeText = `Bruto: ${formatMoney(o.valor)} | Sub. Frete: ${formatMoney(o.taxas.entregaLoja)} | Líquido: ${formatMoney(o.taxas.repasse)}`;
-            else if (o.type === 'B2B') financeText = `Custo Fruto: ${formatMoney(o.valor)} | Frete Pago: ${formatMoney(o.taxas.entregaLoja)} | Gasto Total: ${formatMoney(o.valor + o.taxas.entregaLoja)}`;
+            else if (o.type === 'B2B') financeText = `Custo Lata Açaí: ${formatMoney(o.valor)} | Frete Pago: ${formatMoney(o.taxas.entregaLoja)} | Gasto Total: ${formatMoney(o.valor + o.taxas.entregaLoja)}`;
             else if (o.type === 'COLETA') financeText = `Serviço Base: ${formatMoney(o.valor)} | Gasto Extra: ${formatMoney(-o.taxas.repasse - o.valor)} | Custo Total: ${formatMoney(-o.taxas.repasse)}`;
 
             return (
@@ -385,7 +385,7 @@ export default function BatedeiraDashboard() {
         <div className="fixed inset-0 bg-black/70 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95">
               <div className="bg-emerald-700 text-white p-4 sm:p-5 flex justify-between items-center">
-                  <h3 className="font-bold text-lg">🛒 Comprar Fruto (B2B)</h3>
+                  <h3 className="font-bold text-lg">🛒 Comprar Lata Açaí (B2B)</h3>
                   <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
               </div>
               
