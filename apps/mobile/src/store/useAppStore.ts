@@ -604,6 +604,12 @@ export const useAppStore = create<AppState>()(
             return;
           }
 
+          if (mpData && mpData.error) {
+            console.error("Erro retornado pela Edge Function:", mpData.error);
+            alert(`Pagamento não habilitado: ${mpData.error}`);
+            return;
+          }
+
           if (mpData && mpData.init_point) {
              // Save to local state using DB generated ID
              const finalPedido = { ...novoPedido, id: dbOrder.id };
