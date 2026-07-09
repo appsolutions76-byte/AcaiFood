@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PackageOpen } from "lucide-react";
@@ -14,6 +14,11 @@ export default function FornecedorDashboard() {
   const currentUser = store.currentUser;
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [b2bPrice, setB2bPrice] = useState(currentUser?.priceB2B || 140);
@@ -69,6 +74,10 @@ export default function FornecedorDashboard() {
       alert("Erro ao conectar com servidor.");
     }
   };
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
+  }
 
   if (!currentUser || currentUser.role !== 'fornecedor') {
     return (

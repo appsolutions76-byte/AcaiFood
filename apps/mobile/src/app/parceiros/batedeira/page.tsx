@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Store } from "lucide-react";
@@ -19,6 +19,11 @@ export default function BatedeiraDashboard() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isPaused = currentUser?.status === 'paused';
   const handleToggleStatus = () => {
@@ -71,6 +76,10 @@ export default function BatedeiraDashboard() {
     }
   };
 
+  if (!mounted) {
+    return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center"><p>Carregando...</p></div>;
+  }
+
   if (!currentUser || currentUser.role !== 'loja') {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
@@ -96,7 +105,7 @@ export default function BatedeiraDashboard() {
       return distA - distB;
     });
   
-  const distColeta = (currentUser.lat && store.users.ecoponto.lat) ? haversineKm(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat, store.users.ecoponto.lng!) : 0;
+  const distColeta = (currentUser.lat && store.users.ecoponto?.lat) ? haversineKm(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat, store.users.ecoponto.lng!) : 0;
   const freteColeta = distColeta * store.rates.col_km;
 
   const handleSaveSubsidy = () => {

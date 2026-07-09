@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Settings, Trash2 } from "lucide-react";
@@ -23,6 +23,11 @@ export default function AdminDashboard() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [newAdminPassword, setNewAdminPassword] = useState('');
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const filteredUsers = Object.values(store.users).filter(u => {
     if (userFilterRole !== 'all' && u.role !== userFilterRole) return false;
     const search = userFilterText.toLowerCase();
@@ -31,6 +36,10 @@ export default function AdminDashboard() {
   });
 
   const router = useRouter();
+
+  if (!mounted) {
+    return <div className="min-h-screen flex items-center justify-center p-6"><p>Carregando...</p></div>;
+  }
 
   if (!store.currentUser || store.currentUser.role !== 'admin') {
     return (
