@@ -737,10 +737,21 @@ export const useAppStore = create<AppState>()(
             return;
          }
 
+         query = query.order('created_at', { ascending: false });
          const { data: dbOrders, error } = await query;
          
          if (dbOrders && !error) {
-             const mappedOrders = dbOrders.map((dbOrder: any) => {
+             let inactiveCount = 0;
+             const filteredDbOrders = dbOrders.filter((dbOrder: any) => {
+                 const isInactive = dbOrder.status === 'COMPLETED' || dbOrder.status === 'DELIVERED' || dbOrder.status === 'CANCELLED';
+                 if (isInactive) {
+                     if (inactiveCount >= 3) return false;
+                     inactiveCount++;
+                 }
+                 return true;
+             });
+
+             const mappedOrders = filteredDbOrders.map((dbOrder: any) => {
                 let appStatus = 'pendente';
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
