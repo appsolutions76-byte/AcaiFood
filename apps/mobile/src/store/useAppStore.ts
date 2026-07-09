@@ -98,6 +98,7 @@ interface AppState {
   addProduct: (userId: string, product: Product) => Promise<void>;
   removeProduct: (userId: string, productId: string) => Promise<void>;
   fetchOrders: (userId: string) => Promise<void>;
+  fetchAllUsers: () => Promise<void>;
   setupRealtime: (userId: string) => void;
   clearData: () => void;
 }
@@ -279,6 +280,58 @@ export const useAppStore = create<AppState>()(
                         lng: dbUser.longitude || 0,
                         icon: '🏪',
                         status: dbUser.status as 'active',
+                        priceB2C: {
+                            popular: sf?.price_b2c_popular || 20,
+                            medio: sf?.price_b2c_medio || 26,
+                            grosso: sf?.price_b2c_grosso || 35
+                        },
+                        freteSubsidyPct: sf?.frete_subsidy_pct || 0,
+                        mpLinked: !!dbUser.mp_merchant_id,
+                        products: sf?.products || []
+                    };
+                });
+                return { users: newUsers };
+            });
+        }
+      },
+
+      fetchAllUsers: async () => {
+        const { data: dbUsers, error } = await supabase
+            .from('users')
+            .select('*, storefronts(*, products(*))');
+            
+        if (error) {
+            console.error("Erro ao buscar todos os usuários:", error);
+            return;
+        }
+
+        if (dbUsers) {
+            set((state) => {
+                const newUsers = { ...state.users };
+                dbUsers.forEach(dbUser => {
+                    const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[0] : null;
+                    const appRole = dbUser.role === 'PARTNER' ? 'loja' :
+                                    dbUser.role === 'SUPPLIER' ? 'fornecedor' :
+                                    dbUser.role === 'COURIER' ? 'motorista' :
+                                    dbUser.role === 'ADMIN' ? 'admin' : 'cliente';
+                                    
+                    const veiculo = dbUser.vehicle_type === 'MOTO' ? 'Moto' : 
+                                    dbUser.vehicle_type === 'TRUCK' ? 'Caminhão' : 
+                                    dbUser.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined;
+
+                    newUsers[dbUser.id] = {
+                        id: dbUser.id,
+                        role: appRole as Role,
+                        name: sf?.store_name || dbUser.name,
+                        email: dbUser.email,
+                        cidade: dbUser.cidade,
+                        bairro: dbUser.bairro,
+                        lat: dbUser.latitude || 0,
+                        lng: dbUser.longitude || 0,
+                        icon: appRole === 'loja' ? '🏪' : appRole === 'fornecedor' ? '🏭' : appRole === 'motorista' ? '🛵' : '👤',
+                        veiculo,
+                        status: dbUser.status as 'active'|'paused'|'blocked',
+                        priceB2B: sf?.price_b2b,
                         priceB2C: {
                             popular: sf?.price_b2c_popular || 20,
                             medio: sf?.price_b2c_medio || 26,

@@ -27,7 +27,10 @@ export default function AdminDashboard() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (store.currentUser?.role === 'admin') {
+       store.fetchAllUsers();
+    }
+  }, [store.currentUser?.role]);
 
   const filteredUsers = Object.values(store.users).filter(u => {
     if (userFilterRole !== 'all' && u.role !== userFilterRole) return false;
