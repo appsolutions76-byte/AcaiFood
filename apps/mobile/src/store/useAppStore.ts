@@ -132,7 +132,7 @@ export const useAppStore = create<AppState>()(
           return false;
         }
 
-        const { data: userProfile } = await supabase.from('users').select('*').eq('id', authData.user.id).single();
+        const { data: userProfile } = await supabase.from('users').select('*, storefronts(*)').eq('id', authData.user.id).single();
         if (userProfile) {
           if (userProfile.status === 'blocked') {
             alert('Conta bloqueada pelo administrador.');
@@ -144,20 +144,29 @@ export const useAppStore = create<AppState>()(
                           userProfile.role === 'COURIER' ? 'motorista' :
                           userProfile.role === 'ADMIN' ? 'admin' : 'cliente';
           
+          const sf = (userProfile.storefronts && userProfile.storefronts.length > 0) ? userProfile.storefronts[0] : null;
+
           // Map DB user to AppUser
           const loggedUser: User = {
             id: userProfile.id,
             role: appRole as Role,
-            name: userProfile.name,
+            name: sf?.store_name || userProfile.name,
             email: userProfile.email,
             cidade: userProfile.cidade,
             bairro: userProfile.bairro,
             lat: userProfile.latitude || 0,
             lng: userProfile.longitude || 0,
-            icon: '👤', // Default, we could map based on role
+            icon: appRole === 'loja' ? '🏪' : appRole === 'fornecedor' ? '🏭' : appRole === 'motorista' ? '🛵' : '👤',
             veiculo: userProfile.vehicle_type === 'MOTO' ? 'Moto' : userProfile.vehicle_type === 'TRUCK' ? 'Caminhão' : userProfile.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined,
             status: userProfile.status as 'active'|'paused'|'blocked',
-            mpLinked: !!userProfile.mp_merchant_id
+            mpLinked: !!userProfile.mp_merchant_id,
+            priceB2B: sf?.price_b2b,
+            priceB2C: sf ? {
+                popular: sf.price_b2c_popular || 20,
+                medio: sf.price_b2c_medio || 26,
+                grosso: sf.price_b2c_grosso || 35
+            } : undefined,
+            freteSubsidyPct: sf?.frete_subsidy_pct || 0
           };
           
           set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
