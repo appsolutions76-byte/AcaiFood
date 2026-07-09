@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { Store, ShoppingCart, UserCheck } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,14 +8,9 @@ import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-export default function StorefrontPage() {
-  const store = useAppStore();
-  const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-
-  const currentUser = store.currentUser;
-  const router = useRouter();
+function PaymentHandler() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
@@ -30,6 +25,16 @@ export default function StorefrontPage() {
       router.replace('/');
     }
   }, [searchParams, router]);
+
+  return null;
+}
+
+export default function StorefrontPage() {
+  const store = useAppStore();
+  const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const currentUser = store.currentUser;
+  const router = useRouter();
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [cartModal, setCartModal] = useState<{ open: boolean; lojaId: string; tipo: string }>({ open: false, lojaId: '', tipo: 'medio' });
@@ -94,10 +99,13 @@ export default function StorefrontPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
-      <header className="bg-purple-900 text-white p-4 sticky top-0 z-30 shadow-md">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24 font-sans">
+      <Suspense fallback={null}>
+        <PaymentHandler />
+      </Suspense>
+      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
         <div className="flex justify-between items-center max-w-5xl mx-auto">
-          <div className="flex items-center gap-2 text-white">
+          <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
             <span className="text-2xl">🥣</span>
             <h1 className="text-xl font-bold">AçaíFood</h1>
           </div>
