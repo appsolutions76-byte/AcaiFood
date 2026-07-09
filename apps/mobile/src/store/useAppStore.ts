@@ -89,14 +89,16 @@ interface AppState {
   authorizeMercadoPago: (userId: string, token: string) => void;
   saveRates: (newRates: Partial<AppState['rates']>) => void;
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string, quantity?: number) => Promise<string | undefined>;
-  acaoPedido: (orderId: string, action: string) => void;
+  acaoPedido: (orderId: string, action: string) => Promise<void>;
   setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   changePassword: (userId: string, newPassword: string) => void;
   updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => Promise<void>;
-  addProduct: (userId: string, product: Product) => void;
-  removeProduct: (userId: string, productId: string) => void;
+  addProduct: (userId: string, product: Product) => Promise<void>;
+  removeProduct: (userId: string, productId: string) => Promise<void>;
+  fetchOrders: (userId: string) => Promise<void>;
+  setupRealtime: (userId: string) => void;
   clearData: () => void;
 }
 
@@ -120,7 +122,11 @@ export const useAppStore = create<AppState>()(
       
       login: (userId) => {
         const user = get().users[userId];
-        if (user) set({ currentUser: user });
+        if (user) {
+           set({ currentUser: user });
+           get().setupRealtime(userId);
+           get().fetchOrders(userId);
+        }
       },
 
       loginWithCredentials: async (email, pass) => {
@@ -132,7 +138,7 @@ export const useAppStore = create<AppState>()(
           return false;
         }
 
-        const { data: userProfile } = await supabase.from('users').select('*, storefronts(*)').eq('id', authData.user.id).single();
+        const { data: userProfile } = await supabase.from('users').select('*, storefronts(*, products(*))').eq('id', authData.user.id).single();
         if (userProfile) {
           if (userProfile.status === 'blocked') {
             alert('Conta bloqueada pelo administrador.');
@@ -166,17 +172,23 @@ export const useAppStore = create<AppState>()(
                 medio: sf.price_b2c_medio || 26,
                 grosso: sf.price_b2c_grosso || 35
             } : undefined,
-            freteSubsidyPct: sf?.frete_subsidy_pct || 0
+            freteSubsidyPct: sf?.frete_subsidy_pct || 0,
+            products: sf?.products || []
           };
           
           set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
+          get().setupRealtime(loggedUser.id);
+          get().fetchOrders(loggedUser.id);
           return true;
         }
 
         return false;
       },
 
-      logout: () => set({ currentUser: null }),
+      logout: () => {
+         set({ currentUser: null });
+         supabase.removeAllChannels();
+      },
 
       registerUser: async (data) => {
         await supabase.auth.signOut(); // Wipe any stale sessions from localStorage
@@ -243,7 +255,7 @@ export const useAppStore = create<AppState>()(
       fetchLojas: async () => {
         const { data: dbLojas, error } = await supabase
             .from('users')
-            .select('*, storefronts(*)')
+            .select('*, storefronts(*, products(*))')
             .eq('role', 'PARTNER');
             
         if (error) {
@@ -273,7 +285,8 @@ export const useAppStore = create<AppState>()(
                             grosso: sf?.price_b2c_grosso || 35
                         },
                         freteSubsidyPct: sf?.frete_subsidy_pct || 0,
-                        mpLinked: !!dbUser.mp_merchant_id
+                        mpLinked: !!dbUser.mp_merchant_id,
+                        products: sf?.products || []
                     };
                 });
                 return { users: newUsers };
@@ -413,28 +426,46 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      addProduct: (userId, product) => set((state) => {
-        const user = state.users[userId];
-        if (!user) return state;
-        const currentProducts = user.products || [];
-        const updatedUser = { ...user, products: [...currentProducts, product] };
-        const isCurrent = state.currentUser?.id === userId;
-        return { 
-          users: { ...state.users, [userId]: updatedUser },
-          currentUser: isCurrent ? updatedUser : state.currentUser
-        };
-      }),
+      addProduct: async (userId, product) => {
+        set((state) => {
+          const user = state.users[userId];
+          if (!user) return state;
+          const currentProducts = user.products || [];
+          const updatedUser = { ...user, products: [...currentProducts, product] };
+          const isCurrent = state.currentUser?.id === userId;
+          return { 
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
 
-      removeProduct: (userId, productId) => set((state) => {
-        const user = state.users[userId];
-        if (!user || !user.products) return state;
-        const updatedUser = { ...user, products: user.products.filter(p => p.id !== productId) };
-        const isCurrent = state.currentUser?.id === userId;
-        return { 
-          users: { ...state.users, [userId]: updatedUser },
-          currentUser: isCurrent ? updatedUser : state.currentUser
-        };
-      }),
+        // Sync with DB
+        const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', userId).single();
+        if (sf) {
+           await supabase.from('products').insert({
+              id: product.id,
+              storefront_id: sf.id,
+              name: product.name,
+              price: product.price
+           });
+        }
+      },
+
+      removeProduct: async (userId, productId) => {
+        set((state) => {
+          const user = state.users[userId];
+          if (!user || !user.products) return state;
+          const updatedUser = { ...user, products: user.products.filter(p => p.id !== productId) };
+          const isCurrent = state.currentUser?.id === userId;
+          return { 
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
+
+        // Sync with DB
+        await supabase.from('products').delete().eq('id', productId);
+      },
 
       criarPedido: async (tipo, targetId, subTipoMenu, quantity = 1) => {
         const state = get();
@@ -587,25 +618,123 @@ export const useAppStore = create<AppState>()(
 
       },
 
-      acaoPedido: (orderId, action) => {
+      acaoPedido: async (orderId, action) => {
+        let newDbStatus = '';
+        let driverId = null;
+
         set((state) => {
           const newOrders = state.orders.map(o => {
             if (o.id !== orderId) return o;
             const newOrder = { ...o };
-            if (action === 'cancelar_pedido' || action === 'cancelar_cliente') newOrder.status = 'cancelado';
-            if (action === 'aceitar_loja' || action === 'aceitar_forn') newOrder.status = 'preparo';
-            if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; }
+            if (action === 'cancelar_pedido' || action === 'cancelar_cliente') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
+            if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
+            if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newDbStatus = 'IN_TRANSIT'; driverId = newOrder.motoristaId; }
             if (action === 'conf_motorista') {
               newOrder.confirmacao.entregador = true;
               if (newOrder.type === 'COLETA') newOrder.confirmacao.recebedor = true;
             }
             if (action === 'conf_recebedor') newOrder.confirmacao.recebedor = true;
             
-            if (newOrder.confirmacao.entregador && newOrder.confirmacao.recebedor) newOrder.status = 'entregue';
+            if (newOrder.confirmacao.entregador && newOrder.confirmacao.recebedor) { newOrder.status = 'entregue'; newDbStatus = 'DELIVERED'; }
             return newOrder;
           });
           return { orders: newOrders };
         });
+
+        const updates: any = {};
+        if (newDbStatus) updates.status = newDbStatus;
+        if (driverId) updates.driver_id = driverId;
+
+        if (Object.keys(updates).length > 0) {
+           const { error } = await supabase.from('orders').update(updates).eq('id', orderId);
+           if (error) console.error("Error updating order in DB:", error);
+        }
+      },
+
+      fetchOrders: async (userId) => {
+         const state = get();
+         const currentUser = state.users[userId];
+         if (!currentUser) return;
+
+         let query = supabase.from('orders').select(`
+            id, order_type, status, products_subtotal, delivery_distance_km, 
+            applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
+            buyer_id, seller_storefront_id, driver_id, created_at,
+            buyer:users!orders_buyer_id_fkey(id, name, latitude, longitude),
+            storefront:storefronts!orders_seller_storefront_id_fkey(id, partner_id, store_name),
+            driver:users!orders_driver_id_fkey(id, name)
+         `);
+
+         if (currentUser.role === 'loja' || currentUser.role === 'fornecedor') {
+            const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id).single();
+            if (sf) {
+                query = query.eq('seller_storefront_id', sf.id);
+            }
+         } else if (currentUser.role === 'cliente') {
+            query = query.eq('buyer_id', currentUser.id);
+         } else if (currentUser.role === 'motorista') {
+            query = query.or(`status.in.("PREPARING","DELIVERING","IN_TRANSIT"),driver_id.eq.${currentUser.id}`);
+         } else {
+            return;
+         }
+
+         const { data: dbOrders, error } = await query;
+         
+         if (dbOrders && !error) {
+             const mappedOrders = dbOrders.map((dbOrder: any) => {
+                let appStatus = 'pendente';
+                if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
+                if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
+                if (dbOrder.status === 'COMPLETED' || dbOrder.status === 'DELIVERED') appStatus = 'entregue';
+                if (dbOrder.status === 'CANCELLED') appStatus = 'cancelado';
+
+                const storeName = dbOrder.storefront?.store_name || 'Loja';
+                const localOrder = state.orders.find(o => o.id === dbOrder.id);
+                
+                const deliveryTotal = (dbOrder.delivery_distance_km || 0) * (dbOrder.applied_delivery_fee_per_km || 0);
+                const platformDelivery = deliveryTotal * ((dbOrder.applied_delivery_platform_fee_percent || 0) / 100);
+                const driverAmount = deliveryTotal - platformDelivery;
+
+                return {
+                   ...(localOrder || {}),
+                   id: dbOrder.id,
+                   type: dbOrder.order_type as 'B2C'|'B2B'|'COLETA',
+                   title: localOrder?.title || `Pedido de ${storeName}`,
+                   status: appStatus as any,
+                   criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,
+                   origemId: localOrder?.origemId || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id,
+                   destinoId: localOrder?.destinoId || dbOrder.buyer_id,
+                   clienteId: localOrder?.clienteId || dbOrder.buyer_id,
+                   lojaId: localOrder?.lojaId || dbOrder.storefront?.partner_id,
+                   distancia: dbOrder.delivery_distance_km,
+                   valor: dbOrder.products_subtotal,
+                   motoristaId: dbOrder.driver_id,
+                   confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
+                   taxas: localOrder?.taxas || {
+                       entregaTotal: deliveryTotal,
+                       entregaMotorista: driverAmount,
+                       entregaCliente: deliveryTotal,
+                       entregaLoja: 0,
+                       entregaFornecedor: 0,
+                       plataformaVenda: (dbOrder.products_subtotal || 0) * ((dbOrder.applied_platform_fee_percent || 0) / 100),
+                       plataformaEntrega: platformDelivery,
+                       plataformaTotal: platformDelivery + ((dbOrder.products_subtotal || 0) * ((dbOrder.applied_platform_fee_percent || 0) / 100)),
+                       repasse: dbOrder.products_subtotal - ((dbOrder.products_subtotal || 0) * ((dbOrder.applied_platform_fee_percent || 0) / 100))
+                   }
+                };
+             });
+
+             set({ orders: mappedOrders });
+         }
+      },
+
+      setupRealtime: (userId) => {
+         supabase.removeAllChannels();
+         supabase.channel('public:orders')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+                get().fetchOrders(userId);
+            })
+            .subscribe();
       },
 
       clearData: () => set((state) => {
