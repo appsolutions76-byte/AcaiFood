@@ -78,7 +78,7 @@ serve(async (req) => {
     }
 
     // 4. Segurança Crítica 2: Cálculo Dinâmico de Distância no Servidor (Distance Spoofing Fix)
-    const { data: buyerUser } = await supabaseClient.from('users').select('latitude, longitude').eq('id', order.buyer_id).single();
+    const { data: buyerUser } = await supabaseClient.from('users').select('latitude, longitude, email, name').eq('id', order.buyer_id).single();
     const { data: sellerStore } = await supabaseClient.from('storefronts').select('partner_id').eq('id', order.seller_storefront_id).single();
     if (!sellerStore) throw new Error('Seller storefront not found');
     
@@ -165,6 +165,10 @@ serve(async (req) => {
         ],
         marketplace_fee: Number(totalApplicationFee.toFixed(2)),
         external_reference: orderId,
+        payer: {
+          email: buyerUser.email || 'cliente@acaifood.app',
+          name: buyerUser.name || 'Cliente'
+        },
         payment_methods: {
           excluded_payment_types: [{ id: "ticket" }],
           installments: 1
