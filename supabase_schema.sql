@@ -120,8 +120,10 @@ CREATE TABLE IF NOT EXISTS public.orders (
   total_platform_fee_amount DECIMAL(10, 2) GENERATED ALWAYS AS ((products_subtotal * applied_platform_fee_percent / 100) + ((delivery_distance_km * applied_delivery_fee_per_km) * applied_delivery_platform_fee_percent / 100)) STORED,
   
   total_amount DECIMAL(10, 2) GENERATED ALWAYS AS (products_subtotal + (delivery_distance_km * applied_delivery_fee_per_km)) STORED,
-  
-  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'PREPARING', 'READY', 'DELIVERING', 'COMPLETED', 'CANCELLED')),
+  quantity INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  CONSTRAINT orders_status_check CHECK (status IN ('PENDING', 'PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'COMPLETED', 'CANCELLED')),
+  CONSTRAINT orders_type_check CHECK (order_type IN ('B2C', 'B2B', 'COLETA')),
   mp_payment_id TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -167,6 +169,12 @@ DROP POLICY IF EXISTS "Users can read all public user profiles" ON public.users;
 CREATE POLICY "Users can read all public user profiles" 
 ON public.users FOR SELECT USING (
   role IN ('PARTNER', 'SUPPLIER') OR auth.uid() = id
+);
+
+DROP POLICY IF EXISTS "Admins can read all users" ON public.users;
+CREATE POLICY "Admins can read all users" 
+ON public.users FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = 'ADMIN')
 );
 
 DROP POLICY IF EXISTS "Users can edit their own profile" ON public.users;
@@ -222,10 +230,37 @@ DROP POLICY IF EXISTS "Buyers can create orders" ON public.orders;
 CREATE POLICY "Buyers can create orders" 
 ON public.orders FOR INSERT WITH CHECK (auth.uid() = buyer_id);
 
+DROP POLICY IF EXISTS "Admins can view all orders" ON public.orders;
+CREATE POLICY "Admins can view all orders" 
+ON public.orders FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'ADMIN')
+);
+
 -- RLS: Orders (UPDATE Policies)
 DROP POLICY IF EXISTS "Buyers can update their own orders" ON public.orders;
 CREATE POLICY "Buyers can update their own orders" 
 ON public.orders FOR UPDATE USING (auth.uid() = buyer_id);
+
+DROP POLICY IF EXISTS "Sellers can update their orders" ON public.orders;
+CREATE POLICY "Sellers can update their orders" 
+ON public.orders FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM public.storefronts 
+    WHERE storefronts.id = orders.seller_storefront_id AND storefronts.partner_id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "Drivers can update their delivery orders" ON public.orders;
+CREATE POLICY "Drivers can update their delivery orders" 
+ON public.orders FOR UPDATE USING (
+  driver_id IS NULL OR auth.uid() = driver_id
+);
+
+DROP POLICY IF EXISTS "Admins can update orders" ON public.orders;
+CREATE POLICY "Admins can update orders" 
+ON public.orders FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'ADMIN')
+);
 
 DROP POLICY IF EXISTS "Sellers can update their orders" ON public.orders;
 CREATE POLICY "Sellers can update their orders" 

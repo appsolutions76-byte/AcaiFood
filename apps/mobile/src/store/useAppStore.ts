@@ -45,7 +45,7 @@ export interface Order {
   type: 'B2C' | 'B2B' | 'COLETA';
   title?: string;
   quantity?: number;
-  status: 'pendente' | 'preparo' | 'pronto' | 'em_rota' | 'entregue' | 'cancelado';
+  status: 'pendente' | 'preparo' | 'pronto' | 'em_rota' | 'aguardando_cliente' | 'entregue' | 'cancelado';
   criadoPor: string;
   origemId: string;
   destinoId: string;
@@ -707,7 +707,11 @@ export const useAppStore = create<AppState>()(
             if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
             if (action === 'chamar_moto') { newOrder.status = 'pronto'; newDbStatus = 'READY'; }
             if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newDbStatus = 'DELIVERING'; driverId = newOrder.motoristaId; }
-            if (action === 'conf_motorista' || action === 'conf_recebedor') {
+            if (action === 'conf_motorista') {
+              newOrder.status = 'aguardando_cliente';
+              newDbStatus = 'DELIVERED';
+            }
+            if (action === 'conf_recebedor') {
               newOrder.status = 'entregue';
               newDbStatus = 'COMPLETED';
             }
@@ -780,7 +784,8 @@ export const useAppStore = create<AppState>()(
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
                 if (dbOrder.status === 'READY') appStatus = 'pronto';
                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
-                if (dbOrder.status === 'COMPLETED' || dbOrder.status === 'DELIVERED') appStatus = 'entregue';
+                if (dbOrder.status === 'DELIVERED') appStatus = 'aguardando_cliente';
+                if (dbOrder.status === 'COMPLETED') appStatus = 'entregue';
                 if (dbOrder.status === 'CANCELLED') appStatus = 'cancelado';
 
                 const storeName = dbOrder.storefront?.store_name || 'Loja';

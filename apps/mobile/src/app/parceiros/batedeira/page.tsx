@@ -345,11 +345,11 @@ export default function BatedeiraDashboard() {
                         <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
                       )}
 
-                      {!isCanceled && o.type === 'B2B' && o.status === 'em_rota' && !o.confirmacao.entregador && (
+                      {!isCanceled && o.type === 'B2B' && o.status === 'em_rota' && (
                         <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Aguardando caminhão</span>
                       )}
 
-                      {!isCanceled && o.type === 'B2B' && o.status === 'em_rota' && o.confirmacao.entregador && !o.confirmacao.recebedor && (
+                      {!isCanceled && o.type === 'B2B' && o.status === 'aguardando_cliente' && (
                         <button onClick={() => store.acaoPedido(o.id, 'conf_recebedor')} className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow-md transition w-full sm:w-auto mt-2 sm:mt-0">✅ Confirmar Recebimento</button>
                       )}
                   </div>

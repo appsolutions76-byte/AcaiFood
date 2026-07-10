@@ -147,9 +147,9 @@ export default function MotoboyDashboard() {
                         </div>
                         <div className="text-xs text-zinc-500 mb-3">Destino: {store.users[o.destinoId]?.bairro || '—'}</div>
                         
-                        {o.status === 'em_rota' && !o.confirmacao.entregador ? (
+                        {o.status === 'em_rota' ? (
                             <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-3 rounded-lg shadow transition">📍 Confirmar Chegada</button>
-                        ) : o.status === 'em_rota' && o.confirmacao.entregador ? (
+                        ) : o.status === 'aguardando_cliente' ? (
                             <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 text-xs p-2 rounded text-center font-bold">Aguardando cliente confirmar...</div>
                         ) : o.status === 'entregue' ? (
                             <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-2 rounded text-center font-bold">✅ Finalizado</div>
