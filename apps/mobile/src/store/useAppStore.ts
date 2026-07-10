@@ -861,6 +861,16 @@ export const useAppStore = create<AppState>()(
 
       setClearPassword: (pwd) => set({ clearPassword: pwd })
     }),
-    { name: 'acaifood-storage-v4' }
+    { 
+      name: 'acaifood-storage-v4',
+      onRehydrateStorage: () => (state, error) => {
+        if (!error && state?.currentUser) {
+          setTimeout(() => {
+            state.setupRealtime(state.currentUser!.id);
+            state.fetchOrders(state.currentUser!.id);
+          }, 50);
+        }
+      }
+    }
   )
 );

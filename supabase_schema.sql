@@ -246,3 +246,7 @@ ON public.orders FOR UPDATE USING (
 INSERT INTO storage.buckets (id, name, public) VALUES ('logos', 'logos', true) ON CONFLICT (id) DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('banners', 'banners', true) ON CONFLICT (id) DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('products', 'products', true) ON CONFLICT (id) DO NOTHING;
+
+-- 5. Configurar Realtime
+-- Adiciona a tabela orders à publicação realtime para garantir a comunicação web socket
+ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
