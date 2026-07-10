@@ -45,7 +45,7 @@ export interface Order {
   type: 'B2C' | 'B2B' | 'COLETA';
   title?: string;
   quantity?: number;
-  status: 'pendente' | 'preparo' | 'em_rota' | 'entregue' | 'cancelado';
+  status: 'pendente' | 'preparo' | 'pronto' | 'em_rota' | 'entregue' | 'cancelado';
   criadoPor: string;
   origemId: string;
   destinoId: string;
@@ -547,7 +547,7 @@ export const useAppStore = create<AppState>()(
         const novoPedido: Order = {
           id: `PED-${String(state.orderCounter).padStart(3, '0')}`,
           type: tipo,
-          status: tipo === 'COLETA' ? 'preparo' : 'pendente',
+          status: tipo === 'COLETA' ? 'pronto' : 'pendente',
           criadoPor: currentUser.id,
           origemId: originId,
           destinoId: destId,
@@ -701,7 +701,8 @@ export const useAppStore = create<AppState>()(
             const newOrder = { ...o };
             if (action === 'cancelar_pedido' || action === 'cancelar_cliente') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
             if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
-            if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newDbStatus = 'IN_TRANSIT'; driverId = newOrder.motoristaId; }
+            if (action === 'chamar_moto') { newOrder.status = 'pronto'; newDbStatus = 'READY'; }
+            if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newDbStatus = 'DELIVERING'; driverId = newOrder.motoristaId; }
             if (action === 'conf_motorista') {
               newOrder.confirmacao.entregador = true;
               if (newOrder.type === 'COLETA') newOrder.confirmacao.recebedor = true;
@@ -762,7 +763,7 @@ export const useAppStore = create<AppState>()(
          } else if (currentUser.role === 'cliente') {
             query = query.eq('buyer_id', currentUser.id);
          } else if (currentUser.role === 'motorista') {
-            query = query.or(`status.in.("PREPARING","DELIVERING","IN_TRANSIT"),driver_id.eq.${currentUser.id}`);
+            query = query.or(`status.in.("READY","PREPARING","DELIVERING"),driver_id.eq.${currentUser.id}`);
          } else if (currentUser.role === 'admin') {
             // Admin sees all orders
          } else {
@@ -776,6 +777,7 @@ export const useAppStore = create<AppState>()(
              const mappedOrders = dbOrders.map((dbOrder: any) => {
                 let appStatus = 'pendente';
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
+                if (dbOrder.status === 'READY') appStatus = 'pronto';
                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
                 if (dbOrder.status === 'COMPLETED' || dbOrder.status === 'DELIVERED') appStatus = 'entregue';
                 if (dbOrder.status === 'CANCELLED') appStatus = 'cancelado';
