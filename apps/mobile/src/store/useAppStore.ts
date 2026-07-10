@@ -269,6 +269,10 @@ export const useAppStore = create<AppState>()(
         if (dbLojas) {
             set((state) => {
                 const newUsers = { ...state.users };
+                // Remove deleted lojas
+                Object.keys(newUsers).forEach(id => {
+                    if (newUsers[id].role === 'loja') delete newUsers[id];
+                });
                 dbLojas.forEach(dbUser => {
                     const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[0] : null;
                     newUsers[dbUser.id] = {
@@ -309,7 +313,7 @@ export const useAppStore = create<AppState>()(
 
         if (dbUsers) {
             set((state) => {
-                const newUsers = { ...state.users };
+                const newUsers: Record<string, any> = {};
                 dbUsers.forEach(dbUser => {
                     const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[0] : null;
                     const appRole = dbUser.role === 'PARTNER' ? 'loja' :
