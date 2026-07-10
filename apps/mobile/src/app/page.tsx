@@ -16,13 +16,13 @@ function PaymentHandler() {
     const paymentStatus = searchParams.get('payment');
     if (paymentStatus === 'success') {
       alert('Pagamento aprovado pelo Mercado Pago! A loja já está preparando seu pedido.');
-      router.replace('/');
+      window.history.replaceState(null, '', '/');
     } else if (paymentStatus === 'failure') {
       alert('Houve um problema com o pagamento.');
-      router.replace('/');
+      window.history.replaceState(null, '', '/');
     } else if (paymentStatus === 'pending') {
       alert('Seu pagamento está em análise ou aguardando confirmação (PIX).');
-      router.replace('/');
+      window.history.replaceState(null, '', '/');
     }
   }, [searchParams, router]);
 
@@ -189,8 +189,6 @@ export default function StorefrontPage() {
                       <p className="text-zinc-500 font-medium">Você ainda não fez nenhum pedido hoje.</p>
                   </div>
                 ) : meusPedidos.map(o => {
-                  const isWaitingDriver = o.status === 'em_rota' && !o.confirmacao.entregador;
-                  const canConfirm = o.status === 'em_rota' && o.confirmacao.entregador && !o.confirmacao.recebedor;
                   const isCanceled = o.status === 'cancelado';
                   
                   return (
@@ -206,6 +204,8 @@ export default function StorefrontPage() {
                         <div className="flex flex-col sm:flex-row items-center justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
                             {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Loja</span>}
                             {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Preparo</span>}
+                            {o.status === 'pronto' && <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Entregador</span>}
+                            {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Moto a caminho</span>}
                             {o.status === 'entregue' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Entregue</span>}
                             {isCanceled && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
   
@@ -217,12 +217,8 @@ export default function StorefrontPage() {
                               <button onClick={() => { if(confirm('Deseja excluir este pedido do seu histórico?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">🗑️ Excluir</button>
                             )}
                             
-                            {isWaitingDriver && (
-                              <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Moto a caminho</span>
-                            )}
-                            
-                            {canConfirm && (
-                              <button onClick={() => store.acaoPedido(o.id, 'conf_recebedor')} className="bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md transition active:scale-95 w-full sm:w-auto">✅ Confirmar Recebimento</button>
+                            {o.status === 'em_rota' && (
+                              <button onClick={() => store.acaoPedido(o.id, 'conf_recebedor')} className="bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md transition active:scale-95 w-full sm:w-auto mt-2 sm:mt-0">✅ Confirmar Recebimento</button>
                             )}
                         </div>
                     </div>

@@ -707,13 +707,10 @@ export const useAppStore = create<AppState>()(
             if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
             if (action === 'chamar_moto') { newOrder.status = 'pronto'; newDbStatus = 'READY'; }
             if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newDbStatus = 'DELIVERING'; driverId = newOrder.motoristaId; }
-            if (action === 'conf_motorista') {
-              newOrder.confirmacao.entregador = true;
-              if (newOrder.type === 'COLETA') newOrder.confirmacao.recebedor = true;
+            if (action === 'conf_motorista' || action === 'conf_recebedor') {
+              newOrder.status = 'entregue';
+              newDbStatus = 'COMPLETED';
             }
-            if (action === 'conf_recebedor') newOrder.confirmacao.recebedor = true;
-            
-            if (newOrder.confirmacao.entregador && newOrder.confirmacao.recebedor) { newOrder.status = 'entregue'; newDbStatus = 'DELIVERED'; }
             return newOrder;
           });
           return { orders: newOrders };
