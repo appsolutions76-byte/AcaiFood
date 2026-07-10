@@ -192,7 +192,7 @@ export default function StorefrontPage() {
                   const isCanceled = o.status === 'cancelado';
                   
                   return (
-                    <div key={o.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-xl shadow-sm border ${canConfirm ? 'border-green-400 shadow-green-100 dark:shadow-none' : isCanceled ? 'border-red-200 opacity-60' : 'border-zinc-200 dark:border-zinc-800'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
+                    <div key={o.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-xl shadow-sm border ${o.status === 'aguardando_cliente' ? 'border-green-400 shadow-green-100 dark:shadow-none' : isCanceled ? 'border-red-200 opacity-60' : 'border-zinc-200 dark:border-zinc-800'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
                         <div className="w-full sm:w-auto">
                             <p className="font-bold text-zinc-800 dark:text-white">{o.title} <span className="text-xs text-zinc-500">({o.id})</span></p>
                             <p className="text-xs text-zinc-500 mt-1">Total: {formatMoney(o.valor + o.taxas.entregaCliente)} (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
