@@ -830,11 +830,27 @@ export const useAppStore = create<AppState>()(
 
       setupRealtime: (userId) => {
          supabase.removeAllChannels();
+         
          supabase.channel('public:orders')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
                 get().fetchOrders(userId);
             })
             .subscribe();
+
+         const currentUser = get().users[userId];
+         if (currentUser && currentUser.role === 'admin') {
+             supabase.channel('public:users')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
+                    get().fetchAllUsers();
+                })
+                .subscribe();
+             
+             supabase.channel('public:storefronts')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'storefronts' }, (payload) => {
+                    get().fetchAllUsers();
+                })
+                .subscribe();
+         }
       },
 
       clearData: async () => {
