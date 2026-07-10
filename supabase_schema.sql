@@ -160,11 +160,19 @@ ON public.platform_settings FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Only admins can update platform settings" ON public.platform_settings;
 CREATE POLICY "Only admins can update platform settings" 
-ON public.platform_settings FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'ADMIN')
-);
+ON public.platform_settings FOR UPDATE USING (public.is_admin());
 
 -- RLS: Users
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'ADMIN'
+  );
+$$;
+
 DROP POLICY IF EXISTS "Users can read all public user profiles" ON public.users;
 CREATE POLICY "Users can read all public user profiles" 
 ON public.users FOR SELECT USING (
@@ -173,9 +181,7 @@ ON public.users FOR SELECT USING (
 
 DROP POLICY IF EXISTS "Admins can read all users" ON public.users;
 CREATE POLICY "Admins can read all users" 
-ON public.users FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = 'ADMIN')
-);
+ON public.users FOR SELECT USING (public.is_admin());
 
 DROP POLICY IF EXISTS "Users can edit their own profile" ON public.users;
 CREATE POLICY "Users can edit their own profile" 
@@ -232,9 +238,7 @@ ON public.orders FOR INSERT WITH CHECK (auth.uid() = buyer_id);
 
 DROP POLICY IF EXISTS "Admins can view all orders" ON public.orders;
 CREATE POLICY "Admins can view all orders" 
-ON public.orders FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'ADMIN')
-);
+ON public.orders FOR SELECT USING (public.is_admin());
 
 -- RLS: Orders (UPDATE Policies)
 DROP POLICY IF EXISTS "Buyers can update their own orders" ON public.orders;
@@ -258,9 +262,7 @@ ON public.orders FOR UPDATE USING (
 
 DROP POLICY IF EXISTS "Admins can update orders" ON public.orders;
 CREATE POLICY "Admins can update orders" 
-ON public.orders FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'ADMIN')
-);
+ON public.orders FOR UPDATE USING (public.is_admin());
 
 DROP POLICY IF EXISTS "Sellers can update their orders" ON public.orders;
 CREATE POLICY "Sellers can update their orders" 

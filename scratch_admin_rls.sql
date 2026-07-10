@@ -1,25 +1,29 @@
--- 1. Modify the check constraint on the status column in the orders table
-ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_status_check;
-ALTER TABLE public.orders ADD CONSTRAINT orders_status_check 
-  CHECK (status IN ('PENDING', 'PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'COMPLETED', 'CANCELLED'));
+-- 1. Create a function to check if the user is an admin bypassing RLS
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'ADMIN'
+  );
+$$;
 
--- 2. Add SELECT policy for Admin on users table
+-- 2. Fix Platform Settings policy
+DROP POLICY IF EXISTS "Only admins can update platform settings" ON public.platform_settings;
+CREATE POLICY "Only admins can update platform settings" 
+ON public.platform_settings FOR UPDATE USING (public.is_admin());
+
+-- 3. Fix Users policy
 DROP POLICY IF EXISTS "Admins can read all users" ON public.users;
 CREATE POLICY "Admins can read all users" 
-ON public.users FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = 'ADMIN')
-);
+ON public.users FOR SELECT USING (public.is_admin());
 
--- 3. Add SELECT policy for Admin on orders table
+-- 4. Fix Orders policies
 DROP POLICY IF EXISTS "Admins can view all orders" ON public.orders;
 CREATE POLICY "Admins can view all orders" 
-ON public.orders FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'ADMIN')
-);
+ON public.orders FOR SELECT USING (public.is_admin());
 
--- 4. Add UPDATE policy for Admin on orders table
 DROP POLICY IF EXISTS "Admins can update orders" ON public.orders;
 CREATE POLICY "Admins can update orders" 
-ON public.orders FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'ADMIN')
-);
+ON public.orders FOR UPDATE USING (public.is_admin());
