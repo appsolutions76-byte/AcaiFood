@@ -173,52 +173,60 @@ export default function StorefrontPage() {
 
       <main className="p-4 sm:p-6 max-w-3xl mx-auto space-y-8">
         
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
-            <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a) ao AçaíFood!</h2>
-            <p className="text-zinc-500 dark:text-zinc-400">O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</p>
-        </div>
-
-        <div>
-            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Batedeiras Próximas</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {batedeiras.map(loja => {
-                const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
-                return (
-                  <div key={loja.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-purple-100 dark:border-purple-900/30 flex flex-col transition hover:shadow-md">
-                      <div className="flex justify-between items-center mb-3">
-                          <div className="flex items-center gap-2">
-                              <span className="text-3xl">{loja.icon}</span>
-                              <div>
-                                  <p className="font-bold text-zinc-800 dark:text-white leading-tight">{loja.name}</p>
-                                  <p className="text-[10px] text-zinc-500">{loja.bairro}</p>
-                              </div>
-                          </div>
-                          {currentUser && <button onClick={() => setMapModal({ open: true, origem: loja.id, destino: currentUser.id })} className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">🗺️ {dist.toFixed(1)} km</button>}
-                      </div>
-                      
-                      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded flex flex-col gap-1 text-sm mb-4 border border-zinc-100 dark:border-zinc-800">
-                          <span className="text-zinc-500 text-[10px] uppercase font-bold">A partir de {formatMoney(loja.priceB2C?.popular || 0)}</span>
-                          <span className="text-zinc-600 dark:text-zinc-400 text-xs flex justify-between">
-                            <span>Frete Estimado:</span>
-                            {subsidy > 0 && <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded uppercase font-bold">Loja paga {subsidy}%</span>}
-                          </span>
-                          <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
-                      </div>
-                      
-                      {currentUser ? (
-                          <button onClick={() => setProductSelectModal({ open: true, lojaId: loja.id, tipo: 'medio', quantity: 1 })} className="w-full mt-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2">
-                              <ShoppingCart size={18} /> Pedir Agora
-                          </button>
-                      ) : (
-                          <Link href="/login" className="w-full mt-auto bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-3 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2">
-                              Fazer Login para Pedir
-                          </Link>
-                      )}
-                  </div>
-                );
-              })}
+        {!currentUser ? (
+          <div className="flex justify-center items-center mt-12 mb-12">
+             <img src="/banner.png" alt="AçaíFood Pará" className="w-full max-w-lg rounded-3xl shadow-2xl object-cover border-4 border-white dark:border-zinc-800" />
+          </div>
+        ) : (
+          <>
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
+                <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a) ao AçaíFood!</h2>
+                <p className="text-zinc-500 dark:text-zinc-400">O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</p>
             </div>
-        </div>
+
+            <div>
+                <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Batedeiras Próximas</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {batedeiras.map(loja => {
+                    const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
+                    return (
+                      <div key={loja.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-purple-100 dark:border-purple-900/30 flex flex-col transition hover:shadow-md">
+                          <div className="flex justify-between items-center mb-3">
+                              <div className="flex items-center gap-2">
+                                  <span className="text-3xl">{loja.icon}</span>
+                                  <div>
+                                      <p className="font-bold text-zinc-800 dark:text-white leading-tight">{loja.name}</p>
+                                      <p className="text-[10px] text-zinc-500">{loja.bairro}</p>
+                                  </div>
+                              </div>
+                              {currentUser && <button onClick={() => setMapModal({ open: true, origem: loja.id, destino: currentUser.id })} className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">🗺️ {dist.toFixed(1)} km</button>}
+                          </div>
+                          
+                          <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded flex flex-col gap-1 text-sm mb-4 border border-zinc-100 dark:border-zinc-800">
+                              <span className="text-zinc-500 text-[10px] uppercase font-bold">A partir de {formatMoney(loja.priceB2C?.popular || 0)}</span>
+                              <span className="text-zinc-600 dark:text-zinc-400 text-xs flex justify-between">
+                                <span>Frete Estimado:</span>
+                                {subsidy > 0 && <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded uppercase font-bold">Loja paga {subsidy}%</span>}
+                              </span>
+                              <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
+                          </div>
+                          
+                          {currentUser ? (
+                              <button onClick={() => setProductSelectModal({ open: true, lojaId: loja.id, tipo: 'medio', quantity: 1 })} className="w-full mt-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2">
+                                  <ShoppingCart size={18} /> Pedir Agora
+                              </button>
+                          ) : (
+                              <Link href="/login" className="w-full mt-auto bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-3 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2">
+                                  Fazer Login para Pedir
+                              </Link>
+                          )}
+                      </div>
+                    );
+                  })}
+                </div>
+            </div>
+          </>
+        )}
 
         {currentUser && (
           <div>
