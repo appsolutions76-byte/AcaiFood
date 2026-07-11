@@ -1,4 +1,5 @@
--- Adiciona as tabelas ao sistema de Realtime do Supabase para que o Painel Admin possa recebê-las ao vivo sem precisar recarregar a página.
+-- Habilitar o sistema de Realtime para a tabela orders
+ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.storefronts;
+-- Garantir que a tabela orders envie os dados completos quando houver UPDATE/DELETE (necessário para Zustand ler os IDs)
+ALTER TABLE public.orders REPLICA IDENTITY FULL;

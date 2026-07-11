@@ -33,6 +33,7 @@ export default function BatedeiraDashboard() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     store.fetchAllUsers();
+    store.startRealtime();
     setMounted(true);
   }, []);
 

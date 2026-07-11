@@ -29,6 +29,7 @@ export default function AdminDashboard() {
     setMounted(true);
     if (store.currentUser?.role === 'admin') {
        store.fetchAllUsers();
+       store.startRealtime();
     }
   }, [store.currentUser?.role]);
 
@@ -345,12 +346,30 @@ export default function AdminDashboard() {
                     {filteredUsers.map(u => (
                         <tr key={u.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                             <td className="p-4">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xl">{u.icon}</span>
-                                    <div>
-                                        <p className="font-bold text-zinc-800 dark:text-zinc-200">{u.name}</p>
-                                        <p className="text-[10px] text-zinc-500 font-mono">{u.id}</p>
-                                    </div>
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-2">
+                                      <span className="text-xl">{u.icon}</span>
+                                      <div>
+                                          <p className="font-bold text-zinc-800 dark:text-zinc-200">{u.name}</p>
+                                          <p className="text-[10px] text-zinc-500 font-mono">{u.id}</p>
+                                      </div>
+                                  </div>
+                                  {u.role === 'motorista' && (
+                                    (() => {
+                                      const amountOwed = store.orders.filter(o => o.motoristaId === u.id && o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.entregaMotorista, 0);
+                                      if (amountOwed > 0) {
+                                        return (
+                                          <div className="mt-2 bg-green-50 border border-green-200 p-2 rounded-lg flex items-center justify-between">
+                                            <span className="text-xs font-bold text-green-700">A Pagar: {formatMoney(amountOwed)}</span>
+                                            <button onClick={() => { if(confirm(`Confirmar o pagamento via Pix de ${formatMoney(amountOwed)} para ${u.name}? O saldo será zerado.`)) store.acaoPedido(u.id, 'pagar_motorista'); }} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
+                                              Pagar e Zerar
+                                            </button>
+                                          </div>
+                                        );
+                                      }
+                                      return <div className="mt-2 text-[10px] text-zinc-400">Nenhum repasse pendente.</div>;
+                                    })()
+                                  )}
                                 </div>
                             </td>
                             <td className="p-4 text-xs text-zinc-600 dark:text-zinc-400">
@@ -432,6 +451,12 @@ export default function AdminDashboard() {
                       <div><label className="text-[10px] uppercase text-amber-600 font-bold">Serviço Fixo (R$)</label><input type="number" value={localRates.col_valor} onChange={e => setLocalRates({...localRates, col_valor: Number(e.target.value)})} className="w-full border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"/></div>
                       <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Valor por KM (R$)</label><input type="number" step="0.1" value={localRates.col_km} onChange={e => setLocalRates({...localRates, col_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                       <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates.col_mot_plat} onChange={e => setLocalRates({...localRates, col_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                  </div>
+              </div>
+              <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>⏰</span> Fechamento de Caixa (Motoboys)</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Horário Programado para Pix</label><input type="time" value={localRates.payout_time || '22:00'} onChange={e => setLocalRates({...localRates, payout_time: e.target.value})} className="w-full sm:w-1/3 border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
               </div>
             </div>

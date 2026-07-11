@@ -21,6 +21,7 @@ export default function MotoboyDashboard() {
     setMounted(true);
     if (store.currentUser?.role === 'motorista') {
         store.fetchAllUsers();
+        store.startRealtime();
     }
   }, [store.currentUser?.role]);
 
@@ -88,6 +89,7 @@ export default function MotoboyDashboard() {
             <div className="text-right">
                 <p className="text-sm text-zinc-400">Cofre Virtual (A Receber)</p>
                 <p className="text-2xl font-bold text-green-400">{formatMoney(ganhosHoje)}</p>
+                <p className="text-[10px] text-zinc-500 mt-1">🗓️ Pix Agendado: {store.rates.payout_time || '22:00'}</p>
                 <button onClick={handleToggleStatus} className={`mt-2 px-3 py-1 rounded-lg text-xs font-bold transition border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
                     {isPaused ? 'Offline 🚫' : 'Online ✅'}
                 </button>

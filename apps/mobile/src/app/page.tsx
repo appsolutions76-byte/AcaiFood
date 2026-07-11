@@ -57,13 +57,14 @@ export default function StorefrontPage() {
     if (!currentUser) {
       router.replace('/cadastro');
     } else {
+      store.startRealtime();
       if (currentUser.role === 'admin') router.replace('/admin');
       else if (currentUser.role === 'loja') router.replace('/parceiros/batedeira');
       else if (currentUser.role === 'fornecedor') router.replace('/parceiros/fornecedor');
       else if (currentUser.role === 'motorista' && currentUser.veiculo === 'Moto') router.replace('/parceiros/motoboy');
       else if (currentUser.role === 'motorista' && (currentUser.veiculo === 'Caminhão' || currentUser.veiculo === 'Caçamba')) router.replace('/parceiros/caminhao');
     }
-  }, [currentUser, router]);
+  }, [currentUser?.role, router]);
 
   if (!currentUser || currentUser.role !== 'cliente') {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;

@@ -46,7 +46,7 @@ export interface Order {
   title?: string;
   quantity?: number;
   items?: { id: string; name: string; quantity: number; price: number }[];
-  status: 'pendente' | 'preparo' | 'pronto' | 'em_rota' | 'aguardando_cliente' | 'entregue' | 'cancelado';
+  status: 'pendente' | 'preparo' | 'pronto' | 'em_rota' | 'aguardando_cliente' | 'entregue' | 'arquivado' | 'cancelado';
   criadoPor: string;
   origemId: string;
   destinoId: string;
@@ -114,13 +114,21 @@ interface AppState {
   removeFromCart: (itemId: string) => void;
   updateCartQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
+
+  // Realtime
+  upsertOrder: (order: Order) => void;
+  startRealtime: () => void;
 }
+
+// Para manter referência ao channel e evitar duplicatas
+let supabaseChannel: any = null;
 
 const DB_DEFAULTS = {
   rates: {
     b2c_plat: 10, b2c_km: 2.00, b2c_mot_plat: 10,
     b2b_plat: 10, b2b_km: 4.00, b2b_mot_plat: 10,
-    col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00
+    col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00,
+    payout_time: '22:00'
   },
   users: {} // Remover usuários fixos para prevenir vazamento de credenciais
 };
@@ -304,6 +312,41 @@ export const useAppStore = create<AppState>()(
       
       clearCart: () => {
         set({ cart: { storeId: null, items: [] } });
+      },
+
+      upsertOrder: (order) => {
+          set(state => {
+              const existingIndex = state.orders.findIndex(o => o.id === order.id);
+              if (existingIndex >= 0) {
+                  const newOrders = [...state.orders];
+                  newOrders[existingIndex] = order;
+                  return { orders: newOrders };
+              } else {
+                  return { orders: [order, ...state.orders] };
+              }
+          });
+      },
+
+      startRealtime: () => {
+          const currentUser = get().currentUser;
+          if (!currentUser) return;
+          
+          if (supabaseChannel) {
+              supabaseChannel.unsubscribe();
+          }
+
+          supabaseChannel = supabase.channel('schema-db-changes')
+              .on(
+                  'postgres_changes',
+                  { event: '*', schema: 'public', table: 'orders' },
+                  (payload) => {
+                      console.log("Realtime order update received:", payload);
+                      // Para garantir consistência dos JOINs (nomes de loja, clientes, etc),
+                      // a forma mais robusta é refazer o fetchOrders quando algo muda
+                      get().fetchOrders(currentUser.id);
+                  }
+              )
+              .subscribe();
       },
 
       fetchLojas: async () => {
@@ -736,6 +779,28 @@ export const useAppStore = create<AppState>()(
       },
 
       acaoPedido: async (orderId, action) => {
+        if (action === 'pagar_motorista') {
+             const motoristaId = orderId; // Usando orderId como userId neste caso específico
+             set((state) => {
+                 const newOrders = state.orders.map(o => {
+                     if (o.motoristaId === motoristaId && o.status === 'entregue') {
+                         return { ...o, status: 'arquivado' as any };
+                     }
+                     return o;
+                 });
+                 return { orders: newOrders };
+             });
+             
+             // Atualizar no banco
+             const { error } = await supabase.from('orders')
+                 .update({ status: 'COMPLETED' })
+                 .eq('driver_id', motoristaId)
+                 .eq('status', 'DELIVERED');
+                 
+             if (error) console.error("Error paying motorista:", error);
+             return;
+        }
+
         if (action === 'deletar_pedido') {
             const { error } = await supabase.from('orders').delete().eq('id', orderId);
             if (!error) {
@@ -764,7 +829,7 @@ export const useAppStore = create<AppState>()(
             }
             if (action === 'conf_recebedor') {
               newOrder.status = 'entregue';
-              newDbStatus = 'COMPLETED';
+              newDbStatus = 'DELIVERED';
             }
             return newOrder;
           });
@@ -835,8 +900,8 @@ export const useAppStore = create<AppState>()(
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
                 if (dbOrder.status === 'READY') appStatus = 'pronto';
                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
-                if (dbOrder.status === 'DELIVERED') appStatus = 'aguardando_cliente';
-                if (dbOrder.status === 'COMPLETED') appStatus = 'entregue';
+                if (dbOrder.status === 'DELIVERED') appStatus = 'entregue';
+                if (dbOrder.status === 'COMPLETED') appStatus = 'arquivado';
                 if (dbOrder.status === 'CANCELLED') appStatus = 'cancelado';
 
                 const storeName = dbOrder.storefront?.store_name || 'Loja';
