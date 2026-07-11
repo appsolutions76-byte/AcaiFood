@@ -843,12 +843,12 @@ export const useAppStore = create<AppState>()(
         }
 
         if (action === 'deletar_pedido') {
-            const { error } = await supabase.from('orders').delete().eq('id', orderId);
+            const { error } = await supabase.from('orders').update({ is_hidden: true }).eq('id', orderId);
             if (!error) {
                 set((state) => ({ orders: state.orders.filter(o => o.id !== orderId) }));
             } else {
-                console.error("Error deleting order:", error);
-                alert("Erro ao excluir pedido.");
+                console.error("Error hiding order:", error);
+                alert("Erro ao remover pedido do histórico.");
             }
             return;
         }
@@ -932,6 +932,10 @@ export const useAppStore = create<AppState>()(
             // Admin sees all orders
          } else {
             return;
+         }
+
+         if (currentUser.role !== 'admin') {
+            query = query.eq('is_hidden', false);
          }
 
          query = query.order('created_at', { ascending: false });

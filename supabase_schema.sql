@@ -139,7 +139,8 @@ CREATE TABLE IF NOT EXISTS public.orders (
   mp_payment_id TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   picked_up_at TIMESTAMPTZ,
-  delivered_at TIMESTAMPTZ
+  delivered_at TIMESTAMPTZ,
+  is_hidden BOOLEAN DEFAULT false
 );
 
 -- 5.5 Create OAuth States Table for Security (IDOR Protection)
