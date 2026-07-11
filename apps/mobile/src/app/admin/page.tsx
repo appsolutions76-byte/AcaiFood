@@ -170,24 +170,25 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
-        <div className="flex justify-between items-center max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-3">
             <Settings className="text-purple-600" />
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end">
               <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
+              <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1.5 rounded-lg font-bold shadow-sm transition-all">📲 Compartilhar</button>
               <ThemeToggle />
-              <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition text-sm">
+              <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
                   🔑 Senha
               </button>
-              <button onClick={() => setRatesModalOpen(true)} className="bg-purple-800 hover:bg-purple-900 text-white px-4 py-2 rounded-xl font-bold shadow flex items-center gap-2 transition text-sm">
-                  ⚙️ Tabela de taxas
+              <button onClick={() => setRatesModalOpen(true)} className="bg-purple-800 hover:bg-purple-900 text-white px-3 py-1.5 rounded-xl font-bold shadow flex items-center gap-2 transition text-xs">
+                  ⚙️ Taxas
               </button>
-              <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition text-sm">
-                  <Trash2 size={16} /> Limpar
+              <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
+                  <Trash2 size={14} /> Limpar
               </button>
-              <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 ml-2 underline">Sair</button>
+              <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline">Sair</button>
           </div>
         </div>
       </header>
