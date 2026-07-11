@@ -120,11 +120,11 @@ serve(async (req) => {
       </html>
     `;
 
-    const responseHeaders = new Headers(corsHeaders);
-    responseHeaders.set('Content-Type', 'text/html; charset=utf-8');
-
     return new Response(htmlResponse, {
-      headers: responseHeaders,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/html; charset=utf-8'
+      },
       status: 200,
     });
 
