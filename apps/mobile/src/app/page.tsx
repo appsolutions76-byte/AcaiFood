@@ -164,7 +164,7 @@ export default function StorefrontPage() {
              ) : (
                <div className="flex items-center gap-3">
                  <span className="text-sm font-medium hidden sm:inline-block">Olá, {currentUser.name.split(' ')[0]}</span>
-                 <button onClick={() => window.location.reload()} className="text-[10px] bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 px-2 py-1 rounded font-bold hidden sm:inline-block">🔄 Atualizar</button>
+                 <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
                  <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold">📲 Compartilhar</button>
                  <ThemeToggle />
                  <button onClick={() => store.logout()} className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 underline">Sair</button>

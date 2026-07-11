@@ -176,7 +176,7 @@ export default function AdminDashboard() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
           </div>
           <div className="flex gap-2 items-center">
-              <button onClick={() => window.location.reload()} className="text-[10px] bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 px-2 py-1 rounded font-bold hidden sm:inline-block">🔄 Atualizar</button>
+              <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
               <ThemeToggle />
               <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition text-sm">
                   🔑 Senha
