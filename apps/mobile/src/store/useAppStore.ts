@@ -75,6 +75,7 @@ interface AppState {
     b2c_plat: number; b2c_km: number; b2c_mot_plat: number;
     b2b_plat: number; b2b_km: number; b2b_mot_plat: number;
     col_plat: number; col_km: number; col_mot_plat: number; col_valor: number;
+    payout_time?: string;
   };
   users: Record<string, User>;
   orders: Order[];
