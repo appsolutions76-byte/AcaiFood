@@ -281,6 +281,15 @@ export default function StorefrontPage() {
 
       </main>
 
+      <footer className="mt-8 py-8 border-t border-zinc-200 dark:border-zinc-800 text-center flex flex-col items-center justify-center space-y-3">
+        <img src="/appsolutions76-logo.png" alt="AppSolutions76" className="w-full max-w-xs object-contain" />
+        <div className="text-[11px] text-zinc-500 dark:text-zinc-400 space-y-1">
+           <p className="font-bold text-zinc-700 dark:text-zinc-300">Desenvolvido por AppSolutions76</p>
+           <p>EMPRESA PARAENSE | Belém - PA</p>
+           <p>Contato: <a href="mailto:appsolutions76@gmail.com" className="text-purple-600 hover:underline">appsolutions76@gmail.com</a></p>
+        </div>
+      </footer>
+
       {/* Product Select Modal */}
       {productSelectModal.open && (
         <div className="fixed inset-0 bg-black/70 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
