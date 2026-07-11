@@ -58,8 +58,8 @@ export interface Order {
   fornecedorId?: string;
   distancia: number;
   confirmacao: { entregador: boolean; recebedor: boolean };
-  motoristaId?: string;
-  valor?: number;
+  motoristaId: string | null;
+  valor: number;
   taxas: {
     entregaTotal: number;
     entregaMotorista: number;
