@@ -1022,9 +1022,9 @@ export const useAppStore = create<AppState>()(
          try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-               const { error } = await supabase.functions.invoke('clear-orders', {
-                  headers: { Authorization: `Bearer ${session.access_token}` }
-               });
+               // Admin deletando via RLS. O Supabase JS requer pelo menos um filtro, então filtramos onde ID não é nulo.
+               const { error } = await supabase.from('orders').delete().not('id', 'is', null);
+               
                if (error) {
                   console.error("Error clearing orders from DB:", error);
                   alert("Erro ao limpar pedidos no banco de dados.");
