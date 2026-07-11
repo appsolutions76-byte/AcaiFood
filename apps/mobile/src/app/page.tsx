@@ -173,16 +173,17 @@ export default function StorefrontPage() {
 
       <main className="p-4 sm:p-6 max-w-3xl mx-auto space-y-8">
         
+        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
+            <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a) ao AçaíFood!</h2>
+            <p className="text-zinc-500 dark:text-zinc-400">O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</p>
+        </div>
+
         {!currentUser ? (
           <div className="flex justify-center items-center mt-12 mb-12">
              <img src="/banner.png" alt="AçaíFood Pará" className="w-full max-w-lg rounded-3xl shadow-2xl object-cover border-4 border-white dark:border-zinc-800" />
           </div>
         ) : (
           <>
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
-                <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a) ao AçaíFood!</h2>
-                <p className="text-zinc-500 dark:text-zinc-400">O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</p>
-            </div>
 
             <div>
                 <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Batedeiras Próximas</h3>
