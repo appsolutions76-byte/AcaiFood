@@ -289,20 +289,27 @@ DROP POLICY IF EXISTS "Admins can update orders" ON public.orders;
 CREATE POLICY "Admins can update orders" 
 ON public.orders FOR UPDATE USING (public.is_admin());
 
-DROP POLICY IF EXISTS "Sellers can update their orders" ON public.orders;
-CREATE POLICY "Sellers can update their orders" 
-ON public.orders FOR UPDATE USING (
+-- RLS: Orders (DELETE Policies)
+DROP POLICY IF EXISTS "Buyers can delete their own orders" ON public.orders;
+CREATE POLICY "Buyers can delete their own orders" 
+ON public.orders FOR DELETE USING (auth.uid() = buyer_id);
+
+DROP POLICY IF EXISTS "Sellers can delete their orders" ON public.orders;
+CREATE POLICY "Sellers can delete their orders" 
+ON public.orders FOR DELETE USING (
   EXISTS (
     SELECT 1 FROM public.storefronts 
     WHERE storefronts.id = orders.seller_storefront_id AND storefronts.partner_id = auth.uid()
   )
 );
 
-DROP POLICY IF EXISTS "Drivers can update their delivery orders" ON public.orders;
-CREATE POLICY "Drivers can update their delivery orders" 
-ON public.orders FOR UPDATE USING (
-  driver_id IS NULL OR auth.uid() = driver_id
-);
+DROP POLICY IF EXISTS "Drivers can delete their delivery orders" ON public.orders;
+CREATE POLICY "Drivers can delete their delivery orders" 
+ON public.orders FOR DELETE USING (auth.uid() = driver_id);
+
+DROP POLICY IF EXISTS "Admins can delete orders" ON public.orders;
+CREATE POLICY "Admins can delete orders" 
+ON public.orders FOR DELETE USING (public.is_admin());
 
 -- 7. Storage Buckets
 INSERT INTO storage.buckets (id, name, public) VALUES ('logos', 'logos', true) ON CONFLICT (id) DO NOTHING;
