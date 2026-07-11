@@ -137,7 +137,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
   CONSTRAINT orders_status_check CHECK (status IN ('PENDING', 'PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'COMPLETED', 'CANCELLED')),
   CONSTRAINT orders_type_check CHECK (order_type IN ('B2C', 'B2B', 'COLETA')),
   mp_payment_id TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  picked_up_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ
 );
 
 -- 5.5 Create OAuth States Table for Security (IDOR Protection)

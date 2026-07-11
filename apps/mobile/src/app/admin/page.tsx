@@ -296,12 +296,18 @@ export default function AdminDashboard() {
                             <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">
                                 {o.id}<br/>
                                 <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">🗺️ Ver {o.distancia.toFixed(1)} km</button>
+                                <div className="mt-1 flex flex-col gap-0.5">
+                                    {o.createdAt && <span className="text-[9px] text-zinc-500 font-normal">🕒 {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                                    {o.pickedUpAt && <span className="text-[9px] text-blue-500 font-normal">📦 {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                                    {o.deliveredAt && <span className="text-[9px] text-green-500 font-normal">✅ {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                                </div>
                             </td>
                             <td className="p-4"><span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold text-zinc-700 dark:text-zinc-300">{o.type}</span></td>
                             <td className="p-4 text-xs text-zinc-600 dark:text-zinc-400">Prod: {formatMoney(o.valor)}<br/>Frete: {formatMoney(getDynamicTaxes(o).entregaTotal)}</td>
                             <td className="p-4 text-xs text-zinc-500">
-                                <span className="block">Orig: {store.users[o.origemId]?.name || '—'}</span>
-                                <span className="block text-purple-600 dark:text-purple-400 font-medium">Mot: {o.motoristaId ? store.users[o.motoristaId]?.name : '---'}</span>
+                                <span className="block">Cliente: {o.clienteNome || store.users[o.clienteId!]?.name || '—'}</span>
+                                <span className="block">Loja: {o.lojaNome || store.users[o.lojaId!]?.name || '—'}</span>
+                                <span className="block text-purple-600 dark:text-purple-400 font-medium">Mot: {o.motoristaNome || '---'}</span>
                             </td>
                             <td className="p-4">
                                 {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pendente</span>}

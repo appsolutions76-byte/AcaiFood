@@ -259,14 +259,20 @@ export default function FornecedorDashboard() {
                 <div className="w-full sm:w-auto">
                     <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">{o.type}</span>
-                        <span className="font-bold text-zinc-800 dark:text-white text-sm">Pedido #{o.id} - Loja: {store.users[o.lojaId!]?.name || '—'}</span>
+                        <span className="font-bold text-zinc-800 dark:text-white text-sm">Pedido #{o.id} - Loja: {o.clienteNome || store.users[o.lojaId!]?.name || '—'}</span>
                         <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId })} className="text-[10px] text-blue-500 hover:underline">🗺️ Ver Rota de {o.distancia.toFixed(1)} km</button>
                     </div>
+                    <div className="text-[10px] text-zinc-600 dark:text-zinc-400 mb-1 uppercase font-bold">Motorista: {o.motoristaNome || 'Aguardando'}</div>
                     <p className="text-xs text-zinc-500 mt-1">
                         Bruto: {formatMoney(o.valor)} |
                         Sub. Frete: {formatMoney(o.taxas.entregaFornecedor || 0)} |
                         Líquido: {formatMoney(o.taxas.repasse)}
                     </p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                       {o.createdAt && <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                       {o.pickedUpAt && <span className="text-[9px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded font-bold">📦 Retirada: {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                       {o.deliveredAt && <span className="text-[9px] bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded font-bold">✅ Entrega: {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                    </div>
                 </div>
                 
                 <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">

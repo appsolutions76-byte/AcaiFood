@@ -58,8 +58,8 @@ export interface Order {
   fornecedorId?: string;
   distancia: number;
   confirmacao: { entregador: boolean; recebedor: boolean };
-  motoristaId: string | null;
-  valor: number;
+  motoristaId?: string;
+  valor?: number;
   taxas: {
     entregaTotal: number;
     entregaMotorista: number;
@@ -71,6 +71,12 @@ export interface Order {
     plataformaTotal: number;
     repasse: number;
   };
+  createdAt?: string;
+  pickedUpAt?: string;
+  deliveredAt?: string;
+  clienteNome?: string;
+  lojaNome?: string;
+  motoristaNome?: string;
 }
 
 export interface City {
@@ -874,6 +880,8 @@ export const useAppStore = create<AppState>()(
         const updates: any = {};
         if (newDbStatus) updates.status = newDbStatus;
         if (driverId) updates.driver_id = driverId;
+        if (action === 'aceitar_motorista') updates.picked_up_at = new Date().toISOString();
+        if (action === 'conf_recebedor') updates.delivered_at = new Date().toISOString();
 
         if (Object.keys(updates).length > 0) {
            const { error } = await supabase.from('orders').update(updates).eq('id', orderId);
@@ -905,7 +913,7 @@ export const useAppStore = create<AppState>()(
          let query = supabase.from('orders').select(`
             id, order_type, status, products_subtotal, delivery_distance_km, 
             applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
-            buyer_id, seller_storefront_id, driver_id, created_at,
+            buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
             buyer:users!orders_buyer_id_fkey(id, name, latitude, longitude),
             storefront:storefronts!orders_seller_storefront_id_fkey(id, partner_id, store_name),
             driver:users!orders_driver_id_fkey(id, name)
@@ -952,6 +960,12 @@ export const useAppStore = create<AppState>()(
                    type: dbOrder.order_type as 'B2C'|'B2B'|'COLETA',
                    title: localOrder?.title || `Pedido de ${storeName}`,
                    status: appStatus as any,
+                   createdAt: dbOrder.created_at,
+                   pickedUpAt: dbOrder.picked_up_at,
+                   deliveredAt: dbOrder.delivered_at,
+                   clienteNome: dbOrder.buyer?.name || state.users[dbOrder.buyer_id]?.name,
+                   lojaNome: dbOrder.storefront?.store_name || state.users[dbOrder.storefront?.partner_id]?.name,
+                   motoristaNome: dbOrder.driver?.name || state.users[dbOrder.driver_id]?.name,
                    criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,
                    origemId: localOrder?.origemId || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id,
                    destinoId: localOrder?.destinoId || dbOrder.buyer_id,

@@ -151,6 +151,9 @@ export default function StorefrontPage() {
           <div className="flex gap-2">
              {!currentUser ? (
                <>
+                 <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-200 transition">
+                   📲 Compartilhar
+                 </button>
                  <Link href="/login" className="bg-transparent hover:bg-purple-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-400 transition">
                    Entrar
                  </Link>
@@ -245,7 +248,13 @@ export default function StorefrontPage() {
                     <div key={o.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-xl shadow-sm border ${o.status === 'aguardando_cliente' ? 'border-green-400 shadow-green-100 dark:shadow-none' : isCanceled ? 'border-red-200 opacity-60' : 'border-zinc-200 dark:border-zinc-800'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
                         <div className="w-full sm:w-auto">
                             <p className="font-bold text-zinc-800 dark:text-white">{o.title} <span className="text-xs text-zinc-500">({o.id})</span></p>
+                            <p className="text-[10px] text-zinc-600 dark:text-zinc-400 mt-1 uppercase font-bold">Motorista: {o.motoristaNome || 'Aguardando'}</p>
                             <p className="text-xs text-zinc-500 mt-1">Total: {formatMoney(o.valor + o.taxas.entregaCliente)} (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                               {o.createdAt && <span className="text-[9px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                               {o.pickedUpAt && <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold">📦 Retirada: {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                               {o.deliveredAt && <span className="text-[9px] bg-green-50 text-green-600 px-2 py-0.5 rounded font-bold">✅ Entrega: {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                            </div>
                             {!isCanceled && (
                               <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded inline-flex items-center gap-1">🗺️ Ver Rota ({o.distancia.toFixed(1)} km)</button>
                             )}

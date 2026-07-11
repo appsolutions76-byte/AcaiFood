@@ -144,7 +144,13 @@ export default function CaminhaoDashboard() {
                             <span className="font-bold text-zinc-800 dark:text-white text-sm">{o.title}</span>
                             <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: currentUser.id })} className="text-[10px] text-blue-500 hover:underline">🗺️ {o.distancia.toFixed(1)} km</button>
                         </div>
-                        <div className="text-xs text-zinc-500 mb-3">Destino: {store.users[o.destinoId]?.bairro || '—'}</div>
+                        <div className="text-[10px] text-zinc-600 dark:text-zinc-400 mb-1 uppercase font-bold">Forn: {o.lojaNome || store.users[o.origemId]?.name || '—'} | Loja: {o.clienteNome || store.users[o.destinoId]?.name || '—'}</div>
+                        <div className="text-xs text-zinc-500 mb-2">Destino: {store.users[o.destinoId]?.bairro || '—'}</div>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                           {o.createdAt && <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                           {o.pickedUpAt && <span className="text-[9px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded font-bold">📦 Retirada: {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                           {o.deliveredAt && <span className="text-[9px] bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded font-bold">✅ Entrega: {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                        </div>
                         
                         {o.status === 'em_rota' ? (
                             <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-lg shadow transition">📍 Confirmar Chegada</button>
