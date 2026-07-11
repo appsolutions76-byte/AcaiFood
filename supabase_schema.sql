@@ -11,8 +11,17 @@ DROP TABLE IF EXISTS public.products CASCADE;
 DROP TABLE IF EXISTS public.storefronts CASCADE;
 DROP TABLE IF EXISTS public.platform_settings CASCADE;
 DROP TABLE IF EXISTS public.users CASCADE;
+DROP TABLE IF EXISTS public.cities CASCADE;
 
--- 1. Create Users Table (Partners & Clients & Logistics)
+-- 1. Create Cities Table (For Expansion)
+CREATE TABLE IF NOT EXISTS public.cities (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Create Users Table (Partners & Clients & Logistics)
 CREATE TABLE IF NOT EXISTS public.users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   role TEXT NOT NULL CHECK (role IN ('CLIENT', 'PARTNER', 'ADMIN', 'COURIER', 'SUPPLIER', 'TRANSPORTER', 'ECOPOINT')),
@@ -164,6 +173,17 @@ ON public.platform_settings FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Only admins can update platform settings" ON public.platform_settings;
 CREATE POLICY "Only admins can update platform settings" 
 ON public.platform_settings FOR UPDATE USING (public.is_admin());
+
+-- RLS: Cities
+ALTER TABLE public.cities ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Cities are visible to everyone" ON public.cities;
+CREATE POLICY "Cities are visible to everyone" 
+ON public.cities FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Only admins can manage cities" ON public.cities;
+CREATE POLICY "Only admins can manage cities" 
+ON public.cities FOR ALL USING (public.is_admin());
 
 -- RLS: Users
 CREATE OR REPLACE FUNCTION public.is_admin()
