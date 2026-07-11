@@ -51,12 +51,17 @@ export default function StorefrontPage() {
     return customProd ? customProd.price : 0;
   };
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
     store.fetchLojas();
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     
-    if (!currentUser) {
-      router.replace('/cadastro');
-    } else {
+    if (currentUser) {
       store.startRealtime();
       if (currentUser.role === 'admin') router.replace('/admin');
       else if (currentUser.role === 'loja') router.replace('/parceiros/batedeira');
@@ -64,9 +69,9 @@ export default function StorefrontPage() {
       else if (currentUser.role === 'motorista' && currentUser.veiculo === 'Moto') router.replace('/parceiros/motoboy');
       else if (currentUser.role === 'motorista' && (currentUser.veiculo === 'Caminhão' || currentUser.veiculo === 'Caçamba')) router.replace('/parceiros/caminhao');
     }
-  }, [currentUser?.role, router]);
+  }, [mounted, currentUser?.role, router]);
 
-  if (!currentUser || currentUser.role !== 'cliente') {
+  if (!mounted) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;
   }
 
@@ -77,15 +82,15 @@ export default function StorefrontPage() {
   const batedeiras = Object.values(store.users)
     .filter(u => u.role === 'loja' && u.status !== 'paused' && u.status !== 'blocked')
     .sort((a, b) => {
-      const distA = (a.lat && currentUser.lat) ? haversineKm(a.lat, a.lng!, currentUser.lat, currentUser.lng!) : 999;
-      const distB = (b.lat && currentUser.lat) ? haversineKm(b.lat, b.lng!, currentUser.lat, currentUser.lng!) : 999;
+      const distA = (a.lat && currentUser?.lat) ? haversineKm(a.lat, a.lng!, currentUser!.lat, currentUser!.lng!) : 999;
+      const distB = (b.lat && currentUser?.lat) ? haversineKm(b.lat, b.lng!, currentUser!.lat, currentUser!.lng!) : 999;
       return distA - distB;
     });
 
   const calcFreteCliente = (lojaId: string) => {
     const loja = store.users[lojaId];
     if (!loja || !loja.lat || !currentUser?.lat) return { freteCliente: 0, dist: 0, subsidy: 0 };
-    const dist = haversineKm(loja.lat, loja.lng!, currentUser.lat, currentUser.lng!);
+    const dist = haversineKm(loja.lat, loja.lng!, currentUser!.lat, currentUser!.lng!);
     const freteTotal = dist * store.rates.b2c_km;
     const subsidy = loja.freteSubsidyPct || 0;
     const freteCliente = freteTotal * (1 - subsidy / 100);
