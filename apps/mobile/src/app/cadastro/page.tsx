@@ -14,6 +14,12 @@ function CadastroForm() {
   
   const registerUser = useAppStore(state => state.registerUser);
   const authorizeMercadoPago = useAppStore(state => state.authorizeMercadoPago);
+  const cities = useAppStore(state => state.cities);
+  const fetchCities = useAppStore(state => state.fetchCities);
+  
+  React.useEffect(() => {
+    fetchCities();
+  }, [fetchCities]);
   
   const [role, setRole] = useState<Role>(defaultRole as Role);
   const [veiculo, setVeiculo] = useState("Moto"); // Para motoristas
@@ -22,8 +28,11 @@ function CadastroForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pixKey, setPixKey] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [endereco, setEndereco] = useState("");
   const [cidade, setCidade] = useState("Belém");
   const [bairro, setBairro] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
   const [termosAceitos, setTermosAceitos] = useState(false);
   const [termosModalOpen, setTermosModalOpen] = useState(false);
   
@@ -45,38 +54,49 @@ function CadastroForm() {
     if (role === 'motorista' && veiculo === 'Caminhão') icon = '🚚';
     if (role === 'motorista' && veiculo === 'Caçamba') icon = '🚛';
 
-    // Mock das coordenadas (baseado no bairro, no mundo real pegaria GPS)
-    const lat = -1.45 + (Math.random() * 0.05 - 0.025);
-    const lng = -48.48 + (Math.random() * 0.05 - 0.025);
-
-    const data: Partial<User> = {
-      role, name, email, password, cidade, bairro, icon, lat, lng
-    };
+    setIsLocating(true);
     
-    if (role === 'motorista') {
-      data.veiculo = veiculo;
-      data.pixKey = pixKey;
-    }
-    if (role === 'loja') {
-      data.priceB2C = { popular: 18, medio: 25, grosso: 33 };
-      data.freteSubsidyPct = 0;
-    }
-    if (role === 'fornecedor') {
-      data.priceB2B = 140;
-      data.freteSubsidyPct = 0;
-    }
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, enableHighAccuracy: true });
+      });
+      
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
 
-    const newUser = await registerUser(data as Omit<User, "id">);
-    
-    if (newUser) {
-      if (role === 'cliente') {
-        router.push('/');
-      } else {
-        setNewUserId(newUser.id);
-        setStep(2); // Vai para o passo de MP
+      const data: Partial<User> = {
+        role, name, email, password, telefone, endereco, cidade, bairro, icon, lat, lng
+      };
+      
+      if (role === 'motorista') {
+        data.veiculo = veiculo;
+        data.pixKey = pixKey;
       }
-    } else {
-      alert("Erro ao criar conta.");
+      if (role === 'loja') {
+        data.priceB2C = { popular: 18, medio: 25, grosso: 33 };
+        data.freteSubsidyPct = 0;
+      }
+      if (role === 'fornecedor') {
+        data.priceB2B = 140;
+        data.freteSubsidyPct = 0;
+      }
+
+      const newUser = await registerUser(data as Omit<User, "id">);
+      setIsLocating(false);
+      
+      if (newUser) {
+        if (role === 'cliente') {
+          router.push('/');
+        } else {
+          setNewUserId(newUser.id);
+          setStep(2); // Vai para o passo de MP
+        }
+      } else {
+        alert("Erro ao criar conta.");
+      }
+    } catch (err) {
+      setIsLocating(false);
+      alert("Precisamos da sua localização para o cálculo correto dos fretes. Por favor, ative e permita o acesso ao GPS no seu dispositivo e tente novamente.");
     }
   };
 
@@ -186,18 +206,29 @@ function CadastroForm() {
                     onChange={e => setCidade(e.target.value)}
                     className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
                   >
-                    <option value="Belém">Belém</option>
-                    <option value="Ananindeua">Ananindeua</option>
-                    <option value="Marituba">Marituba</option>
-                    <option value="Castanhal">Castanhal</option>
-                    <option value="Benevides">Benevides</option>
-                    <option value="Santa Bárbara do Pará">Santa Bárbara do Pará</option>
+                    {cities.length > 0 ? (
+                       cities.filter(c => c.status === 'active').map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                       ))
+                    ) : (
+                       <option value="Belém">Belém</option>
+                    )}
                   </select>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Bairro Base</label>
                   <input type="text" required value={bairro} onChange={e => setBairro(e.target.value)} className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Endereço Completo (com número)</label>
+                  <input type="text" required value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Ex: Rua das Mangueiras, 123" className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Telefone (WhatsApp)</label>
+                  <input type="tel" required value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(91) 90000-0000" className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
                 </div>
 
                 <div>
@@ -225,8 +256,8 @@ function CadastroForm() {
                 </div>
 
                 <div className="pt-2">
-                  <button type="submit" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition active:scale-95">
-                    {role === 'cliente' ? 'Criar Conta e Começar' : 'Criar Conta Parceira'}
+                  <button type="submit" disabled={isLocating} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
+                    {isLocating ? 'Obtendo GPS...' : (role === 'cliente' ? 'Criar Conta e Começar' : 'Criar Conta Parceira')}
                   </button>
                 </div>
               </form>

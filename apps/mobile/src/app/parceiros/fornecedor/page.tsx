@@ -25,7 +25,7 @@ export default function FornecedorDashboard() {
   const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [b2bPrice, setB2bPrice] = useState(currentUser?.priceB2B || 140);
-  const [activeTab, setActiveTab] = useState('geral');
+  const [activeTab, setActiveTab] = useState('pedidos');
 
   useEffect(() => {
     if (currentUser) {
@@ -127,8 +127,10 @@ export default function FornecedorDashboard() {
           </div>
           <div className="flex items-center gap-3">
             {currentUser.mercadoPagoToken && (
-               <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200">MP Ativo ✅</span>
+               <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200 hidden sm:inline-block">MP Ativo ✅</span>
             )}
+            <button onClick={() => window.location.reload()} className="text-[10px] bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 px-2 py-1 rounded font-bold hidden sm:inline-block">🔄 Atualizar</button>
+            <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold">📲 Compartilhar</button>
             <ThemeToggle />
             <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 underline">Sair</button>
           </div>

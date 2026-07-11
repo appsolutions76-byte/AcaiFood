@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   phone TEXT,
+  endereco TEXT,
   pix_key TEXT,
   mp_access_token TEXT, -- Encrypted Mercado Pago Token
   mp_merchant_id TEXT,
@@ -294,3 +295,27 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('products', 'products', t
 ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.storefronts;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.cities;
+
+-- 8. Cidades / Expansão
+CREATE TABLE IF NOT EXISTS public.cities (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT UNIQUE NOT NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused')),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.cities ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Cities are visible to everyone" ON public.cities;
+CREATE POLICY "Cities are visible to everyone" 
+ON public.cities FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Only admins can manage cities" ON public.cities;
+CREATE POLICY "Only admins can manage cities" 
+ON public.cities FOR ALL USING (public.is_admin());
+
+-- Inserir cidades padrão
+INSERT INTO public.cities (name) VALUES 
+('Belém'), ('Ananindeua'), ('Marituba'), ('Castanhal'), ('Benevides'), ('Santa Bárbara do Pará')
+ON CONFLICT (name) DO NOTHING;

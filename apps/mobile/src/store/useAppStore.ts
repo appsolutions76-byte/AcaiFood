@@ -23,6 +23,8 @@ export interface User {
   id: string;
   role: Role;
   name: string;
+  telefone?: string;
+  endereco?: string;
   cidade?: string;
   bairro?: string;
   icon: string;
@@ -71,7 +73,14 @@ export interface Order {
   };
 }
 
+export interface City {
+  id: string;
+  name: string;
+  status: 'active' | 'paused';
+}
+
 interface AppState {
+  cities: City[];
   rates: {
     b2c_plat: number; b2c_km: number; b2c_mot_plat: number;
     b2b_plat: number; b2b_km: number; b2b_mot_plat: number;
@@ -110,6 +119,16 @@ interface AppState {
   setupRealtime: (userId: string) => void;
   clearData: () => Promise<void>;
   setClearPassword: (pwd: string) => void;
+
+  // Cidades
+  fetchCities: () => Promise<void>;
+  addCity: (name: string) => Promise<void>;
+  updateCityStatus: (id: string, status: 'active' | 'paused') => Promise<void>;
+  deleteCity: (id: string) => Promise<void>;
+  
+  // Auto Refresh
+  startAutoRefresh: () => void;
+  stopAutoRefresh: () => void;
   
   // Carrinho
   addToCart: (storeId: string, item: { id: string; name: string; price: number; quantity?: number }) => void;
@@ -124,6 +143,7 @@ interface AppState {
 
 // Para manter referência ao channel e evitar duplicatas
 let supabaseChannel: any = null;
+let autoRefreshInterval: any = null;
 
 const DB_DEFAULTS = {
   rates: {
@@ -132,12 +152,14 @@ const DB_DEFAULTS = {
     col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00,
     payout_time: '22:00'
   },
+  cities: [] as City[],
   users: {} // Remover usuários fixos para prevenir vazamento de credenciais
 };
 
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
+      cities: DB_DEFAULTS.cities,
       rates: DB_DEFAULTS.rates,
       users: DB_DEFAULTS.users,
       orders: [],
@@ -151,6 +173,7 @@ export const useAppStore = create<AppState>()(
            set({ currentUser: user });
            get().setupRealtime(userId);
            get().fetchOrders(userId);
+           get().startAutoRefresh();
         }
       },
 
@@ -182,6 +205,8 @@ export const useAppStore = create<AppState>()(
             id: userProfile.id,
             role: appRole as Role,
             name: sf?.store_name || userProfile.name,
+            telefone: userProfile.phone,
+            endereco: userProfile.endereco,
             email: userProfile.email,
             cidade: userProfile.cidade,
             bairro: userProfile.bairro,
@@ -205,6 +230,7 @@ export const useAppStore = create<AppState>()(
           set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
           get().setupRealtime(loggedUser.id);
           get().fetchOrders(loggedUser.id);
+          get().startAutoRefresh();
           return true;
         }
 
@@ -212,6 +238,7 @@ export const useAppStore = create<AppState>()(
       },
 
       logout: () => {
+         get().stopAutoRefresh();
          set({ currentUser: null });
          supabase.removeAllChannels();
       },
@@ -245,6 +272,8 @@ export const useAppStore = create<AppState>()(
           id: newUser.id,
           role: dbRole,
           name: newUser.name,
+          phone: newUser.telefone,
+          endereco: newUser.endereco,
           email: newUser.email,
           cidade: newUser.cidade,
           bairro: newUser.bairro,
@@ -999,7 +1028,55 @@ export const useAppStore = create<AppState>()(
          });
       },
 
-      setClearPassword: (pwd) => set({ clearPassword: pwd })
+      setClearPassword: (pwd) => set({ clearPassword: pwd }),
+
+      fetchCities: async () => {
+         const { data, error } = await supabase.from('cities').select('*').order('name', { ascending: true });
+         if (!error && data) {
+            set({ cities: data });
+         }
+      },
+      addCity: async (name) => {
+         const { data, error } = await supabase.from('cities').insert({ name }).select().single();
+         if (!error && data) {
+            set((state) => ({ cities: [...state.cities, data] }));
+         }
+      },
+      updateCityStatus: async (id, status) => {
+         const { error } = await supabase.from('cities').update({ status }).eq('id', id);
+         if (!error) {
+            set((state) => ({
+               cities: state.cities.map(c => c.id === id ? { ...c, status } : c)
+            }));
+         }
+      },
+      deleteCity: async (id) => {
+         const { error } = await supabase.from('cities').delete().eq('id', id);
+         if (!error) {
+            set((state) => ({
+               cities: state.cities.filter(c => c.id !== id)
+            }));
+         }
+      },
+
+      startAutoRefresh: () => {
+         const currentUser = get().currentUser;
+         if (!currentUser) return;
+         if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+         
+         // Atualiza a cada 30 segundos
+         autoRefreshInterval = setInterval(() => {
+             console.log("Auto-refreshing orders...");
+             get().fetchOrders(currentUser.id);
+         }, 30000);
+      },
+      
+      stopAutoRefresh: () => {
+         if (autoRefreshInterval) {
+             clearInterval(autoRefreshInterval);
+             autoRefreshInterval = null;
+         }
+      }
     }),
     { 
       name: 'acaifood-storage-v4',
@@ -1008,6 +1085,8 @@ export const useAppStore = create<AppState>()(
           setTimeout(() => {
             state.setupRealtime(state.currentUser!.id);
             state.fetchOrders(state.currentUser!.id);
+            state.startAutoRefresh();
+            state.fetchCities(); // Carregar cidades iniciais
           }, 50);
         }
       }

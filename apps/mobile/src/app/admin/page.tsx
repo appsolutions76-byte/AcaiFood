@@ -15,8 +15,8 @@ export default function AdminDashboard() {
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState(store.rates);
-  
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades'>('dashboard');
+  const [newCityName, setNewCityName] = useState('');
   
   const [userFilterRole, setUserFilterRole] = useState<string>('all');
   const [userFilterText, setUserFilterText] = useState<string>('');
@@ -175,7 +175,9 @@ export default function AdminDashboard() {
             <Settings className="text-purple-600" />
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+              <button onClick={() => window.location.reload()} className="text-[10px] bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 px-2 py-1 rounded font-bold hidden sm:inline-block">🔄 Atualizar</button>
+              <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold">📲 Compartilhar</button>
               <ThemeToggle />
               <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition text-sm">
                   🔑 Senha
@@ -192,12 +194,11 @@ export default function AdminDashboard() {
       </header>
 
       <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
-        <div className="max-w-7xl mx-auto px-4 flex gap-6 overflow-x-auto">
           <button onClick={() => setActiveTab('dashboard')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'dashboard' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
           <button onClick={() => setActiveTab('usuarios')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'usuarios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>👥 Usuários</button>
           <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
+          <button onClick={() => setActiveTab('cidades')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'cidades' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🌍 Cidades / Expansão</button>
         </div>
-      </div>
 
       <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
         
@@ -410,6 +411,51 @@ export default function AdminDashboard() {
                     )}
                 </tbody>
             </table>
+        </div>
+          </div>
+        )}
+
+        {activeTab === 'cidades' && (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">🌍 Gestão de Cidades e Expansão</h3>
+            
+            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-4">
+                <h4 className="font-bold mb-3 text-sm">Adicionar Nova Cidade</h4>
+                <div className="flex gap-2">
+                    <input type="text" value={newCityName} onChange={e => setNewCityName(e.target.value)} placeholder="Ex: Marabá" className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500" />
+                    <button onClick={() => { if(newCityName) { store.addCity(newCityName); setNewCityName(''); } }} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-bold transition">Adicionar</button>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-x-auto mt-4 mb-10">
+                <table className="w-full text-left text-sm min-w-max">
+                    <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+                        <tr><th className="p-4">Nome da Cidade</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        {store.cities.map(c => (
+                            <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                                <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">{c.name}</td>
+                                <td className="p-4">
+                                    {c.status === 'active' ? <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Ativa</span> : <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pausada</span>}
+                                </td>
+                                <td className="p-4 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                        <button onClick={() => store.updateCityStatus(c.id, c.status === 'active' ? 'paused' : 'active')} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${c.status === 'active' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}>
+                                            {c.status === 'active' ? 'Pausar' : 'Ativar'}
+                                        </button>
+                                        <button onClick={() => { if(confirm(`Tem certeza que deseja excluir a cidade ${c.name}?`)) store.deleteCity(c.id); }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
+                                            🗑️ Excluir
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                        {store.cities.length === 0 && (
+                            <tr><td colSpan={3} className="text-center p-6 text-zinc-500">Nenhuma cidade cadastrada.</td></tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
           </div>
         )}

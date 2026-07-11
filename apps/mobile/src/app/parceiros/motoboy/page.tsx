@@ -14,7 +14,7 @@ export default function MotoboyDashboard() {
   const currentUser = store.currentUser;
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
-  const [activeTab, setActiveTab] = useState('geral');
+  const [activeTab, setActiveTab] = useState('radar');
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -66,6 +66,8 @@ export default function MotoboyDashboard() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Corridas (B2C)</h1>
           </div>
           <div className="flex items-center gap-3">
+            <button onClick={() => window.location.reload()} className="text-[10px] bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 px-2 py-1 rounded font-bold hidden sm:inline-block">🔄 Atualizar</button>
+            <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold">📲 Compartilhar</button>
             <ThemeToggle />
             <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 underline">Sair</button>
           </div>
