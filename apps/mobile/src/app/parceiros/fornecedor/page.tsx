@@ -18,6 +18,7 @@ export default function FornecedorDashboard() {
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    store.fetchAllUsers();
     setMounted(true);
   }, []);
   const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
