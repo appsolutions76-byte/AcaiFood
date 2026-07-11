@@ -454,7 +454,9 @@ export default function BatedeiraDashboard() {
                               <div className="flex gap-3">
                                   <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="flex-1 px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition">Cancelar</button>
                                   <button onClick={async () => {
-                                      const url = await store.criarPedido('B2B', forn.id, undefined, cartModalB2B.quantity);
+                                      store.clearCart();
+                                      store.addToCart(forn.id, { id: 'B2B', name: 'Paneiro de Açaí', price: unitPrice, quantity: cartModalB2B.quantity });
+                                      const url = await store.criarPedido('B2B', forn.id);
                                       setCartModalB2B({ ...cartModalB2B, open: false });
                                       if(url) window.location.href = url;
                                   }} className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-700 active:scale-95 transition">Confirmar Pedido</button>

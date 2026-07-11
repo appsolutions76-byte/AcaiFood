@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
   applied_delivery_platform_fee_percent DECIMAL(5, 2) NOT NULL,
   
   -- Order Values
+  items JSONB DEFAULT '[]'::jsonb,
   products_subtotal DECIMAL(10, 2) NOT NULL,
   delivery_distance_km DECIMAL(10, 2) NOT NULL,
   

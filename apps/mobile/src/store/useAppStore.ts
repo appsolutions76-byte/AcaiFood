@@ -45,6 +45,7 @@ export interface Order {
   type: 'B2C' | 'B2B' | 'COLETA';
   title?: string;
   quantity?: number;
+  items?: { id: string; name: string; quantity: number; price: number }[];
   status: 'pendente' | 'preparo' | 'pronto' | 'em_rota' | 'aguardando_cliente' | 'entregue' | 'cancelado';
   criadoPor: string;
   origemId: string;
@@ -80,6 +81,10 @@ interface AppState {
   orderCounter: number;
   currentUser: User | null;
   clearPassword?: string;
+  cart: {
+    storeId: string | null;
+    items: { id: string; name: string; quantity: number; price: number }[];
+  };
   
   // Ações
   login: (userId: string) => void;
@@ -103,6 +108,12 @@ interface AppState {
   setupRealtime: (userId: string) => void;
   clearData: () => Promise<void>;
   setClearPassword: (pwd: string) => void;
+  
+  // Carrinho
+  addToCart: (storeId: string, item: { id: string; name: string; price: number; quantity?: number }) => void;
+  removeFromCart: (itemId: string) => void;
+  updateCartQuantity: (itemId: string, quantity: number) => void;
+  clearCart: () => void;
 }
 
 const DB_DEFAULTS = {
@@ -122,6 +133,7 @@ export const useAppStore = create<AppState>()(
       orders: [],
       orderCounter: 1,
       currentUser: null, // Usuário não logado inicialmente
+      cart: { storeId: null, items: [] },
       
       login: (userId) => {
         const user = get().users[userId];
@@ -253,6 +265,45 @@ export const useAppStore = create<AppState>()(
         const state = get();
         set({ users: { ...state.users, [newUser.id]: newUser }, currentUser: newUser });
         return newUser;
+      },
+      
+      addToCart: (storeId, item) => {
+        set(state => {
+          // If trying to add from a different store, clear the cart first
+          const currentStoreId = state.cart.storeId;
+          let newItems = currentStoreId === storeId ? [...state.cart.items] : [];
+          
+          const existingItemIndex = newItems.findIndex(i => i.id === item.id);
+          if (existingItemIndex >= 0) {
+            newItems[existingItemIndex].quantity += (item.quantity || 1);
+          } else {
+            newItems.push({ ...item, quantity: item.quantity || 1 });
+          }
+          
+          return { cart: { storeId, items: newItems } };
+        });
+      },
+      
+      removeFromCart: (itemId) => {
+        set(state => ({
+          cart: {
+            ...state.cart,
+            items: state.cart.items.filter(i => i.id !== itemId)
+          }
+        }));
+      },
+      
+      updateCartQuantity: (itemId, quantity) => {
+        set(state => ({
+          cart: {
+            ...state.cart,
+            items: state.cart.items.map(i => i.id === itemId ? { ...i, quantity: Math.max(1, quantity) } : i)
+          }
+        }));
+      },
+      
+      clearCart: () => {
+        set({ cart: { storeId: null, items: [] } });
       },
 
       fetchLojas: async () => {
@@ -526,7 +577,7 @@ export const useAppStore = create<AppState>()(
         await supabase.from('products').delete().eq('id', productId);
       },
 
-      criarPedido: async (tipo, targetId, subTipoMenu, quantity = 1) => {
+      criarPedido: async (tipo, targetId) => {
         const state = get();
         if (!state.currentUser) return;
         const currentUser = state.currentUser;
@@ -548,6 +599,15 @@ export const useAppStore = create<AppState>()(
           return 0;
         };
 
+        const cartItems = state.cart.items;
+        if (cartItems.length === 0 && tipo !== 'COLETA') {
+            alert('Seu carrinho está vazio.');
+            return;
+        }
+
+        const itemsTotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        const totalQuantity = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
         const novoPedido: Order = {
           id: `PED-${String(state.orderCounter).padStart(3, '0')}`,
           type: tipo,
@@ -558,33 +618,19 @@ export const useAppStore = create<AppState>()(
           distancia: distKM,
           confirmacao: { entregador: false, recebedor: false },
           motoristaId: null,
-          valor: 0,
-          quantity,
+          valor: itemsTotal,
+          quantity: totalQuantity,
+          items: cartItems,
           taxas: { entregaTotal: 0, entregaMotorista: 0, entregaCliente: 0, entregaLoja: 0, entregaFornecedor: 0, plataformaVenda: 0, plataformaEntrega: 0, plataformaTotal: 0, repasse: 0 }
         };
 
-        if (tipo === 'B2C' && subTipoMenu && targetId) {
+        if (tipo === 'B2C' && targetId) {
           const loja = state.users[targetId];
-          let productPrice = 0;
-          let productName = '';
-          let isCustomProduct = false;
-
-          if (subTipoMenu === 'popular' || subTipoMenu === 'medio' || subTipoMenu === 'grosso') {
-              productPrice = loja.priceB2C![subTipoMenu as keyof typeof loja.priceB2C] || 0;
-              productName = subTipoMenu;
-          } else {
-              const customProd = loja.products?.find(p => p.id === subTipoMenu);
-              if (customProd) {
-                  isCustomProduct = true;
-                  productPrice = customProd.price;
-                  productName = customProd.name;
-              }
-          }
-
-          novoPedido.title = isCustomProduct ? `${productName} (${loja.name})` : `Açaí ${productName} (${loja.name})`;
+          const titles = cartItems.map(i => `${i.quantity}x ${i.name}`).join(', ');
+          
+          novoPedido.title = `${titles} (${loja.name})`;
           novoPedido.clienteId = currentUser.id;
           novoPedido.lojaId = targetId;
-          novoPedido.valor = productPrice;
           novoPedido.taxas.entregaTotal = calcFrete('B2C', distKM);
           novoPedido.taxas.entregaLoja = novoPedido.taxas.entregaTotal * ((loja.freteSubsidyPct || 0) / 100);
           novoPedido.taxas.entregaCliente = novoPedido.taxas.entregaTotal - novoPedido.taxas.entregaLoja;
@@ -598,8 +644,9 @@ export const useAppStore = create<AppState>()(
         // Simulação rápida para B2B e Coleta
         if (tipo === 'B2B' && targetId) {
             const forn = state.users[targetId];
-            novoPedido.title = `${quantity}x Paneiros (${forn.name})`;
-            novoPedido.valor = (forn.priceB2B || 0) * quantity;
+            const titles = cartItems.map(i => `${i.quantity}x ${i.name}`).join(', ');
+
+            novoPedido.title = `${titles} (${forn.name})`;
             novoPedido.lojaId = currentUser.id;
             novoPedido.fornecedorId = targetId;
             novoPedido.taxas.entregaTotal = calcFrete('B2B', distKM);
@@ -644,15 +691,15 @@ export const useAppStore = create<AppState>()(
 
           // 2. Invoke Mercado Pago Edge Function
           const { data: { session } } = await supabase.auth.getSession();
-          const { data: mpData, error: mpError } = await supabase.functions.invoke('mp-checkout', {
-            body: { 
-              orderId: dbOrder.id,
-              cartItems: [{
-                id: subTipoMenu || tipo,
-                quantity: quantity
-              }],
-              origin: typeof window !== 'undefined' ? window.location.origin : ''
-            },
+            const { data: mpData, error: mpError } = await supabase.functions.invoke('mp-checkout', {
+              body: { 
+                orderId: dbOrder.id,
+                cartItems: cartItems.map(item => ({
+                  id: item.id,
+                  quantity: item.quantity
+                })),
+                origin: typeof window !== 'undefined' ? window.location.origin : ''
+              },
             headers: {
               Authorization: `Bearer ${session?.access_token || ''}`
             }
@@ -673,7 +720,11 @@ export const useAppStore = create<AppState>()(
           if (mpData && mpData.init_point) {
              // Save to local state using DB generated ID
              const finalPedido = { ...novoPedido, id: dbOrder.id };
-             set({ orders: [finalPedido, ...get().orders], orderCounter: get().orderCounter + 1 });
+             set({ 
+                orders: [finalPedido, ...get().orders], 
+                orderCounter: get().orderCounter + 1,
+                cart: { storeId: null, items: [] } // Clear cart on success
+             });
              // Return the checkout URL so the frontend can redirect
              return mpData.init_point;
           }

@@ -53,34 +53,52 @@ serve(async (req) => {
     }
 
     let verifiedSubtotal = 0;
+    const detailedItems = [];
+
     for (const item of cartItems) {
       if (!item.id || !item.quantity) continue;
+
+      let verifiedPrice = 0;
+      let verifiedName = item.id;
 
       if (['popular', 'medio', 'grosso'].includes(item.id)) {
          const { data: store } = await supabaseClient.from('storefronts').select(`price_b2c_${item.id}`).eq('id', order.seller_storefront_id).single();
          if (store && store[`price_b2c_${item.id}`]) {
-            verifiedSubtotal += (store[`price_b2c_${item.id}`] * item.quantity);
+            verifiedPrice = Number(store[`price_b2c_${item.id}`]);
+            verifiedName = `Açaí ${item.id.charAt(0).toUpperCase() + item.id.slice(1)}`;
          }
       } else if (item.id === 'B2B') {
          const { data: store } = await supabaseClient.from('storefronts').select('price_b2b').eq('id', order.seller_storefront_id).single();
          if (store && store.price_b2b) {
-            verifiedSubtotal += (store.price_b2b * item.quantity);
+            verifiedPrice = Number(store.price_b2b);
+            verifiedName = 'Paneiro de Açaí';
          }
       } else {
-         const { data: product } = await supabaseClient.from('products').select('price').eq('id', item.id).single();
+         const { data: product } = await supabaseClient.from('products').select('name, price').eq('id', item.id).single();
          if (product && product.price) {
-           verifiedSubtotal += (product.price * item.quantity);
+           verifiedPrice = Number(product.price);
+           verifiedName = product.name;
          }
+      }
+
+      if (verifiedPrice > 0) {
+        verifiedSubtotal += (verifiedPrice * item.quantity);
+        detailedItems.push({
+          id: item.id,
+          name: verifiedName,
+          price: verifiedPrice,
+          quantity: item.quantity
+        });
       }
     }
 
-    if (verifiedSubtotal <= 0) {
+    if (verifiedSubtotal <= 0 || detailedItems.length === 0) {
       throw new Error('Forbidden: Invalid product price or manipulation detected.');
     }
 
     // 4. Segurança Crítica 2: Cálculo Dinâmico de Distância no Servidor (Distance Spoofing Fix)
     const { data: buyerUser } = await supabaseClient.from('users').select('latitude, longitude, email, name').eq('id', order.buyer_id).single();
-    const { data: sellerStore } = await supabaseClient.from('storefronts').select('partner_id').eq('id', order.seller_storefront_id).single();
+    const { data: sellerStore } = await supabaseClient.from('storefronts').select('partner_id, frete_subsidy_pct').eq('id', order.seller_storefront_id).single();
     if (!sellerStore) throw new Error('Seller storefront not found');
     
     const { data: sellerUser } = await supabaseClient.from('users').select('latitude, longitude, mp_access_token').eq('id', sellerStore.partner_id).single();
@@ -109,7 +127,8 @@ serve(async (req) => {
       delivery_distance_km: serverDistanceKm,
       applied_platform_fee_percent: serverPlatformFeePct,
       applied_delivery_fee_per_km: serverDeliveryFeePerKm,
-      applied_delivery_platform_fee_percent: serverDeliveryPlatformFeePct
+      applied_delivery_platform_fee_percent: serverDeliveryPlatformFeePct,
+      items: detailedItems
     }).eq('id', orderId);
 
     // Refresh order state
@@ -144,9 +163,15 @@ serve(async (req) => {
     const deliveryDistance = Number(order.delivery_distance_km || 0);
     const deliveryFeePerKm = Number(order.applied_delivery_fee_per_km || 0);
     const totalDeliveryFee = deliveryDistance * deliveryFeePerKm;
+    const subsidyPct = Number(sellerStore.frete_subsidy_pct || 0);
+    const customerDeliveryFee = totalDeliveryFee * (1 - (subsidyPct / 100));
 
     const totalApplicationFee = platformSalesFeeAmount + totalDeliveryFee;
-    const finalTotal = itemsTotal + totalDeliveryFee;
+    const finalTotal = itemsTotal + customerDeliveryFee;
+
+    if (totalApplicationFee > finalTotal) {
+      throw new Error('O frete total da corrida é maior que o valor do produto. Devido à taxa de subsídio desta loja, não é possível concluir o pedido. Por favor, adicione mais itens ao carrinho.');
+    }
 
     // 8. Create Preference in Mercado Pago
     const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
@@ -208,7 +233,7 @@ serve(async (req) => {
     console.error("Checkout Edge Function Error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 200, // Return 200 so supabase-js doesn't throw a generic Error
     });
   }
 });
