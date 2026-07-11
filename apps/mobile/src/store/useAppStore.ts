@@ -37,6 +37,7 @@ export interface User {
   password?: string;
   status?: 'active' | 'paused' | 'blocked';
   mpLinked?: boolean;
+  pixKey?: string;
   products?: Product[];
 }
 
@@ -197,6 +198,7 @@ export const useAppStore = create<AppState>()(
                 grosso: sf.price_b2c_grosso || 35
             } : undefined,
             freteSubsidyPct: sf?.frete_subsidy_pct || 0,
+            pixKey: userProfile.pix_key,
             products: sf?.products || []
           };
           
@@ -249,6 +251,7 @@ export const useAppStore = create<AppState>()(
           latitude: newUser.lat,
           longitude: newUser.lng,
           vehicle_type: vehicleType,
+          pix_key: newUser.pixKey,
           status: 'active'
         });
 
@@ -388,6 +391,7 @@ export const useAppStore = create<AppState>()(
                         },
                         freteSubsidyPct: sf?.frete_subsidy_pct || 0,
                         mpLinked: !!dbUser.mp_merchant_id,
+                        pixKey: dbUser.pix_key,
                         products: sf?.products || []
                     };
                 });
@@ -440,6 +444,7 @@ export const useAppStore = create<AppState>()(
                         },
                         freteSubsidyPct: sf?.frete_subsidy_pct || 0,
                         mpLinked: !!dbUser.mp_merchant_id,
+                        pixKey: dbUser.pix_key,
                         products: sf?.products || []
                     };
                 });

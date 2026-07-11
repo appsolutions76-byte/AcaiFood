@@ -356,11 +356,15 @@ export default function AdminDashboard() {
                                   </div>
                                   {u.role === 'motorista' && (
                                     (() => {
-                                      const amountOwed = store.orders.filter(o => o.motoristaId === u.id && o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.entregaMotorista, 0);
-                                      if (amountOwed > 0) {
+                                      const pendingOrders = store.orders.filter(o => o.motoristaId === u.id && o.status === 'entregue');
+                                      const amountOwed = pendingOrders.reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || getDynamicTaxes(curr).repasseMoto || 0), 0);
+                                      if (pendingOrders.length > 0) {
                                         return (
-                                          <div className="mt-2 bg-green-50 border border-green-200 p-2 rounded-lg flex items-center justify-between">
-                                            <span className="text-xs font-bold text-green-700">A Pagar: {formatMoney(amountOwed)}</span>
+                                          <div className="mt-2 bg-green-50 border border-green-200 p-2 rounded-lg flex items-center justify-between flex-wrap gap-2">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-xs font-bold text-green-700">A Pagar: {formatMoney(amountOwed)}</span>
+                                              {u.pixKey && <span className="text-[10px] text-zinc-500 bg-zinc-200 px-2 py-0.5 rounded font-mono">PIX: {u.pixKey}</span>}
+                                            </div>
                                             <button onClick={() => { if(confirm(`Confirmar o pagamento via Pix de ${formatMoney(amountOwed)} para ${u.name}? O saldo será zerado.`)) store.acaoPedido(u.id, 'pagar_motorista'); }} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
                                               Pagar e Zerar
                                             </button>

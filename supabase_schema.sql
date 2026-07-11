@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   phone TEXT,
+  pix_key TEXT,
   mp_access_token TEXT, -- Encrypted Mercado Pago Token
   mp_merchant_id TEXT,
   
