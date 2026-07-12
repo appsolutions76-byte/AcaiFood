@@ -862,7 +862,7 @@ export const useAppStore = create<AppState>()(
             const newOrder = { ...o };
             if (action === 'cancelar_pedido' || action === 'cancelar_cliente') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
             if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
-            if (action === 'chamar_moto') { newOrder.status = 'pronto'; newDbStatus = 'READY'; }
+            if (action === 'chamar_moto' || action === 'chamar_caminhao') { newOrder.status = 'pronto'; newDbStatus = 'READY'; }
             if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newDbStatus = 'DELIVERING'; driverId = newOrder.motoristaId; }
             if (action === 'conf_motorista') {
               newOrder.status = 'aguardando_cliente';
@@ -881,7 +881,7 @@ export const useAppStore = create<AppState>()(
         if (newDbStatus) updates.status = newDbStatus;
         if (driverId) updates.driver_id = driverId;
         if (action === 'aceitar_motorista') updates.picked_up_at = new Date().toISOString();
-        if (action === 'conf_recebedor') updates.delivered_at = new Date().toISOString();
+        if (action === 'conf_recebedor' || action === 'conf_motorista') updates.delivered_at = new Date().toISOString();
 
         if (Object.keys(updates).length > 0) {
            const { error } = await supabase.from('orders').update(updates).eq('id', orderId);
@@ -973,8 +973,9 @@ export const useAppStore = create<AppState>()(
                    criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,
                    origemId: localOrder?.origemId || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id,
                    destinoId: localOrder?.destinoId || dbOrder.buyer_id,
-                   clienteId: localOrder?.clienteId || dbOrder.buyer_id,
-                   lojaId: localOrder?.lojaId || dbOrder.storefront?.partner_id,
+                   clienteId: localOrder?.clienteId || (dbOrder.order_type === 'B2C' ? dbOrder.buyer_id : undefined),
+                   lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : dbOrder.storefront?.partner_id),
+                   fornecedorId: localOrder?.fornecedorId || (dbOrder.order_type === 'B2B' ? dbOrder.storefront?.partner_id : undefined),
                    distancia: dbOrder.delivery_distance_km,
                    valor: dbOrder.products_subtotal,
                    motoristaId: dbOrder.driver_id,
