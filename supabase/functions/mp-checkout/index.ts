@@ -63,8 +63,14 @@ serve(async (req) => {
 
       if (['popular', 'medio', 'grosso'].includes(item.id)) {
          const { data: store } = await supabaseClient.from('storefronts').select(`price_b2c_${item.id}`).eq('id', order.seller_storefront_id).single();
-         if (store && store[`price_b2c_${item.id}`]) {
-            verifiedPrice = Number(store[`price_b2c_${item.id}`]);
+         if (store) {
+            let p = Number(store[`price_b2c_${item.id}`]);
+            if (!p || p <= 0) {
+               if (item.id === 'popular') p = 20;
+               if (item.id === 'medio') p = 26;
+               if (item.id === 'grosso') p = 35;
+            }
+            verifiedPrice = p;
             verifiedName = `Açaí ${item.id.charAt(0).toUpperCase() + item.id.slice(1)}`;
          }
       } else if (item.id === 'B2B') {
