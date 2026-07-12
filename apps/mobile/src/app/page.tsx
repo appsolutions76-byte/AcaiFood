@@ -250,11 +250,24 @@ export default function StorefrontPage() {
                             <p className="font-bold text-zinc-800 dark:text-white">{o.title} <span className="text-xs text-zinc-500">({o.id})</span></p>
                             <p className="text-[10px] text-zinc-600 dark:text-zinc-400 mt-1 uppercase font-bold">Motorista: {o.motoristaNome || 'Aguardando'}</p>
                             <p className="text-xs text-zinc-500 mt-1">Total: {formatMoney(o.valor + o.taxas.entregaCliente)} (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
-                            <div className="flex flex-wrap gap-2 mt-2">
+                            <div className="flex flex-wrap gap-2 mt-2 mb-2">
                                {o.createdAt && <span className="text-[9px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                               {o.acceptedAt && <span className="text-[9px] bg-purple-50 text-purple-600 px-2 py-0.5 rounded font-bold">👨‍🍳 Aceito: {new Date(o.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                               {o.readyAt && <span className="text-[9px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded font-bold">🛎️ Pronto: {new Date(o.readyAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                                {o.pickedUpAt && <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold">📦 Retirada: {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                               {o.deliveredAt && <span className="text-[9px] bg-green-50 text-green-600 px-2 py-0.5 rounded font-bold">✅ Entrega: {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                               {o.deliveredAt && <span className="text-[9px] bg-teal-50 text-teal-600 px-2 py-0.5 rounded font-bold">📍 Chegou: {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                               {o.receivedAt && <span className="text-[9px] bg-green-50 text-green-600 px-2 py-0.5 rounded font-bold">✅ Recebido: {new Date(o.receivedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                             </div>
+                            
+                            {o.deliveryPin && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && (
+                               <div className="mt-3 bg-zinc-900 dark:bg-zinc-800 text-white p-3 rounded-lg flex items-center justify-between shadow-md border border-zinc-700">
+                                   <div>
+                                       <p className="text-[10px] font-bold uppercase text-zinc-400">PIN de Entrega</p>
+                                       <p className="text-xs text-zinc-300 leading-tight">Informe ao motorista</p>
+                                   </div>
+                                   <div className="text-2xl font-black tracking-widest text-emerald-400">{o.deliveryPin}</div>
+                               </div>
+                            )}
                             {!isCanceled && (
                               <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded inline-flex items-center gap-1">🗺️ Ver Rota ({o.distancia.toFixed(1)} km)</button>
                             )}

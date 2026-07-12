@@ -15,6 +15,7 @@ export default function CaminhaoDashboard() {
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [activeTab, setActiveTab] = useState('radar');
+  const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -148,15 +149,36 @@ export default function CaminhaoDashboard() {
                         <div className="text-xs text-zinc-500 mb-2">Destino: {store.users[o.destinoId]?.bairro || '—'}</div>
                         <div className="flex flex-wrap gap-2 mb-3">
                            {o.createdAt && <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                           {o.acceptedAt && <span className="text-[9px] bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded font-bold">👨‍🍳 Aceito: {new Date(o.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                           {o.readyAt && <span className="text-[9px] bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded font-bold">🛎️ Pronto: {new Date(o.readyAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                            {o.pickedUpAt && <span className="text-[9px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded font-bold">📦 Retirada: {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                           {o.deliveredAt && <span className="text-[9px] bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded font-bold">✅ Entrega: {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                           {o.deliveredAt && <span className="text-[9px] bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded font-bold">📍 Chegou: {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                           {o.receivedAt && <span className="text-[9px] bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded font-bold">✅ Recebido: {new Date(o.receivedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                         </div>
                         
                         {o.status === 'em_rota' ? (
                             <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-lg shadow transition">📍 Confirmar Chegada</button>
                         ) : o.status === 'aguardando_cliente' ? (
-                            <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 text-xs p-2 rounded text-center font-bold">Aguardando cliente confirmar...</div>
-                        ) : o.status === 'entregue' ? (
+                            <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 p-4 rounded-xl flex flex-col gap-3 shadow-inner">
+                                <p className="text-xs text-center font-bold">Peça o PIN de Segurança à Loja</p>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        maxLength={4} 
+                                        placeholder="0000" 
+                                        value={pinInputs[o.id] || ''} 
+                                        onChange={e => setPinInputs(prev => ({...prev, [o.id]: e.target.value}))}
+                                        className="w-20 text-center font-bold tracking-widest text-lg p-2 rounded-lg border border-orange-300 dark:border-orange-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
+                                    />
+                                    <button 
+                                        onClick={() => store.acaoPedido(o.id, 'validar_pin', pinInputs[o.id])} 
+                                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded-lg transition shadow-md"
+                                    >
+                                        Validar e Finalizar
+                                    </button>
+                                </div>
+                            </div>
+                        ) : o.status === 'entregue' || o.status === 'arquivado' ? (
                             <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-2 rounded text-center font-bold">✅ Finalizado</div>
                         ) : null}
                     </div>

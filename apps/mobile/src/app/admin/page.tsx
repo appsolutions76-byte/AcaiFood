@@ -299,8 +299,11 @@ export default function AdminDashboard() {
                                 <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">🗺️ Ver {o.distancia.toFixed(1)} km</button>
                                 <div className="mt-1 flex flex-col gap-0.5">
                                     {o.createdAt && <span className="text-[9px] text-zinc-500 font-normal">🕒 {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                                    {o.acceptedAt && <span className="text-[9px] text-purple-500 font-normal">👨‍🍳 {new Date(o.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                                    {o.readyAt && <span className="text-[9px] text-orange-500 font-normal">🛎️ {new Date(o.readyAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                                     {o.pickedUpAt && <span className="text-[9px] text-blue-500 font-normal">📦 {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                                    {o.deliveredAt && <span className="text-[9px] text-green-500 font-normal">✅ {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                                    {o.deliveredAt && <span className="text-[9px] text-teal-500 font-normal">📍 {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                                    {o.receivedAt && <span className="text-[9px] text-green-500 font-normal">✅ {new Date(o.receivedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                                 </div>
                             </td>
                             <td className="p-4"><span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold text-zinc-700 dark:text-zinc-300">{o.type}</span></td>
@@ -314,7 +317,12 @@ export default function AdminDashboard() {
                                 {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pendente</span>}
                                 {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Preparo</span>}
                                 {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
-                                {o.status === 'aguardando_cliente' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguard. Recebimento</span>}
+                                {o.status === 'aguardando_cliente' && (
+                                  <div className="flex flex-col gap-1 items-start">
+                                    <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguard. PIN</span>
+                                    <button onClick={() => { if(confirm('Forçar baixa manual do pedido? (Use apenas se o cliente perdeu o PIN)')) store.acaoPedido(o.id, 'forcar_baixa'); }} className="bg-zinc-800 hover:bg-black text-white px-2 py-1.5 rounded text-[9px] font-bold w-full transition">Forçar Baixa</button>
+                                  </div>
+                                )}
                                 {o.status === 'entregue' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>}
                                 {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
                             </td>

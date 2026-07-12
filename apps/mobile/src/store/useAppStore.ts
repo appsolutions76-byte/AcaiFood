@@ -74,6 +74,10 @@ export interface Order {
   createdAt?: string;
   pickedUpAt?: string;
   deliveredAt?: string;
+  acceptedAt?: string;
+  readyAt?: string;
+  receivedAt?: string;
+  deliveryPin?: string;
   clienteNome?: string;
   lojaNome?: string;
   motoristaNome?: string;
@@ -756,6 +760,7 @@ export const useAppStore = create<AppState>()(
              }
           }
 
+          const pin = Math.floor(1000 + Math.random() * 9000).toString();
           const { data: dbOrder, error: dbError } = await supabase.from('orders').insert({
             buyer_id: currentUser.id,
             seller_storefront_id: sellerStorefrontId,
@@ -765,7 +770,8 @@ export const useAppStore = create<AppState>()(
             delivery_distance_km: novoPedido.distancia || 0,
             applied_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_plat : state.rates.b2b_plat,
             applied_delivery_fee_per_km: tipo === 'B2C' ? state.rates.b2c_km : state.rates.b2b_km,
-            applied_delivery_platform_fee_percent: state.rates.b2c_mot_plat
+            applied_delivery_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_mot_plat : state.rates.b2b_mot_plat,
+            delivery_pin: pin
           }).select().single();
 
           if (dbError) {
@@ -803,7 +809,7 @@ export const useAppStore = create<AppState>()(
 
           if (mpData && mpData.init_point) {
              // Save to local state using DB generated ID
-             const finalPedido = { ...novoPedido, id: dbOrder.id };
+             const finalPedido = { ...novoPedido, id: dbOrder.id, deliveryPin: pin };
              set({ 
                 orders: [finalPedido, ...get().orders], 
                 orderCounter: get().orderCounter + 1,
@@ -819,7 +825,19 @@ export const useAppStore = create<AppState>()(
 
       },
 
-      acaoPedido: async (orderId, action) => {
+      acaoPedido: async (orderId, action, pinStr?: string) => {
+        const state = get();
+        const currentUser = state.currentUser;
+        if (!currentUser) return;
+
+        if (action === 'validar_pin') {
+            const order = state.orders.find(o => o.id === orderId);
+            if (order && order.deliveryPin !== pinStr) {
+                alert("PIN Inválido!");
+                return;
+            }
+        }
+
         if (action === 'pagar_motorista') {
              const motoristaId = orderId; // Usando orderId como userId neste caso específico
              set((state) => {
@@ -836,7 +854,7 @@ export const useAppStore = create<AppState>()(
              const { error } = await supabase.from('orders')
                  .update({ status: 'COMPLETED' })
                  .eq('driver_id', motoristaId)
-                 .eq('status', 'DELIVERED');
+                 .eq('status', 'RECEIVED');
                  
              if (error) console.error("Error paying motorista:", error);
              return;
@@ -868,9 +886,9 @@ export const useAppStore = create<AppState>()(
               newOrder.status = 'aguardando_cliente';
               newDbStatus = 'DELIVERED';
             }
-            if (action === 'conf_recebedor') {
+            if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
               newOrder.status = 'entregue';
-              newDbStatus = 'DELIVERED';
+              newDbStatus = 'RECEIVED';
             }
             return newOrder;
           });
@@ -880,8 +898,11 @@ export const useAppStore = create<AppState>()(
         const updates: any = {};
         if (newDbStatus) updates.status = newDbStatus;
         if (driverId) updates.driver_id = driverId;
+        if (action === 'aceitar_loja' || action === 'aceitar_forn') updates.accepted_at = new Date().toISOString();
+        if (action === 'chamar_moto' || action === 'chamar_caminhao') updates.ready_at = new Date().toISOString();
         if (action === 'aceitar_motorista') updates.picked_up_at = new Date().toISOString();
-        if (action === 'conf_recebedor' || action === 'conf_motorista') updates.delivered_at = new Date().toISOString();
+        if (action === 'conf_motorista') updates.delivered_at = new Date().toISOString();
+        if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') updates.received_at = new Date().toISOString();
 
         if (Object.keys(updates).length > 0) {
            const { error } = await supabase.from('orders').update(updates).eq('id', orderId);
@@ -914,6 +935,7 @@ export const useAppStore = create<AppState>()(
             id, order_type, status, products_subtotal, delivery_distance_km, 
             applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
             buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
+            delivery_pin, accepted_at, ready_at, received_at,
             buyer:users!orders_buyer_id_fkey(id, name, latitude, longitude),
             storefront:storefronts!orders_seller_storefront_id_fkey(id, partner_id, store_name),
             driver:users!orders_driver_id_fkey(id, name)
@@ -954,7 +976,8 @@ export const useAppStore = create<AppState>()(
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
                 if (dbOrder.status === 'READY') appStatus = 'pronto';
                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
-                if (dbOrder.status === 'DELIVERED') appStatus = 'entregue';
+                if (dbOrder.status === 'DELIVERED') appStatus = 'aguardando_cliente';
+                if (dbOrder.status === 'RECEIVED') appStatus = 'entregue';
                 if (dbOrder.status === 'COMPLETED') appStatus = 'arquivado';
                 if (dbOrder.status === 'CANCELLED') appStatus = 'cancelado';
 
@@ -974,6 +997,10 @@ export const useAppStore = create<AppState>()(
                    createdAt: dbOrder.created_at,
                    pickedUpAt: dbOrder.picked_up_at,
                    deliveredAt: dbOrder.delivered_at,
+                   acceptedAt: dbOrder.accepted_at,
+                   readyAt: dbOrder.ready_at,
+                   receivedAt: dbOrder.received_at,
+                   deliveryPin: dbOrder.delivery_pin,
                    clienteNome: dbOrder.buyer?.name || state.users[dbOrder.buyer_id]?.name,
                    lojaNome: dbOrder.storefront?.store_name || state.users[dbOrder.storefront?.partner_id]?.name,
                    motoristaNome: dbOrder.driver?.name || state.users[dbOrder.driver_id]?.name,
