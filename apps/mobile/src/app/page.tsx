@@ -76,8 +76,8 @@ export default function StorefrontPage() {
   }
 
   let meusPedidos = currentUser ? store.orders.filter(o => o.clienteId === currentUser.id) : [];
-  const clientActiveOrders = meusPedidos.filter(o => o.status !== 'entregue' && o.status !== 'cancelado');
-  const clientHistoryOrders = meusPedidos.filter(o => o.status === 'entregue' || o.status === 'cancelado');
+  const clientActiveOrders = meusPedidos.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
+  const clientHistoryOrders = meusPedidos.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   meusPedidos = [...clientActiveOrders, ...clientHistoryOrders];
   const batedeiras = Object.values(store.users)
     .filter(u => u.role === 'loja' && u.status !== 'paused' && u.status !== 'blocked')
@@ -279,7 +279,7 @@ export default function StorefrontPage() {
                             {o.status === 'pronto' && <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Entregador</span>}
                             {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Moto a caminho</span>}
                             {o.status === 'aguardando_cliente' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Chegou!</span>}
-                            {o.status === 'entregue' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Entregue</span>}
+                            {(o.status === 'entregue' || o.status === 'arquivado') && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Entregue</span>}
                             {isCanceled && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
   
                             {!isCanceled && o.status === 'pendente' && (
