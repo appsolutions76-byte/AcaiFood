@@ -905,8 +905,16 @@ export const useAppStore = create<AppState>()(
         if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') updates.received_at = new Date().toISOString();
 
         if (Object.keys(updates).length > 0) {
+           if (action === 'validar_pin') updates.provided_pin = pinStr;
            const { error } = await supabase.from('orders').update(updates).eq('id', orderId);
-           if (error) console.error("Error updating order in DB:", error);
+           if (error) {
+              console.error("Error updating order in DB:", error);
+              if (error.message && error.message.includes('PIN de segurança')) {
+                 alert("Erro de Segurança: " + error.message);
+                 // Reverter update otimista se necessário, forçando um fetchOrders
+                 get().fetchOrders(currentUser.id);
+              }
+           }
         }
 
         if (newDbStatus === 'CANCELLED') {
