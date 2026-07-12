@@ -754,9 +754,12 @@ export const useAppStore = create<AppState>()(
           let sellerStorefrontId = targetId;
           
           if (targetId) {
-             const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', targetId).single();
+             const { data: sf, error: sfError } = await supabase.from('storefronts').select('id').eq('partner_id', targetId).limit(1).maybeSingle();
              if (sf) {
                  sellerStorefrontId = sf.id;
+             } else {
+                 alert("Esta loja ainda não concluiu o cadastro (Perfil de Vendas ausente). Não é possível pedir no momento.");
+                 return;
              }
           }
 
@@ -776,6 +779,7 @@ export const useAppStore = create<AppState>()(
 
           if (dbError) {
               console.error("Erro ao salvar pedido no DB:", dbError);
+              alert("Erro ao registrar o pedido. Detalhes: " + (dbError.message || "Desconhecido"));
               return;
           }
 
@@ -819,8 +823,9 @@ export const useAppStore = create<AppState>()(
              return mpData.init_point;
           }
           
-        } catch(e) {
+        } catch(e: any) {
             console.error("Fatal exception during checkout:", e);
+            alert("Erro fatal ao processar o pagamento: " + (e.message || JSON.stringify(e)));
         }
 
       },
