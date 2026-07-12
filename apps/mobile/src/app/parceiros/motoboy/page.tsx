@@ -49,7 +49,7 @@ export default function MotoboyDashboard() {
   const ganhosHoje = minhasCorridasAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.entregaMotorista, 0);
 
   const motoActiveOrders = minhasCorridasAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado');
-  const motoHistoryOrders = minhasCorridasAll.filter(o => o.status === 'entregue' || o.status === 'cancelado').slice(0, 3);
+  const motoHistoryOrders = minhasCorridasAll.filter(o => o.status === 'entregue' || o.status === 'cancelado');
   const minhasCorridas = [...motoActiveOrders, ...motoHistoryOrders];
 
   const isPaused = currentUser.status === 'paused';

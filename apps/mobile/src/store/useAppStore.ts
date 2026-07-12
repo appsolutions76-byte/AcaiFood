@@ -919,15 +919,22 @@ export const useAppStore = create<AppState>()(
             driver:users!orders_driver_id_fkey(id, name)
          `);
 
-         if (currentUser.role === 'loja' || currentUser.role === 'fornecedor') {
+         if (currentUser.role === 'loja') {
+            const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id).single();
+            if (sf) {
+                query = query.or(`seller_storefront_id.eq.${sf.id},buyer_id.eq.${currentUser.id}`);
+            } else {
+                query = query.eq('buyer_id', currentUser.id);
+            }
+         } else if (currentUser.role === 'fornecedor') {
             const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id).single();
             if (sf) {
                 query = query.eq('seller_storefront_id', sf.id);
             }
-         } else if (currentUser.role === 'cliente') {
-            query = query.eq('buyer_id', currentUser.id);
          } else if (currentUser.role === 'motorista') {
             query = query.or(`status.in.("READY","PREPARING","DELIVERING"),driver_id.eq.${currentUser.id}`);
+         } else if (currentUser.role === 'cliente') {
+            query = query.eq('buyer_id', currentUser.id);
          } else if (currentUser.role === 'admin') {
             // Admin sees all orders
          } else {
@@ -938,7 +945,7 @@ export const useAppStore = create<AppState>()(
             query = query.eq('is_hidden', false);
          }
 
-         query = query.order('created_at', { ascending: false });
+         query = query.order('created_at', { ascending: false }).limit(200);
          const { data: dbOrders, error } = await query;
          
          if (dbOrders && !error) {

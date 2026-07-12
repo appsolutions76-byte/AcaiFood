@@ -77,7 +77,7 @@ export default function StorefrontPage() {
 
   let meusPedidos = currentUser ? store.orders.filter(o => o.clienteId === currentUser.id) : [];
   const clientActiveOrders = meusPedidos.filter(o => o.status !== 'entregue' && o.status !== 'cancelado');
-  const clientHistoryOrders = meusPedidos.filter(o => o.status === 'entregue' || o.status === 'cancelado').slice(0, 3);
+  const clientHistoryOrders = meusPedidos.filter(o => o.status === 'entregue' || o.status === 'cancelado');
   meusPedidos = [...clientActiveOrders, ...clientHistoryOrders];
   const batedeiras = Object.values(store.users)
     .filter(u => u.role === 'loja' && u.status !== 'paused' && u.status !== 'blocked')

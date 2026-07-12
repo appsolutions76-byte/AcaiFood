@@ -109,7 +109,7 @@ export default function FornecedorDashboard() {
   const vendasHoje = meusPedidosAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.repasse, 0);
 
   const fornActiveOrders = meusPedidosAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado');
-  const fornHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado').slice(0, 3);
+  const fornHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado');
   const meusPedidos = [...fornActiveOrders, ...fornHistoryOrders];
 
   const handleSaveSubsidy = () => {

@@ -111,7 +111,7 @@ export default function BatedeiraDashboard() {
   const vendasHoje = meusPedidosAll.filter(o => o.status === 'entregue' && o.type === 'B2C').reduce((acc, curr) => acc + curr.taxas.repasse, 0);
   
   const batedeiraActiveOrders = meusPedidosAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado');
-  const batedeiraHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado').slice(0, 3);
+  const batedeiraHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado');
   const meusPedidos = [...batedeiraActiveOrders, ...batedeiraHistoryOrders];
   const fornecedores = Object.values(store.users)
     .filter(u => u.role === 'fornecedor' && u.status !== 'paused' && u.status !== 'blocked' && u.cidade === currentUser.cidade)
