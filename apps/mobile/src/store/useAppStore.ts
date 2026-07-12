@@ -116,7 +116,7 @@ interface AppState {
   authorizeMercadoPago: (userId: string, token: string) => void;
   saveRates: (newRates: Partial<AppState['rates']>) => void;
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string, quantity?: number) => Promise<string | undefined>;
-  acaoPedido: (orderId: string, action: string) => Promise<void>;
+  acaoPedido: (orderId: string, action: string, pinStr?: string) => Promise<void>;
   setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
