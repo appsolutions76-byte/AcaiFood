@@ -793,10 +793,7 @@ export const useAppStore = create<AppState>()(
                   quantity: item.quantity
                 })),
                 origin: typeof window !== 'undefined' ? window.location.origin : ''
-              },
-            headers: {
-              Authorization: `Bearer ${session?.access_token || ''}`
-            }
+              }
           });
 
           if (mpError) {
