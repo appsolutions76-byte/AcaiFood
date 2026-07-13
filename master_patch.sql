@@ -1,0 +1,74 @@
+-- ==========================================================
+-- MASTER PATCH - AÇAÍFOOD
+-- Roda este script no SQL Editor para garantir que TODAS as
+-- colunas, triggers e seguranças estão aplicadas e recarregar o cache.
+-- ==========================================================
+
+-- 1. Garante que todas as colunas de controle e histórico existem
+ALTER TABLE public.orders
+ADD COLUMN IF NOT EXISTS delivery_pin VARCHAR(4),
+ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS picked_up_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS received_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS provided_pin text,
+ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
+
+-- 2. Garante que a coluna Pix existe na tabela users
+ALTER TABLE public.users
+ADD COLUMN IF NOT EXISTS pix_key text;
+
+-- 3. Trigger de Segurança Financeira (Garante que ninguém altere o preço do frete)
+CREATE OR REPLACE FUNCTION public.protect_order_financials()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF auth.role() = 'authenticated' AND NOT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'ADMIN') THEN
+    IF (NEW.products_subtotal IS DISTINCT FROM OLD.products_subtotal) OR
+       (NEW.delivery_distance_km IS DISTINCT FROM OLD.delivery_distance_km) OR
+       (NEW.applied_platform_fee_percent IS DISTINCT FROM OLD.applied_platform_fee_percent) OR
+       (NEW.applied_delivery_fee_per_km IS DISTINCT FROM OLD.applied_delivery_fee_per_km) OR
+       (NEW.applied_delivery_platform_fee_percent IS DISTINCT FROM OLD.applied_delivery_platform_fee_percent) THEN
+       
+       RAISE EXCEPTION 'Acesso negado: Tentativa de fraude nos valores da corrida.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_protect_order_financials ON public.orders;
+CREATE TRIGGER trigger_protect_order_financials
+BEFORE UPDATE ON public.orders
+FOR EACH ROW
+EXECUTE FUNCTION public.protect_order_financials();
+
+-- 4. Trigger de Validação Rigorosa do PIN
+CREATE OR REPLACE FUNCTION public.validate_delivery_pin_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF auth.role() = 'authenticated' AND NOT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'ADMIN') THEN
+    IF NEW.status = 'RECEIVED' AND OLD.status != 'RECEIVED' THEN
+      IF NEW.provided_pin IS NULL OR NEW.provided_pin IS DISTINCT FROM OLD.delivery_pin THEN
+        RAISE EXCEPTION 'Acesso negado: PIN de segurança inválido ou ausente.';
+      END IF;
+    END IF;
+  END IF;
+  NEW.provided_pin := NULL;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS check_delivery_pin ON public.orders;
+CREATE TRIGGER check_delivery_pin
+BEFORE UPDATE ON public.orders
+FOR EACH ROW
+EXECUTE FUNCTION public.validate_delivery_pin_trigger();
+
+-- 5. Atualiza Constraints de Status
+ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_status_check;
+ALTER TABLE public.orders ADD CONSTRAINT orders_status_check 
+  CHECK (status IN ('PENDING', 'PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'RECEIVED', 'COMPLETED', 'CANCELLED'));
+
+-- 6. Recarregar o Schema Cache da API REST (Extremamente Importante)
+NOTIFY pgrst, 'reload schema';

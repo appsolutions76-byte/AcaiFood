@@ -75,8 +75,10 @@ serve(async (req) => {
          }
       } else if (item.id === 'B2B') {
          const { data: store } = await supabaseClient.from('storefronts').select('price_b2b').eq('id', order.seller_storefront_id).single();
-         if (store && store.price_b2b) {
-            verifiedPrice = Number(store.price_b2b);
+         if (store) {
+            let p = Number(store.price_b2b);
+            if (!p || p <= 0) p = 120;
+            verifiedPrice = p;
             verifiedName = 'Paneiro de Açaí';
          }
       } else {

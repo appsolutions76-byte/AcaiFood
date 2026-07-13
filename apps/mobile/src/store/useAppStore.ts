@@ -475,7 +475,7 @@ export const useAppStore = create<AppState>()(
                         icon: appRole === 'loja' ? '🏪' : appRole === 'fornecedor' ? '🏭' : appRole === 'motorista' ? '🛵' : '👤',
                         veiculo,
                         status: dbUser.status as 'active'|'paused'|'blocked',
-                        priceB2B: sf?.price_b2b,
+                        priceB2B: sf?.price_b2b || 120,
                         priceB2C: {
                             popular: sf?.price_b2c_popular || 20,
                             medio: sf?.price_b2c_medio || 26,
