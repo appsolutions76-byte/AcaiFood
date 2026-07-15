@@ -511,10 +511,11 @@ export const useAppStore = create<AppState>()(
       },
 
       fetchRates: async () => {
-         const { data, error } = await supabase.from('platform_settings').select('*').eq('id', 1).single();
+         const { data, error } = await supabase.from('platform_settings').select('*').limit(1).single();
          if (data && !error) {
              set((state) => ({ rates: { 
                  ...state.rates,
+                 id: data.id, // Store the UUID
                  b2c_plat: data.b2c_fee_percentage,
                  b2c_km: data.motoboy_fee_per_km,
                  b2c_mot_plat: data.motoboy_platform_fee_percentage,
@@ -527,6 +528,8 @@ export const useAppStore = create<AppState>()(
                  col_valor: data.col_fixed_price || 50,
                  payout_time: data.payout_time || '22:00'
              } }));
+         } else {
+             console.error("Error fetching rates:", error);
          }
       },
 
@@ -550,7 +553,8 @@ export const useAppStore = create<AppState>()(
          // Remove undefined values
          Object.keys(dbUpdates).forEach(key => { if ((dbUpdates as any)[key] === undefined) delete (dbUpdates as any)[key]; });
 
-         const { error } = await supabase.from('platform_settings').update(dbUpdates).eq('id', 1);
+         const targetId = (get().rates as any).id || 'e2560fbd-14d8-4749-b66e-6b0a24dce799';
+         const { error } = await supabase.from('platform_settings').update(dbUpdates).eq('id', targetId);
          if (error) console.error("Erro ao salvar taxas:", error);
       },
       
