@@ -114,7 +114,8 @@ interface AppState {
   fetchLojas: () => Promise<void>;
   logout: () => void;
   authorizeMercadoPago: (userId: string, token: string) => void;
-  saveRates: (newRates: Partial<AppState['rates']>) => void;
+  fetchRates: () => Promise<void>;
+  saveRates: (newRates: Partial<AppState['rates']>) => Promise<void>;
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string, quantity?: number) => Promise<string | undefined>;
   acaoPedido: (orderId: string, action: string, pinStr?: string) => Promise<void>;
   setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
@@ -182,6 +183,7 @@ export const useAppStore = create<AppState>()(
         if (user) {
            set({ currentUser: user });
            get().setupRealtime(userId);
+           get().fetchRates();
            get().fetchOrders(userId);
            get().startAutoRefresh();
         }
@@ -239,6 +241,7 @@ export const useAppStore = create<AppState>()(
           
           set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
           get().setupRealtime(loggedUser.id);
+          get().fetchRates();
           get().fetchOrders(loggedUser.id);
           get().startAutoRefresh();
           return true;
@@ -374,6 +377,8 @@ export const useAppStore = create<AppState>()(
           const currentUser = get().currentUser;
           if (!currentUser) return;
           
+          get().fetchRates();
+
           if (supabaseChannel) {
               supabaseChannel.unsubscribe();
           }
@@ -505,7 +510,18 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      saveRates: (newRates) => set((state) => ({ rates: { ...state.rates, ...newRates } })),
+      fetchRates: async () => {
+         const { data, error } = await supabase.from('platform_settings').select('*').eq('id', 1).single();
+         if (data && !error) {
+             set((state) => ({ rates: { ...state.rates, ...data } }));
+         }
+      },
+
+      saveRates: async (newRates) => {
+         set((state) => ({ rates: { ...state.rates, ...newRates } }));
+         const { error } = await supabase.from('platform_settings').update(newRates).eq('id', 1);
+         if (error) console.error("Erro ao salvar taxas:", error);
+      },
       
       setFreteSubsidy: async (userId, pct) => {
         set((state) => {
@@ -779,7 +795,7 @@ export const useAppStore = create<AppState>()(
           const { data: dbOrder, error: dbError } = await supabase.from('orders').insert({
             buyer_id: currentUser.id,
             seller_storefront_id: sellerStorefrontId,
-            order_type: tipo === 'COLETA' ? 'B2C' : tipo, // Evita crash de constraint
+            order_type: tipo,
             status: 'PENDING',
             products_subtotal: novoPedido.valor,
             delivery_distance_km: novoPedido.distancia || 0,

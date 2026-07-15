@@ -56,7 +56,7 @@ export default function AdminDashboard() {
     );
   }
 
-  const concluidos = store.orders.filter(o => o.status === 'entregue');
+  const concluidos = store.orders.filter(o => o.status === 'entregue' || o.status === 'arquivado');
   const getDynamicTaxes = (o: Order) => {
     let repasseLoja = 0, repasseForn = 0, repasseMoto = 0, platVenda = 0, platEntrega = 0, entregaTotal = 0;
     const dist = o.distancia;
