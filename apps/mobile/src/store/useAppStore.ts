@@ -1012,7 +1012,7 @@ export const useAppStore = create<AppState>()(
              const mappedOrders = dbOrders.map((dbOrder: any) => {
                 let appStatus = 'pendente';
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
-                if (dbOrder.status === 'READY') appStatus = 'pronto';
+                if (dbOrder.status === 'READY' || (dbOrder.status === 'PAID' && dbOrder.order_type === 'COLETA')) appStatus = 'pronto';
                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
                 if (dbOrder.status === 'DELIVERED') appStatus = 'aguardando_cliente';
                 if (dbOrder.status === 'RECEIVED') appStatus = 'entregue';

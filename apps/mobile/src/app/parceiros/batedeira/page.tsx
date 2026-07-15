@@ -218,12 +218,31 @@ export default function BatedeiraDashboard() {
                   <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Logística Reversa</h3>
                   <div className="flex items-center gap-2">
                       <button onClick={() => setMapModal({ open: true, origem: currentUser.id, destino: 'ecoponto' })} className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">🗺️ {distColeta.toFixed(1)} km</button>
-                      <button onClick={async () => {
-                          const url = await store.criarPedido('COLETA');
-                          if(url) window.location.href = url;
-                      }} className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-1.5 px-3 rounded-lg border border-amber-300 transition text-xs">
-                          🚛 Chamar Caçamba ({formatMoney(store.rates.col_valor)})
-                      </button>
+                      
+                      {(() => {
+                          const activeColeta = store.orders.find(o => o.type === 'COLETA' && o.origemId === currentUser.id && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado');
+                          
+                          if (activeColeta) {
+                              const statusText = activeColeta.status === 'pendente' ? 'Aguardando Pagamento' :
+                                                 activeColeta.status === 'pronto' ? 'Aguardando Caçamba' :
+                                                 activeColeta.status === 'em_rota' ? 'Caçamba a Caminho' : 'Em Andamento';
+                              return (
+                                  <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded border border-amber-200 shadow-sm animate-pulse">🚛 {statusText}</span>
+                                      <button onClick={() => store.acaoPedido(activeColeta.id, 'cancelar_pedido')} className="text-xs text-red-500 hover:text-red-700 font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Cancelar</button>
+                                  </div>
+                              );
+                          }
+
+                          return (
+                              <button onClick={async () => {
+                                  const url = await store.criarPedido('COLETA');
+                                  if(url) window.location.href = url;
+                              }} className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-1.5 px-3 rounded-lg border border-amber-300 transition text-xs shadow-sm">
+                                  🚛 Chamar Caçamba ({formatMoney(store.rates.col_valor)})
+                              </button>
+                          );
+                      })()}
                   </div>
               </div>
           </div>
@@ -299,7 +318,7 @@ export default function BatedeiraDashboard() {
                 <span className="text-4xl mb-3 opacity-50">📋</span>
                 <p className="text-zinc-500 font-medium">Nenhuma movimentação registrada na loja ainda.</p>
             </div>
-          ) : meusPedidos.map(o => {
+          ) : meusPedidos.filter(o => o.type !== 'COLETA').map(o => {
             const isCanceled = o.status === 'cancelado';
             
             let financeText = '';
