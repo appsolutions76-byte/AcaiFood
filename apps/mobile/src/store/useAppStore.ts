@@ -513,13 +513,44 @@ export const useAppStore = create<AppState>()(
       fetchRates: async () => {
          const { data, error } = await supabase.from('platform_settings').select('*').eq('id', 1).single();
          if (data && !error) {
-             set((state) => ({ rates: { ...state.rates, ...data } }));
+             set((state) => ({ rates: { 
+                 ...state.rates,
+                 b2c_plat: data.b2c_fee_percentage,
+                 b2c_km: data.motoboy_fee_per_km,
+                 b2c_mot_plat: data.motoboy_platform_fee_percentage,
+                 b2b_plat: data.b2b_fee_percentage,
+                 b2b_km: data.truck_fee_per_km,
+                 b2b_mot_plat: data.truck_platform_fee_percentage,
+                 col_plat: data.col_fee_percentage || 10,
+                 col_km: data.col_fee_per_km || 8,
+                 col_mot_plat: data.col_platform_fee_percentage || 10,
+                 col_valor: data.col_fixed_price || 50,
+                 payout_time: data.payout_time || '22:00'
+             } }));
          }
       },
 
       saveRates: async (newRates) => {
          set((state) => ({ rates: { ...state.rates, ...newRates } }));
-         const { error } = await supabase.from('platform_settings').update(newRates).eq('id', 1);
+         
+         const dbUpdates = {
+             b2c_fee_percentage: newRates.b2c_plat,
+             motoboy_fee_per_km: newRates.b2c_km,
+             motoboy_platform_fee_percentage: newRates.b2c_mot_plat,
+             b2b_fee_percentage: newRates.b2b_plat,
+             truck_fee_per_km: newRates.b2b_km,
+             truck_platform_fee_percentage: newRates.b2b_mot_plat,
+             col_fee_percentage: newRates.col_plat,
+             col_fee_per_km: newRates.col_km,
+             col_platform_fee_percentage: newRates.col_mot_plat,
+             col_fixed_price: newRates.col_valor,
+             payout_time: newRates.payout_time
+         };
+         
+         // Remove undefined values
+         Object.keys(dbUpdates).forEach(key => { if ((dbUpdates as any)[key] === undefined) delete (dbUpdates as any)[key]; });
+
+         const { error } = await supabase.from('platform_settings').update(dbUpdates).eq('id', 1);
          if (error) console.error("Erro ao salvar taxas:", error);
       },
       

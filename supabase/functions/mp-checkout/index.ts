@@ -85,7 +85,7 @@ serve(async (req) => {
             verifiedName = 'Paneiro de Açaí';
          }
       } else if (item.id === 'COLETA') {
-         verifiedPrice = Number(platformSettings.col_valor || 50);
+         verifiedPrice = Number(platformSettings.col_fixed_price || 50);
          verifiedName = 'Serviço de Coleta (Caçamba)';
       } else {
          const { data: product } = await supabaseClient.from('products').select('name, price').eq('id', item.id).single();
