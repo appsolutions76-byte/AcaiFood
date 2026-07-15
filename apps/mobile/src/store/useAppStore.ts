@@ -693,8 +693,12 @@ export const useAppStore = create<AppState>()(
             return;
         }
 
-        const itemsTotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-        const totalQuantity = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+        const finalCartItems = tipo === 'COLETA' 
+          ? [{ id: 'COLETA', name: 'Serviço de Coleta (Caçamba)', price: state.rates.col_valor, quantity: 1 }] 
+          : cartItems;
+
+        const itemsTotal = finalCartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        const totalQuantity = finalCartItems.reduce((acc, item) => acc + item.quantity, 0);
 
         const novoPedido: Order = {
           id: `PED-${String(state.orderCounter).padStart(3, '0')}`,
@@ -708,7 +712,7 @@ export const useAppStore = create<AppState>()(
           motoristaId: null,
           valor: itemsTotal,
           quantity: totalQuantity,
-          items: cartItems,
+          items: finalCartItems,
           taxas: { entregaTotal: 0, entregaMotorista: 0, entregaCliente: 0, entregaLoja: 0, entregaFornecedor: 0, plataformaVenda: 0, plataformaEntrega: 0, plataformaTotal: 0, repasse: 0 }
         };
 
