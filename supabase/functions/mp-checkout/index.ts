@@ -52,6 +52,9 @@ serve(async (req) => {
       throw new Error('Forbidden: Cart cannot be empty. Security validation failed.');
     }
 
+    const { data: platformSettings } = await supabaseClient.from('platform_settings').select('*').single();
+    if (!platformSettings) throw new Error('System settings missing');
+
     let verifiedSubtotal = 0;
     const detailedItems = [];
 
@@ -81,6 +84,9 @@ serve(async (req) => {
             verifiedPrice = p;
             verifiedName = 'Paneiro de Açaí';
          }
+      } else if (item.id === 'COLETA') {
+         verifiedPrice = Number(platformSettings.col_valor || 50);
+         verifiedName = 'Serviço de Coleta (Caçamba)';
       } else {
          const { data: product } = await supabaseClient.from('products').select('name, price').eq('id', item.id).single();
          if (product && product.price) {
@@ -121,8 +127,6 @@ serve(async (req) => {
     }
     
     // 5. Segurança Crítica 3: Substituir taxas do cliente pelas do Servidor (Fee Spoofing Fix)
-    const { data: platformSettings } = await supabaseClient.from('platform_settings').select('*').single();
-    if (!platformSettings) throw new Error('System settings missing');
 
     const isB2C = order.order_type === 'B2C' || order.order_type === 'COLETA';
     const serverPlatformFeePct = isB2C ? platformSettings.b2c_fee_percentage : platformSettings.b2b_fee_percentage;
