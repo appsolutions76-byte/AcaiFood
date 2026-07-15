@@ -800,7 +800,7 @@ export const useAppStore = create<AppState>()(
             const { data: mpData, error: mpError } = await supabase.functions.invoke('mp-checkout', {
               body: { 
                 orderId: dbOrder.id,
-                cartItems: cartItems.map(item => ({
+                cartItems: finalCartItems.map(item => ({
                   id: item.id,
                   quantity: item.quantity
                 })),
