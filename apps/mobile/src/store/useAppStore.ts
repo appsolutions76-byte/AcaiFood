@@ -753,7 +753,15 @@ export const useAppStore = create<AppState>()(
         try {
           let sellerStorefrontId = targetId;
           
-          if (targetId) {
+          if (tipo === 'COLETA') {
+             const { data: mySf } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id).limit(1).maybeSingle();
+             if (mySf) {
+                 sellerStorefrontId = mySf.id;
+             } else {
+                 alert("Seu perfil de loja não foi encontrado.");
+                 return;
+             }
+          } else if (targetId) {
              const { data: sf, error: sfError } = await supabase.from('storefronts').select('id').eq('partner_id', targetId).limit(1).maybeSingle();
              if (sf) {
                  sellerStorefrontId = sf.id;
