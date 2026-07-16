@@ -147,22 +147,28 @@ serve(async (req) => {
     const refreshed = await supabaseClient.from('orders').select('*').eq('id', orderId).single();
     if (refreshed.data) order = refreshed.data;
 
-    // 6. Decrypt the Token
+    // 6. Decrypt the Token (or use Master Token for COLETA)
     let accessToken = '';
-    const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY');
-    if (!ENCRYPTION_KEY) throw new Error('ENCRYPTION_KEY missing in server config');
+    
+    if (order.order_type === 'COLETA') {
+        accessToken = Deno.env.get('MP_ACCESS_TOKEN') || '';
+        if (!accessToken) throw new Error('Master MP Access Token not configured for platform');
+    } else {
+        const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY');
+        if (!ENCRYPTION_KEY) throw new Error('ENCRYPTION_KEY missing in server config');
 
-    const [ivBase64, encryptedBase64] = sellerUser.mp_access_token.split(':');
-    const keyBytes = new Uint8Array(ENCRYPTION_KEY.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-    const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
-    const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
-    const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+        const [ivBase64, encryptedBase64] = sellerUser.mp_access_token.split(':');
+        const keyBytes = new Uint8Array(ENCRYPTION_KEY.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+        const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
+        const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+        const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
 
-    try {
-      const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, encryptedData);
-      accessToken = new TextDecoder().decode(decryptedBuffer);
-    } catch (e) {
-      throw new Error('Falha ao descriptografar token do Mercado Pago da loja');
+        try {
+          const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, encryptedData);
+          accessToken = new TextDecoder().decode(decryptedBuffer);
+        } catch (e) {
+          throw new Error('Falha ao descriptografar token do Mercado Pago da loja');
+        }
     }
 
     if (!accessToken) throw new Error('Mercado Pago Access Token not configured');
@@ -178,8 +184,14 @@ serve(async (req) => {
     const subsidyPct = Number(sellerStore.frete_subsidy_pct || 0);
     const customerDeliveryFee = totalDeliveryFee * (1 - (subsidyPct / 100));
 
-    const totalApplicationFee = platformSalesFeeAmount + totalDeliveryFee;
-    const finalTotal = itemsTotal + customerDeliveryFee;
+    let totalApplicationFee = platformSalesFeeAmount + totalDeliveryFee;
+    let finalTotal = itemsTotal + customerDeliveryFee;
+
+    if (order.order_type === 'COLETA') {
+        // Platform keeps 100% since they receive it and pay driver via PIX
+        totalApplicationFee = 0; 
+        finalTotal = itemsTotal; // Just the fixed price
+    }
 
     if (totalApplicationFee > finalTotal) {
       throw new Error('O frete total da corrida é maior que o valor do produto. Devido à taxa de subsídio desta loja, não é possível concluir o pedido. Por favor, adicione mais itens ao carrinho.');
@@ -217,7 +229,7 @@ serve(async (req) => {
           pending: `${requestOrigin}/?payment=pending`
         },
         auto_return: 'approved',
-        notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mp-webhook?seller_id=${sellerStore.partner_id}`
+        notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mp-webhook?seller_id=${sellerStore.partner_id}${order.order_type === 'COLETA' ? '&is_platform=true' : ''}`
       })
     });
 

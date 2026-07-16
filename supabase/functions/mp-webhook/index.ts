@@ -28,43 +28,54 @@ serve(async (req) => {
          return new Response('OK', { status: 200 }); // Return 200 so MP stops retrying
       }
 
+      const isPlatform = url.searchParams.get('is_platform') === 'true';
+
       const supabaseClient = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
       )
 
-      const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY');
-      if (!ENCRYPTION_KEY) {
-         console.error('No ENCRYPTION_KEY found in environment');
-         return new Response('OK', { status: 200 });
-      }
-
-      // Fetch the seller's encrypted token
-      const { data: sellerUser, error: sellerError } = await supabaseClient
-         .from('users')
-         .select('mp_access_token')
-         .eq('id', sellerId)
-         .single();
-         
-      if (sellerError || !sellerUser || !sellerUser.mp_access_token) {
-         console.error('Seller not found or no mp_access_token configured');
-         return new Response('OK', { status: 200 });
-      }
-
-      // Decrypt token
       let accessToken = '';
-      try {
-          const [ivBase64, encryptedBase64] = sellerUser.mp_access_token.split(':');
-          const keyBytes = new Uint8Array(ENCRYPTION_KEY.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-          const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
-          const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
-          const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
-          
-          const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, encryptedData);
-          accessToken = new TextDecoder().decode(decryptedBuffer);
-      } catch (e) {
-          console.error('Failed to decrypt token in webhook:', e);
-          return new Response('OK', { status: 200 });
+
+      if (isPlatform) {
+         accessToken = Deno.env.get('MP_ACCESS_TOKEN') || '';
+         if (!accessToken) {
+             console.error('No Master MP Access Token configured for platform webhook');
+             return new Response('OK', { status: 200 });
+         }
+      } else {
+          const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY');
+          if (!ENCRYPTION_KEY) {
+             console.error('No ENCRYPTION_KEY found in environment');
+             return new Response('OK', { status: 200 });
+          }
+
+          // Fetch the seller's encrypted token
+          const { data: sellerUser, error: sellerError } = await supabaseClient
+             .from('users')
+             .select('mp_access_token')
+             .eq('id', sellerId)
+             .single();
+             
+          if (sellerError || !sellerUser || !sellerUser.mp_access_token) {
+             console.error('Seller not found or no mp_access_token configured');
+             return new Response('OK', { status: 200 });
+          }
+
+          // Decrypt token
+          try {
+              const [ivBase64, encryptedBase64] = sellerUser.mp_access_token.split(':');
+              const keyBytes = new Uint8Array(ENCRYPTION_KEY.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+              const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
+              const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+              const encryptedData = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+              
+              const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, encryptedData);
+              accessToken = new TextDecoder().decode(decryptedBuffer);
+          } catch (e) {
+              console.error('Failed to decrypt token in webhook:', e);
+              return new Response('OK', { status: 200 });
+          }
       }
 
       const response = await fetch(`https://api.mercadopago.com/v1/payments/${resourceId}`, {
