@@ -82,9 +82,9 @@ export default function AdminDashboard() {
         repasseForn = o.valor - platVenda - freteForn;
         repasseMoto = entregaTotal - platEntrega;
     } else if (o.type === 'COLETA') {
-        entregaTotal = dist * store.rates.col_km;
-        platEntrega = entregaTotal * (store.rates.col_mot_plat / 100);
-        repasseMoto = entregaTotal - platEntrega;
+        entregaTotal = o.valor || 50; // The fixed price paid by the Store
+        platEntrega = entregaTotal * (store.rates.col_mot_plat / 100); // Platform takes its cut
+        repasseMoto = entregaTotal - platEntrega; // Driver gets the rest
     }
     
     return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };

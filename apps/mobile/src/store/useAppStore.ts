@@ -834,9 +834,9 @@ export const useAppStore = create<AppState>()(
             status: 'PENDING',
             products_subtotal: novoPedido.valor,
             delivery_distance_km: novoPedido.distancia || 0,
-            applied_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_plat : state.rates.b2b_plat,
-            applied_delivery_fee_per_km: tipo === 'B2C' ? state.rates.b2c_km : state.rates.b2b_km,
-            applied_delivery_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_mot_plat : state.rates.b2b_mot_plat,
+            applied_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_plat : (tipo === 'COLETA' ? state.rates.col_plat : state.rates.b2b_plat),
+            applied_delivery_fee_per_km: tipo === 'B2C' ? state.rates.b2c_km : (tipo === 'COLETA' ? state.rates.col_km : state.rates.b2b_km),
+            applied_delivery_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_mot_plat : (tipo === 'COLETA' ? state.rates.col_mot_plat : state.rates.b2b_mot_plat),
             delivery_pin: pin
           }).select().single();
 
@@ -1061,6 +1061,26 @@ export const useAppStore = create<AppState>()(
                 const platformDelivery = deliveryTotal * ((dbOrder.applied_delivery_platform_fee_percent || 0) / 100);
                 const driverAmount = deliveryTotal - platformDelivery;
 
+                const itemsTotal = dbOrder.products_subtotal || 0;
+                const platformSales = itemsTotal * ((dbOrder.applied_platform_fee_percent || 0) / 100);
+                const sellerAmount = itemsTotal - platformSales;
+
+                let finalEntregaTotal = deliveryTotal;
+                let finalEntregaMotorista = driverAmount;
+                let finalPlatVenda = platformSales;
+                let finalPlatEntrega = platformDelivery;
+                let finalRepasse = sellerAmount;
+
+                if (dbOrder.order_type === 'COLETA') {
+                    finalEntregaTotal = itemsTotal;
+                    finalPlatVenda = 0;
+                    finalPlatEntrega = itemsTotal * ((dbOrder.applied_delivery_platform_fee_percent || 0) / 100);
+                    finalEntregaMotorista = finalEntregaTotal - finalPlatEntrega;
+                    finalRepasse = 0;
+                }
+
+                const platformTotal = finalPlatVenda + finalPlatEntrega;
+
                 return {
                    ...(localOrder || {}),
                    id: dbOrder.id,
@@ -1089,15 +1109,15 @@ export const useAppStore = create<AppState>()(
                    motoristaId: dbOrder.driver_id,
                    confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
                    taxas: localOrder?.taxas || {
-                       entregaTotal: deliveryTotal,
-                       entregaMotorista: driverAmount,
-                       entregaCliente: deliveryTotal,
-                       entregaLoja: 0,
-                       entregaFornecedor: 0,
-                       plataformaVenda: (dbOrder.products_subtotal || 0) * ((dbOrder.applied_platform_fee_percent || 0) / 100),
-                       plataformaEntrega: platformDelivery,
-                       plataformaTotal: platformDelivery + ((dbOrder.products_subtotal || 0) * ((dbOrder.applied_platform_fee_percent || 0) / 100)),
-                       repasse: dbOrder.products_subtotal - ((dbOrder.products_subtotal || 0) * ((dbOrder.applied_platform_fee_percent || 0) / 100))
+                      entregaTotal: finalEntregaTotal,
+                      entregaMotorista: finalEntregaMotorista,
+                      entregaCliente: deliveryTotal, // Need to provide this since it is required by the TS type
+                      entregaLoja: 0,
+                      entregaFornecedor: 0,
+                      plataformaVenda: finalPlatVenda,
+                      plataformaEntrega: finalPlatEntrega,
+                      plataformaTotal: platformTotal,
+                      repasse: finalRepasse
                    }
                 };
              });
