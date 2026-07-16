@@ -1027,7 +1027,7 @@ export const useAppStore = create<AppState>()(
                 query = query.eq('seller_storefront_id', sf.id);
             }
          } else if (currentUser.role === 'motorista') {
-            query = query.or(`status.in.("READY","PREPARING","DELIVERING","PAID"),driver_id.eq.${currentUser.id}`);
+            query = query.or(`status.in.(READY,PREPARING,DELIVERING,PAID),driver_id.eq.${currentUser.id}`);
          } else if (currentUser.role === 'cliente') {
             query = query.eq('buyer_id', currentUser.id);
          } else if (currentUser.role === 'admin') {
