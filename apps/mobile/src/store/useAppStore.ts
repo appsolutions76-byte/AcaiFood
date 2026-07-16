@@ -1009,8 +1009,8 @@ export const useAppStore = create<AppState>()(
             applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
             buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
             delivery_pin, accepted_at, ready_at, received_at,
-            buyer:users!orders_buyer_id_fkey(id, name, latitude, longitude),
-            storefront:storefronts!orders_seller_storefront_id_fkey(id, partner_id, store_name),
+            buyer:users!orders_buyer_id_fkey(id, name, latitude, longitude, cidade),
+            storefront:storefronts!orders_seller_storefront_id_fkey(id, partner_id, store_name, partner:users!storefronts_partner_id_fkey(cidade)),
             driver:users!orders_driver_id_fkey(id, name)
          `);
 
@@ -1080,6 +1080,7 @@ export const useAppStore = create<AppState>()(
                    criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,
                    origemId: localOrder?.origemId || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id,
                    destinoId: localOrder?.destinoId || dbOrder.buyer_id,
+                   cidadeOrigem: dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || 'Belém',
                    clienteId: localOrder?.clienteId || (dbOrder.order_type === 'B2C' ? dbOrder.buyer_id : undefined),
                    lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : dbOrder.storefront?.partner_id),
                    fornecedorId: localOrder?.fornecedorId || (dbOrder.order_type === 'B2B' ? dbOrder.storefront?.partner_id : undefined),
