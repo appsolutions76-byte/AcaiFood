@@ -45,7 +45,13 @@ export default function MotoboyDashboard() {
 
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const corridasDisponiveis = store.orders.filter(o => o.status === 'pronto' && o.motoristaId === null && o.type === 'B2C' && (o as any).cidadeOrigem === currentUser.cidade);
+  const corridasDisponiveis = store.orders.filter(o => {
+    const isReady = o.status === 'pronto' && o.motoristaId === null && o.type === 'B2C';
+    if (!isReady) return false;
+    const originCity = (o as any).cidadeOrigem?.toLowerCase()?.trim() || 'belém';
+    const driverCity = currentUser.cidade?.toLowerCase()?.trim() || 'belém';
+    return originCity === driverCity;
+  });
   const minhasCorridasAll = store.orders.filter(o => o.motoristaId === currentUser.id);
   const ganhosHoje = minhasCorridasAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.entregaMotorista, 0);
 
