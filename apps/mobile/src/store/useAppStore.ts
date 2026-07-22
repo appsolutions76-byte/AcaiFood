@@ -392,6 +392,8 @@ export const useAppStore = create<AppState>()(
           if (!currentUser) return;
           
           get().fetchRates();
+          get().fetchOrders(currentUser.id);
+          get().startAutoRefresh();
 
           if (supabaseChannel) {
               supabaseChannel.unsubscribe();
@@ -403,8 +405,6 @@ export const useAppStore = create<AppState>()(
                   { event: '*', schema: 'public', table: 'orders' },
                   (payload) => {
                       console.log("Realtime order update received:", payload);
-                      // Para garantir consistência dos JOINs (nomes de loja, clientes, etc),
-                      // a forma mais robusta é refazer o fetchOrders quando algo muda
                       get().fetchOrders(currentUser.id);
                   }
               )
@@ -1262,11 +1262,10 @@ export const useAppStore = create<AppState>()(
          if (!currentUser) return;
          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
          
-         // Atualiza a cada 30 segundos
+         // Atualiza o status em tempo real a cada 5 segundos (fallback)
          autoRefreshInterval = setInterval(() => {
-             console.log("Auto-refreshing orders...");
              get().fetchOrders(currentUser.id);
-         }, 30000);
+         }, 5000);
       },
       
       stopAutoRefresh: () => {

@@ -87,5 +87,10 @@ ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_status_check;
 ALTER TABLE public.orders ADD CONSTRAINT orders_status_check 
   CHECK (status IN ('PENDING', 'PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'RECEIVED', 'COMPLETED', 'CANCELLED'));
 
--- 6. Recarregar o Schema Cache da API REST (Extremamente Importante)
+-- 6. Habilitar o sistema de Realtime para as tabelas no Supabase
+ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
+ALTER TABLE public.orders REPLICA IDENTITY FULL;
+
+-- 7. Recarregar o Schema Cache da API REST (Extremamente Importante)
 NOTIFY pgrst, 'reload schema';

@@ -75,7 +75,7 @@ export default function StorefrontPage() {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;
   }
 
-  let meusPedidos = currentUser ? store.orders.filter(o => o.clienteId === currentUser.id) : [];
+  let meusPedidos = currentUser ? store.orders.filter(o => o.clienteId === currentUser.id || o.criadoPor === currentUser.id) : [];
   const clientActiveOrders = meusPedidos.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
   const clientHistoryOrders = meusPedidos.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   meusPedidos = [...clientActiveOrders, ...clientHistoryOrders];
