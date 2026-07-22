@@ -940,7 +940,8 @@ export const useAppStore = create<AppState>()(
               orderId: dbOrder.id,
               value: novoPedido.valor + novoPedido.taxas.entregaTotal,
               split: splitRules,
-              customerEmail: currentUser.email
+              customerEmail: currentUser.email,
+              customerName: currentUser.name
             }
           }).catch(() => ({ data: null, error: null }));
 
