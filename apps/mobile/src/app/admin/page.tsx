@@ -8,13 +8,64 @@ import { useAppStore, Order } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-export default function AdminDashboard() {
+class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("Admin Dashboard caught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 rounded-2xl shadow-xl max-w-md w-full">
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Painel de Administração</h2>
+            <p className="text-sm text-zinc-500 mb-6">Sincronizando dados com o banco de dados...</p>
+            <button 
+              onClick={() => { this.setState({ hasError: false }); window.location.reload(); }} 
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-3 rounded-xl transition w-full shadow-lg"
+            >
+              🔄 Recarregar Painel
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AdminDashboardContent() {
   const store = useAppStore();
-  const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formatMoney = (val?: number | null) => (val ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const orders = store.orders || [];
+  const users = store.users || {};
+  const cities = store.cities || [];
+  const rates = store.rates || {
+    b2c_plat: 10, b2c_km: 2.00, b2c_mot_plat: 10,
+    b2b_plat: 10, b2b_km: 4.00, b2b_mot_plat: 10,
+    col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00,
+    payout_time: '22:00',
+    courier_payment_mode: 'KM',
+    courier_fixed_fee: 8.00,
+    transporter_payment_mode: 'KM',
+    transporter_fixed_fee: 150.00,
+    ecopoint_payment_mode: 'KM',
+    ecopoint_fixed_fee: 50.00
+  };
 
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
-  const [localRates, setLocalRates] = useState(store.rates);
+  const [localRates, setLocalRates] = useState(rates);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades'>('dashboard');
   const [newCityName, setNewCityName] = useState('');
   
@@ -25,16 +76,25 @@ export default function AdminDashboard() {
   const [newAdminPassword, setNewAdminPassword] = useState('');
 
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (store.rates) {
+      setLocalRates(store.rates);
+    }
+  }, [store.rates]);
+
   useEffect(() => {
     setMounted(true);
     if (store.currentUser?.role === 'admin') {
        if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers();
        if (typeof store.startRealtime === 'function') store.startRealtime();
        if (typeof store.fetchOrders === 'function' && store.currentUser?.id) store.fetchOrders(store.currentUser.id);
+       if (typeof store.fetchCities === 'function') store.fetchCities();
+       if (typeof store.fetchRates === 'function') store.fetchRates();
     }
   }, [store.currentUser?.role]);
 
-  const filteredUsers = Object.values(store.users || {}).filter(u => {
+  const filteredUsers = Object.values(users).filter(u => {
     if (!u) return false;
     if (userFilterRole !== 'all' && u.role !== userFilterRole) return false;
     const search = userFilterText.toLowerCase();
@@ -63,16 +123,16 @@ export default function AdminDashboard() {
     );
   }
 
-  const concluidos = (store.orders || []).filter(o => o.status === 'entregue' || o.status === 'arquivado');
+  const concluidos = orders.filter(o => o && (o.status === 'entregue' || o.status === 'arquivado'));
+  
   const getDynamicTaxes = (o: Order) => {
     let repasseLoja = 0, repasseForn = 0, repasseMoto = 0, platVenda = 0, platEntrega = 0, entregaTotal = 0;
     if (!o) return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };
     const dist = o.distancia || 0;
-    const rates = store.rates || { b2c_plat: 10, b2c_km: 2, b2c_mot_plat: 10, b2b_plat: 10, b2b_km: 4, b2b_mot_plat: 10, col_km: 8, col_mot_plat: 10 };
     
     if (o.type === 'B2C') {
         entregaTotal = o.taxas?.entregaTotal || (rates.courier_payment_mode === 'FIXED' ? (rates.courier_fixed_fee ?? 8) : dist * rates.b2c_km);
-        const sub = (o.lojaId && store.users[o.lojaId] ? store.users[o.lojaId]?.freteSubsidyPct || 0 : 0) / 100;
+        const sub = (o.lojaId && users[o.lojaId] ? users[o.lojaId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteLoja = entregaTotal * sub;
         
         platVenda = (o.valor || 0) * (rates.b2c_plat / 100);
@@ -82,7 +142,7 @@ export default function AdminDashboard() {
         repasseMoto = entregaTotal - platEntrega;
     } else if (o.type === 'B2B') {
         entregaTotal = o.taxas?.entregaTotal || (rates.transporter_payment_mode === 'FIXED' ? (rates.transporter_fixed_fee ?? 150) : dist * rates.b2b_km);
-        const sub = (o.fornecedorId && store.users[o.fornecedorId] ? store.users[o.fornecedorId]?.freteSubsidyPct || 0 : 0) / 100;
+        const sub = (o.fornecedorId && users[o.fornecedorId] ? users[o.fornecedorId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteForn = entregaTotal * sub;
         
         platVenda = (o.valor || 0) * (rates.b2b_plat / 100);
@@ -99,8 +159,8 @@ export default function AdminDashboard() {
     return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };
   };
 
-  const isMoto = (motId: string | null) => { const m = motId ? store.users[motId] : null; return m && m.veiculo === 'Moto'; };
-  const isCaminhao = (motId: string | null) => { const m = motId ? store.users[motId] : null; return m && (m.veiculo === 'Caminhão' || m.veiculo === 'Caçamba'); };
+  const isMoto = (motId: string | null) => { const m = motId ? users[motId] : null; return m && m.veiculo === 'Moto'; };
+  const isCaminhao = (motId: string | null) => { const m = motId ? users[motId] : null; return m && (m.veiculo === 'Caminhão' || m.veiculo === 'Caçamba'); };
 
   let totaisVendas = 0;
   let totaisFretes = 0;
@@ -138,17 +198,19 @@ export default function AdminDashboard() {
   });
 
   const totais = {
-      pedidos: store.orders.length,
-      aceitos: store.orders.filter(o => ['preparo', 'em_rota', 'entregue'].includes(o.status)).length,
-      cancelados: store.orders.filter(o => o.status === 'cancelado').length,
+      pedidos: orders.length,
+      aceitos: orders.filter(o => o && ['preparo', 'em_rota', 'entregue'].includes(o.status)).length,
+      cancelados: orders.filter(o => o && o.status === 'cancelado').length,
       concluidos: concluidos.length,
-      emRota: store.orders.filter(o => o.status === 'em_rota').length,
+      emRota: orders.filter(o => o && o.status === 'em_rota').length,
       receitaVendas: totaisVendas,
       receitaFretes: totaisFretes
   };
 
   const handleSaveRates = () => {
-    store.saveRates(localRates);
+    if (typeof store.saveRates === 'function') {
+      store.saveRates(localRates);
+    }
     setRatesModalOpen(false);
     alert("Taxas do Triplo Split atualizadas com sucesso!");
   };
@@ -170,7 +232,7 @@ export default function AdminDashboard() {
   const handleConfirmPasswordModal = () => {
     if (!pwdInputText) return;
     if (pwdModalMode === 'create') {
-       store.setClearPassword(pwdInputText);
+       if (typeof store.setClearPassword === 'function') store.setClearPassword(pwdInputText);
        setPwdModalOpen(false);
        setPwdInputText('');
        alert("Senha de segurança criada com sucesso! Clique em Limpar novamente para prosseguir.");
@@ -182,7 +244,7 @@ export default function AdminDashboard() {
        setPwdModalOpen(false);
        setPwdInputText('');
        if (confirm("🚨 ATENÇÃO: Tem certeza que deseja apagar DEFINITIVAMENTE todos os pedidos do banco de dados?")) {
-          store.clearData();
+          if (typeof store.clearData === 'function') store.clearData();
        }
     }
   };
@@ -208,17 +270,17 @@ export default function AdminDashboard() {
               <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
                   <Trash2 size={14} /> Limpar
               </button>
-              <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline">Sair</button>
+              <button onClick={() => { if(typeof store.logout === 'function') store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline">Sair</button>
           </div>
         </div>
       </header>
 
       <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
-          <button onClick={() => setActiveTab('dashboard')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'dashboard' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
-          <button onClick={() => setActiveTab('usuarios')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'usuarios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>👥 Usuários</button>
-          <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
-          <button onClick={() => setActiveTab('cidades')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'cidades' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🌍 Cidades / Expansão</button>
-        </div>
+          <button onClick={() => setActiveTab('dashboard')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'dashboard' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
+          <button onClick={() => setActiveTab('usuarios')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'usuarios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>👥 Usuários</button>
+          <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
+          <button onClick={() => setActiveTab('cidades')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'cidades' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🌍 Cidades / Expansão</button>
+      </div>
 
       <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
         
@@ -312,11 +374,11 @@ export default function AdminDashboard() {
                     <tr><th className="p-4">ID / Rota</th><th className="p-4">Tipo</th><th className="p-4">Valores</th><th className="p-4">Atores</th><th className="p-4">Status</th></tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {store.orders.map(o => (
+                    {orders.map(o => (
                         <tr key={o.id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${o.status === 'cancelado' ? 'opacity-50' : ''}`}>
                             <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">
                                 {o.id}<br/>
-                                <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">🗺️ Ver {o.distancia.toFixed(1)} km</button>
+                                <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">🗺️ Ver {(o.distancia || 0).toFixed(1)} km</button>
                                 <div className="mt-1 flex flex-col gap-0.5">
                                     {o.createdAt && <span className="text-[9px] text-zinc-500 font-normal">🕒 {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                                     {o.acceptedAt && <span className="text-[9px] text-purple-500 font-normal">👨‍🍳 {new Date(o.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
@@ -329,8 +391,8 @@ export default function AdminDashboard() {
                             <td className="p-4"><span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold text-zinc-700 dark:text-zinc-300">{o.type}</span></td>
                             <td className="p-4 text-xs text-zinc-600 dark:text-zinc-400">Prod: {formatMoney(o.valor)}<br/>Frete: {formatMoney(getDynamicTaxes(o).entregaTotal)}</td>
                             <td className="p-4 text-xs text-zinc-500">
-                                <span className="block">Cliente: {o.clienteNome || store.users[o.clienteId!]?.name || '—'}</span>
-                                <span className="block">Loja: {o.lojaNome || store.users[o.lojaId!]?.name || '—'}</span>
+                                <span className="block">Cliente: {o.clienteNome || (o.clienteId && users[o.clienteId] ? users[o.clienteId]?.name : '') || '—'}</span>
+                                <span className="block">Loja: {o.lojaNome || (o.lojaId && users[o.lojaId] ? users[o.lojaId]?.name : '') || '—'}</span>
                                 <span className="block text-purple-600 dark:text-purple-400 font-medium">Mot: {o.motoristaNome || '---'}</span>
                             </td>
                             <td className="p-4">
@@ -340,7 +402,7 @@ export default function AdminDashboard() {
                                 {o.status === 'aguardando_cliente' && (
                                   <div className="flex flex-col gap-1 items-start">
                                     <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguard. PIN</span>
-                                    <button onClick={() => { if(confirm('Forçar baixa manual do pedido? (Use apenas se o cliente perdeu o PIN)')) store.acaoPedido(o.id, 'forcar_baixa'); }} className="bg-zinc-800 hover:bg-black text-white px-2 py-1.5 rounded text-[9px] font-bold w-full transition">Forçar Baixa</button>
+                                    <button onClick={() => { if(confirm('Forçar baixa manual do pedido? (Use apenas se o cliente perdeu o PIN)')) if(typeof store.acaoPedido === 'function') store.acaoPedido(o.id, 'forcar_baixa'); }} className="bg-zinc-800 hover:bg-black text-white px-2 py-1.5 rounded text-[9px] font-bold w-full transition">Forçar Baixa</button>
                                   </div>
                                 )}
                                 {(o.status === 'entregue' || o.status === 'arquivado') && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>}
@@ -348,7 +410,7 @@ export default function AdminDashboard() {
                             </td>
                         </tr>
                     ))}
-                    {store.orders.length === 0 && (
+                    {orders.length === 0 && (
                         <tr><td colSpan={5} className="text-center p-6 text-zinc-500">Nenhum pedido gerado na plataforma ainda.</td></tr>
                     )}
                 </tbody>
@@ -391,7 +453,7 @@ export default function AdminDashboard() {
                                   </div>
                                   {u.role === 'motorista' && (
                                     (() => {
-                                      const pendingOrders = store.orders.filter(o => o.motoristaId === u.id && o.status === 'entregue');
+                                      const pendingOrders = orders.filter(o => o && o.motoristaId === u.id && o.status === 'entregue');
                                       const amountOwed = pendingOrders.reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || getDynamicTaxes(curr).repasseMoto || 0), 0);
                                       if (pendingOrders.length > 0) {
                                         return (
@@ -400,7 +462,7 @@ export default function AdminDashboard() {
                                               <span className="text-xs font-bold text-green-700">A Pagar: {formatMoney(amountOwed)}</span>
                                               {u.pixKey && <span className="text-[10px] text-zinc-500 bg-zinc-200 px-2 py-0.5 rounded font-mono">PIX: {u.pixKey}</span>}
                                             </div>
-                                            <button onClick={() => { if(confirm(`Confirmar o pagamento via Pix de ${formatMoney(amountOwed)} para ${u.name}? O saldo será zerado.`)) store.acaoPedido(u.id, 'pagar_motorista'); }} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
+                                            <button onClick={() => { if(confirm(`Confirmar o pagamento via Pix de ${formatMoney(amountOwed)} para ${u.name}? O saldo será zerado.`)) if(typeof store.acaoPedido === 'function') store.acaoPedido(u.id, 'pagar_motorista'); }} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
                                               Pagar e Zerar
                                             </button>
                                           </div>
@@ -427,12 +489,12 @@ export default function AdminDashboard() {
                             <td className="p-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                     {u.role !== 'admin' && (
-                                        <button onClick={() => store.updateUserStatus(u.id, u.status === 'blocked' ? 'active' : 'blocked')} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${u.status === 'blocked' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}`}>
+                                        <button onClick={() => { if(typeof store.updateUserStatus === 'function') store.updateUserStatus(u.id, u.status === 'blocked' ? 'active' : 'blocked'); }} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${u.status === 'blocked' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}`}>
                                             {u.status === 'blocked' ? '🔓 Desbloquear' : '🚫 Bloquear'}
                                         </button>
                                     )}
                                     {u.role !== 'admin' && (
-                                        <button onClick={() => { if(confirm('Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.')) store.deleteUser(u.id); }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
+                                        <button onClick={() => { if(confirm('Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.')) if(typeof store.deleteUser === 'function') store.deleteUser(u.id); }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
                                             🗑️
                                         </button>
                                     )}
@@ -457,7 +519,7 @@ export default function AdminDashboard() {
                 <h4 className="font-bold mb-3 text-sm">Adicionar Nova Cidade</h4>
                 <div className="flex gap-2">
                     <input type="text" value={newCityName} onChange={e => setNewCityName(e.target.value)} placeholder="Ex: Marabá" className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500" />
-                    <button onClick={() => { if(newCityName) { store.addCity(newCityName); setNewCityName(''); } }} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-bold transition">Adicionar</button>
+                    <button onClick={() => { if(newCityName) { if(typeof store.addCity === 'function') store.addCity(newCityName); setNewCityName(''); } }} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-bold transition">Adicionar</button>
                 </div>
             </div>
 
@@ -467,7 +529,7 @@ export default function AdminDashboard() {
                         <tr><th className="p-4">Nome da Cidade</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        {store.cities.map(c => (
+                        {cities.map(c => (
                             <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                                 <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">{c.name}</td>
                                 <td className="p-4">
@@ -475,17 +537,17 @@ export default function AdminDashboard() {
                                 </td>
                                 <td className="p-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
-                                        <button onClick={() => store.updateCityStatus(c.id, c.status === 'active' ? 'paused' : 'active')} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${c.status === 'active' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}>
+                                        <button onClick={() => { if(typeof store.updateCityStatus === 'function') store.updateCityStatus(c.id, c.status === 'active' ? 'paused' : 'active'); }} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${c.status === 'active' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}>
                                             {c.status === 'active' ? 'Pausar' : 'Ativar'}
                                         </button>
-                                        <button onClick={() => { if(confirm(`Tem certeza que deseja excluir a cidade ${c.name}?`)) store.deleteCity(c.id); }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
+                                        <button onClick={() => { if(confirm(`Tem certeza que deseja excluir a cidade ${c.name}?`)) if(typeof store.deleteCity === 'function') store.deleteCity(c.id); }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
                                             🗑️ Excluir
                                         </button>
                                     </div>
                                 </td>
                             </tr>
                         ))}
-                        {store.cities.length === 0 && (
+                        {cities.length === 0 && (
                             <tr><td colSpan={3} className="text-center p-6 text-zinc-500">Nenhuma cidade cadastrada.</td></tr>
                         )}
                     </tbody>
@@ -516,37 +578,37 @@ export default function AdminDashboard() {
               <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>🛵</span> B2C (Açaí Pronto - Motoboy)</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">App na Venda (%)</label><input type="number" value={localRates.b2c_plat} onChange={e => setLocalRates({...localRates, b2c_plat: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">App na Venda (%)</label><input type="number" value={localRates?.b2c_plat ?? 10} onChange={e => setLocalRates({...localRates, b2c_plat: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">Modalidade</label>
-                        <select value={localRates.courier_payment_mode || 'KM'} onChange={e => setLocalRates({...localRates, courier_payment_mode: e.target.value as 'KM' | 'FIXED'})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                        <select value={localRates?.courier_payment_mode || 'KM'} onChange={e => setLocalRates({...localRates, courier_payment_mode: e.target.value as 'KM' | 'FIXED'})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
                           <option value="KM">Por KM</option>
                           <option value="FIXED">Valor Fixo</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates.courier_payment_mode === 'FIXED' ? 'Frete Fixo (R$)' : 'Valor por KM (R$)'}</label>
-                        <input type="number" step="0.1" value={localRates.courier_payment_mode === 'FIXED' ? (localRates.courier_fixed_fee ?? 8) : localRates.b2c_km} onChange={e => setLocalRates(localRates.courier_payment_mode === 'FIXED' ? {...localRates, courier_fixed_fee: Number(e.target.value)} : {...localRates, b2c_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
+                        <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates?.courier_payment_mode === 'FIXED' ? 'Frete Fixo (R$)' : 'Valor por KM (R$)'}</label>
+                        <input type="number" step="0.1" value={localRates?.courier_payment_mode === 'FIXED' ? (localRates?.courier_fixed_fee ?? 8) : (localRates?.b2c_km ?? 2)} onChange={e => setLocalRates(localRates?.courier_payment_mode === 'FIXED' ? {...localRates, courier_fixed_fee: Number(e.target.value)} : {...localRates, b2c_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
                       </div>
-                      <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates.b2c_mot_plat} onChange={e => setLocalRates({...localRates, b2c_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates?.b2c_mot_plat ?? 10} onChange={e => setLocalRates({...localRates, b2c_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
               </div>
               <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>🚚</span> B2B (Fruto - Caminhão)</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">App na Venda (%)</label><input type="number" value={localRates.b2b_plat} onChange={e => setLocalRates({...localRates, b2b_plat: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">App na Venda (%)</label><input type="number" value={localRates?.b2b_plat ?? 10} onChange={e => setLocalRates({...localRates, b2b_plat: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">Modalidade</label>
-                        <select value={localRates.transporter_payment_mode || 'KM'} onChange={e => setLocalRates({...localRates, transporter_payment_mode: e.target.value as 'KM' | 'FIXED'})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                        <select value={localRates?.transporter_payment_mode || 'KM'} onChange={e => setLocalRates({...localRates, transporter_payment_mode: e.target.value as 'KM' | 'FIXED'})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
                           <option value="KM">Por KM</option>
                           <option value="FIXED">Valor Fixo</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates.transporter_payment_mode === 'FIXED' ? 'Frete Fixo (R$)' : 'Valor por KM (R$)'}</label>
-                        <input type="number" step="0.1" value={localRates.transporter_payment_mode === 'FIXED' ? (localRates.transporter_fixed_fee ?? 150) : localRates.b2b_km} onChange={e => setLocalRates(localRates.transporter_payment_mode === 'FIXED' ? {...localRates, transporter_fixed_fee: Number(e.target.value)} : {...localRates, b2b_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
+                        <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates?.transporter_payment_mode === 'FIXED' ? 'Frete Fixo (R$)' : 'Valor por KM (R$)'}</label>
+                        <input type="number" step="0.1" value={localRates?.transporter_payment_mode === 'FIXED' ? (localRates?.transporter_fixed_fee ?? 150) : (localRates?.b2b_km ?? 4)} onChange={e => setLocalRates(localRates?.transporter_payment_mode === 'FIXED' ? {...localRates, transporter_fixed_fee: Number(e.target.value)} : {...localRates, b2b_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
                       </div>
-                      <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates.b2b_mot_plat} onChange={e => setLocalRates({...localRates, b2b_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates?.b2b_mot_plat ?? 10} onChange={e => setLocalRates({...localRates, b2b_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
               </div>
               <div className="pb-2">
@@ -554,22 +616,22 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">Modalidade</label>
-                        <select value={localRates.ecopoint_payment_mode || 'KM'} onChange={e => setLocalRates({...localRates, ecopoint_payment_mode: e.target.value as 'KM' | 'FIXED'})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                        <select value={localRates?.ecopoint_payment_mode || 'KM'} onChange={e => setLocalRates({...localRates, ecopoint_payment_mode: e.target.value as 'KM' | 'FIXED'})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
                           <option value="KM">Por KM</option>
                           <option value="FIXED">Valor Fixo</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates.ecopoint_payment_mode === 'FIXED' ? 'Coleta Fixa (R$)' : 'Valor por KM (R$)'}</label>
-                        <input type="number" step="0.1" value={localRates.ecopoint_payment_mode === 'FIXED' ? (localRates.ecopoint_fixed_fee ?? 50) : localRates.col_km} onChange={e => setLocalRates(localRates.ecopoint_payment_mode === 'FIXED' ? {...localRates, ecopoint_fixed_fee: Number(e.target.value)} : {...localRates, col_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
+                        <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates?.ecopoint_payment_mode === 'FIXED' ? 'Coleta Fixa (R$)' : 'Valor por KM (R$)'}</label>
+                        <input type="number" step="0.1" value={localRates?.ecopoint_payment_mode === 'FIXED' ? (localRates?.ecopoint_fixed_fee ?? 50) : (localRates?.col_km ?? 8)} onChange={e => setLocalRates(localRates?.ecopoint_payment_mode === 'FIXED' ? {...localRates, ecopoint_fixed_fee: Number(e.target.value)} : {...localRates, col_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
                       </div>
-                      <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates.col_mot_plat} onChange={e => setLocalRates({...localRates, col_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates?.col_mot_plat ?? 10} onChange={e => setLocalRates({...localRates, col_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
               </div>
               <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>⏰</span> Fechamento de Caixa (Motoboys)</h4>
                   <div className="grid grid-cols-1 gap-3">
-                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Horário Programado para Pix</label><input type="time" value={localRates.payout_time || '22:00'} onChange={e => setLocalRates({...localRates, payout_time: e.target.value})} className="w-full sm:w-1/3 border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Horário Programado para Pix</label><input type="time" value={localRates?.payout_time || '22:00'} onChange={e => setLocalRates({...localRates, payout_time: e.target.value})} className="w-full sm:w-1/3 border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
               </div>
             </div>
@@ -607,7 +669,7 @@ export default function AdminDashboard() {
                 <button 
                   onClick={() => {
                     if (newAdminPassword.length < 3) return alert('A senha deve ter pelo menos 3 caracteres.');
-                    store.changePassword(store.currentUser!.id, newAdminPassword);
+                    if (store.currentUser?.id && typeof store.changePassword === 'function') store.changePassword(store.currentUser.id, newAdminPassword);
                     setPasswordModalOpen(false);
                     setNewAdminPassword('');
                     alert('Senha alterada com sucesso!');
@@ -657,5 +719,13 @@ export default function AdminDashboard() {
       )}
 
     </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <AdminErrorBoundary>
+      <AdminDashboardContent />
+    </AdminErrorBoundary>
   );
 }
