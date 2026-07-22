@@ -127,8 +127,10 @@ export default function StorefrontPage() {
     if (!cart.storeId || cart.items.length === 0) return;
     const checkoutUrl = await store.criarPedido('B2C', cart.storeId);
     setCheckoutModalOpen(false);
-    if (checkoutUrl) {
+    if (checkoutUrl && typeof checkoutUrl === 'string' && checkoutUrl.startsWith('http')) {
       window.location.href = checkoutUrl;
+    } else {
+      alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
     }
   };
 

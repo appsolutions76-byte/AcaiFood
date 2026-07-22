@@ -927,7 +927,12 @@ export const useAppStore = create<AppState>()(
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
 
-          return dbOrder.id;
+          // Se a API do Asaas retornou uma URL externa de cobrança (fatura/Pix), retorna ela; senão undefined
+          if (asaasData && asaasData.invoiceUrl && typeof asaasData.invoiceUrl === 'string') {
+             return asaasData.invoiceUrl;
+          }
+          
+          return undefined;
           
         } catch(e: any) {
             console.error("Fatal exception during checkout:", e);

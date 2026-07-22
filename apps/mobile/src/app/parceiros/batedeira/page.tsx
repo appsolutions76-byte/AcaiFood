@@ -221,7 +221,11 @@ export default function BatedeiraDashboard() {
                           return (
                               <button onClick={async () => {
                                   const url = await store.criarPedido('COLETA');
-                                  if(url) window.location.href = url;
+                                  if (url && typeof url === 'string' && url.startsWith('http')) {
+                                    window.location.href = url;
+                                  } else {
+                                    alert('✅ Chamada de caçamba registrada com sucesso!');
+                                  }
                               }} className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-1.5 px-3 rounded-lg border border-amber-300 transition text-xs shadow-sm">
                                   🚛 Chamar Caçamba ({formatMoney(store.rates.col_valor)})
                               </button>
@@ -484,7 +488,11 @@ export default function BatedeiraDashboard() {
                                       store.addToCart(forn.id, { id: 'B2B', name: 'Paneiro de Açaí', price: unitPrice, quantity: cartModalB2B.quantity });
                                       const url = await store.criarPedido('B2B', forn.id);
                                       setCartModalB2B({ ...cartModalB2B, open: false });
-                                      if(url) window.location.href = url;
+                                      if (url && typeof url === 'string' && url.startsWith('http')) {
+                                        window.location.href = url;
+                                      } else {
+                                        alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
+                                      }
                                   }} className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-700 active:scale-95 transition">Confirmar Pedido</button>
                               </div>
                           </>
