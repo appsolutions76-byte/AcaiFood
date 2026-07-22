@@ -46,7 +46,65 @@ class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, 
 }
 
 function AdminDashboardContent() {
+  // 1. Instanciar Store e Router
   const store = useAppStore();
+  const router = useRouter();
+
+  // 2. TODOS os Hooks de Estado (useState) DEVEM ficar no topo sem retornos antecipados
+  const orders = store.orders || [];
+  const users = store.users || {};
+  const cities = store.cities || [];
+  const rates = store.rates || {
+    b2c_plat: 10, b2c_km: 2.00, b2c_mot_plat: 10,
+    b2b_plat: 10, b2b_km: 4.00, b2b_mot_plat: 10,
+    col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00,
+    payout_time: '22:00',
+    courier_payment_mode: 'KM',
+    courier_fixed_fee: 8.00,
+    transporter_payment_mode: 'KM',
+    transporter_fixed_fee: 150.00,
+    ecopoint_payment_mode: 'KM',
+    ecopoint_fixed_fee: 50.00
+  };
+
+  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [ratesModalOpen, setRatesModalOpen] = useState(false);
+  const [localRates, setLocalRates] = useState(rates);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades'>('dashboard');
+  const [newCityName, setNewCityName] = useState('');
+  const [userFilterRole, setUserFilterRole] = useState<string>('all');
+  const [userFilterText, setUserFilterText] = useState<string>('');
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [pwdModalOpen, setPwdModalOpen] = useState(false);
+  const [pwdInputText, setPwdInputText] = useState('');
+  const [pwdModalMode, setPwdModalMode] = useState<'create' | 'verify'>('verify');
+  const [mounted, setMounted] = useState(false);
+
+  // 3. Efeitos (useEffect)
+  const isAdmin = !!store.currentUser && (
+    store.currentUser.role === 'admin' || 
+    (store.currentUser.role as string)?.toLowerCase() === 'admin'
+  );
+
+  useEffect(() => {
+    if (store.rates) {
+      setLocalRates(store.rates);
+    }
+  }, [store.rates]);
+
+  useEffect(() => {
+    setMounted(true);
+    if (isAdmin) {
+       if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers();
+       if (typeof store.startRealtime === 'function') store.startRealtime();
+       if (typeof store.fetchOrders === 'function' && store.currentUser?.id) store.fetchOrders(store.currentUser.id);
+       if (typeof store.fetchCities === 'function') store.fetchCities();
+       if (typeof store.fetchRates === 'function') store.fetchRates();
+    }
+  }, [isAdmin]);
+
+  // 4. Funções auxiliares
   const formatMoney = (val?: number | null) => (val ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const safeTime = (dateStr?: string | null) => {
@@ -71,58 +129,6 @@ function AdminDashboardContent() {
     }
   };
 
-  const orders = store.orders || [];
-  const users = store.users || {};
-  const cities = store.cities || [];
-  const rates = store.rates || {
-    b2c_plat: 10, b2c_km: 2.00, b2c_mot_plat: 10,
-    b2b_plat: 10, b2b_km: 4.00, b2b_mot_plat: 10,
-    col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00,
-    payout_time: '22:00',
-    courier_payment_mode: 'KM',
-    courier_fixed_fee: 8.00,
-    transporter_payment_mode: 'KM',
-    transporter_fixed_fee: 150.00,
-    ecopoint_payment_mode: 'KM',
-    ecopoint_fixed_fee: 50.00
-  };
-
-  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
-  const [ratesModalOpen, setRatesModalOpen] = useState(false);
-  const [localRates, setLocalRates] = useState(rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades'>('dashboard');
-  const [newCityName, setNewCityName] = useState('');
-  
-  const [userFilterRole, setUserFilterRole] = useState<string>('all');
-  const [userFilterText, setUserFilterText] = useState<string>('');
-  
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-  const [newAdminPassword, setNewAdminPassword] = useState('');
-
-  const [mounted, setMounted] = useState(false);
-
-  const isAdmin = !!store.currentUser && (
-    store.currentUser.role === 'admin' || 
-    (store.currentUser.role as string)?.toLowerCase() === 'admin'
-  );
-
-  useEffect(() => {
-    if (store.rates) {
-      setLocalRates(store.rates);
-    }
-  }, [store.rates]);
-
-  useEffect(() => {
-    setMounted(true);
-    if (isAdmin) {
-       if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers();
-       if (typeof store.startRealtime === 'function') store.startRealtime();
-       if (typeof store.fetchOrders === 'function' && store.currentUser?.id) store.fetchOrders(store.currentUser.id);
-       if (typeof store.fetchCities === 'function') store.fetchCities();
-       if (typeof store.fetchRates === 'function') store.fetchRates();
-    }
-  }, [isAdmin]);
-
   const filteredUsers = Object.values(users).filter(u => {
     if (!u) return false;
     if (userFilterRole !== 'all' && u.role !== userFilterRole) return false;
@@ -136,8 +142,7 @@ function AdminDashboardContent() {
     return true;
   });
 
-  const router = useRouter();
-
+  // 5. Retornos condicionais ocorrem APENAS APÓS TODOS os Hooks declarados
   if (!mounted) {
     return <div className="min-h-screen flex items-center justify-center p-6"><p>Carregando...</p></div>;
   }
@@ -152,6 +157,7 @@ function AdminDashboardContent() {
     );
   }
 
+  // 6. Cálculos de Dashboard
   const concluidos = orders.filter(o => o && (o.status === 'entregue' || o.status === 'arquivado'));
   
   const getDynamicTaxes = (o: Order) => {
@@ -252,10 +258,6 @@ function AdminDashboardContent() {
     setRatesModalOpen(false);
     alert("Taxas do Triplo Split atualizadas com sucesso!");
   };
-
-  const [pwdModalOpen, setPwdModalOpen] = useState(false);
-  const [pwdInputText, setPwdInputText] = useState('');
-  const [pwdModalMode, setPwdModalMode] = useState<'create' | 'verify'>('verify');
 
   const handleClearData = () => {
     setPwdInputText('');
