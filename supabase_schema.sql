@@ -30,8 +30,10 @@ CREATE TABLE IF NOT EXISTS public.users (
   phone TEXT,
   endereco TEXT,
   pix_key TEXT,
-  mp_access_token TEXT, -- Encrypted Mercado Pago Token
-  mp_merchant_id TEXT,
+  asaas_account_id TEXT,
+  asaas_wallet_id TEXT,
+  asaas_account_status TEXT DEFAULT 'APPROVED',
+  split_enabled BOOLEAN DEFAULT TRUE,
   
   -- Regional Isolation
   cidade TEXT NOT NULL,
@@ -95,6 +97,13 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
   truck_fee_per_km DECIMAL(10, 2) NOT NULL DEFAULT 5.00,
   motoboy_platform_fee_percentage DECIMAL(5, 2) NOT NULL DEFAULT 10.00,
   truck_platform_fee_percentage DECIMAL(5, 2) NOT NULL DEFAULT 10.00,
+  courier_payment_mode TEXT DEFAULT 'KM',
+  courier_fixed_fee DECIMAL(10, 2) DEFAULT 8.00,
+  transporter_payment_mode TEXT DEFAULT 'KM',
+  transporter_fixed_fee DECIMAL(10, 2) DEFAULT 150.00,
+  ecopoint_payment_mode TEXT DEFAULT 'KM',
+  ecopoint_fixed_fee DECIMAL(10, 2) DEFAULT 50.00,
+  asaas_platform_wallet_id TEXT DEFAULT 'wallet_master_acaifood',
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 

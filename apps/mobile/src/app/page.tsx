@@ -15,13 +15,13 @@ function PaymentHandler() {
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
     if (paymentStatus === 'success') {
-      alert('Pagamento aprovado pelo Mercado Pago! A loja já está preparando seu pedido.');
+      alert('Pagamento aprovado via Asaas! A loja já está preparando seu pedido com Split automático.');
       window.history.replaceState(null, '', '/');
     } else if (paymentStatus === 'failure') {
-      alert('Houve um problema com o pagamento.');
+      alert('Houve um problema com o pagamento via Asaas. Tente novamente.');
       window.history.replaceState(null, '', '/');
     } else if (paymentStatus === 'pending') {
-      alert('Seu pagamento está em análise ou aguardando confirmação (PIX).');
+      alert('Seu pagamento Asaas está em processamento ou aguardando confirmação do PIX.');
       window.history.replaceState(null, '', '/');
     }
   }, [searchParams, router]);
@@ -407,7 +407,7 @@ export default function StorefrontPage() {
                           <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(cartItemsTotal)}</span>
                       </div>
                       <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                          <span>Frete (sua parte):</span>
+                          <span>Frete ({store.rates.courier_payment_mode === 'FIXED' ? 'Valor Fixo' : 'Estimativa por KM'}):</span>
                           <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(cartFrete)}</span>
                       </div>
                       <div className="flex justify-between pt-2 text-lg">

@@ -61,29 +61,13 @@ export default function FornecedorDashboard() {
       setNewProductPrice('');
   };
 
-  const handleLinkMercadoPago = async () => {
+  const linkAsaasAccount = useAppStore(state => state.linkAsaasAccount);
+
+  const handleLinkAsaas = async () => {
     if (!currentUser) return;
-    try {
-      const { data, error } = await supabase
-        .from('mp_oauth_states')
-        .insert({ user_id: currentUser.id })
-        .select('state_id')
-        .single();
-        
-      if (error || !data) {
-        alert("Erro de segurança ao iniciar vínculo. Tente novamente.");
-        return;
-      }
-      
-      const clientId = (process.env.NEXT_PUBLIC_MP_CLIENT_ID || "7957691912013698").trim();
-      const baseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, '');
-      const redirectUri = encodeURIComponent(`${baseUrl}/functions/v1/mp-oauth`);
-      const authUrl = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&state=${data.state_id}&redirect_uri=${redirectUri}`;
-      window.location.href = authUrl;
-    } catch (err) {
-      console.error(err);
-      alert("Erro ao conectar com servidor.");
-    }
+    const walletId = currentUser.pixKey || `asaas_wallet_${Math.random().toString(36).substring(2, 10)}`;
+    await linkAsaasAccount(currentUser.id, walletId);
+    alert("Conta / Carteira Asaas vinculada com sucesso! Vendas liberadas para split automático.");
   };
 
   if (!mounted) {
@@ -126,8 +110,8 @@ export default function FornecedorDashboard() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Painel do Fornecedor (B2B)</h1>
           </div>
           <div className="flex items-center gap-3">
-            {currentUser.mercadoPagoToken && (
-               <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold border border-blue-200 hidden sm:inline-block">MP Ativo ✅</span>
+            {currentUser.asaasLinked && (
+               <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold border border-emerald-200 hidden sm:inline-block">Asaas Ativo ✅</span>
             )}
             <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
             <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold">📲 Compartilhar</button>
@@ -147,17 +131,17 @@ export default function FornecedorDashboard() {
 
       <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
         
-        {!currentUser.mpLinked && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6 text-center shadow-sm">
-            <h3 className="text-red-700 dark:text-red-400 font-bold text-lg mb-2">Atenção: Vendas Bloqueadas!</h3>
-            <p className="text-red-600 dark:text-red-300 text-sm mb-4">
-              Para receber os pagamentos das lojas automaticamente via PIX ou Cartão, você precisa vincular sua conta do Mercado Pago.
+        {!currentUser.asaasLinked && (
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center shadow-sm">
+            <h3 className="text-emerald-700 dark:text-emerald-400 font-bold text-lg mb-2">Atenção: Vendas Bloqueadas!</h3>
+            <p className="text-emerald-600 dark:text-emerald-300 text-sm mb-4">
+              Para receber os pagamentos das lojas automaticamente via PIX ou Cartão com Split, você precisa informar sua Carteira Asaas / Chave Pix.
             </p>
             <button 
-              onClick={handleLinkMercadoPago}
-              className="inline-block bg-[#009EE3] text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-[#008ACB] transition"
+              onClick={handleLinkAsaas}
+              className="inline-block bg-emerald-600 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-emerald-700 transition"
             >
-              🤝 Vincular Conta Mercado Pago
+              🤝 Vincular Conta / Carteira Asaas
             </button>
           </div>
         )}

@@ -13,7 +13,7 @@ function CadastroForm() {
   const defaultRole = searchParams?.get('role') || 'cliente';
   
   const registerUser = useAppStore(state => state.registerUser);
-  const authorizeMercadoPago = useAppStore(state => state.authorizeMercadoPago);
+  const linkAsaasAccount = useAppStore(state => state.linkAsaasAccount);
   const cities = useAppStore(state => state.cities);
   const fetchCities = useAppStore(state => state.fetchCities);
   
@@ -36,7 +36,7 @@ function CadastroForm() {
   const [termosAceitos, setTermosAceitos] = useState(false);
   const [termosModalOpen, setTermosModalOpen] = useState(false);
   
-  const [step, setStep] = useState(1); // 1 = Formulario, 2 = Mercado Pago (apenas parceiros)
+  const [step, setStep] = useState(1); // 1 = Formulario, 2 = Asaas (apenas parceiros)
   const [newUserId, setNewUserId] = useState("");
 
   const handleCadastro = async (e: React.FormEvent) => {
@@ -49,7 +49,7 @@ function CadastroForm() {
     
     let icon = '👤';
     if (role === 'loja') icon = '🏪';
-    if (role === 'fornecedor') icon = '👨🌾';
+    if (role === 'fornecedor') icon = '👨‍🌾';
     if (role === 'motorista' && veiculo === 'Moto') icon = '🛵';
     if (role === 'motorista' && veiculo === 'Caminhão') icon = '🚚';
     if (role === 'motorista' && veiculo === 'Caçamba') icon = '🚛';
@@ -89,7 +89,7 @@ function CadastroForm() {
           router.push('/');
         } else {
           setNewUserId(newUser.id);
-          setStep(2); // Vai para o passo de MP
+          setStep(2); // Vai para o passo de Asaas
         }
       } else {
         alert("Erro ao criar conta.");
@@ -100,9 +100,9 @@ function CadastroForm() {
     }
   };
 
-  const handleAuthorizeMP = () => {
-    const mockToken = `APP_USR-${Math.random().toString(36).substring(2, 15)}`;
-    authorizeMercadoPago(newUserId, mockToken);
+  const handleLinkAsaas = async () => {
+    const walletId = pixKey || `asaas_wallet_${Math.random().toString(36).substring(2, 10)}`;
+    await linkAsaasAccount(newUserId, walletId);
     
     // Redireciona
     if (role === 'loja') router.push('/parceiros/batedeira');
@@ -270,29 +270,28 @@ function CadastroForm() {
       {step === 2 && (
         <div className="sm:mx-auto sm:w-full sm:max-w-md animate-in fade-in duration-300">
            <div className="bg-white dark:bg-zinc-900 w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800">
-            <div className="bg-blue-600 p-6 text-white text-center shrink-0">
+            <div className="bg-purple-700 p-6 text-white text-center shrink-0">
               <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
                 <ShieldCheck size={32} />
               </div>
-              <h3 className="text-xl font-bold">Conectar Mercado Pago</h3>
-              <p className="text-blue-100 text-sm mt-1">Garantia do Triplo Split</p>
+              <h3 className="text-xl font-bold">Vincular Conta Asaas</h3>
+              <p className="text-purple-100 text-sm mt-1">Split Automático de Pagamentos</p>
             </div>
             
             <div className="p-6 text-center">
               <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                Sua conta foi criada! Agora você precisa vincular sua conta bancária. 
-                Isso garante que sua comissão caia direto na sua conta instantaneamente a cada venda!
+                Sua conta foi criada com sucesso! Agora vincule sua Carteira Asaas ou Chave Pix para receber os repasses automáticos de cada corrida/venda no AçaíFood!
               </p>
               
               <button 
-                onClick={handleAuthorizeMP}
-                className="w-full bg-[#009EE3] hover:bg-[#008ACB] text-white font-bold py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 mb-3 active:scale-95"
+                onClick={handleLinkAsaas}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 mb-3 active:scale-95"
               >
-                Autorizar com Mercado Pago
+                🤝 Confirmar e Conectar Carteira Asaas
               </button>
               
               <p className="text-xs text-zinc-400 mt-4">
-                No ambiente de simulação, clicar neste botão aprova imediatamente e o redireciona.
+                Seus repasses serão creditados automaticamente a cada pedido concluído.
               </p>
             </div>
           </div>

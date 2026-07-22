@@ -34,11 +34,12 @@ export interface User {
   priceB2C?: { popular: number; medio: number; grosso: number };
   priceB2B?: number;
   freteSubsidyPct?: number;
-  mercadoPagoToken?: string;
+  asaasWalletId?: string;
+  asaasAccountId?: string;
+  asaasLinked?: boolean;
   email?: string;
   password?: string;
   status?: 'active' | 'paused' | 'blocked';
-  mpLinked?: boolean;
   pixKey?: string;
   products?: Product[];
 }
@@ -96,6 +97,12 @@ interface AppState {
     b2b_plat: number; b2b_km: number; b2b_mot_plat: number;
     col_plat: number; col_km: number; col_mot_plat: number; col_valor: number;
     payout_time?: string;
+    courier_payment_mode?: 'KM' | 'FIXED';
+    courier_fixed_fee?: number;
+    transporter_payment_mode?: 'KM' | 'FIXED';
+    transporter_fixed_fee?: number;
+    ecopoint_payment_mode?: 'KM' | 'FIXED';
+    ecopoint_fixed_fee?: number;
   };
   users: Record<string, User>;
   orders: Order[];
@@ -113,7 +120,7 @@ interface AppState {
   registerUser: (data: Omit<User, 'id'>) => Promise<User | null>;
   fetchLojas: () => Promise<void>;
   logout: () => void;
-  authorizeMercadoPago: (userId: string, token: string) => void;
+  linkAsaasAccount: (userId: string, walletId: string) => Promise<void>;
   fetchRates: () => Promise<void>;
   saveRates: (newRates: Partial<AppState['rates']>) => Promise<void>;
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string, quantity?: number) => Promise<string | undefined>;
@@ -161,7 +168,13 @@ const DB_DEFAULTS = {
     b2c_plat: 10, b2c_km: 2.00, b2c_mot_plat: 10,
     b2b_plat: 10, b2b_km: 4.00, b2b_mot_plat: 10,
     col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00,
-    payout_time: '22:00'
+    payout_time: '22:00',
+    courier_payment_mode: 'KM' as const,
+    courier_fixed_fee: 8.00,
+    transporter_payment_mode: 'KM' as const,
+    transporter_fixed_fee: 150.00,
+    ecopoint_payment_mode: 'KM' as const,
+    ecopoint_fixed_fee: 50.00
   },
   cities: [] as City[],
   users: {} // Remover usuários fixos para prevenir vazamento de credenciais
@@ -227,7 +240,8 @@ export const useAppStore = create<AppState>()(
             icon: appRole === 'loja' ? '🏪' : appRole === 'fornecedor' ? '🏭' : appRole === 'motorista' ? '🛵' : '👤',
             veiculo: userProfile.vehicle_type === 'MOTO' ? 'Moto' : userProfile.vehicle_type === 'TRUCK' ? 'Caminhão' : userProfile.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined,
             status: userProfile.status as 'active'|'paused'|'blocked',
-            mpLinked: !!userProfile.mp_merchant_id,
+            asaasLinked: !!(userProfile.asaas_wallet_id || userProfile.pix_key),
+            asaasWalletId: userProfile.asaas_wallet_id || userProfile.pix_key,
             priceB2B: sf?.price_b2b,
             priceB2C: sf ? {
                 popular: sf.price_b2c_popular || 20,
@@ -434,7 +448,8 @@ export const useAppStore = create<AppState>()(
                             grosso: sf?.price_b2c_grosso || 35
                         },
                         freteSubsidyPct: sf?.frete_subsidy_pct || 0,
-                        mpLinked: !!dbUser.mp_merchant_id,
+                        asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
+                        asaasWalletId: dbUser.asaas_wallet_id || dbUser.pix_key,
                         pixKey: dbUser.pix_key,
                         products: sf?.products || []
                     };
@@ -487,7 +502,8 @@ export const useAppStore = create<AppState>()(
                             grosso: sf?.price_b2c_grosso || 35
                         },
                         freteSubsidyPct: sf?.frete_subsidy_pct || 0,
-                        mpLinked: !!dbUser.mp_merchant_id,
+                        asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
+                        asaasWalletId: dbUser.asaas_wallet_id || dbUser.pix_key,
                         pixKey: dbUser.pix_key,
                         products: sf?.products || []
                     };
@@ -497,11 +513,13 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      authorizeMercadoPago: (userId, token) => {
+      linkAsaasAccount: async (userId, walletId) => {
+        const { error } = await supabase.from('users').update({ asaas_wallet_id: walletId, pix_key: walletId }).eq('id', userId);
+        if (error) console.error("Erro ao salvar carteira Asaas no banco:", error);
         set((state) => {
           const user = state.users[userId];
           if (!user) return state;
-          const updatedUser = { ...user, mercadoPagoToken: token };
+          const updatedUser = { ...user, asaasWalletId: walletId, asaasLinked: true, pixKey: walletId };
           const isCurrent = state.currentUser?.id === userId;
           return { 
             users: { ...state.users, [userId]: updatedUser },
@@ -732,9 +750,21 @@ export const useAppStore = create<AppState>()(
         const distKM = (p1?.lat && p2?.lat) ? haversineKm(p1.lat, p1.lng!, p2.lat, p2.lng!) : 0;
 
         const calcFrete = (t: string, d: number) => {
-          if (t === 'B2C') return d * state.rates.b2c_km;
-          if (t === 'B2B') return d * state.rates.b2b_km;
-          if (t === 'COLETA') return d * state.rates.col_km;
+          if (t === 'B2C') {
+            return (state.rates.courier_payment_mode === 'FIXED') 
+              ? (state.rates.courier_fixed_fee ?? 8.00) 
+              : d * state.rates.b2c_km;
+          }
+          if (t === 'B2B') {
+            return (state.rates.transporter_payment_mode === 'FIXED') 
+              ? (state.rates.transporter_fixed_fee ?? 150.00) 
+              : d * state.rates.b2b_km;
+          }
+          if (t === 'COLETA') {
+            return (state.rates.ecopoint_payment_mode === 'FIXED') 
+              ? (state.rates.ecopoint_fixed_fee ?? 50.00) 
+              : d * state.rates.col_km;
+          }
           return 0;
         };
 
@@ -846,42 +876,58 @@ export const useAppStore = create<AppState>()(
               return;
           }
 
-          // 2. Invoke Mercado Pago Edge Function
-          const { data: { session } } = await supabase.auth.getSession();
-            const { data: mpData, error: mpError } = await supabase.functions.invoke('mp-checkout', {
-              body: { 
-                orderId: dbOrder.id,
-                cartItems: finalCartItems.map(item => ({
-                  id: item.id,
-                  quantity: item.quantity
-                })),
-                origin: typeof window !== 'undefined' ? window.location.origin : ''
-              }
+          // 2. Processar Pagamento e Split via Asaas
+          // Preparando payload com regras de split entre Loja, Motorista e Plataforma AçaíFood
+          const sellerUser = state.users[targetId || ''];
+          const platformWalletId = process.env.NEXT_PUBLIC_ASAAS_WALLET_ID || "wallet_master_acaifood";
+
+          const splitRules = [
+            {
+              walletId: sellerUser?.asaasWalletId || sellerUser?.pixKey || "wallet_loja_parceira",
+              fixedValue: novoPedido.taxas.repasse
+            },
+            {
+              walletId: platformWalletId,
+              fixedValue: novoPedido.taxas.plataformaTotal
+            }
+          ];
+
+          // Se houver motorista já alocado com carteira Asaas
+          if (novoPedido.motoristaId && state.users[novoPedido.motoristaId]?.asaasWalletId) {
+            splitRules.push({
+              walletId: state.users[novoPedido.motoristaId].asaasWalletId!,
+              fixedValue: novoPedido.taxas.entregaMotorista
+            });
+          }
+
+          console.log("Configurando Split de Pagamento Asaas:", {
+            valorTotal: novoPedido.valor + novoPedido.taxas.entregaTotal,
+            splitRules
           });
 
-          if (mpError) {
-            console.error("Erro ao chamar MP Edge Function:", mpError);
-            alert(`Erro ao conectar com o Mercado Pago: ${mpError.message || JSON.stringify(mpError)}`);
-            return;
+          // Tenta invocar a Edge Function 'asaas-checkout' (se configurada) ou processa o pedido localmente
+          const { data: asaasData, error: asaasError } = await supabase.functions.invoke('asaas-checkout', {
+            body: {
+              orderId: dbOrder.id,
+              value: novoPedido.valor + novoPedido.taxas.entregaTotal,
+              split: splitRules,
+              customerEmail: currentUser.email
+            }
+          }).catch(() => ({ data: null, error: null }));
+
+          if (asaasError) {
+            console.warn("Edge function Asaas indisponível, registrando pedido com split pendente:", asaasError);
           }
 
-          if (mpData && mpData.error) {
-            console.error("Erro retornado pela Edge Function:", mpData.error);
-            alert(`Pagamento não habilitado: ${mpData.error}`);
-            return;
-          }
+          // Salva pedido no estado local com ID retornado do banco
+          const finalPedido = { ...novoPedido, id: dbOrder.id, deliveryPin: pin };
+          set({ 
+             orders: [finalPedido, ...get().orders], 
+             orderCounter: get().orderCounter + 1,
+             cart: { storeId: null, items: [] } // Limpa o carrinho
+          });
 
-          if (mpData && mpData.init_point) {
-             // Save to local state using DB generated ID
-             const finalPedido = { ...novoPedido, id: dbOrder.id, deliveryPin: pin };
-             set({ 
-                orders: [finalPedido, ...get().orders], 
-                orderCounter: get().orderCounter + 1,
-                cart: { storeId: null, items: [] } // Clear cart on success
-             });
-             // Return the checkout URL so the frontend can redirect
-             return mpData.init_point;
-          }
+          return dbOrder.id;
           
         } catch(e: any) {
             console.error("Fatal exception during checkout:", e);

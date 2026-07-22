@@ -13,11 +13,28 @@ ADD COLUMN IF NOT EXISTS picked_up_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS received_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS provided_pin text,
+ADD COLUMN IF NOT EXISTS asaas_payment_id TEXT,
+ADD COLUMN IF NOT EXISTS asaas_charge_status TEXT,
+ADD COLUMN IF NOT EXISTS operation_type TEXT DEFAULT 'B2C_ORDER',
 ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
 
--- 2. Garante que a coluna Pix existe na tabela users
+-- 2. Garante que as colunas do Asaas e Pix existem na tabela users
 ALTER TABLE public.users
-ADD COLUMN IF NOT EXISTS pix_key text;
+ADD COLUMN IF NOT EXISTS pix_key text,
+ADD COLUMN IF NOT EXISTS asaas_account_id TEXT,
+ADD COLUMN IF NOT EXISTS asaas_wallet_id TEXT,
+ADD COLUMN IF NOT EXISTS asaas_account_status TEXT DEFAULT 'APPROVED',
+ADD COLUMN IF NOT EXISTS split_enabled BOOLEAN DEFAULT TRUE;
+
+-- 3. Colunas de Modalidades Logísticas no platform_settings
+ALTER TABLE public.platform_settings
+ADD COLUMN IF NOT EXISTS courier_payment_mode TEXT DEFAULT 'KM',
+ADD COLUMN IF NOT EXISTS courier_fixed_fee DECIMAL(10,2) DEFAULT 8.00,
+ADD COLUMN IF NOT EXISTS transporter_payment_mode TEXT DEFAULT 'KM',
+ADD COLUMN IF NOT EXISTS transporter_fixed_fee DECIMAL(10,2) DEFAULT 150.00,
+ADD COLUMN IF NOT EXISTS ecopoint_payment_mode TEXT DEFAULT 'KM',
+ADD COLUMN IF NOT EXISTS ecopoint_fixed_fee DECIMAL(10,2) DEFAULT 50.00,
+ADD COLUMN IF NOT EXISTS asaas_platform_wallet_id TEXT DEFAULT 'wallet_master_acaifood';
 
 -- 3. Trigger de Segurança Financeira (Garante que ninguém altere o preço do frete)
 CREATE OR REPLACE FUNCTION public.protect_order_financials()

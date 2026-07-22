@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -13,6 +13,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#9333ea",
+};
+
 export const metadata: Metadata = {
   title: "AçaíFood Pará",
   description: "O marketplace definitivo de açaí.",
@@ -21,7 +25,6 @@ export const metadata: Metadata = {
     icon: "/icon-192x192.png",
     apple: "/icon-192x192.png",
   },
-  themeColor: "#9333ea",
 };
 
 export default function RootLayout({
