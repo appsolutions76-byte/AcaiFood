@@ -392,6 +392,7 @@ export const useAppStore = create<AppState>()(
           if (!currentUser) return;
           
           get().fetchRates();
+          get().fetchAllUsers();
           get().fetchOrders(currentUser.id);
           get().startAutoRefresh();
 
@@ -403,9 +404,22 @@ export const useAppStore = create<AppState>()(
               .on(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'orders' },
-                  (payload) => {
-                      console.log("Realtime order update received:", payload);
+                  () => {
                       get().fetchOrders(currentUser.id);
+                  }
+              )
+              .on(
+                  'postgres_changes',
+                  { event: '*', schema: 'public', table: 'storefronts' },
+                  () => {
+                      get().fetchAllUsers();
+                  }
+              )
+              .on(
+                  'postgres_changes',
+                  { event: '*', schema: 'public', table: 'platform_settings' },
+                  () => {
+                      get().fetchRates();
                   }
               )
               .subscribe();
@@ -533,7 +547,7 @@ export const useAppStore = create<AppState>()(
          if (data && !error) {
              set((state) => ({ rates: { 
                  ...state.rates,
-                 id: data.id, // Store the UUID
+                 id: data.id,
                  b2c_plat: data.b2c_fee_percentage,
                  b2c_km: data.motoboy_fee_per_km,
                  b2c_mot_plat: data.motoboy_platform_fee_percentage,
@@ -544,7 +558,13 @@ export const useAppStore = create<AppState>()(
                  col_km: data.col_fee_per_km || 8,
                  col_mot_plat: data.col_platform_fee_percentage || 10,
                  col_valor: data.col_fixed_price || 50,
-                 payout_time: data.payout_time || '22:00'
+                 payout_time: data.payout_time || '22:00',
+                 courier_payment_mode: data.courier_payment_mode || 'KM',
+                 courier_fixed_fee: data.courier_fixed_fee ?? 8.00,
+                 transporter_payment_mode: data.transporter_payment_mode || 'KM',
+                 transporter_fixed_fee: data.transporter_fixed_fee ?? 150.00,
+                 ecopoint_payment_mode: data.ecopoint_payment_mode || 'KM',
+                 ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? 50.00
              } }));
          } else {
              console.error("Error fetching rates:", error);
@@ -554,7 +574,7 @@ export const useAppStore = create<AppState>()(
       saveRates: async (newRates) => {
          set((state) => ({ rates: { ...state.rates, ...newRates } }));
          
-         const dbUpdates = {
+         const dbUpdates: any = {
              b2c_fee_percentage: newRates.b2c_plat,
              motoboy_fee_per_km: newRates.b2c_km,
              motoboy_platform_fee_percentage: newRates.b2c_mot_plat,
@@ -565,7 +585,13 @@ export const useAppStore = create<AppState>()(
              col_fee_per_km: newRates.col_km,
              col_platform_fee_percentage: newRates.col_mot_plat,
              col_fixed_price: newRates.col_valor,
-             payout_time: newRates.payout_time
+             payout_time: newRates.payout_time,
+             courier_payment_mode: newRates.courier_payment_mode,
+             courier_fixed_fee: newRates.courier_fixed_fee,
+             transporter_payment_mode: newRates.transporter_payment_mode,
+             transporter_fixed_fee: newRates.transporter_fixed_fee,
+             ecopoint_payment_mode: newRates.ecopoint_payment_mode,
+             ecopoint_fixed_fee: newRates.ecopoint_fixed_fee
          };
          
          // Remove undefined values
@@ -573,7 +599,7 @@ export const useAppStore = create<AppState>()(
 
          const targetId = (get().rates as any).id || 'e2560fbd-14d8-4749-b66e-6b0a24dce799';
          const { error } = await supabase.from('platform_settings').update(dbUpdates).eq('id', targetId);
-         if (error) console.error("Erro ao salvar taxas:", error);
+         if (error) console.error("Erro ao salvar taxas no Supabase:", error);
       },
       
       setFreteSubsidy: async (userId, pct) => {
@@ -1263,9 +1289,11 @@ export const useAppStore = create<AppState>()(
          if (!currentUser) return;
          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
          
-         // Atualiza o status em tempo real a cada 5 segundos (fallback)
+         // Atualiza o status em tempo real a cada 5 segundos
          autoRefreshInterval = setInterval(() => {
              get().fetchOrders(currentUser.id);
+             get().fetchRates();
+             get().fetchAllUsers();
          }, 5000);
       },
       
