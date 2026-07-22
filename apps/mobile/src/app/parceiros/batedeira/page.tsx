@@ -209,8 +209,7 @@ export default function BatedeiraDashboard() {
                           const activeColeta = store.orders.find(o => o.type === 'COLETA' && o.origemId === currentUser.id && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado');
                           
                           if (activeColeta) {
-                              const statusText = activeColeta.status === 'pendente' ? 'Aguardando Pagamento' :
-                                                 activeColeta.status === 'pronto' ? 'Aguardando Caçamba' :
+                              const statusText = (activeColeta.status === 'pendente' || activeColeta.status === 'pronto') ? 'Aguardando Caçamba' :
                                                  activeColeta.status === 'em_rota' ? 'Caçamba a Caminho' : 'Em Andamento';
                               return (
                                   <div className="flex items-center gap-2">

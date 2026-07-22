@@ -46,7 +46,7 @@ export default function CaminhaoDashboard() {
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const corridasDisponiveis = store.orders.filter(o => {
-    const isReady = o.status === 'pronto' && o.motoristaId === null && (o.type === 'B2B' || o.type === 'COLETA');
+    const isReady = (o.status === 'pronto' || o.status === 'pendente') && o.motoristaId === null && (o.type === 'B2B' || o.type === 'COLETA');
     if (!isReady) return false;
     const originCity = (o as any).cidadeOrigem?.toLowerCase()?.trim() || 'belém';
     const driverCity = currentUser.cidade?.toLowerCase()?.trim() || 'belém';

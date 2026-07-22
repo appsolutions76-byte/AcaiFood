@@ -861,7 +861,7 @@ export const useAppStore = create<AppState>()(
             buyer_id: currentUser.id,
             seller_storefront_id: sellerStorefrontId,
             order_type: tipo,
-            status: 'PENDING',
+            status: tipo === 'COLETA' ? 'READY' : 'PENDING',
             products_subtotal: novoPedido.valor,
             delivery_distance_km: novoPedido.distancia || 0,
             applied_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_plat : (tipo === 'COLETA' ? state.rates.col_plat : state.rates.b2b_plat),
@@ -1078,7 +1078,7 @@ export const useAppStore = create<AppState>()(
                 query = query.eq('seller_storefront_id', sf.id);
             }
          } else if (currentUser.role === 'motorista') {
-            query = query.or(`status.in.(READY,PREPARING,DELIVERING,PAID),driver_id.eq.${currentUser.id}`);
+            query = query.or(`status.in.(READY,PREPARING,DELIVERING,PAID,PENDING),driver_id.eq.${currentUser.id}`);
          } else if (currentUser.role === 'cliente') {
             query = query.eq('buyer_id', currentUser.id);
          } else if (currentUser.role === 'admin') {
@@ -1098,7 +1098,7 @@ export const useAppStore = create<AppState>()(
              const mappedOrders = dbOrders.map((dbOrder: any) => {
                 let appStatus = 'pendente';
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
-                if (dbOrder.status === 'READY' || (dbOrder.status === 'PAID' && dbOrder.order_type === 'COLETA')) appStatus = 'pronto';
+                if (dbOrder.status === 'READY' || dbOrder.status === 'PAID' || dbOrder.order_type === 'COLETA') appStatus = 'pronto';
                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
                 if (dbOrder.status === 'DELIVERED') appStatus = 'aguardando_cliente';
                 if (dbOrder.status === 'RECEIVED') appStatus = 'entregue';
