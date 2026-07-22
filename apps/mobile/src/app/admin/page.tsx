@@ -144,26 +144,37 @@ export default function AdminDashboard() {
     alert("Taxas do Triplo Split atualizadas com sucesso!");
   };
 
+  const [pwdModalOpen, setPwdModalOpen] = useState(false);
+  const [pwdInputText, setPwdInputText] = useState('');
+  const [pwdModalMode, setPwdModalMode] = useState<'create' | 'verify'>('verify');
+
   const handleClearData = () => {
+    setPwdInputText('');
     if (!store.clearPassword) {
-       const newPwd = prompt("Crie uma senha de segurança para habilitar o botão Limpar:");
-       if (newPwd) {
-          store.setClearPassword(newPwd);
-          alert("Senha de segurança criada! Clique em Limpar novamente para prosseguir.");
+       setPwdModalMode('create');
+    } else {
+       setPwdModalMode('verify');
+    }
+    setPwdModalOpen(true);
+  };
+
+  const handleConfirmPasswordModal = () => {
+    if (!pwdInputText) return;
+    if (pwdModalMode === 'create') {
+       store.setClearPassword(pwdInputText);
+       setPwdModalOpen(false);
+       setPwdInputText('');
+       alert("Senha de segurança criada com sucesso! Clique em Limpar novamente para prosseguir.");
+    } else {
+       if (pwdInputText !== store.clearPassword) {
+          alert("Senha incorreta!");
+          return;
        }
-       return;
-    }
-
-    const pwd = prompt("Digite a senha de segurança para limpar o banco de dados:");
-    if (pwd === null) return; // User cancelled
-    
-    if (pwd !== store.clearPassword) {
-       alert("Senha incorreta!");
-       return;
-    }
-
-    if (confirm("🚨 ATENÇÃO: Tem certeza que deseja apagar DEFINITIVAMENTE todos os pedidos do banco de dados?")) {
-      store.clearData();
+       setPwdModalOpen(false);
+       setPwdInputText('');
+       if (confirm("🚨 ATENÇÃO: Tem certeza que deseja apagar DEFINITIVAMENTE todos os pedidos do banco de dados?")) {
+          store.clearData();
+       }
     }
   };
 
@@ -601,6 +612,40 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {pwdModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in fade-in zoom-in-95">
+            <div className="bg-purple-900 text-white p-5 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-lg">🔑 {pwdModalMode === 'create' ? 'Criar Senha de Segurança' : 'Senha de Segurança'}</h3>
+                <button onClick={() => setPwdModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                  <label className="text-xs uppercase text-zinc-500 font-bold mb-1 block">
+                    {pwdModalMode === 'create' ? 'Crie uma senha para habilitar o botão Limpar:' : 'Digite a senha para limpar o banco:'}
+                  </label>
+                  <input 
+                    type="password" 
+                    autoFocus
+                    value={pwdInputText} 
+                    onChange={e => setPwdInputText(e.target.value)} 
+                    onKeyDown={e => { if (e.key === 'Enter') handleConfirmPasswordModal(); }}
+                    className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 font-bold text-lg text-center tracking-widest"
+                    placeholder="***"
+                  />
+              </div>
+            </div>
+
+            <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
+                <button onClick={() => setPwdModalOpen(false)} className="px-4 py-2 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition text-xs">Cancelar</button>
+                <button onClick={handleConfirmPasswordModal} className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition text-xs shadow-md">
+                    {pwdModalMode === 'create' ? 'Criar Senha' : 'Confirmar'}
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
