@@ -212,8 +212,13 @@ export default function BatedeiraDashboard() {
                               const statusText = (activeColeta.status === 'pendente' || activeColeta.status === 'pronto') ? 'Aguardando Caçamba' :
                                                  activeColeta.status === 'em_rota' ? 'Caçamba a Caminho' : 'Em Andamento';
                               return (
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex flex-wrap items-center gap-2">
                                       <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded border border-amber-200 shadow-sm animate-pulse">🚛 {statusText}</span>
+                                      {activeColeta.deliveryPin && (
+                                          <span className="text-xs font-black bg-purple-700 text-white px-2.5 py-1 rounded-md shadow-sm border border-purple-500 tracking-widest flex items-center gap-1">
+                                              🔑 PIN: {activeColeta.deliveryPin}
+                                          </span>
+                                      )}
                                       <button onClick={() => store.acaoPedido(activeColeta.id, 'cancelar_pedido')} className="text-xs text-red-500 hover:text-red-700 font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Cancelar</button>
                                   </div>
                               );
@@ -336,13 +341,13 @@ export default function BatedeiraDashboard() {
                          {o.receivedAt && <span className="text-[9px] bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded font-bold">✅ Recebido: {new Date(o.receivedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                       </div>
 
-                      {o.type === 'B2B' && o.deliveryPin && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && (
-                         <div className="mt-2 mb-2 bg-emerald-900 dark:bg-emerald-950 text-white p-3 rounded-lg flex items-center justify-between shadow-md border border-emerald-700">
+                      {o.deliveryPin && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && (
+                         <div className="mt-2 mb-2 bg-purple-900 dark:bg-purple-950 text-white p-3 rounded-lg flex items-center justify-between shadow-md border border-purple-700">
                              <div>
-                                 <p className="text-[10px] font-bold uppercase text-emerald-300">PIN de Segurança</p>
-                                 <p className="text-[10px] text-emerald-100 leading-tight">Forneça ao motorista</p>
+                                 <p className="text-[10px] font-bold uppercase text-purple-300">🔑 PIN de Segurança</p>
+                                 <p className="text-[10px] text-purple-100 leading-tight">Forneça ao motorista na entrega/coleta</p>
                              </div>
-                             <div className="text-xl font-black tracking-widest text-white">{o.deliveryPin}</div>
+                             <div className="text-xl font-black tracking-widest text-white bg-purple-950 px-3 py-1 rounded border border-purple-600">{o.deliveryPin}</div>
                          </div>
                       )}
                   </div>
