@@ -774,8 +774,9 @@ export const useAppStore = create<AppState>()(
             return;
         }
 
+        const valColeta = calcFrete('COLETA', distKM);
         const finalCartItems = tipo === 'COLETA' 
-          ? [{ id: 'COLETA', name: 'Serviço de Coleta (Caçamba)', price: state.rates.col_valor, quantity: 1 }] 
+          ? [{ id: 'COLETA', name: 'Serviço de Coleta (Caçamba)', price: valColeta, quantity: 1 }] 
           : cartItems;
 
         const itemsTotal = finalCartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);

@@ -531,8 +531,7 @@ export default function AdminDashboard() {
               </div>
               <div className="pb-2">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>🚛</span> Coleta Log. Reversa (Caroço - EcoPoint)</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div><label className="text-[10px] uppercase text-amber-600 font-bold">Serviço Fixo (R$)</label><input type="number" value={localRates.col_valor} onChange={e => setLocalRates({...localRates, col_valor: Number(e.target.value)})} className="w-full border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"/></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">Modalidade</label>
                         <select value={localRates.ecopoint_payment_mode || 'KM'} onChange={e => setLocalRates({...localRates, ecopoint_payment_mode: e.target.value as 'KM' | 'FIXED'})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">

@@ -108,7 +108,9 @@ export default function BatedeiraDashboard() {
     });
   
   const distColeta = (currentUser.lat && store.users.ecoponto?.lat) ? haversineKm(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat, store.users.ecoponto.lng!) : 0;
-  const freteColeta = distColeta * store.rates.col_km;
+  const freteColeta = store.rates.ecopoint_payment_mode === 'FIXED' 
+    ? (store.rates.ecopoint_fixed_fee ?? 50) 
+    : (distColeta * store.rates.col_km);
 
   const handleSaveSubsidy = () => {
     store.setFreteSubsidy(currentUser.id, parseFloat(subsidyInput) || 0);
@@ -233,7 +235,7 @@ export default function BatedeiraDashboard() {
                                     alert('✅ Chamada de caçamba registrada com sucesso!');
                                   }
                               }} className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-1.5 px-3 rounded-lg border border-amber-300 transition text-xs shadow-sm">
-                                  🚛 Chamar Caçamba ({formatMoney(store.rates.col_valor)})
+                                  🚛 Chamar Caçamba ({formatMoney(freteColeta)})
                               </button>
                           );
                       })()}
