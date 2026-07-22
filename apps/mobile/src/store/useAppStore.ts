@@ -830,6 +830,8 @@ export const useAppStore = create<AppState>()(
           
           novoPedido.title = `${titles} (${loja.name})`;
           novoPedido.clienteId = currentUser.id;
+          novoPedido.clienteNome = currentUser.name;
+          novoPedido.destinoId = currentUser.id;
           novoPedido.lojaId = targetId;
           novoPedido.taxas.entregaTotal = calcFrete('B2C', distKM);
           novoPedido.taxas.entregaLoja = novoPedido.taxas.entregaTotal * ((loja.freteSubsidyPct || 0) / 100);
@@ -1122,6 +1124,22 @@ export const useAppStore = create<AppState>()(
          const { data: dbOrders, error } = await query;
          
          if (dbOrders && !error) {
+            const missingUserIds = new Set<string>();
+            dbOrders.forEach((o: any) => {
+               if (o.buyer_id && !state.users[o.buyer_id]?.name) missingUserIds.add(o.buyer_id);
+               if (o.driver_id && !state.users[o.driver_id]?.name) missingUserIds.add(o.driver_id);
+            });
+
+            let fetchedUsersMap: Record<string, any> = {};
+            if (missingUserIds.size > 0) {
+               const { data: uData } = await supabase.from('users').select('id, name, email, bairro, cidade, role').in('id', Array.from(missingUserIds));
+               if (uData && uData.length > 0) {
+                  uData.forEach((u: any) => { fetchedUsersMap[u.id] = u; });
+                  set(prev => ({ users: { ...prev.users, ...fetchedUsersMap } }));
+               }
+            }
+            const allUsers = { ...state.users, ...fetchedUsersMap };
+
              const mappedOrders = dbOrders.map((dbOrder: any) => {
                 let appStatus = 'pendente';
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
@@ -1172,9 +1190,9 @@ export const useAppStore = create<AppState>()(
                    readyAt: dbOrder.ready_at,
                    receivedAt: dbOrder.received_at,
                    deliveryPin: dbOrder.delivery_pin,
-                   clienteNome: dbOrder.buyer?.name || state.users[dbOrder.buyer_id]?.name,
-                   lojaNome: dbOrder.storefront?.store_name || state.users[dbOrder.storefront?.partner_id]?.name,
-                   motoristaNome: dbOrder.driver?.name || state.users[dbOrder.driver_id]?.name,
+                   clienteNome: dbOrder.buyer?.name || allUsers[dbOrder.buyer_id]?.name || localOrder?.clienteNome,
+                   lojaNome: dbOrder.storefront?.store_name || allUsers[dbOrder.storefront?.partner_id]?.name,
+                   motoristaNome: dbOrder.driver?.name || allUsers[dbOrder.driver_id]?.name,
                    criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,
                    origemId: localOrder?.origemId || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id,
                    destinoId: localOrder?.destinoId || dbOrder.buyer_id,

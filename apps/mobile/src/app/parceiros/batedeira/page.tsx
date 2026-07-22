@@ -339,7 +339,7 @@ export default function BatedeiraDashboard() {
                       </div>
                       <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
                           <span>
-                            {o.type === 'B2C' ? `👤 Cliente: ${o.clienteNome || store.users[o.destinoId]?.name || '—'}` :
+                            {o.type === 'B2C' ? `👤 Cliente: ${o.clienteNome || store.users[o.destinoId]?.name || store.users[o.clienteId!]?.name || store.users[o.criadoPor]?.name || 'Cliente'}` :
                              o.type === 'B2B' ? `🏭 Fornecedor: ${store.users[o.origemId]?.name || '—'}` :
                              `🚛 Caçamba Ecoponto`}
                           </span>
