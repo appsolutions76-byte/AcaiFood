@@ -68,9 +68,11 @@ function CadastroForm() {
         role, name, email, password, telefone, endereco, cidade, bairro, icon, lat, lng
       };
       
+      if (role !== 'cliente') {
+        data.pixKey = pixKey;
+      }
       if (role === 'motorista') {
         data.veiculo = veiculo;
-        data.pixKey = pixKey;
       }
       if (role === 'loja') {
         data.priceB2C = { popular: 18, medio: 25, grosso: 33 };
@@ -175,24 +177,34 @@ function CadastroForm() {
                 </div>
 
                 {role === 'motorista' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Veículo</label>
-                      <select 
-                        value={veiculo} 
-                        onChange={e => setVeiculo(e.target.value)}
-                        className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
-                      >
-                        <option value="Moto">Moto (B2C)</option>
-                        <option value="Caminhão">Caminhão (B2B)</option>
-                        <option value="Caçamba">Caçamba (Logística Reversa)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Chave PIX (Para receber os fretes)</label>
-                      <input type="text" required value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder="Celular, CPF, E-mail ou Aleatória" className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
-                    </div>
-                  </>
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Veículo</label>
+                    <select 
+                      value={veiculo} 
+                      onChange={e => setVeiculo(e.target.value)}
+                      className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
+                    >
+                      <option value="Moto">Moto (B2C)</option>
+                      <option value="Caminhão">Caminhão (B2B)</option>
+                      <option value="Caçamba">Caçamba (Logística Reversa)</option>
+                    </select>
+                  </div>
+                )}
+
+                {role !== 'cliente' && (
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Chave PIX (Para receber os repasses via Split Asaas)
+                    </label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={pixKey} 
+                      onChange={e => setPixKey(e.target.value)} 
+                      placeholder="Celular, CPF, E-mail ou Aleatória" 
+                      className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" 
+                    />
+                  </div>
                 )}
 
                 <div>

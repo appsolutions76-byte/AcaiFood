@@ -67,9 +67,11 @@ export default function BatedeiraDashboard() {
 
   const handleLinkAsaas = async () => {
     if (!currentUser) return;
-    const walletId = currentUser.pixKey || `asaas_wallet_${Math.random().toString(36).substring(2, 10)}`;
-    await linkAsaasAccount(currentUser.id, walletId);
-    alert("Conta / Carteira Asaas vinculada com sucesso! Vendas liberadas para split automático.");
+    const inputPix = prompt("Informe a sua Chave PIX (CPF, Celular, E-mail ou Aleatória) ou Carteira Asaas para receber os repasses:", currentUser.pixKey || currentUser.asaasWalletId || "");
+    if (inputPix !== null && inputPix.trim() !== "") {
+      await linkAsaasAccount(currentUser.id, inputPix.trim());
+      alert("Chave PIX / Carteira Asaas salva com sucesso! Repasses liberados.");
+    }
   };
 
   if (!mounted) {
