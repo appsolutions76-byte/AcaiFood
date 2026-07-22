@@ -28,15 +28,22 @@ export default function AdminDashboard() {
   useEffect(() => {
     setMounted(true);
     if (store.currentUser?.role === 'admin') {
-       store.fetchAllUsers();
-       store.startRealtime();
+       if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers();
+       if (typeof store.startRealtime === 'function') store.startRealtime();
+       if (typeof store.fetchOrders === 'function' && store.currentUser?.id) store.fetchOrders(store.currentUser.id);
     }
   }, [store.currentUser?.role]);
 
-  const filteredUsers = Object.values(store.users).filter(u => {
+  const filteredUsers = Object.values(store.users || {}).filter(u => {
+    if (!u) return false;
     if (userFilterRole !== 'all' && u.role !== userFilterRole) return false;
     const search = userFilterText.toLowerCase();
-    if (search && !u.name.toLowerCase().includes(search) && !u.email?.toLowerCase().includes(search) && !u.bairro?.toLowerCase().includes(search)) return false;
+    if (search) {
+       const nameMatch = (u.name || '').toLowerCase().includes(search);
+       const emailMatch = (u.email || '').toLowerCase().includes(search);
+       const bairroMatch = (u.bairro || '').toLowerCase().includes(search);
+       if (!nameMatch && !emailMatch && !bairroMatch) return false;
+    }
     return true;
   });
 
@@ -56,34 +63,36 @@ export default function AdminDashboard() {
     );
   }
 
-  const concluidos = store.orders.filter(o => o.status === 'entregue' || o.status === 'arquivado');
+  const concluidos = (store.orders || []).filter(o => o.status === 'entregue' || o.status === 'arquivado');
   const getDynamicTaxes = (o: Order) => {
     let repasseLoja = 0, repasseForn = 0, repasseMoto = 0, platVenda = 0, platEntrega = 0, entregaTotal = 0;
-    const dist = o.distancia;
+    if (!o) return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };
+    const dist = o.distancia || 0;
+    const rates = store.rates || { b2c_plat: 10, b2c_km: 2, b2c_mot_plat: 10, b2b_plat: 10, b2b_km: 4, b2b_mot_plat: 10, col_km: 8, col_mot_plat: 10 };
     
     if (o.type === 'B2C') {
-        entregaTotal = o.taxas?.entregaTotal || (store.rates.courier_payment_mode === 'FIXED' ? (store.rates.courier_fixed_fee ?? 8) : dist * store.rates.b2c_km);
-        const sub = (o.lojaId ? store.users[o.lojaId]?.freteSubsidyPct || 0 : 0) / 100;
+        entregaTotal = o.taxas?.entregaTotal || (rates.courier_payment_mode === 'FIXED' ? (rates.courier_fixed_fee ?? 8) : dist * rates.b2c_km);
+        const sub = (o.lojaId && store.users[o.lojaId] ? store.users[o.lojaId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteLoja = entregaTotal * sub;
         
-        platVenda = o.valor * (store.rates.b2c_plat / 100);
-        platEntrega = entregaTotal * (store.rates.b2c_mot_plat / 100);
+        platVenda = (o.valor || 0) * (rates.b2c_plat / 100);
+        platEntrega = entregaTotal * (rates.b2c_mot_plat / 100);
         
-        repasseLoja = o.valor - platVenda - freteLoja;
+        repasseLoja = (o.valor || 0) - platVenda - freteLoja;
         repasseMoto = entregaTotal - platEntrega;
     } else if (o.type === 'B2B') {
-        entregaTotal = o.taxas?.entregaTotal || (store.rates.transporter_payment_mode === 'FIXED' ? (store.rates.transporter_fixed_fee ?? 150) : dist * store.rates.b2b_km);
-        const sub = (o.fornecedorId ? store.users[o.fornecedorId]?.freteSubsidyPct || 0 : 0) / 100;
+        entregaTotal = o.taxas?.entregaTotal || (rates.transporter_payment_mode === 'FIXED' ? (rates.transporter_fixed_fee ?? 150) : dist * rates.b2b_km);
+        const sub = (o.fornecedorId && store.users[o.fornecedorId] ? store.users[o.fornecedorId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteForn = entregaTotal * sub;
         
-        platVenda = o.valor * (store.rates.b2b_plat / 100);
-        platEntrega = entregaTotal * (store.rates.b2b_mot_plat / 100);
+        platVenda = (o.valor || 0) * (rates.b2b_plat / 100);
+        platEntrega = entregaTotal * (rates.b2b_mot_plat / 100);
         
-        repasseForn = o.valor - platVenda - freteForn;
+        repasseForn = (o.valor || 0) - platVenda - freteForn;
         repasseMoto = entregaTotal - platEntrega;
     } else if (o.type === 'COLETA') {
-        entregaTotal = o.taxas?.entregaTotal || (store.rates.ecopoint_payment_mode === 'FIXED' ? (store.rates.ecopoint_fixed_fee ?? 50) : dist * store.rates.col_km);
-        platEntrega = entregaTotal * (store.rates.col_mot_plat / 100);
+        entregaTotal = o.taxas?.entregaTotal || (rates.ecopoint_payment_mode === 'FIXED' ? (rates.ecopoint_fixed_fee ?? 50) : dist * rates.col_km);
+        platEntrega = entregaTotal * (rates.col_mot_plat / 100);
         repasseMoto = entregaTotal - platEntrega;
     }
     
