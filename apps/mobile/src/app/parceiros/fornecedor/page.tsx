@@ -243,19 +243,28 @@ export default function FornecedorDashboard() {
             return (
             <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-xl shadow-sm border border-l-4 ${isCanceled ? 'border-red-300 opacity-60 border-l-red-400' : 'border-l-emerald-500'} border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
                 <div className="w-full sm:w-auto">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">{o.type}</span>
-                        <span className="font-bold text-zinc-800 dark:text-white text-sm">Pedido #{o.id} - Loja: {o.clienteNome || store.users[o.lojaId!]?.name || '—'}</span>
+                        <span className="font-bold text-zinc-800 dark:text-white text-sm">{o.title}</span>
+                        {o.createdAt && (
+                          <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                             📅 {new Date(o.createdAt).toLocaleDateString('pt-BR')} às {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </span>
+                        )}
                         <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId })} className="text-[10px] text-blue-500 hover:underline">🗺️ Ver Rota de {o.distancia.toFixed(1)} km</button>
                     </div>
-                    <div className="text-[10px] text-zinc-600 dark:text-zinc-400 mb-1 uppercase font-bold">Motorista: {o.motoristaNome || 'Aguardando'}</div>
+                    <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
+                        <span>🏪 Loja Compradora: {store.users[o.destinoId]?.name || store.users[o.lojaId!]?.name || o.clienteNome || '—'}</span>
+                        <span className="text-zinc-400">|</span>
+                        <span className="text-zinc-500">🚛 Caminhão: {o.motoristaNome || 'Aguardando'}</span>
+                    </div>
                     <p className="text-xs text-zinc-500 mt-1">
                         Bruto: {formatMoney(o.valor)} |
                         Sub. Frete: {formatMoney(o.taxas.entregaFornecedor || 0)} |
                         Líquido: {formatMoney(o.taxas.repasse)}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-2">
-                       {o.createdAt && <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                       {o.createdAt && <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleDateString('pt-BR')} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                        {o.acceptedAt && <span className="text-[9px] bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded font-bold">👨‍🍳 Aceito: {new Date(o.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                        {o.readyAt && <span className="text-[9px] bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded font-bold">🛎️ Pronto: {new Date(o.readyAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                        {o.pickedUpAt && <span className="text-[9px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded font-bold">📦 Retirada: {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
