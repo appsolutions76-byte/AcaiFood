@@ -26,9 +26,11 @@ class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, 
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 rounded-2xl shadow-xl max-w-md w-full">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 rounded-2xl shadow-xl max-w-lg w-full">
             <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Painel de Administração</h2>
-            <p className="text-sm text-zinc-500 mb-6">Sincronizando dados com o banco de dados...</p>
+            <p className="text-xs text-red-500 font-mono bg-red-50 dark:bg-red-950/40 p-3 rounded-lg border border-red-200 mb-6 text-left overflow-auto max-h-32 break-all">
+              {this.state.error?.toString() || 'Erro na renderização dos dados'}
+            </p>
             <button 
               onClick={() => { this.setState({ hasError: false }); window.location.reload(); }} 
               className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-3 rounded-xl transition w-full shadow-lg"
@@ -46,6 +48,28 @@ class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, 
 function AdminDashboardContent() {
   const store = useAppStore();
   const formatMoney = (val?: number | null) => (val ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const safeTime = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return null;
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const safeDate = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return null;
+      return d.toLocaleDateString('pt-BR');
+    } catch (e) {
+      return null;
+    }
+  };
 
   const orders = store.orders || [];
   const users = store.users || {};
@@ -77,6 +101,11 @@ function AdminDashboardContent() {
 
   const [mounted, setMounted] = useState(false);
 
+  const isAdmin = !!store.currentUser && (
+    store.currentUser.role === 'admin' || 
+    (store.currentUser.role as string)?.toLowerCase() === 'admin'
+  );
+
   useEffect(() => {
     if (store.rates) {
       setLocalRates(store.rates);
@@ -85,14 +114,14 @@ function AdminDashboardContent() {
 
   useEffect(() => {
     setMounted(true);
-    if (store.currentUser?.role === 'admin') {
+    if (isAdmin) {
        if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers();
        if (typeof store.startRealtime === 'function') store.startRealtime();
        if (typeof store.fetchOrders === 'function' && store.currentUser?.id) store.fetchOrders(store.currentUser.id);
        if (typeof store.fetchCities === 'function') store.fetchCities();
        if (typeof store.fetchRates === 'function') store.fetchRates();
     }
-  }, [store.currentUser?.role]);
+  }, [isAdmin]);
 
   const filteredUsers = Object.values(users).filter(u => {
     if (!u) return false;
@@ -113,7 +142,7 @@ function AdminDashboardContent() {
     return <div className="min-h-screen flex items-center justify-center p-6"><p>Carregando...</p></div>;
   }
 
-  if (!store.currentUser || store.currentUser.role !== 'admin') {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
         <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
@@ -131,36 +160,45 @@ function AdminDashboardContent() {
     const dist = o.distancia || 0;
     
     if (o.type === 'B2C') {
-        entregaTotal = o.taxas?.entregaTotal || (rates.courier_payment_mode === 'FIXED' ? (rates.courier_fixed_fee ?? 8) : dist * rates.b2c_km);
+        entregaTotal = o.taxas?.entregaTotal || (rates.courier_payment_mode === 'FIXED' ? (rates.courier_fixed_fee ?? 8) : dist * (rates.b2c_km || 2));
         const sub = (o.lojaId && users[o.lojaId] ? users[o.lojaId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteLoja = entregaTotal * sub;
         
-        platVenda = (o.valor || 0) * (rates.b2c_plat / 100);
-        platEntrega = entregaTotal * (rates.b2c_mot_plat / 100);
+        platVenda = (o.valor || 0) * ((rates.b2c_plat || 10) / 100);
+        platEntrega = entregaTotal * ((rates.b2c_mot_plat || 10) / 100);
         
         repasseLoja = (o.valor || 0) - platVenda - freteLoja;
         repasseMoto = entregaTotal - platEntrega;
     } else if (o.type === 'B2B') {
-        entregaTotal = o.taxas?.entregaTotal || (rates.transporter_payment_mode === 'FIXED' ? (rates.transporter_fixed_fee ?? 150) : dist * rates.b2b_km);
+        entregaTotal = o.taxas?.entregaTotal || (rates.transporter_payment_mode === 'FIXED' ? (rates.transporter_fixed_fee ?? 150) : dist * (rates.b2b_km || 4));
         const sub = (o.fornecedorId && users[o.fornecedorId] ? users[o.fornecedorId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteForn = entregaTotal * sub;
         
-        platVenda = (o.valor || 0) * (rates.b2b_plat / 100);
-        platEntrega = entregaTotal * (rates.b2b_mot_plat / 100);
+        platVenda = (o.valor || 0) * ((rates.b2b_plat || 10) / 100);
+        platEntrega = entregaTotal * ((rates.b2b_mot_plat || 10) / 100);
         
         repasseForn = (o.valor || 0) - platVenda - freteForn;
         repasseMoto = entregaTotal - platEntrega;
     } else if (o.type === 'COLETA') {
-        entregaTotal = o.taxas?.entregaTotal || (rates.ecopoint_payment_mode === 'FIXED' ? (rates.ecopoint_fixed_fee ?? 50) : dist * rates.col_km);
-        platEntrega = entregaTotal * (rates.col_mot_plat / 100);
+        entregaTotal = o.taxas?.entregaTotal || (rates.ecopoint_payment_mode === 'FIXED' ? (rates.ecopoint_fixed_fee ?? 50) : dist * (rates.col_km || 8));
+        platEntrega = entregaTotal * ((rates.col_mot_plat || 10) / 100);
         repasseMoto = entregaTotal - platEntrega;
     }
     
     return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };
   };
 
-  const isMoto = (motId: string | null) => { const m = motId ? users[motId] : null; return m && m.veiculo === 'Moto'; };
-  const isCaminhao = (motId: string | null) => { const m = motId ? users[motId] : null; return m && (m.veiculo === 'Caminhão' || m.veiculo === 'Caçamba'); };
+  const isMoto = (motId: string | null) => { 
+    if (!motId || typeof motId !== 'string') return false;
+    const m = users[motId];
+    return m && m.veiculo === 'Moto'; 
+  };
+
+  const isCaminhao = (motId: string | null) => { 
+    if (!motId || typeof motId !== 'string') return false;
+    const m = users[motId];
+    return m && (m.veiculo === 'Caminhão' || m.veiculo === 'Caçamba'); 
+  };
 
   let totaisVendas = 0;
   let totaisFretes = 0;
@@ -176,24 +214,24 @@ function AdminDashboardContent() {
 
   concluidos.forEach(o => {
       const dyn = getDynamicTaxes(o);
-      totaisVendas += dyn.platVenda;
-      totaisFretes += dyn.platEntrega;
-      movimentacaoTotal += (o.valor || 0) + dyn.entregaTotal;
+      totaisVendas += dyn.platVenda || 0;
+      totaisFretes += dyn.platEntrega || 0;
+      movimentacaoTotal += (o.valor || 0) + (dyn.entregaTotal || 0);
       
       if (o.type === 'B2C') {
-          fatLiqBatedeiras += dyn.repasseLoja;
+          fatLiqBatedeiras += dyn.repasseLoja || 0;
           fatBrutoBatedeiras += (o.valor || 0);
       } else if (o.type === 'B2B') {
-          fatLiqFornecedores += dyn.repasseForn;
+          fatLiqFornecedores += dyn.repasseForn || 0;
           fatBrutoFornecedores += (o.valor || 0);
       }
       
       if (isMoto(o.motoristaId)) {
-          fatLiqMotos += dyn.repasseMoto;
-          fatBrutoMotos += dyn.entregaTotal;
+          fatLiqMotos += dyn.repasseMoto || 0;
+          fatBrutoMotos += dyn.entregaTotal || 0;
       } else if (isCaminhao(o.motoristaId)) {
-          fatLiqCaminhoes += dyn.repasseMoto;
-          fatBrutoCaminhoes += dyn.entregaTotal;
+          fatLiqCaminhoes += dyn.repasseMoto || 0;
+          fatBrutoCaminhoes += dyn.entregaTotal || 0;
       }
   });
 
@@ -380,12 +418,12 @@ function AdminDashboardContent() {
                                 {o.id}<br/>
                                 <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">🗺️ Ver {(o.distancia || 0).toFixed(1)} km</button>
                                 <div className="mt-1 flex flex-col gap-0.5">
-                                    {o.createdAt && <span className="text-[9px] text-zinc-500 font-normal">🕒 {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                                    {o.acceptedAt && <span className="text-[9px] text-purple-500 font-normal">👨‍🍳 {new Date(o.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                                    {o.readyAt && <span className="text-[9px] text-orange-500 font-normal">🛎️ {new Date(o.readyAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                                    {o.pickedUpAt && <span className="text-[9px] text-blue-500 font-normal">📦 {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                                    {o.deliveredAt && <span className="text-[9px] text-teal-500 font-normal">📍 {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                                    {o.receivedAt && <span className="text-[9px] text-green-500 font-normal">✅ {new Date(o.receivedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                                    {safeTime(o.createdAt) && <span className="text-[9px] text-zinc-500 font-normal">🕒 {safeTime(o.createdAt)}</span>}
+                                    {safeTime(o.acceptedAt) && <span className="text-[9px] text-purple-500 font-normal">👨‍🍳 {safeTime(o.acceptedAt)}</span>}
+                                    {safeTime(o.readyAt) && <span className="text-[9px] text-orange-500 font-normal">🛎️ {safeTime(o.readyAt)}</span>}
+                                    {safeTime(o.pickedUpAt) && <span className="text-[9px] text-blue-500 font-normal">📦 {safeTime(o.pickedUpAt)}</span>}
+                                    {safeTime(o.deliveredAt) && <span className="text-[9px] text-teal-500 font-normal">📍 {safeTime(o.deliveredAt)}</span>}
+                                    {safeTime(o.receivedAt) && <span className="text-[9px] text-green-500 font-normal">✅ {safeTime(o.receivedAt)}</span>}
                                 </div>
                             </td>
                             <td className="p-4"><span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold text-zinc-700 dark:text-zinc-300">{o.type}</span></td>
