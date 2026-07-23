@@ -1176,7 +1176,7 @@ export const useAppStore = create<AppState>()(
 
       fetchOrders: async (userId) => {
          const state = get();
-         const currentUser = state.users[userId];
+         const currentUser = state.currentUser?.id === userId ? state.currentUser : state.users[userId];
          if (!currentUser) return;
 
          let query = supabase.from('orders').select(`

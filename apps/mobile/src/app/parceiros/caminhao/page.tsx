@@ -53,7 +53,7 @@ export default function CaminhaoDashboard() {
     return originCity === driverCity;
   });
   const minhasCorridas = store.orders.filter(o => o.motoristaId === currentUser.id);
-  const ganhosHoje = minhasCorridas.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.entregaMotorista, 0);
+  const ganhosHoje = minhasCorridas.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || 0), 0);
 
   const isPaused = currentUser.status === 'paused';
   const handleToggleStatus = () => {

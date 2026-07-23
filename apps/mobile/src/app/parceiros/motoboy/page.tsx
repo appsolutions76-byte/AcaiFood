@@ -53,7 +53,7 @@ export default function MotoboyDashboard() {
     return originCity === driverCity;
   });
   const minhasCorridasAll = store.orders.filter(o => o.motoristaId === currentUser.id);
-  const ganhosHoje = minhasCorridasAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + curr.taxas.entregaMotorista, 0);
+  const ganhosHoje = minhasCorridasAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || 0), 0);
 
   const motoActiveOrders = minhasCorridasAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
   const motoHistoryOrders = minhasCorridasAll.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
