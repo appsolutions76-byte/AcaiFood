@@ -129,10 +129,22 @@ export default function StorefrontPage() {
     }
   };
 
+  const isValidCpfCnpj = (val?: string | null) => {
+    if (!val) return false;
+    const digits = val.replace(/\D/g, '');
+    return digits.length === 11 || digits.length === 14;
+  };
+
   const handleConfirmOrder = async () => {
     if (!cart.storeId || cart.items.length === 0) return;
 
-    if (currentUser && !currentUser.cpfCnpj) {
+    if (!currentUser) {
+      alert("Por favor, faça login ou crie sua conta para finalizar o pedido.");
+      router.push('/login');
+      return;
+    }
+
+    if (!isValidCpfCnpj(currentUser.cpfCnpj)) {
       setCpfModalOpen(true);
       return;
     }
@@ -155,7 +167,11 @@ export default function StorefrontPage() {
             orderId: res.orderId
          });
       } else if (res.error) {
-         alert(`Pedido registrado! Nota do pagamento Pix: ${res.error}`);
+         if (res.error.includes("CPF ou CNPJ") || res.error.includes("CPF")) {
+            setCpfModalOpen(true);
+         } else {
+            alert(`Pedido registrado! Nota do pagamento Pix: ${res.error}`);
+         }
       } else {
          alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
       }
