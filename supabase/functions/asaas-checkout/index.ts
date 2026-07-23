@@ -16,13 +16,16 @@ serve(async (req) => {
 
     const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY');
     if (!ASAAS_API_KEY) {
-      throw new Error('ASAAS_API_KEY não configurada nas variáveis de ambiente');
+      throw new Error('ASAAS_API_KEY não configurada nas variáveis de ambiente do Supabase Secrets');
     }
 
     const ASAAS_ENV = Deno.env.get('ASAAS_ENV') || 'production';
-    const ASAAS_URL = ASAAS_ENV === 'sandbox' 
+    const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg');
+    const ASAAS_URL = isSandbox 
       ? 'https://sandbox.asaas.com/api/v3' 
       : 'https://www.asaas.com/api/v3';
+
+    console.log(`Iniciando checkout no Asaas (${isSandbox ? 'SANDBOX' : 'PRODUÇÃO'}):`, { orderId, value });
 
     // 1. Criar ou buscar cliente no Asaas
     let customerId = '';
@@ -55,7 +58,8 @@ serve(async (req) => {
       if (createData.id) {
         customerId = createData.id;
       } else {
-        throw new Error(`Falha ao criar cliente no Asaas: ${JSON.stringify(createData)}`);
+        const msg = createData.errors ? createData.errors.map((e: any) => e.description).join(', ') : JSON.stringify(createData);
+        throw new Error(`Falha ao criar cliente no Asaas: ${msg}`);
       }
     }
 
@@ -64,7 +68,7 @@ serve(async (req) => {
 
     // Formata o split de pagamentos caso existam regras
     const formattedSplit = Array.isArray(split) ? split.map((s: any) => {
-      if (s.walletId && s.amount) {
+      if (s.walletId && s.amount && typeof s.walletId === 'string' && s.walletId.length > 5 && !s.walletId.includes('loja_parceira')) {
         return {
           walletId: s.walletId,
           fixedValue: Number(s.amount.toFixed(2))
@@ -73,10 +77,10 @@ serve(async (req) => {
       return null;
     }).filter(Boolean) : undefined;
 
-    // 2. Criar Cobrança (Payment) no Asaas
+    // 2. Criar Cobrança (Payment) no Asaas (com billingType PIX)
     const paymentBody: any = {
       customer: customerId,
-      billingType: 'UNDEFINED', // Permite Pix, Cartão ou Boleto na fatura
+      billingType: 'PIX',
       value: Number(value.toFixed(2)),
       dueDate: today,
       externalReference: orderId,
@@ -98,7 +102,8 @@ serve(async (req) => {
 
     const paymentData = await payRes.json();
     if (!paymentData.id) {
-      throw new Error(`Erro ao gerar cobrança Asaas: ${JSON.stringify(paymentData)}`);
+      const msg = paymentData.errors ? paymentData.errors.map((e: any) => e.description).join(', ') : JSON.stringify(paymentData);
+      throw new Error(`Erro ao gerar cobrança no Asaas: ${msg}`);
     }
 
     // 3. Buscar Pix QR Code e Copia e Cola

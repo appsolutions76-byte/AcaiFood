@@ -39,6 +39,7 @@ export default function StorefrontPage() {
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [productSelectModal, setProductSelectModal] = useState<{ open: boolean; lojaId: string; tipo: string; quantity: number }>({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string }>({ open: false });
   const { cart, addToCart, removeFromCart, updateCartQuantity } = store;
 
   const getCartPrice = (lojaId: string, tipo: string) => {
@@ -125,10 +126,25 @@ export default function StorefrontPage() {
 
   const handleConfirmOrder = async () => {
     if (!cart.storeId || cart.items.length === 0) return;
-    const checkoutUrl = await store.criarPedido('B2C', cart.storeId);
+    const res: any = await store.criarPedido('B2C', cart.storeId);
     setCheckoutModalOpen(false);
-    if (checkoutUrl && typeof checkoutUrl === 'string' && checkoutUrl.startsWith('http')) {
-      window.location.href = checkoutUrl;
+    
+    if (res && typeof res === 'object') {
+      if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
+         setPixModalData({
+            open: true,
+            qrCode: res.pixQrCode,
+            copiaECola: res.pixCopiaECola,
+            invoiceUrl: res.invoiceUrl,
+            orderId: res.orderId
+         });
+      } else if (res.error) {
+         alert(`Pedido registrado no aplicativo! Nota do pagamento Pix: ${res.error}`);
+      } else {
+         alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
+      }
+    } else if (typeof res === 'string' && res.startsWith('http')) {
+      window.location.href = res;
     } else {
       alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
     }
@@ -456,6 +472,62 @@ export default function StorefrontPage() {
         destinoId={mapModal.destino} 
         motoristaId={mapModal.motorista} 
       />
+
+      {pixModalData.open && (
+        <div className="fixed inset-0 bg-black/75 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in zoom-in-95">
+            <div className="bg-purple-100 dark:bg-purple-900/40 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+              <span className="text-2xl">⚡</span>
+            </div>
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">Pagamento via Pix</h3>
+            <p className="text-xs text-zinc-500 mb-4">Escaneie o QR Code ou copie o código para pagar</p>
+            
+            {pixModalData.qrCode ? (
+              <div className="bg-white p-3 rounded-xl border border-zinc-200 inline-block mb-4 shadow-inner">
+                <img src={`data:image/png;base64,${pixModalData.qrCode}`} alt="Pix QR Code" className="w-48 h-48 mx-auto" />
+              </div>
+            ) : null}
+
+            {pixModalData.copiaECola ? (
+              <div className="mb-4">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={pixModalData.copiaECola} 
+                  className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2.5 text-xs text-zinc-600 dark:text-zinc-300 font-mono mb-2 text-center"
+                />
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(pixModalData.copiaECola!);
+                    alert('Código Pix "Copia e Cola" copiado com sucesso!');
+                  }}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2"
+                >
+                  📋 Copiar Código Pix
+                </button>
+              </div>
+            ) : null}
+
+            {pixModalData.invoiceUrl ? (
+              <a 
+                href={pixModalData.invoiceUrl} 
+                target="_blank" 
+                rel="noreferrer"
+                className="block w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold py-2 rounded-xl text-xs transition mb-3"
+              >
+                🔗 Abrir Fatura no Asaas
+              </a>
+            ) : null}
+
+            <button 
+              onClick={() => setPixModalData({ open: false })} 
+              className="w-full bg-zinc-800 hover:bg-black text-white font-bold py-2.5 rounded-xl text-xs transition"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

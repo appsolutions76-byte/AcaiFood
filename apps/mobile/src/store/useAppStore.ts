@@ -123,7 +123,7 @@ interface AppState {
   linkAsaasAccount: (userId: string, walletId: string) => Promise<void>;
   fetchRates: () => Promise<void>;
   saveRates: (newRates: Partial<AppState['rates']>) => Promise<void>;
-  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string, quantity?: number) => Promise<string | undefined>;
+  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string, quantity?: number) => Promise<any>;
   acaoPedido: (orderId: string, action: string, pinStr?: string) => Promise<void>;
   setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => Promise<void>;
@@ -945,10 +945,6 @@ export const useAppStore = create<AppState>()(
             }
           }).catch(() => ({ data: null, error: null }));
 
-          if (asaasError) {
-            console.warn("Edge function Asaas indisponível, registrando pedido com split pendente:", asaasError);
-          }
-
           // Salva pedido no estado local com ID retornado do banco
           const finalPedido = { ...novoPedido, id: dbOrder.id, deliveryPin: pin };
           set({ 
@@ -957,9 +953,19 @@ export const useAppStore = create<AppState>()(
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
 
-          // Se a API do Asaas retornou uma URL externa de cobrança (fatura/Pix), retorna ela; senão undefined
-          if (asaasData && asaasData.invoiceUrl && typeof asaasData.invoiceUrl === 'string') {
-             return asaasData.invoiceUrl;
+          if (asaasError) {
+             console.warn("Edge function Asaas retornou aviso/erro:", asaasError);
+             return { error: typeof asaasError === 'object' ? (asaasError.message || JSON.stringify(asaasError)) : String(asaasError) };
+          }
+
+          if (asaasData) {
+             return {
+                invoiceUrl: asaasData.invoiceUrl,
+                pixQrCode: asaasData.pixQrCode,
+                pixCopiaECola: asaasData.pixCopiaECola,
+                paymentId: asaasData.paymentId,
+                orderId: dbOrder.id
+             };
           }
           
           return undefined;
