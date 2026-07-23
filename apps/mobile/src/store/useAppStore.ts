@@ -38,6 +38,7 @@ export interface User {
   asaasAccountId?: string;
   asaasLinked?: boolean;
   email?: string;
+  cpfCnpj?: string;
   password?: string;
   status?: 'active' | 'paused' | 'blocked';
   pixKey?: string;
@@ -941,7 +942,8 @@ export const useAppStore = create<AppState>()(
               value: novoPedido.valor + novoPedido.taxas.entregaTotal,
               split: splitRules,
               customerEmail: currentUser.email,
-              customerName: currentUser.name
+              customerName: currentUser.name,
+              customerCpfCnpj: currentUser.cpfCnpj
             }
           }).catch(() => ({ data: null, error: null }));
 
