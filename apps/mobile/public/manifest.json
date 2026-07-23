@@ -1,21 +1,16 @@
 {
-  "name": "AçaíFood Pará",
+  "name": "AçaíFood Delivery & Logistics",
   "short_name": "AçaíFood",
-  "description": "O marketplace definitivo de açaí.",
+  "description": "Ecossistema Completo de Delivery e Logística de Açaí",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#9333ea",
+  "background_color": "#09090b",
+  "theme_color": "#7e22ce",
   "icons": [
     {
-      "src": "/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
     }
   ]
 }

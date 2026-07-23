@@ -44,6 +44,7 @@ model User {
   phone            String    @unique
   email            String    @unique
   pixKey           String?
+  cpfCnpj          String?
   lat              Float     // Captura obrigatória com validação anti-mock
   lng              Float     // Captura obrigatória com validação anti-mock
   

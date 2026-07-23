@@ -55,18 +55,29 @@ function CadastroForm() {
     if (role === 'motorista' && veiculo === 'Caminhão') icon = '🚚';
     if (role === 'motorista' && veiculo === 'Caçamba') icon = '🚛';
 
+    const cleanCpf = cpfCnpj.replace(/\D/g, "");
+    if (cleanCpf && cleanCpf.length !== 11 && cleanCpf.length !== 14) {
+      alert("O CPF deve possuir 11 dígitos ou o CNPJ 14 dígitos válidos.");
+      return;
+    }
+
     setIsLocating(true);
-    
+    let lat = -1.45575;
+    let lng = -48.49018;
+
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, enableHighAccuracy: true });
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, enableHighAccuracy: false });
       });
-      
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
+      lat = position.coords.latitude;
+      lng = position.coords.longitude;
+    } catch (geoErr) {
+      console.warn("GPS não obtido. Utilizando coordenadas padrão da cidade base.", geoErr);
+    }
 
+    try {
       const data: Partial<User> = {
-        role, name, email, password, telefone, endereco, cidade, bairro, icon, lat, lng, cpfCnpj
+        role, name, email, password, telefone, endereco, cidade, bairro, icon, lat, lng, cpfCnpj: cleanCpf
       };
       
       if (role !== 'cliente') {
@@ -95,11 +106,11 @@ function CadastroForm() {
           setStep(2); // Vai para o passo de Asaas
         }
       } else {
-        alert("Erro ao criar conta.");
+        alert("Erro ao criar conta. Verifique os dados informados.");
       }
     } catch (err) {
       setIsLocating(false);
-      alert("Precisamos da sua localização para o cálculo correto dos fretes. Por favor, ative e permita o acesso ao GPS no seu dispositivo e tente novamente.");
+      alert("Ocorreu um erro no processo de cadastro. Tente novamente.");
     }
   };
 

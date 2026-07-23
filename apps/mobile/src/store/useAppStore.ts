@@ -297,7 +297,9 @@ export const useAppStore = create<AppState>()(
                             newUser.veiculo === 'Caminhão' ? 'TRUCK' : 
                             newUser.veiculo === 'Caçamba' ? 'DUMP_TRUCK' : null;
 
-        const { error: dbError } = await supabase.from('users').insert({
+        const cleanedCpfCnpj = newUser.cpfCnpj ? newUser.cpfCnpj.replace(/\D/g, '') : null;
+
+        const insertPayload: any = {
           id: newUser.id,
           role: dbRole,
           name: newUser.name,
@@ -310,9 +312,18 @@ export const useAppStore = create<AppState>()(
           longitude: newUser.lng,
           vehicle_type: vehicleType,
           pix_key: newUser.pixKey,
-          cpf_cnpj: newUser.cpfCnpj,
+          cpf_cnpj: cleanedCpfCnpj,
           status: 'active'
-        });
+        };
+
+        let { error: dbError } = await supabase.from('users').insert(insertPayload);
+
+        if (dbError && dbError.message && dbError.message.includes('cpf_cnpj')) {
+          console.warn("Coluna cpf_cnpj não encontrada no banco, tentando fallback sem ela...");
+          delete insertPayload.cpf_cnpj;
+          const retry = await supabase.from('users').insert(insertPayload);
+          dbError = retry.error;
+        }
 
         if (dbError) {
           console.error("DB Insert Error:", dbError);

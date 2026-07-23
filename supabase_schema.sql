@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   phone TEXT,
   endereco TEXT,
   pix_key TEXT,
+  cpf_cnpj TEXT,
   asaas_account_id TEXT,
   asaas_wallet_id TEXT,
   asaas_account_status TEXT DEFAULT 'APPROVED',
