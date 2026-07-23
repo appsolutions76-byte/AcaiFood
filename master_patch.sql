@@ -21,6 +21,7 @@ ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
 -- 2. Garante que as colunas do Asaas e Pix existem na tabela users
 ALTER TABLE public.users
 ADD COLUMN IF NOT EXISTS pix_key text,
+ADD COLUMN IF NOT EXISTS cpf_cnpj text,
 ADD COLUMN IF NOT EXISTS asaas_account_id TEXT,
 ADD COLUMN IF NOT EXISTS asaas_wallet_id TEXT,
 ADD COLUMN IF NOT EXISTS asaas_account_status TEXT DEFAULT 'APPROVED',

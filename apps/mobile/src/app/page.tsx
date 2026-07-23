@@ -93,7 +93,9 @@ export default function StorefrontPage() {
     const loja = store.users[lojaId];
     if (!loja || !loja.lat || !currentUser?.lat) return { freteCliente: 0, dist: 0, subsidy: 0 };
     const dist = haversineKm(loja.lat, loja.lng!, currentUser!.lat, currentUser!.lng!);
-    const freteTotal = dist * store.rates.b2c_km;
+    const freteTotal = store.rates.courier_payment_mode === 'FIXED' 
+      ? (store.rates.courier_fixed_fee ?? 8) 
+      : dist * store.rates.b2c_km;
     const subsidy = loja.freteSubsidyPct || 0;
     const freteCliente = freteTotal * (1 - subsidy / 100);
     return { freteCliente, dist, subsidy };
@@ -140,19 +142,7 @@ export default function StorefrontPage() {
             orderId: res.orderId
          });
       } else if (res.error) {
-         if (res.error.includes('CPF') || res.error.includes('CNPJ')) {
-           const inputCpf = prompt('O Asaas exige informar seu CPF ou CNPJ para gerar a cobrança Pix. Por favor, informe seu CPF/CNPJ abaixo:', currentUser?.cpfCnpj || '');
-           if (inputCpf) {
-             if (currentUser?.id) {
-               await supabase.from('users').update({ cpf_cnpj: inputCpf }).eq('id', currentUser.id);
-               if (store.currentUser) store.currentUser.cpfCnpj = inputCpf;
-             }
-             alert('CPF atualizado com sucesso! Clique em Pagar via Pix novamente para gerar a cobrança.');
-             setCheckoutModalOpen(true);
-             return;
-           }
-         }
-         alert(`Pedido registrado no aplicativo! Nota do pagamento Pix: ${res.error}`);
+         alert(`Pedido registrado! Nota do pagamento Pix: ${res.error}`);
       } else {
          alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
       }

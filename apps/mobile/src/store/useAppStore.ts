@@ -243,15 +243,16 @@ export const useAppStore = create<AppState>()(
             status: userProfile.status as 'active'|'paused'|'blocked',
             asaasLinked: !!(userProfile.asaas_wallet_id || userProfile.pix_key),
             asaasWalletId: userProfile.asaas_wallet_id || userProfile.pix_key,
-            priceB2B: sf?.price_b2b,
+            priceB2B: sf?.price_b2b ?? undefined,
             priceB2C: sf ? {
-                popular: sf.price_b2c_popular || 20,
-                medio: sf.price_b2c_medio || 26,
-                grosso: sf.price_b2c_grosso || 35
+                popular: sf.price_b2c_popular ?? 20,
+                medio: sf.price_b2c_medio ?? 26,
+                grosso: sf.price_b2c_grosso ?? 35
             } : undefined,
-            freteSubsidyPct: sf?.frete_subsidy_pct || 0,
+            freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
             pixKey: userProfile.pix_key,
-            products: sf?.products || []
+            products: sf?.products || [],
+            cpfCnpj: userProfile.cpf_cnpj
           };
           
           set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
@@ -309,6 +310,7 @@ export const useAppStore = create<AppState>()(
           longitude: newUser.lng,
           vehicle_type: vehicleType,
           pix_key: newUser.pixKey,
+          cpf_cnpj: newUser.cpfCnpj,
           status: 'active'
         });
 
@@ -458,15 +460,16 @@ export const useAppStore = create<AppState>()(
                         icon: '🏪',
                         status: dbUser.status as 'active',
                         priceB2C: {
-                            popular: sf?.price_b2c_popular || 20,
-                            medio: sf?.price_b2c_medio || 26,
-                            grosso: sf?.price_b2c_grosso || 35
+                            popular: sf?.price_b2c_popular ?? 20,
+                            medio: sf?.price_b2c_medio ?? 26,
+                            grosso: sf?.price_b2c_grosso ?? 35
                         },
-                        freteSubsidyPct: sf?.frete_subsidy_pct || 0,
+                        freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
                         asaasWalletId: dbUser.asaas_wallet_id || dbUser.pix_key,
                         pixKey: dbUser.pix_key,
-                        products: sf?.products || []
+                        products: sf?.products || [],
+                        cpfCnpj: dbUser.cpf_cnpj
                     };
                 });
                 return { users: newUsers };
@@ -510,17 +513,18 @@ export const useAppStore = create<AppState>()(
                         icon: appRole === 'loja' ? '🏪' : appRole === 'fornecedor' ? '🏭' : appRole === 'motorista' ? '🛵' : '👤',
                         veiculo,
                         status: dbUser.status as 'active'|'paused'|'blocked',
-                        priceB2B: sf?.price_b2b || 120,
+                        priceB2B: sf?.price_b2b ?? 140,
                         priceB2C: {
-                            popular: sf?.price_b2c_popular || 20,
-                            medio: sf?.price_b2c_medio || 26,
-                            grosso: sf?.price_b2c_grosso || 35
+                            popular: sf?.price_b2c_popular ?? 20,
+                            medio: sf?.price_b2c_medio ?? 26,
+                            grosso: sf?.price_b2c_grosso ?? 35
                         },
-                        freteSubsidyPct: sf?.frete_subsidy_pct || 0,
+                        freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
                         asaasWalletId: dbUser.asaas_wallet_id || dbUser.pix_key,
                         pixKey: dbUser.pix_key,
-                        products: sf?.products || []
+                        products: sf?.products || [],
+                        cpfCnpj: dbUser.cpf_cnpj
                     };
                 });
                 return { users: newUsers };
@@ -614,8 +618,15 @@ export const useAppStore = create<AppState>()(
             currentUser: isCurrent ? updatedUser : state.currentUser
           };
         });
-        const { error } = await supabase.from('storefronts').update({ frete_subsidy_pct: pct }).eq('partner_id', userId);
-        if (error) console.error("Error updating subsidy in DB:", error);
+        const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', userId).limit(1).maybeSingle();
+        if (sf) {
+          const { error } = await supabase.from('storefronts').update({ frete_subsidy_pct: pct }).eq('id', sf.id);
+          if (error) console.error("Error updating subsidy in DB:", error);
+        } else {
+          const user = get().users[userId];
+          await supabase.from('storefronts').insert({ partner_id: userId, store_name: user?.name || 'Loja', frete_subsidy_pct: pct });
+        }
+        await get().fetchAllUsers();
       },
 
       updateUserStatus: async (userId, status) => {
@@ -715,8 +726,20 @@ export const useAppStore = create<AppState>()(
         if (b2bPrice !== undefined) updates.price_b2b = b2bPrice;
 
         if (Object.keys(updates).length > 0) {
-            const { error } = await supabase.from('storefronts').update(updates).eq('partner_id', userId);
-            if (error) console.error("Error updating prices in DB:", error);
+            const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', userId).limit(1).maybeSingle();
+            if (sf) {
+                const { error } = await supabase.from('storefronts').update(updates).eq('id', sf.id);
+                if (error) console.error("Error updating prices in DB:", error);
+            } else {
+                const user = get().users[userId];
+                const { error } = await supabase.from('storefronts').insert({
+                    partner_id: userId,
+                    store_name: user?.name || 'Loja',
+                    ...updates
+                });
+                if (error) console.error("Error inserting prices in DB:", error);
+            }
+            await get().fetchAllUsers();
         }
       },
 

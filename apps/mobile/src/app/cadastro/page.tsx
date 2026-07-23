@@ -26,6 +26,7 @@ function CadastroForm() {
   
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [cpfCnpj, setCpfCnpj] = useState("");
   const [password, setPassword] = useState("");
   const [pixKey, setPixKey] = useState("");
   const [telefone, setTelefone] = useState("");
@@ -65,7 +66,7 @@ function CadastroForm() {
       const lng = position.coords.longitude;
 
       const data: Partial<User> = {
-        role, name, email, password, telefone, endereco, cidade, bairro, icon, lat, lng
+        role, name, email, password, telefone, endereco, cidade, bairro, icon, lat, lng, cpfCnpj
       };
       
       if (role !== 'cliente') {
@@ -210,6 +211,11 @@ function CadastroForm() {
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Nome ou Razão Social</label>
                   <input type="text" required value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">CPF ou CNPJ (Exigido para cobranças Pix)</label>
+                  <input type="text" required value={cpfCnpj} onChange={e => setCpfCnpj(e.target.value)} placeholder="000.000.000-00" className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Cidade Base</label>
