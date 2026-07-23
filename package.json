@@ -5,5 +5,10 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "build": "npm run build --prefix apps/mobile",
+    "dev": "npm run dev --prefix apps/mobile",
+    "start": "npm run start --prefix apps/mobile"
+  }
 }
