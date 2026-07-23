@@ -51,7 +51,7 @@ export interface Order {
   title?: string;
   quantity?: number;
   items?: { id: string; name: string; quantity: number; price: number }[];
-  status: 'pendente' | 'preparo' | 'pronto' | 'em_rota' | 'aguardando_cliente' | 'entregue' | 'arquivado' | 'cancelado';
+  status: 'aguardando_pagamento' | 'pendente' | 'preparo' | 'pronto' | 'em_rota' | 'aguardando_cliente' | 'entregue' | 'arquivado' | 'cancelado';
   criadoPor: string;
   origemId: string;
   destinoId: string;
@@ -887,7 +887,7 @@ export const useAppStore = create<AppState>()(
         const novoPedido: Order = {
           id: `PED-${String(state.orderCounter).padStart(3, '0')}`,
           type: tipo,
-          status: tipo === 'COLETA' ? 'pronto' : 'pendente',
+          status: tipo === 'COLETA' ? 'pronto' : 'aguardando_pagamento',
           criadoPor: currentUser.id,
           origemId: originId,
           destinoId: destId,
@@ -1116,6 +1116,7 @@ export const useAppStore = create<AppState>()(
             if (o.id !== orderId) return o;
             const newOrder = { ...o };
             if (action === 'cancelar_pedido' || action === 'cancelar_cliente') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
+            if (action === 'confirmar_pagamento') { newOrder.status = 'pendente'; newDbStatus = 'PAID'; }
             if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
             if (action === 'chamar_moto' || action === 'chamar_caminhao') { newOrder.status = 'pronto'; newDbStatus = 'READY'; }
             if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newDbStatus = 'DELIVERING'; driverId = newOrder.motoristaId; }
@@ -1233,9 +1234,11 @@ export const useAppStore = create<AppState>()(
             const allUsers = { ...state.users, ...fetchedUsersMap };
 
              const mappedOrders = dbOrders.map((dbOrder: any) => {
-                let appStatus = 'pendente';
+                let appStatus: Order['status'] = 'aguardando_pagamento';
+                if (dbOrder.status === 'PENDING') appStatus = 'aguardando_pagamento';
+                if (dbOrder.status === 'PAID') appStatus = 'pendente';
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
-                if (dbOrder.status === 'READY' || dbOrder.status === 'PAID' || dbOrder.order_type === 'COLETA') appStatus = 'pronto';
+                if (dbOrder.status === 'READY' || (dbOrder.order_type === 'COLETA' && dbOrder.status !== 'CANCELLED')) appStatus = 'pronto';
                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
                 if (dbOrder.status === 'DELIVERED') appStatus = 'aguardando_cliente';
                 if (dbOrder.status === 'RECEIVED') appStatus = 'entregue';

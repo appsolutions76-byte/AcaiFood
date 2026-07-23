@@ -566,6 +566,21 @@ export default function StorefrontPage() {
             ) : null}
 
             <button 
+              onClick={async () => {
+                if (pixModalData.orderId) {
+                   await store.acaoPedido(pixModalData.orderId, 'confirmar_pagamento');
+                   setPixModalData({ open: false });
+                   alert('✅ Pagamento Pix confirmado com sucesso! O pedido foi liberado para a loja iniciar o preparo.');
+                } else {
+                   setPixModalData({ open: false });
+                }
+              }} 
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition mb-2 shadow-md flex items-center justify-center gap-2"
+            >
+              ✅ Já Paguei / Confirmar Pagamento
+            </button>
+
+            <button 
               onClick={() => setPixModalData({ open: false })} 
               className="w-full bg-zinc-800 hover:bg-black text-white font-bold py-2.5 rounded-xl text-xs transition"
             >
