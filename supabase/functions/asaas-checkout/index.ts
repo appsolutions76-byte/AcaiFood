@@ -31,6 +31,13 @@ serve(async (req) => {
     let customerId = '';
     const emailToSearch = customerEmail || 'cliente@acaifood.com.br';
     
+    const cleanCpfCnpj = (val?: string) => {
+      if (!val) return undefined;
+      const digits = String(val).replace(/\D/g, '');
+      return (digits.length === 11 || digits.length === 14) ? digits : undefined;
+    };
+    const validCpfCnpj = cleanCpfCnpj(customerCpfCnpj);
+
     const searchRes = await fetch(`${ASAAS_URL}/customers?email=${encodeURIComponent(emailToSearch)}`, {
       headers: {
         'access_token': ASAAS_API_KEY,
@@ -51,7 +58,7 @@ serve(async (req) => {
         body: JSON.stringify({
           name: customerName || 'Cliente AçaíFood',
           email: emailToSearch,
-          cpfCnpj: customerCpfCnpj || undefined
+          cpfCnpj: validCpfCnpj
         })
       });
       const createData = await createRes.json();
@@ -68,10 +75,11 @@ serve(async (req) => {
 
     // Formata o split de pagamentos caso existam regras
     const formattedSplit = Array.isArray(split) ? split.map((s: any) => {
-      if (s.walletId && s.amount && typeof s.walletId === 'string' && s.walletId.length > 5 && !s.walletId.includes('loja_parceira')) {
+      const val = typeof s.fixedValue === 'number' ? s.fixedValue : (typeof s.amount === 'number' ? s.amount : null);
+      if (s.walletId && val !== null && typeof s.walletId === 'string' && s.walletId.length > 5 && !s.walletId.includes('loja_parceira')) {
         return {
           walletId: s.walletId,
-          fixedValue: Number(s.amount.toFixed(2))
+          fixedValue: Number(val.toFixed(2))
         };
       }
       return null;

@@ -144,11 +144,6 @@ export default function StorefrontPage() {
       return;
     }
 
-    if (!isValidCpfCnpj(currentUser.cpfCnpj)) {
-      setCpfModalOpen(true);
-      return;
-    }
-
     await processCheckout();
   };
 
@@ -167,11 +162,7 @@ export default function StorefrontPage() {
             orderId: res.orderId
          });
       } else if (res.error) {
-         if (res.error.includes("CPF ou CNPJ") || res.error.includes("CPF")) {
-            setCpfModalOpen(true);
-         } else {
-            alert(`Pedido registrado! Nota do pagamento Pix: ${res.error}`);
-         }
+         alert(`Nota do pagamento Pix: ${res.error}`);
       } else {
          alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
       }
@@ -526,11 +517,22 @@ export default function StorefrontPage() {
             <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">Pagamento via Pix</h3>
             <p className="text-xs text-zinc-500 mb-4">Escaneie o QR Code ou copie o código para pagar</p>
             
-            {pixModalData.qrCode ? (
-              <div className="bg-white p-3 rounded-xl border border-zinc-200 inline-block mb-4 shadow-inner">
-                <img src={`data:image/png;base64,${pixModalData.qrCode}`} alt="Pix QR Code" className="w-48 h-48 mx-auto" />
-              </div>
-            ) : null}
+            {(() => {
+              const qrSrc = pixModalData.qrCode
+                ? (pixModalData.qrCode.startsWith('data:') || pixModalData.qrCode.startsWith('http')
+                    ? pixModalData.qrCode
+                    : `data:image/png;base64,${pixModalData.qrCode}`)
+                : (pixModalData.copiaECola
+                    ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(pixModalData.copiaECola)}`
+                    : null);
+
+              if (!qrSrc) return null;
+              return (
+                <div className="bg-white p-3 rounded-xl border border-zinc-200 inline-block mb-4 shadow-inner">
+                  <img src={qrSrc} alt="Pix QR Code" className="w-48 h-48 mx-auto object-contain" />
+                </div>
+              );
+            })()}
 
             {pixModalData.copiaECola ? (
               <div className="mb-4">
