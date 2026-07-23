@@ -127,23 +127,22 @@ export default function StorefrontPage() {
     }
   };
 
+  const [cpfModalOpen, setCpfModalOpen] = useState(false);
+  const [cpfInputValue, setCpfInputValue] = useState("");
+
   const handleConfirmOrder = async () => {
     if (!cart.storeId || cart.items.length === 0) return;
 
     if (currentUser && !currentUser.cpfCnpj) {
-      const inputCpf = prompt("Para gerar a cobrança Pix via Asaas, informe seu CPF ou CNPJ:");
-      if (!inputCpf) {
-        alert("O CPF ou CNPJ é obrigatório para a geração da cobrança Pix.");
-        return;
-      }
-      const cleaned = inputCpf.replace(/\D/g, "");
-      if (cleaned.length !== 11 && cleaned.length !== 14) {
-        alert("CPF ou CNPJ inválido. Digite 11 dígitos para CPF ou 14 dígitos para CNPJ.");
-        return;
-      }
-      await store.updateCpfCnpj(cleaned);
+      setCpfModalOpen(true);
+      return;
     }
 
+    await processCheckout();
+  };
+
+  const processCheckout = async () => {
+    if (!cart.storeId || cart.items.length === 0) return;
     const res: any = await store.criarPedido('B2C', cart.storeId);
     setCheckoutModalOpen(false);
     
@@ -166,6 +165,17 @@ export default function StorefrontPage() {
     } else {
       alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
     }
+  };
+
+  const handleSaveCpfAndContinue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = cpfInputValue.replace(/\D/g, "");
+    if (cleaned.length !== 11 && cleaned.length !== 14) {
+      alert("CPF ou CNPJ inválido. Por favor, insira 11 dígitos para CPF ou 14 dígitos para CNPJ.");
+      return;
+    }
+    await store.updateCpfCnpj(cleaned);
+    setCpfModalOpen(false);
   };
 
   const cartItemsTotal = cart.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -543,6 +553,43 @@ export default function StorefrontPage() {
             >
               Fechar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Solicitação de CPF no Checkout */}
+      {cpfModalOpen && (
+        <div className="fixed inset-0 bg-black/75 z-[210] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                🆔 Confirmar CPF / CNPJ
+              </h3>
+              <button onClick={() => setCpfModalOpen(false)} className="text-zinc-400 hover:text-zinc-600 text-xl font-bold">&times;</button>
+            </div>
+            
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4">
+              Para emitir o Pix registrado no Banco Central (via Asaas), informe seu CPF ou CNPJ:
+            </p>
+
+            <form onSubmit={handleSaveCpfAndContinue} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1 uppercase">CPF ou CNPJ</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={cpfInputValue} 
+                  onChange={e => setCpfInputValue(e.target.value)} 
+                  placeholder="000.000.000-00" 
+                  className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 dark:text-white font-mono text-sm" 
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setCpfModalOpen(false)} className="px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl font-bold text-xs">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-md transition">Confirmar e Pagar Pix</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
