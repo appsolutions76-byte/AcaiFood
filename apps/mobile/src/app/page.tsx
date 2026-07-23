@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { supabase } from "@/lib/supabase";
 
 function PaymentHandler() {
   const searchParams = useSearchParams();
@@ -139,6 +140,18 @@ export default function StorefrontPage() {
             orderId: res.orderId
          });
       } else if (res.error) {
+         if (res.error.includes('CPF') || res.error.includes('CNPJ')) {
+           const inputCpf = prompt('O Asaas exige informar seu CPF ou CNPJ para gerar a cobrança Pix. Por favor, informe seu CPF/CNPJ abaixo:', currentUser?.cpfCnpj || '');
+           if (inputCpf) {
+             if (currentUser?.id) {
+               await supabase.from('users').update({ cpf_cnpj: inputCpf }).eq('id', currentUser.id);
+               if (store.currentUser) store.currentUser.cpfCnpj = inputCpf;
+             }
+             alert('CPF atualizado com sucesso! Clique em Pagar via Pix novamente para gerar a cobrança.');
+             setCheckoutModalOpen(true);
+             return;
+           }
+         }
          alert(`Pedido registrado no aplicativo! Nota do pagamento Pix: ${res.error}`);
       } else {
          alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');

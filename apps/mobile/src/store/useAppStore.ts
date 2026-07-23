@@ -957,7 +957,18 @@ export const useAppStore = create<AppState>()(
 
           if (asaasError) {
              console.warn("Edge function Asaas retornou aviso/erro:", asaasError);
-             return { error: typeof asaasError === 'object' ? (asaasError.message || JSON.stringify(asaasError)) : String(asaasError) };
+             let errorMsg = 'Erro ao conectar com Asaas';
+             try {
+                if ((asaasError as any).context && typeof (asaasError as any).context.json === 'function') {
+                   const errJson = await (asaasError as any).context.json();
+                   if (errJson && errJson.error) errorMsg = errJson.error;
+                } else if (asaasError.message) {
+                   errorMsg = asaasError.message;
+                }
+             } catch (e) {
+                errorMsg = asaasError.message || String(asaasError);
+             }
+             return { error: errorMsg };
           }
 
           if (asaasData) {
