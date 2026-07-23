@@ -130,6 +130,7 @@ interface AppState {
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   changePassword: (userId: string, newPassword: string) => void;
+  updateCpfCnpj: (cpfCnpj: string) => Promise<void>;
   updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => Promise<void>;
   addProduct: (userId: string, product: Product) => Promise<void>;
   removeProduct: (userId: string, productId: string) => Promise<void>;
@@ -666,6 +667,18 @@ export const useAppStore = create<AppState>()(
           await supabase.from('storefronts').insert({ partner_id: userId, store_name: user?.name || 'Loja', frete_subsidy_pct: pct });
         }
         await get().fetchAllUsers();
+      },
+
+      updateCpfCnpj: async (cpfCnpj) => {
+        const state = get();
+        if (!state.currentUser) return;
+        const cleaned = cpfCnpj.replace(/\D/g, '');
+        const updatedUser = { ...state.currentUser, cpfCnpj: cleaned };
+        set({
+          users: { ...state.users, [state.currentUser.id]: updatedUser },
+          currentUser: updatedUser
+        });
+        await supabase.from('users').update({ cpf_cnpj: cleaned }).eq('id', state.currentUser.id);
       },
 
       updateUserStatus: async (userId, status) => {

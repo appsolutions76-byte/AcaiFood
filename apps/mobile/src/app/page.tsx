@@ -129,6 +129,21 @@ export default function StorefrontPage() {
 
   const handleConfirmOrder = async () => {
     if (!cart.storeId || cart.items.length === 0) return;
+
+    if (currentUser && !currentUser.cpfCnpj) {
+      const inputCpf = prompt("Para gerar a cobrança Pix via Asaas, informe seu CPF ou CNPJ:");
+      if (!inputCpf) {
+        alert("O CPF ou CNPJ é obrigatório para a geração da cobrança Pix.");
+        return;
+      }
+      const cleaned = inputCpf.replace(/\D/g, "");
+      if (cleaned.length !== 11 && cleaned.length !== 14) {
+        alert("CPF ou CNPJ inválido. Digite 11 dígitos para CPF ou 14 dígitos para CNPJ.");
+        return;
+      }
+      await store.updateCpfCnpj(cleaned);
+    }
+
     const res: any = await store.criarPedido('B2C', cart.storeId);
     setCheckoutModalOpen(false);
     
