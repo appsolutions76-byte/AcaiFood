@@ -191,6 +191,7 @@ export default function StorefrontPage() {
     }
     await store.updateCpfCnpj(cleaned);
     setCpfModalOpen(false);
+    await processCheckout();
   };
 
   const cartItemsTotal = cart.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
