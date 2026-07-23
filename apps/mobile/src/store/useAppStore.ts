@@ -275,14 +275,42 @@ export const useAppStore = create<AppState>()(
       registerUser: async (data) => {
         await supabase.auth.signOut(); // Wipe any stale sessions from localStorage
 
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        let { data: authData, error: authError } = await supabase.auth.signUp({
           email: data.email || '',
           password: data.password || '123456',
         });
 
-        if (authError || !authData.user) {
-          console.error("Auth Signup Error:", authError);
-          alert(`Erro ao registrar: ${authError?.message}`);
+        if (authError) {
+          const isAlreadyRegistered = authError.message?.toLowerCase().includes('already registered') || 
+                                     authError.message?.toLowerCase().includes('already in use');
+
+          if (isAlreadyRegistered) {
+            const { data: signInData } = await supabase.auth.signInWithPassword({
+              email: data.email || '',
+              password: data.password || '123456',
+            });
+
+            if (signInData?.user) {
+              const { data: existingProfile } = await supabase.from('users').select('id').eq('id', signInData.user.id).maybeSingle();
+              if (!existingProfile) {
+                authData = signInData;
+              } else {
+                alert("Este e-mail já está cadastrado no AçaíFood. Por favor, faça login na tela de login.");
+                return null;
+              }
+            } else {
+              alert("Este e-mail já está cadastrado. Por favor, faça login ou tente com outro e-mail.");
+              return null;
+            }
+          } else {
+            console.error("Auth Signup Error:", authError);
+            alert(`Erro ao registrar: ${authError?.message}`);
+            return null;
+          }
+        }
+
+        if (!authData?.user) {
+          alert("Não foi possível gerar a conta. Verifique suas credenciais.");
           return null;
         }
 
