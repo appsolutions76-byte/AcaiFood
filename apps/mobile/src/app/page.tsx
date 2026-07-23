@@ -41,6 +41,8 @@ export default function StorefrontPage() {
   const [productSelectModal, setProductSelectModal] = useState<{ open: boolean; lojaId: string; tipo: string; quantity: number }>({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string }>({ open: false });
+  const [cpfModalOpen, setCpfModalOpen] = useState(false);
+  const [cpfInputValue, setCpfInputValue] = useState("");
   const { cart, addToCart, removeFromCart, updateCartQuantity } = store;
 
   const getCartPrice = (lojaId: string, tipo: string) => {
@@ -126,9 +128,6 @@ export default function StorefrontPage() {
       setProductSelectModal({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
     }
   };
-
-  const [cpfModalOpen, setCpfModalOpen] = useState(false);
-  const [cpfInputValue, setCpfInputValue] = useState("");
 
   const handleConfirmOrder = async () => {
     if (!cart.storeId || cart.items.length === 0) return;
