@@ -2,12 +2,11 @@
 
 import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
-import { Store, ShoppingCart, UserCheck } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { supabase } from "@/lib/supabase";
 
 function PaymentHandler() {
   const searchParams = useSearchParams();

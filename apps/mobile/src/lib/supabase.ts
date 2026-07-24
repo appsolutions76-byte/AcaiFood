@@ -16,6 +16,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(
-  supabaseUrl || "https://sua-url-aqui.supabase.co", 
-  supabaseAnonKey || "sua-chave-aqui"
+  supabaseUrl || "https://vfsenzzuoisgcvppfbbz.supabase.co", 
+  supabaseAnonKey || "sb_publishable_eqyQYjFtuSNJUExRiU9R3Q_WAgo_6eX"
 );
