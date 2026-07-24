@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { validateCpfCnpjDigits } from "@/lib/pix";
 
 function PaymentHandler() {
   const searchParams = useSearchParams();
@@ -143,6 +144,11 @@ export default function StorefrontPage() {
       return;
     }
 
+    if (!currentUser.cpfCnpj || !validateCpfCnpjDigits(currentUser.cpfCnpj)) {
+      setCpfModalOpen(true);
+      return;
+    }
+
     await processCheckout();
   };
 
@@ -162,7 +168,12 @@ export default function StorefrontPage() {
             isSandbox: res.isSandbox
          });
       } else if (res.error) {
-         alert(`Nota do pagamento Pix: ${res.error}`);
+         if (res.error.toLowerCase().includes('cpf') || res.error.toLowerCase().includes('cnpj')) {
+           alert("O Asaas requer um CPF ou CNPJ válido para registrar o Pix no Banco Central. Por favor, confirme seus dados.");
+           setCpfModalOpen(true);
+         } else {
+           alert(`Nota do pagamento Pix: ${res.error}`);
+         }
       } else {
          alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
       }
@@ -176,8 +187,8 @@ export default function StorefrontPage() {
   const handleSaveCpfAndContinue = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleaned = cpfInputValue.replace(/\D/g, "");
-    if (cleaned.length !== 11 && cleaned.length !== 14) {
-      alert("CPF ou CNPJ inválido. Por favor, insira 11 dígitos para CPF ou 14 dígitos para CNPJ.");
+    if (!validateCpfCnpjDigits(cleaned)) {
+      alert("CPF ou CNPJ inválido. Por favor, insira um CPF (11 dígitos) ou CNPJ (14 dígitos) válido com dígitos verificadores corretos.");
       return;
     }
     await store.updateCpfCnpj(cleaned);
