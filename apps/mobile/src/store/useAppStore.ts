@@ -1015,52 +1015,54 @@ export const useAppStore = create<AppState>()(
           let asaasResult: any = null;
           let checkoutErrorMsg = '';
 
-          // 1. Tentar chamada para API Route nativa (/api/asaas/checkout)
+          // 1. Tentar primeiro a Edge Function do Supabase (asaas-checkout) onde a Chave de Produção foi configurada
           try {
-            const apiRes = await fetch('/api/asaas/checkout', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
+            const { data: sfData, error: sfError } = await supabase.functions.invoke('asaas-checkout', {
+              body: {
                 orderId: dbOrder.id,
                 value: totalValue,
                 split: splitRules,
                 customerEmail: currentUser.email,
                 customerName: currentUser.name,
                 customerCpfCnpj: currentUser.cpfCnpj
-              })
+              }
             });
 
-            const apiData = await apiRes.json();
-            if (apiRes.ok && apiData && (apiData.pixCopiaECola || apiData.pixQrCode || apiData.invoiceUrl)) {
-              asaasResult = apiData;
-            } else if (apiData && apiData.error) {
-              checkoutErrorMsg = apiData.error;
+            if (sfData && (sfData.pixQrCode || sfData.pixCopiaECola || sfData.invoiceUrl)) {
+              asaasResult = sfData;
+            } else if (sfData && sfData.error) {
+              checkoutErrorMsg = sfData.error;
+            } else if (sfError) {
+              checkoutErrorMsg = sfError.message || JSON.stringify(sfError);
             }
-          } catch (err: any) {
-            console.warn("Erro ao chamar /api/asaas/checkout:", err);
+          } catch (e: any) {
+            console.warn("Edge function asaas-checkout:", e);
           }
 
-          // 2. Fallback para Supabase Edge Function
+          // 2. Fallback para a API Route nativa do Next.js (/api/asaas/checkout)
           if (!asaasResult) {
             try {
-              const { data: sfData, error: sfError } = await supabase.functions.invoke('asaas-checkout', {
-                body: {
+              const apiRes = await fetch('/api/asaas/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                   orderId: dbOrder.id,
                   value: totalValue,
                   split: splitRules,
                   customerEmail: currentUser.email,
                   customerName: currentUser.name,
                   customerCpfCnpj: currentUser.cpfCnpj
-                }
+                })
               });
 
-              if (sfData && (sfData.pixQrCode || sfData.pixCopiaECola || sfData.invoiceUrl)) {
-                asaasResult = sfData;
-              } else if (sfError) {
-                checkoutErrorMsg = checkoutErrorMsg || sfError.message || JSON.stringify(sfError);
+              const apiData = await apiRes.json();
+              if (apiRes.ok && apiData && (apiData.pixCopiaECola || apiData.pixQrCode || apiData.invoiceUrl)) {
+                asaasResult = apiData;
+              } else if (apiData && apiData.error) {
+                checkoutErrorMsg = checkoutErrorMsg || apiData.error;
               }
-            } catch (e: any) {
-              console.warn("Edge function fallback:", e);
+            } catch (err: any) {
+              console.warn("Erro ao chamar /api/asaas/checkout:", err);
             }
           }
 

@@ -147,7 +147,8 @@ serve(async (req) => {
         invoiceUrl: paymentData.invoiceUrl || paymentData.bankSlipUrl,
         pixQrCode: pixData.encodedImage || null,
         pixCopiaECola: pixData.payload || null,
-        status: paymentData.status
+        status: paymentData.status,
+        isSandbox
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
