@@ -186,7 +186,7 @@ serve(async (req) => {
       JSON.stringify({ error: error.message || 'Erro interno ao processar Asaas' }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 200,
       }
     )
   }
