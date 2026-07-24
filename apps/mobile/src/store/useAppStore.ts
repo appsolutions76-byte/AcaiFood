@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabase';
+import { generateValidPixPayload } from '@/lib/pix';
 
 // --- UTILITÁRIOS: Haversine e Coordenadas de Belém ---
 export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -1010,17 +1011,59 @@ export const useAppStore = create<AppState>()(
             splitRules
           });
 
-          // Tenta invocar a Edge Function 'asaas-checkout' (se configurada) ou processa o pedido localmente
-          const { data: asaasData, error: asaasError } = await supabase.functions.invoke('asaas-checkout', {
-            body: {
-              orderId: dbOrder.id,
-              value: novoPedido.valor + novoPedido.taxas.entregaTotal,
-              split: splitRules,
-              customerEmail: currentUser.email,
-              customerName: currentUser.name,
-              customerCpfCnpj: currentUser.cpfCnpj
+          const totalValue = novoPedido.valor + novoPedido.taxas.entregaTotal;
+
+          let asaasResult: any = null;
+          let checkoutErrorMsg = '';
+
+          // 1. Tentar chamada direta para API Route do Next.js (/api/asaas/checkout)
+          try {
+            const apiRes = await fetch('/api/asaas/checkout', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: dbOrder.id,
+                value: totalValue,
+                split: splitRules,
+                customerEmail: currentUser.email,
+                customerName: currentUser.name,
+                customerCpfCnpj: currentUser.cpfCnpj
+              })
+            });
+
+            const apiData = await apiRes.json();
+            if (apiRes.ok && apiData && (apiData.pixCopiaECola || apiData.pixQrCode || apiData.invoiceUrl)) {
+              asaasResult = apiData;
+            } else if (apiData && apiData.error) {
+              checkoutErrorMsg = apiData.error;
             }
-          }).catch(() => ({ data: null, error: null }));
+          } catch (err: any) {
+            console.warn("Erro ao chamar /api/asaas/checkout:", err);
+          }
+
+          // 2. Fallback para Supabase Edge Function se API Route não retornar o Pix
+          if (!asaasResult) {
+            try {
+              const { data: sfData, error: sfError } = await supabase.functions.invoke('asaas-checkout', {
+                body: {
+                  orderId: dbOrder.id,
+                  value: totalValue,
+                  split: splitRules,
+                  customerEmail: currentUser.email,
+                  customerName: currentUser.name,
+                  customerCpfCnpj: currentUser.cpfCnpj
+                }
+              });
+
+              if (sfData && (sfData.pixQrCode || sfData.pixCopiaECola || sfData.invoiceUrl)) {
+                asaasResult = sfData;
+              } else if (sfError) {
+                checkoutErrorMsg = checkoutErrorMsg || sfError.message || JSON.stringify(sfError);
+              }
+            } catch (e: any) {
+              console.warn("Edge function fallback:", e);
+            }
+          }
 
           // Salva pedido no estado local com ID retornado do banco
           const finalPedido = { ...novoPedido, id: dbOrder.id, deliveryPin: pin };
@@ -1030,29 +1073,48 @@ export const useAppStore = create<AppState>()(
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
 
-          if (asaasData && (asaasData.pixQrCode || asaasData.pixCopiaECola || asaasData.invoiceUrl)) {
+          // Se o Asaas gerou a cobrança Pix oficial
+          if (asaasResult && (asaasResult.pixQrCode || asaasResult.pixCopiaECola || asaasResult.invoiceUrl)) {
              return {
-                invoiceUrl: asaasData.invoiceUrl,
-                pixQrCode: asaasData.pixQrCode,
-                pixCopiaECola: asaasData.pixCopiaECola,
-                paymentId: asaasData.paymentId,
+                invoiceUrl: asaasResult.invoiceUrl,
+                pixQrCode: asaasResult.pixQrCode,
+                pixCopiaECola: asaasResult.pixCopiaECola,
+                paymentId: asaasResult.paymentId,
                 orderId: dbOrder.id
              };
           }
 
-          if (asaasError) {
-             console.warn("Edge function Asaas retornou aviso/erro:", asaasError);
+          // Se a loja tiver uma Chave Pix direta cadastrada no perfil (CPF/CNPJ/Email/Telefone)
+          const targetPixKey = sellerUser?.pixKey || sellerUser?.asaasWalletId;
+          if (targetPixKey && !targetPixKey.includes('wallet_') && targetPixKey.length > 4) {
+             const validPayload = generateValidPixPayload({
+               pixKey: targetPixKey,
+               merchantName: sellerUser?.name || 'AçaíFood',
+               amount: totalValue,
+               txId: dbOrder.id
+             });
+
+             return {
+               orderId: dbOrder.id,
+               pixQrCode: null,
+               pixCopiaECola: validPayload,
+               invoiceUrl: null
+             };
           }
 
-          // Fallback Pix Copia e Cola para garantir exibição do modal e QR Code
-          const totalVal = (novoPedido.valor + novoPedido.taxas.entregaTotal).toFixed(2);
-          const fallbackCopiaECola = `00020126580014BR.GOV.BCB.PIX0136${dbOrder.id}520400005303986540${totalVal.replace('.', '')}5802BR5917ACAIFOOD TECNOLOG6009BELEM62070503***6304`;
+          // Se o Asaas retornou mensagem de erro e não foi possível gerar o Pix
+          if (checkoutErrorMsg) {
+             return {
+               orderId: dbOrder.id,
+               error: checkoutErrorMsg
+             };
+          }
 
           return {
              orderId: dbOrder.id,
-             pixQrCode: asaasData?.pixQrCode || null,
-             pixCopiaECola: asaasData?.pixCopiaECola || fallbackCopiaECola,
-             invoiceUrl: asaasData?.invoiceUrl || null
+             pixQrCode: null,
+             pixCopiaECola: null,
+             invoiceUrl: null
           };
           
         } catch(e: any) {
