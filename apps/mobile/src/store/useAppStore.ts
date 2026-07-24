@@ -1079,7 +1079,8 @@ export const useAppStore = create<AppState>()(
                 pixQrCode: asaasResult.pixQrCode,
                 pixCopiaECola: asaasResult.pixCopiaECola,
                 paymentId: asaasResult.paymentId,
-                orderId: dbOrder.id
+                orderId: dbOrder.id,
+                isSandbox: !!asaasResult.isSandbox
              };
           }
 

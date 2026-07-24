@@ -128,7 +128,8 @@ export async function POST(request: Request) {
       invoiceUrl: paymentData.invoiceUrl || paymentData.bankSlipUrl,
       pixQrCode: pixData.encodedImage || null,
       pixCopiaECola: pixData.payload || null,
-      status: paymentData.status
+      status: paymentData.status,
+      isSandbox
     });
 
   } catch (error: any) {

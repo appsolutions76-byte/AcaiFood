@@ -39,7 +39,7 @@ export default function StorefrontPage() {
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [productSelectModal, setProductSelectModal] = useState<{ open: boolean; lojaId: string; tipo: string; quantity: number }>({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
-  const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string }>({ open: false });
+  const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string; isSandbox?: boolean }>({ open: false });
   const [cpfModalOpen, setCpfModalOpen] = useState(false);
   const [cpfInputValue, setCpfInputValue] = useState("");
   const { cart, addToCart, removeFromCart, updateCartQuantity } = store;
@@ -158,7 +158,8 @@ export default function StorefrontPage() {
             qrCode: res.pixQrCode,
             copiaECola: res.pixCopiaECola,
             invoiceUrl: res.invoiceUrl,
-            orderId: res.orderId
+            orderId: res.orderId,
+            isSandbox: res.isSandbox
          });
       } else if (res.error) {
          alert(`Nota do pagamento Pix: ${res.error}`);
@@ -514,7 +515,19 @@ export default function StorefrontPage() {
               <span className="text-2xl">⚡</span>
             </div>
             <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">Pagamento via Pix</h3>
-            <p className="text-xs text-zinc-500 mb-4">Escaneie o QR Code ou copie o código para pagar</p>
+            <p className="text-xs text-zinc-500 mb-3">Escaneie o QR Code ou copie o código para pagar</p>
+
+            {pixModalData.isSandbox && (
+              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 rounded-xl p-3 mb-4 text-left text-xs">
+                <p className="font-bold flex items-center gap-1 mb-1">🧪 Modo de Testes Asaas (Sandbox)</p>
+                <p className="text-[11px] leading-relaxed">
+                  Esta cobrança foi emitida no ambiente de <b>Homologação/Testes</b> do Asaas. QR Codes de teste não aceitam transferências de dinheiro real via aplicativos de bancos (Nubank, Itaú, Bradesco, etc.).
+                  <br /><br />
+                  • Para testar o fluxo no app, clique no botão <b>"✅ Já Paguei / Confirmar Pagamento"</b> abaixo.<br />
+                  • Para aceitar Pix real com dinheiro de bancos comerciais, configure a chave API de <b>Produção</b> do Asaas na Vercel (`ASAAS_ENVIRONMENT=production`).
+                </p>
+              </div>
+            )}
             
             {(() => {
               const qrSrc = pixModalData.qrCode
