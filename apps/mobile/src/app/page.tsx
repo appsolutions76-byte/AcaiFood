@@ -40,10 +40,49 @@ export default function StorefrontPage() {
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [productSelectModal, setProductSelectModal] = useState<{ open: boolean; lojaId: string; tipo: string; quantity: number }>({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
-  const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string; isSandbox?: boolean }>({ open: false });
+  const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string; isSandbox?: boolean; paymentId?: string }>({ open: false });
+  const [pixPaid, setPixPaid] = useState(false);
   const [cpfModalOpen, setCpfModalOpen] = useState(false);
   const [cpfInputValue, setCpfInputValue] = useState("");
   const { cart, addToCart, removeFromCart, updateCartQuantity } = store;
+
+  useEffect(() => {
+    if (!pixModalData.open || !pixModalData.orderId) return;
+
+    setPixPaid(false);
+
+    const checkStatus = async () => {
+      // 1. Checar status no banco local via store
+      const localOrder = store.orders.find(o => o.id === pixModalData.orderId);
+      if (localOrder) {
+        const s = String(localOrder.status).toLowerCase();
+        if (['pendente', 'preparo', 'pronto', 'em_rota', 'entregue', 'paid', 'preparing', 'ready', 'delivering', 'delivered', 'received'].includes(s)) {
+          setPixPaid(true);
+          return;
+        }
+      }
+
+      // 2. Checar API de status do Asaas
+      try {
+        const query = pixModalData.paymentId 
+          ? `paymentId=${pixModalData.paymentId}&orderId=${pixModalData.orderId}` 
+          : `orderId=${pixModalData.orderId}`;
+        const res = await fetch(`/api/asaas/status?${query}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.isPaid) {
+            setPixPaid(true);
+          }
+        }
+      } catch (e) {
+        console.warn("Erro ao checar status Pix:", e);
+      }
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 3500);
+    return () => clearInterval(interval);
+  }, [pixModalData.open, pixModalData.orderId, pixModalData.paymentId, store.orders]);
 
   const getCartPrice = (lojaId: string, tipo: string) => {
     const loja = store.users[lojaId];
@@ -141,11 +180,6 @@ export default function StorefrontPage() {
     if (!currentUser) {
       alert("Por favor, faça login ou crie sua conta para finalizar o pedido.");
       router.push('/login');
-      return;
-    }
-
-    if (!currentUser.cpfCnpj || !validateCpfCnpjDigits(currentUser.cpfCnpj)) {
-      setCpfModalOpen(true);
       return;
     }
 
@@ -522,109 +556,88 @@ export default function StorefrontPage() {
       {pixModalData.open && (
         <div className="fixed inset-0 bg-black/75 z-[200] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in zoom-in-95">
-            <div className="bg-purple-100 dark:bg-purple-900/40 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-              <span className="text-2xl">⚡</span>
-            </div>
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">Pagamento via Pix</h3>
-            <p className="text-xs text-zinc-500 mb-3">Escaneie o QR Code ou copie o código para pagar</p>
-
-            {pixModalData.isSandbox && (
-              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 rounded-xl p-3 mb-4 text-left text-xs">
-                <p className="font-bold flex items-center gap-1 mb-1">🧪 Modo de Testes Asaas (Sandbox)</p>
-                <p className="text-[11px] leading-relaxed">
-                  Esta cobrança foi emitida no ambiente de <b>Homologação/Testes</b> do Asaas. QR Codes de teste não aceitam transferências de dinheiro real via aplicativos de bancos (Nubank, Itaú, Bradesco, etc.).
-                  <br /><br />
-                  • Para testar o fluxo no app, clique no botão <b>"✅ Já Paguei / Confirmar Pagamento"</b> abaixo.<br />
-                  • Para aceitar Pix real com dinheiro de bancos comerciais, configure a chave API de <b>Produção</b> do Asaas na Vercel (`ASAAS_ENVIRONMENT=production`).
+            
+            {pixPaid ? (
+              // TELA DE SUCESSO (PÓS-PAGAMENTO CONFIRMADO)
+              <div className="space-y-4 animate-in zoom-in-95">
+                <div className="bg-emerald-100 dark:bg-emerald-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2 text-emerald-600 dark:text-emerald-400">
+                  <span className="text-3xl">🎉</span>
+                </div>
+                <h3 className="text-xl font-black text-emerald-600 dark:text-emerald-400">Pagamento Confirmado!</h3>
+                <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                  Seu Pix foi recebido com sucesso. A loja parceira já recebeu o seu pedido e iniciou o preparo!
                 </p>
+                <button 
+                  onClick={() => {
+                    setPixModalData({ open: false });
+                    setPixPaid(false);
+                    // Abre aba ou lista de pedidos
+                    window.location.hash = '#pedidos';
+                  }} 
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2"
+                >
+                  ✅ Já Paguei / Ver Pedido
+                </button>
+              </div>
+            ) : (
+              // TELA DE COBRANÇA (PENDENTE)
+              <div>
+                <div className="bg-purple-100 dark:bg-purple-900/40 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl">⚡</span>
+                </div>
+                <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">Pagamento via Pix</h3>
+                <p className="text-xs text-zinc-500 mb-3">Escaneie o QR Code ou copie o código para pagar</p>
+
+                {(() => {
+                  const qrSrc = pixModalData.qrCode
+                    ? (pixModalData.qrCode.startsWith('data:') || pixModalData.qrCode.startsWith('http')
+                        ? pixModalData.qrCode
+                        : `data:image/png;base64,${pixModalData.qrCode}`)
+                    : (pixModalData.copiaECola
+                        ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(pixModalData.copiaECola)}`
+                        : null);
+
+                  if (!qrSrc) return null;
+                  return (
+                    <div className="bg-white p-3 rounded-xl border border-zinc-200 inline-block mb-3 shadow-inner">
+                      <img src={qrSrc} alt="Pix QR Code" className="w-48 h-48 mx-auto object-contain" />
+                    </div>
+                  );
+                })()}
+
+                {pixModalData.copiaECola ? (
+                  <div className="mb-3">
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={pixModalData.copiaECola} 
+                      className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2.5 text-xs text-zinc-600 dark:text-zinc-300 font-mono mb-2 text-center"
+                    />
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(pixModalData.copiaECola!);
+                        alert('Código Pix "Copia e Cola" copiado com sucesso!');
+                      }}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2"
+                    >
+                      📋 Copiar Código Pix Copia e Cola
+                    </button>
+                  </div>
+                ) : null}
+
+                <div className="flex items-center justify-center gap-2 text-xs text-purple-700 dark:text-purple-300 font-medium py-2.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl mb-3 animate-pulse">
+                  <span>⌛</span> Aguardando confirmação do pagamento...
+                </div>
+
+                <button 
+                  onClick={() => setPixModalData({ open: false })} 
+                  className="w-full bg-zinc-800 hover:bg-black text-white font-bold py-2.5 rounded-xl text-xs transition"
+                >
+                  Fechar
+                </button>
               </div>
             )}
-            
-            {(() => {
-              const qrSrc = pixModalData.qrCode
-                ? (pixModalData.qrCode.startsWith('data:') || pixModalData.qrCode.startsWith('http')
-                    ? pixModalData.qrCode
-                    : `data:image/png;base64,${pixModalData.qrCode}`)
-                : (pixModalData.copiaECola
-                    ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(pixModalData.copiaECola)}`
-                    : null);
 
-              if (!qrSrc) return null;
-              return (
-                <div className="bg-white p-3 rounded-xl border border-zinc-200 inline-block mb-4 shadow-inner">
-                  <img src={qrSrc} alt="Pix QR Code" className="w-48 h-48 mx-auto object-contain" />
-                </div>
-              );
-            })()}
-
-            {pixModalData.copiaECola ? (
-              <div className="mb-4">
-                <input 
-                  type="text" 
-                  readOnly 
-                  value={pixModalData.copiaECola} 
-                  className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2.5 text-xs text-zinc-600 dark:text-zinc-300 font-mono mb-2 text-center"
-                />
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(pixModalData.copiaECola!);
-                    alert('Código Pix "Copia e Cola" copiado com sucesso!');
-                  }}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 mb-2"
-                >
-                  📋 Copiar Código Pix Copia e Cola
-                </button>
-              </div>
-            ) : null}
-
-            <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl p-3 mb-4 text-left text-xs">
-              <p className="font-bold text-purple-900 dark:text-purple-300 mb-1">🔑 Chave Pix Direta da Plataforma:</p>
-              <div className="flex items-center justify-between bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
-                <span className="font-mono text-zinc-800 dark:text-zinc-200 select-all">appsolutions76@gmail.com</span>
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText('appsolutions76@gmail.com');
-                    alert('Chave Pix e-mail "appsolutions76@gmail.com" copiada!');
-                  }}
-                  className="text-xs bg-purple-600 text-white px-2 py-1 rounded font-bold hover:bg-purple-700"
-                >
-                  Copiar E-mail
-                </button>
-              </div>
-            </div>
-
-            {pixModalData.invoiceUrl ? (
-              <a 
-                href={pixModalData.invoiceUrl} 
-                target="_blank" 
-                rel="noreferrer"
-                className="block w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold py-2.5 rounded-xl text-xs transition mb-3"
-              >
-                🔗 Abrir Fatura Completa no Asaas
-              </a>
-            ) : null}
-
-            <button 
-              onClick={async () => {
-                if (pixModalData.orderId) {
-                   await store.acaoPedido(pixModalData.orderId, 'confirmar_pagamento');
-                   setPixModalData({ open: false });
-                   alert('✅ Pagamento Pix confirmado com sucesso! O pedido foi liberado para a loja iniciar o preparo.');
-                } else {
-                   setPixModalData({ open: false });
-                }
-              }} 
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition mb-2 shadow-md flex items-center justify-center gap-2"
-            >
-              ✅ Já Paguei / Confirmar Pagamento
-            </button>
-
-            <button 
-              onClick={() => setPixModalData({ open: false })} 
-              className="w-full bg-zinc-800 hover:bg-black text-white font-bold py-2.5 rounded-xl text-xs transition"
-            >
-              Fechar
-            </button>
           </div>
         </div>
       )}

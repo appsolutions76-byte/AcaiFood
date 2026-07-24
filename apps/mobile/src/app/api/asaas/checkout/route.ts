@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const ASAAS_ENV = process.env.ASAAS_ENVIRONMENT || 'sandbox';
+    const ASAAS_ENV = process.env.ASAAS_ENVIRONMENT || 'production';
     const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg');
     const ASAAS_URL = isSandbox
       ? 'https://sandbox.asaas.com/api/v3'
@@ -67,12 +67,20 @@ export async function POST(request: Request) {
     // Vencimento hoje
     const today = new Date().toISOString().split('T')[0];
 
-    // Formatar Split
+    // Formatar Split (apenas enviar walletId se for um UUID/ID de conta Asaas real e não um e-mail ou chave Pix simples)
+    const isValidAsaasWalletId = (id?: string) => {
+      if (!id || typeof id !== 'string') return false;
+      const clean = id.trim();
+      if (clean.length < 10) return false;
+      if (clean.includes('@') || clean.includes('loja_parceira') || clean.includes('asaas_wallet_') || clean.includes('wallet_master')) return false;
+      return true;
+    };
+
     const formattedSplit = Array.isArray(split) ? split.map((s: any) => {
       const val = typeof s.fixedValue === 'number' ? s.fixedValue : (typeof s.amount === 'number' ? s.amount : null);
-      if (s.walletId && val !== null && typeof s.walletId === 'string' && s.walletId.length > 5 && !s.walletId.includes('loja_parceira')) {
+      if (s.walletId && val !== null && val > 0 && isValidAsaasWalletId(s.walletId)) {
         return {
-          walletId: s.walletId,
+          walletId: s.walletId.trim(),
           fixedValue: Number(val.toFixed(2))
         };
       }

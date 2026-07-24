@@ -1191,18 +1191,40 @@ export const useAppStore = create<AppState>()(
         if (action === 'conf_motorista') updates.delivered_at = new Date().toISOString();
         if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') updates.received_at = new Date().toISOString();
 
-        if (Object.keys(updates).length > 0) {
-           if (action === 'validar_pin') updates.provided_pin = pinStr;
-           const { error } = await supabase.from('orders').update(updates).eq('id', orderId);
-           if (error) {
-              console.error("Error updating order in DB:", error);
-              if (error.message && error.message.includes('PIN de segurança')) {
-                 alert("Erro de Segurança: " + error.message);
-                 // Reverter update otimista se necessário, forçando um fetchOrders
-                 get().fetchOrders(currentUser.id);
-              }
-           }
-        }
+         if (Object.keys(updates).length > 0) {
+            if (action === 'validar_pin') updates.provided_pin = pinStr;
+            const { error } = await supabase.from('orders').update(updates).eq('id', orderId);
+            if (error) {
+               console.error("Error updating order in DB:", error);
+               if (error.message && error.message.includes('PIN de segurança')) {
+                  alert("Erro de Segurança: " + error.message);
+                  // Reverter update otimista se necessário, forçando um fetchOrders
+                  get().fetchOrders(currentUser.id);
+               }
+            } else if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
+               // Disparar transferência automática Pix para o Motoboy
+               const currentOrder = state.orders.find(o => o.id === orderId);
+               const motoboyId = currentOrder?.motoristaId || state.currentUser?.id;
+               const motoboyUser = motoboyId ? state.users[motoboyId] : null;
+               const pixKey = motoboyUser?.pixKey || motoboyUser?.asaasWalletId;
+               const entregaValor = currentOrder?.taxas?.entregaMotorista || 0;
+
+               if (pixKey && entregaValor > 0 && !pixKey.includes('asaas_wallet_')) {
+                 fetch('/api/asaas/transfer', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({
+                     pixKey,
+                     value: entregaValor,
+                     description: `Repasse Entrega AçaíFood #${orderId.substring(0, 8)}`,
+                     orderId
+                   })
+                 }).then(r => r.json()).then(data => {
+                   console.log("Transferência Pix enviada com sucesso ao Motoboy:", data);
+                 }).catch(e => console.warn("Aviso na transferência Pix ao Motoboy:", e));
+               }
+            }
+         }
 
         if (newDbStatus === 'CANCELLED') {
            try {
