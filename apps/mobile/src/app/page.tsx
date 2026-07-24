@@ -192,6 +192,9 @@ export default function StorefrontPage() {
     setCheckoutModalOpen(false);
     
     if (res && typeof res === 'object') {
+      if (res.error) {
+        alert(`Aviso do Asaas: ${res.error}`);
+      }
       if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
          setPixModalData({
             open: true,
@@ -201,13 +204,6 @@ export default function StorefrontPage() {
             orderId: res.orderId,
             isSandbox: res.isSandbox
          });
-      } else if (res.error) {
-         if (res.error.toLowerCase().includes('cpf') || res.error.toLowerCase().includes('cnpj')) {
-           alert("O Asaas requer um CPF ou CNPJ válido para registrar o Pix no Banco Central. Por favor, confirme seus dados.");
-           setCpfModalOpen(true);
-         } else {
-           alert(`Nota do pagamento Pix: ${res.error}`);
-         }
       } else {
          alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
       }
