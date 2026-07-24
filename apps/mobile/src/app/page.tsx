@@ -195,7 +195,7 @@ export default function StorefrontPage() {
       if (res.error) {
         alert(`Aviso do Asaas: ${res.error}`);
       }
-      if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
+      if (res.pixQrCode || (res.pixCopiaECola && !res.error) || res.invoiceUrl) {
          setPixModalData({
             open: true,
             qrCode: res.pixQrCode,
