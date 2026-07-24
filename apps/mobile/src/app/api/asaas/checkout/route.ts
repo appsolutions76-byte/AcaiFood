@@ -41,19 +41,35 @@ export async function POST(request: Request) {
     if (searchData && searchData.data && searchData.data.length > 0) {
       customerId = searchData.data[0].id;
     } else {
-      const createRes = await fetch(`${ASAAS_URL}/customers`, {
+      const customerPayload: any = {
+        name: customerName || 'Cliente AçaíFood',
+        email: emailToSearch
+      };
+      if (validCpfCnpj) customerPayload.cpfCnpj = validCpfCnpj;
+
+      let createRes = await fetch(`${ASAAS_URL}/customers`, {
         method: 'POST',
         headers: {
           'access_token': ASAAS_API_KEY,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: customerName || 'Cliente AçaíFood',
-          email: emailToSearch,
-          cpfCnpj: validCpfCnpj
-        })
+        body: JSON.stringify(customerPayload)
       });
-      const createData = await createRes.json();
+      let createData = await createRes.json();
+
+      if (!createData.id && customerPayload.cpfCnpj) {
+        delete customerPayload.cpfCnpj;
+        createRes = await fetch(`${ASAAS_URL}/customers`, {
+          method: 'POST',
+          headers: {
+            'access_token': ASAAS_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(customerPayload)
+        });
+        createData = await createRes.json();
+      }
+
       if (createData.id) {
         customerId = createData.id;
       } else {

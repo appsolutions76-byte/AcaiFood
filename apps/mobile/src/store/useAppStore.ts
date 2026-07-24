@@ -1093,7 +1093,7 @@ export const useAppStore = create<AppState>()(
             merchantName: 'ACAIFOOD PLATAFORMA',
             merchantCity: 'BELEM',
             amount: totalValue,
-            txId: dbOrder.id
+            txId: '***'
           });
 
           return {

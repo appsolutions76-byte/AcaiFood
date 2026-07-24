@@ -40,7 +40,8 @@ export function generateValidPixPayload(params: {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase();
-  const txId = (params.txId || '***').replace(/[^a-zA-Z0-9]/g, '').substring(0, 25) || '***';
+  // Para QR Code Estático (chave Pix simples), o TXID no BACEN deve ser sempre '***'
+  const txId = '***';
 
   // 26 = Merchant Account Info (GUI + Key)
   const gui = formatField('00', 'BR.GOV.BCB.PIX');
