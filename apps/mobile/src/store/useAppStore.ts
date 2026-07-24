@@ -982,31 +982,30 @@ export const useAppStore = create<AppState>()(
               return;
           }
 
-          // 2. Processar Pagamento e Split via Asaas
-          // Preparando payload com regras de split entre Loja, Motorista e Plataforma AçaíFood
+          // 2. Processar Pagamento e Split via Asaas em Nome da Plataforma AçaíFood
           const sellerUser = state.users[targetId || ''];
-          const platformWalletId = process.env.NEXT_PUBLIC_ASAAS_WALLET_ID || "wallet_master_acaifood";
+          const splitRules: { walletId: string; fixedValue: number }[] = [];
 
-          const splitRules = [
-            {
-              walletId: sellerUser?.asaasWalletId || sellerUser?.pixKey || "wallet_loja_parceira",
-              fixedValue: novoPedido.taxas.repasse
-            },
-            {
-              walletId: platformWalletId,
-              fixedValue: novoPedido.taxas.plataformaTotal
-            }
-          ];
-
-          // Se houver motorista já alocado com carteira Asaas
-          if (novoPedido.motoristaId && state.users[novoPedido.motoristaId]?.asaasWalletId) {
+          // Split para a Loja Parceira (batedeira) - repasse das vendas
+          if (sellerUser?.asaasWalletId && sellerUser.asaasWalletId.length > 5 && !sellerUser.asaasWalletId.includes('wallet_')) {
             splitRules.push({
-              walletId: state.users[novoPedido.motoristaId].asaasWalletId!,
-              fixedValue: novoPedido.taxas.entregaMotorista
+              walletId: sellerUser.asaasWalletId,
+              fixedValue: novoPedido.taxas.repasse
             });
           }
 
-          console.log("Configurando Split de Pagamento Asaas:", {
+          // Split para o Motorista Parceiro (motoboy) - valor da entrega
+          if (novoPedido.motoristaId && state.users[novoPedido.motoristaId]?.asaasWalletId) {
+            const motoboyWallet = state.users[novoPedido.motoristaId].asaasWalletId!;
+            if (motoboyWallet.length > 5 && !motoboyWallet.includes('wallet_')) {
+              splitRules.push({
+                walletId: motoboyWallet,
+                fixedValue: novoPedido.taxas.entregaMotorista
+              });
+            }
+          }
+
+          console.log("Cobrança em Nome da Plataforma AçaíFood com Split para Parceiros:", {
             valorTotal: novoPedido.valor + novoPedido.taxas.entregaTotal,
             splitRules
           });
@@ -1016,7 +1015,7 @@ export const useAppStore = create<AppState>()(
           let asaasResult: any = null;
           let checkoutErrorMsg = '';
 
-          // 1. Tentar chamada direta para API Route do Next.js (/api/asaas/checkout)
+          // 1. Tentar chamada para API Route nativa (/api/asaas/checkout)
           try {
             const apiRes = await fetch('/api/asaas/checkout', {
               method: 'POST',
@@ -1041,7 +1040,7 @@ export const useAppStore = create<AppState>()(
             console.warn("Erro ao chamar /api/asaas/checkout:", err);
           }
 
-          // 2. Fallback para Supabase Edge Function se API Route não retornar o Pix
+          // 2. Fallback para Supabase Edge Function
           if (!asaasResult) {
             try {
               const { data: sfData, error: sfError } = await supabase.functions.invoke('asaas-checkout', {
@@ -1065,7 +1064,7 @@ export const useAppStore = create<AppState>()(
             }
           }
 
-          // Salva pedido no estado local com ID retornado do banco
+          // Salva pedido no estado local
           const finalPedido = { ...novoPedido, id: dbOrder.id, deliveryPin: pin };
           set({ 
              orders: [finalPedido, ...get().orders], 
@@ -1073,7 +1072,7 @@ export const useAppStore = create<AppState>()(
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
 
-          // Se o Asaas gerou a cobrança Pix oficial
+          // Se o Asaas gerou a cobrança Pix oficial em nome da Plataforma
           if (asaasResult && (asaasResult.pixQrCode || asaasResult.pixCopiaECola || asaasResult.invoiceUrl)) {
              return {
                 invoiceUrl: asaasResult.invoiceUrl,
@@ -1084,37 +1083,22 @@ export const useAppStore = create<AppState>()(
              };
           }
 
-          // Se a loja tiver uma Chave Pix direta cadastrada no perfil (CPF/CNPJ/Email/Telefone)
-          const targetPixKey = sellerUser?.pixKey || sellerUser?.asaasWalletId;
-          if (targetPixKey && !targetPixKey.includes('wallet_') && targetPixKey.length > 4) {
-             const validPayload = generateValidPixPayload({
-               pixKey: targetPixKey,
-               merchantName: sellerUser?.name || 'AçaíFood',
-               amount: totalValue,
-               txId: dbOrder.id
-             });
-
-             return {
-               orderId: dbOrder.id,
-               pixQrCode: null,
-               pixCopiaECola: validPayload,
-               invoiceUrl: null
-             };
-          }
-
-          // Se o Asaas retornou mensagem de erro e não foi possível gerar o Pix
-          if (checkoutErrorMsg) {
-             return {
-               orderId: dbOrder.id,
-               error: checkoutErrorMsg
-             };
-          }
+          // Fallback Pix EMV-Co em nome da PLATAFORMA AÇAÍFOOD (nunca em nome da loja individual)
+          const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
+          const validPlatformPayload = generateValidPixPayload({
+            pixKey: platformPixKey,
+            merchantName: 'ACAIFOOD PLATAFORMA',
+            merchantCity: 'BELEM',
+            amount: totalValue,
+            txId: dbOrder.id
+          });
 
           return {
              orderId: dbOrder.id,
              pixQrCode: null,
-             pixCopiaECola: null,
-             invoiceUrl: null
+             pixCopiaECola: validPlatformPayload,
+             invoiceUrl: null,
+             error: checkoutErrorMsg || undefined
           };
           
         } catch(e: any) {
