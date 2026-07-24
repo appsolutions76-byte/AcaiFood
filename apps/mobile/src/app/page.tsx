@@ -570,21 +570,37 @@ export default function StorefrontPage() {
                     navigator.clipboard.writeText(pixModalData.copiaECola!);
                     alert('Código Pix "Copia e Cola" copiado com sucesso!');
                   }}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2"
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 mb-2"
                 >
-                  📋 Copiar Código Pix
+                  📋 Copiar Código Pix Copia e Cola
                 </button>
               </div>
             ) : null}
+
+            <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl p-3 mb-4 text-left text-xs">
+              <p className="font-bold text-purple-900 dark:text-purple-300 mb-1">🔑 Chave Pix Direta da Plataforma:</p>
+              <div className="flex items-center justify-between bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
+                <span className="font-mono text-zinc-800 dark:text-zinc-200 select-all">appsolutions76@gmail.com</span>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText('appsolutions76@gmail.com');
+                    alert('Chave Pix e-mail "appsolutions76@gmail.com" copiada!');
+                  }}
+                  className="text-xs bg-purple-600 text-white px-2 py-1 rounded font-bold hover:bg-purple-700"
+                >
+                  Copiar E-mail
+                </button>
+              </div>
+            </div>
 
             {pixModalData.invoiceUrl ? (
               <a 
                 href={pixModalData.invoiceUrl} 
                 target="_blank" 
                 rel="noreferrer"
-                className="block w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold py-2 rounded-xl text-xs transition mb-3"
+                className="block w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold py-2.5 rounded-xl text-xs transition mb-3"
               >
-                🔗 Abrir Fatura no Asaas
+                🔗 Abrir Fatura Completa no Asaas
               </a>
             ) : null}
 
