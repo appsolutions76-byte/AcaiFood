@@ -1092,33 +1092,23 @@ export const useAppStore = create<AppState>()(
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
 
-          // Se o Asaas gerou a cobrança Pix oficial em nome da Plataforma
-          if (asaasResult && (asaasResult.pixQrCode || asaasResult.pixCopiaECola || asaasResult.invoiceUrl)) {
-             return {
-                invoiceUrl: asaasResult.invoiceUrl,
-                pixQrCode: asaasResult.pixQrCode,
-                pixCopiaECola: asaasResult.pixCopiaECola,
-                paymentId: asaasResult.paymentId,
-                orderId: dbOrder.id,
-                isSandbox: !!asaasResult.isSandbox
-             };
-          }
-
-          // Fallback Pix EMV-Co em nome da PLATAFORMA AÇAÍFOOD (nunca em nome da loja individual)
+          // Gerar o Payload Pix oficial BACEN em nome de FREDSON FERNANDO SOARES B (Chave: appsolutions76@gmail.com)
           const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
           const validPlatformPayload = generateValidPixPayload({
             pixKey: platformPixKey,
-            merchantName: 'ACAIFOOD PLATAFORMA',
+            merchantName: 'FREDSON FERNANDO SOARES B',
             merchantCity: 'BELEM',
             amount: totalValue,
             txId: 'ACAIFOOD'
           });
 
           return {
-             orderId: dbOrder.id,
+             invoiceUrl: asaasResult?.invoiceUrl || null,
              pixQrCode: null,
              pixCopiaECola: validPlatformPayload,
-             invoiceUrl: null,
+             paymentId: asaasResult?.paymentId || null,
+             orderId: dbOrder.id,
+             isSandbox: !!asaasResult?.isSandbox,
              error: checkoutErrorMsg || undefined
           };
           

@@ -619,7 +619,7 @@ export default function StorefrontPage() {
                       type="text" 
                       readOnly 
                       value={pixModalData.copiaECola} 
-                      className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2 text-xs text-zinc-600 dark:text-zinc-300 font-mono mb-2 text-center"
+                      className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2.5 text-xs text-zinc-600 dark:text-zinc-300 font-mono mb-2 text-center select-all"
                     />
                     <button 
                       onClick={() => {
@@ -632,22 +632,6 @@ export default function StorefrontPage() {
                     </button>
                   </div>
                 ) : null}
-
-                <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-3 mb-3 text-left">
-                  <p className="font-bold text-xs text-purple-900 dark:text-purple-300 mb-1">🔑 Chave Pix Direta da Plataforma:</p>
-                  <div className="flex items-center justify-between bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
-                    <span className="font-mono text-xs text-zinc-800 dark:text-zinc-200 select-all">appsolutions76@gmail.com</span>
-                    <button 
-                      onClick={() => {
-                        navigator.clipboard.writeText('appsolutions76@gmail.com');
-                        alert('Chave Pix E-mail "appsolutions76@gmail.com" copiada!');
-                      }}
-                      className="text-xs bg-purple-600 text-white px-2 py-1 rounded font-bold hover:bg-purple-700"
-                    >
-                      Copiar E-mail
-                    </button>
-                  </div>
-                </div>
 
                 {pixModalData.invoiceUrl ? (
                   <a 
