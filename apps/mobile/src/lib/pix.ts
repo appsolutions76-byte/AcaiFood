@@ -40,8 +40,9 @@ export function generateValidPixPayload(params: {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase();
-  // Para QR Code Estático (chave Pix simples), o TXID no BACEN deve ser sempre '***'
-  const txId = '***';
+  // TXID alfanumérico compatível com todos os bancos (Itaú, Caixa, Bradesco, Nubank, Inter, Santander)
+  const rawTx = (params.txId || 'ACAIFOOD').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const txId = (rawTx.length > 0 ? rawTx : 'ACAIFOOD').substring(0, 25);
 
   // 26 = Merchant Account Info (GUI + Key)
   const gui = formatField('00', 'BR.GOV.BCB.PIX');

@@ -38,17 +38,30 @@ serve(async (req) => {
     };
     const validCpfCnpj = cleanCpfCnpj(customerCpfCnpj);
 
-    const searchRes = await fetch(`${ASAAS_URL}/customers?email=${encodeURIComponent(emailToSearch)}`, {
-      headers: {
-        'access_token': ASAAS_API_KEY,
-        'Content-Type': 'application/json'
+    // Buscar primeiro por CPF/CNPJ se disponível
+    if (validCpfCnpj) {
+      const cpfSearchRes = await fetch(`${ASAAS_URL}/customers?cpfCnpj=${encodeURIComponent(validCpfCnpj)}`, {
+        headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+      });
+      const cpfSearchData = await cpfSearchRes.json();
+      if (cpfSearchData && cpfSearchData.data && cpfSearchData.data.length > 0) {
+        customerId = cpfSearchData.data[0].id;
       }
-    });
+    }
 
-    const searchData = await searchRes.json();
-    if (searchData && searchData.data && searchData.data.length > 0) {
-      customerId = searchData.data[0].id;
-    } else {
+    // Se não encontrou por CPF/CNPJ, buscar por e-mail
+    if (!customerId) {
+      const emailSearchRes = await fetch(`${ASAAS_URL}/customers?email=${encodeURIComponent(emailToSearch)}`, {
+        headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+      });
+      const emailSearchData = await emailSearchRes.json();
+      if (emailSearchData && emailSearchData.data && emailSearchData.data.length > 0) {
+        customerId = emailSearchData.data[0].id;
+      }
+    }
+
+    // Se ainda não encontrou, criar novo cliente
+    if (!customerId) {
       const customerPayload: any = {
         name: customerName || 'Cliente AçaíFood',
         email: emailToSearch
@@ -86,8 +99,9 @@ serve(async (req) => {
       }
     }
 
-    // Data de vencimento para hoje
-    const today = new Date().toISOString().split('T')[0];
+    // Data de vencimento para 3 dias no futuro (garantindo validade do Pix)
+    const dueDateObj = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    const dueDate = dueDateObj.toISOString().split('T')[0];
 
     // Formata o split de pagamentos caso existam regras (apenas walletId válida de conta Asaas real)
     const isValidAsaasWalletId = (id?: string) => {
@@ -114,7 +128,7 @@ serve(async (req) => {
       customer: customerId,
       billingType: 'PIX',
       value: Number(value.toFixed(2)),
-      dueDate: today,
+      dueDate: dueDate,
       externalReference: orderId,
       description: `Pedido AçaíFood #${orderId.substring(0, 8)}`
     };
