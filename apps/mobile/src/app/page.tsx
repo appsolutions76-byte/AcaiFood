@@ -193,7 +193,13 @@ export default function StorefrontPage() {
     
     if (res && typeof res === 'object') {
       if (res.error) {
-        alert(`Aviso do Asaas: ${res.error}`);
+        if (res.error.toLowerCase().includes('cpf') || res.error.toLowerCase().includes('cnpj')) {
+          alert('Por favor, informe seu CPF ou CNPJ de cadastro para gerar o Pix registrado no Banco Central.');
+          setCpfModalOpen(true);
+          return;
+        } else {
+          alert(`Aviso do Asaas: ${res.error}`);
+        }
       }
       if (res.pixQrCode || (res.pixCopiaECola && !res.error) || res.invoiceUrl) {
          setPixModalData({

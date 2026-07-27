@@ -1012,6 +1012,24 @@ export const useAppStore = create<AppState>()(
 
           const totalValue = novoPedido.valor + novoPedido.taxas.entregaTotal;
 
+          // Resolver CPF/CNPJ do usuário automaticamente (memória -> estado -> banco de dados)
+          let userCpfCnpj = currentUser.cpfCnpj || get().users[currentUser.id]?.cpfCnpj;
+          if (!userCpfCnpj && currentUser.id) {
+            try {
+              const { data: dbUser } = await supabase.from('users').select('cpf_cnpj').eq('id', currentUser.id).maybeSingle();
+              if (dbUser && dbUser.cpf_cnpj) {
+                userCpfCnpj = dbUser.cpf_cnpj;
+                const updatedUser = { ...currentUser, cpfCnpj: dbUser.cpf_cnpj };
+                set((state) => ({
+                  currentUser: updatedUser,
+                  users: { ...state.users, [currentUser.id]: updatedUser }
+                }));
+              }
+            } catch (err) {
+              console.warn("Erro ao buscar CPF do usuário no banco:", err);
+            }
+          }
+
           let asaasResult: any = null;
           let checkoutErrorMsg = '';
 
@@ -1024,7 +1042,7 @@ export const useAppStore = create<AppState>()(
                 split: splitRules,
                 customerEmail: currentUser.email,
                 customerName: currentUser.name,
-                customerCpfCnpj: currentUser.cpfCnpj
+                customerCpfCnpj: userCpfCnpj
               }
             });
 
@@ -1051,7 +1069,7 @@ export const useAppStore = create<AppState>()(
                   split: splitRules,
                   customerEmail: currentUser.email,
                   customerName: currentUser.name,
-                  customerCpfCnpj: currentUser.cpfCnpj
+                  customerCpfCnpj: userCpfCnpj
                 })
               });
 
