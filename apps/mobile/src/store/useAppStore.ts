@@ -1111,7 +1111,7 @@ export const useAppStore = create<AppState>()(
             merchantName: 'ACAIFOOD PLATAFORMA',
             merchantCity: 'BELEM',
             amount: totalValue,
-            txId: '***'
+            txId: 'ACAIFOOD'
           });
 
           return {

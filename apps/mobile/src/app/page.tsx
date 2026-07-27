@@ -192,16 +192,13 @@ export default function StorefrontPage() {
     setCheckoutModalOpen(false);
     
     if (res && typeof res === 'object') {
-      if (res.error) {
-        if (res.error.toLowerCase().includes('cpf') || res.error.toLowerCase().includes('cnpj')) {
-          alert('Por favor, informe seu CPF ou CNPJ de cadastro para gerar o Pix registrado no Banco Central.');
-          setCpfModalOpen(true);
-          return;
-        } else {
-          alert(`Aviso do Asaas: ${res.error}`);
-        }
+      if (res.error && (res.error.toLowerCase().includes('cpf') || res.error.toLowerCase().includes('cnpj'))) {
+        alert('Por favor, informe seu CPF ou CNPJ de cadastro para gerar o Pix registrado no Banco Central.');
+        setCpfModalOpen(true);
+        return;
       }
-      if (res.pixQrCode || (res.pixCopiaECola && !res.error) || res.invoiceUrl) {
+
+      if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
          setPixModalData({
             open: true,
             qrCode: res.pixQrCode,
@@ -210,6 +207,15 @@ export default function StorefrontPage() {
             orderId: res.orderId,
             isSandbox: res.isSandbox
          });
+
+         if (res.error) {
+            console.warn("Nota do checkout Asaas:", res.error);
+         }
+         return;
+      }
+
+      if (res.error) {
+         alert(`Aviso do Asaas: ${res.error}`);
       } else {
          alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
       }
