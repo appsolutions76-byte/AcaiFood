@@ -1092,23 +1092,35 @@ export const useAppStore = create<AppState>()(
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
 
-          // Gerar o Payload Pix oficial BACEN em nome de FREDSON FERNANDO SOARES B (Chave: appsolutions76@gmail.com)
-          // Omitir o valor fixo no Pix estático para que o banco processe exatamente como a digitação manual da chave sem rejeição
+          // Se o Asaas gerou a cobrança Pix oficial em nome da Plataforma (com Split para batedeira e motoboy)
+          if (asaasResult && (asaasResult.pixQrCode || asaasResult.pixCopiaECola || asaasResult.invoiceUrl)) {
+             return {
+                invoiceUrl: asaasResult.invoiceUrl,
+                pixQrCode: asaasResult.pixQrCode,
+                pixCopiaECola: asaasResult.pixCopiaECola,
+                paymentId: asaasResult.paymentId,
+                orderId: dbOrder.id,
+                isSandbox: !!asaasResult.isSandbox
+             };
+          }
+
+          // Fallback Pix estático oficial BACEN com o valor exato do pedido (Fredson Fernando Soares B / appsolutions76@gmail.com)
           const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
           const validPlatformPayload = generateValidPixPayload({
             pixKey: platformPixKey,
             merchantName: 'FREDSON FERNANDO SOARES B',
             merchantCity: 'BELEM',
+            amount: totalValue,
             txId: '***'
           });
 
           return {
-             invoiceUrl: asaasResult?.invoiceUrl || null,
+             invoiceUrl: null,
              pixQrCode: null,
              pixCopiaECola: validPlatformPayload,
-             paymentId: asaasResult?.paymentId || null,
+             paymentId: null,
              orderId: dbOrder.id,
-             isSandbox: !!asaasResult?.isSandbox,
+             isSandbox: false,
              error: checkoutErrorMsg || undefined
           };
           
