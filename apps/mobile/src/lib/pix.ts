@@ -40,9 +40,10 @@ export function generateValidPixPayload(params: {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase();
-  // TXID alfanumérico compatível com todos os bancos (Itaú, Caixa, Bradesco, Nubank, Inter, Santander)
-  const rawTx = (params.txId || 'ACAIFOOD').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-  const txId = (rawTx.length > 0 ? rawTx : 'ACAIFOOD').substring(0, 25);
+  // No padrão Pix Estático BACEN, para chaves diretas sem cobrança registrada via API PSP, o TXID deve ser sempre '***'
+  const txId = (params.txId && params.txId !== '***')
+    ? params.txId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25)
+    : '***';
 
   // 26 = Merchant Account Info (GUI + Key)
   const gui = formatField('00', 'BR.GOV.BCB.PIX');

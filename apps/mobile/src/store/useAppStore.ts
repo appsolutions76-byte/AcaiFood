@@ -1099,7 +1099,7 @@ export const useAppStore = create<AppState>()(
             merchantName: 'FREDSON FERNANDO SOARES B',
             merchantCity: 'BELEM',
             amount: totalValue,
-            txId: 'ACAIFOOD'
+            txId: '***'
           });
 
           return {
