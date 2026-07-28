@@ -12,6 +12,16 @@ export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: numb
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+export function isValidAsaasWalletId(id?: string): boolean {
+  if (!id || typeof id !== 'string') return false;
+  const clean = id.trim();
+  if (clean.length < 10) return false;
+  if (clean.includes('@') || clean.includes('loja_parceira') || clean.includes('asaas_wallet_') || clean.includes('wallet_master')) return false;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
+  const isAsaasId = clean.length >= 20 && !clean.match(/^\d+$/);
+  return isUuid || isAsaasId;
+}
+
 export type Role = 'admin' | 'loja' | 'cliente' | 'motorista' | 'fornecedor' | 'ecoponto';
 
 export interface Product {
@@ -244,7 +254,7 @@ export const useAppStore = create<AppState>()(
             veiculo: userProfile.vehicle_type === 'MOTO' ? 'Moto' : userProfile.vehicle_type === 'TRUCK' ? 'Caminhão' : userProfile.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined,
             status: userProfile.status as 'active'|'paused'|'blocked',
             asaasLinked: !!(userProfile.asaas_wallet_id || userProfile.pix_key),
-            asaasWalletId: userProfile.asaas_wallet_id || userProfile.pix_key,
+            asaasWalletId: isValidAsaasWalletId(userProfile.asaas_wallet_id) ? userProfile.asaas_wallet_id : (isValidAsaasWalletId(userProfile.pix_key) ? userProfile.pix_key : undefined),
             priceB2B: sf?.price_b2b ?? undefined,
             priceB2C: sf ? {
                 popular: sf.price_b2c_popular ?? 20,
@@ -566,7 +576,7 @@ export const useAppStore = create<AppState>()(
                         },
                         freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
-                        asaasWalletId: dbUser.asaas_wallet_id || dbUser.pix_key,
+                        asaasWalletId: isValidAsaasWalletId(dbUser.asaas_wallet_id) ? dbUser.asaas_wallet_id : (isValidAsaasWalletId(dbUser.pix_key) ? dbUser.pix_key : undefined),
                         pixKey: dbUser.pix_key,
                         products: sf?.products || [],
                         cpfCnpj: dbUser.cpf_cnpj
@@ -621,7 +631,7 @@ export const useAppStore = create<AppState>()(
                         },
                         freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
-                        asaasWalletId: dbUser.asaas_wallet_id || dbUser.pix_key,
+                        asaasWalletId: isValidAsaasWalletId(dbUser.asaas_wallet_id) ? dbUser.asaas_wallet_id : (isValidAsaasWalletId(dbUser.pix_key) ? dbUser.pix_key : undefined),
                         pixKey: dbUser.pix_key,
                         products: sf?.products || [],
                         cpfCnpj: dbUser.cpf_cnpj
@@ -633,18 +643,70 @@ export const useAppStore = create<AppState>()(
       },
 
       linkAsaasAccount: async (userId, walletId) => {
-        const { error } = await supabase.from('users').update({ asaas_wallet_id: walletId, pix_key: walletId }).eq('id', userId);
+        const isRealWallet = isValidAsaasWalletId(walletId);
+        const updatePayload: any = { pix_key: walletId };
+        if (isRealWallet) {
+          updatePayload.asaas_wallet_id = walletId;
+          updatePayload.split_enabled = true;
+        }
+
+        const { error } = await supabase.from('users').update(updatePayload).eq('id', userId);
         if (error) console.error("Erro ao salvar carteira Asaas no banco:", error);
+
         set((state) => {
           const user = state.users[userId];
           if (!user) return state;
-          const updatedUser = { ...user, asaasWalletId: walletId, asaasLinked: true, pixKey: walletId };
+          const updatedUser = { 
+            ...user, 
+            asaasWalletId: isRealWallet ? walletId : user.asaasWalletId, 
+            asaasLinked: true, 
+            pixKey: walletId 
+          };
           const isCurrent = state.currentUser?.id === userId;
           return { 
             users: { ...state.users, [userId]: updatedUser },
             currentUser: isCurrent ? updatedUser : state.currentUser
           };
         });
+
+        // Se for um CPF/CNPJ ou dados de registro sem walletId real, tenta criar subconta via API
+        if (!isRealWallet && userId) {
+          try {
+            const userState = get().users[userId] || get().currentUser;
+            if (userState && userState.cpfCnpj) {
+              const subRes = await fetch('/api/asaas/subaccount', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: userId,
+                  name: userState.name,
+                  email: userState.email,
+                  cpfCnpj: userState.cpfCnpj,
+                  phone: userState.telefone,
+                  endereco: userState.endereco,
+                  bairro: userState.bairro,
+                  cidade: userState.cidade,
+                  role: userState.role
+                })
+              });
+              const subData = await subRes.json();
+              if (subData && subData.walletId && isValidAsaasWalletId(subData.walletId)) {
+                set((state) => {
+                  const user = state.users[userId];
+                  if (!user) return state;
+                  const updatedUser = { ...user, asaasWalletId: subData.walletId, asaasLinked: true };
+                  const isCurrent = state.currentUser?.id === userId;
+                  return {
+                    users: { ...state.users, [userId]: updatedUser },
+                    currentUser: isCurrent ? updatedUser : state.currentUser
+                  };
+                });
+              }
+            }
+          } catch (subErr) {
+            console.warn("Autocriação de subconta Asaas em segundo plano:", subErr);
+          }
+        }
       },
 
       fetchRates: async () => {
@@ -1052,7 +1114,7 @@ export const useAppStore = create<AppState>()(
           const sellerUser = state.users[targetId || ''];
           const splitRules: { walletId: string; fixedValue: number }[] = [];
 
-          if (sellerUser?.asaasWalletId && sellerUser.asaasWalletId.length > 5 && !sellerUser.asaasWalletId.includes('wallet_')) {
+          if (sellerUser?.asaasWalletId && isValidAsaasWalletId(sellerUser.asaasWalletId)) {
             splitRules.push({
               walletId: sellerUser.asaasWalletId,
               fixedValue: novoPedido.taxas.repasse
@@ -1061,7 +1123,7 @@ export const useAppStore = create<AppState>()(
 
           if (novoPedido.motoristaId && state.users[novoPedido.motoristaId]?.asaasWalletId) {
             const motoboyWallet = state.users[novoPedido.motoristaId].asaasWalletId!;
-            if (motoboyWallet.length > 5 && !motoboyWallet.includes('wallet_')) {
+            if (isValidAsaasWalletId(motoboyWallet)) {
               splitRules.push({
                 walletId: motoboyWallet,
                 fixedValue: novoPedido.taxas.entregaMotorista

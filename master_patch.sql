@@ -126,5 +126,8 @@ END $$;
 
 ALTER TABLE public.orders REPLICA IDENTITY FULL;
 
--- 8. Recarregar o Schema Cache da API REST (Extremamente Importante)
+-- 8. Limpeza de Estruturas Legadas (Sem Utilidade para o Asaas)
+DROP TABLE IF EXISTS public.mp_oauth_states CASCADE;
+
+-- 9. Recarregar o Schema Cache da API REST (Extremamente Importante)
 NOTIFY pgrst, 'reload schema';

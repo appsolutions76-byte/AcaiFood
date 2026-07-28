@@ -131,25 +131,36 @@ export async function POST(request: Request) {
     const dueDateObj = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
     const dueDate = dueDateObj.toISOString().split('T')[0];
 
-    // Formatar Split (apenas enviar walletId se for um UUID/ID de conta Asaas real e não um e-mail ou chave Pix simples)
+    // Formatar Split (apenas enviar walletId se for um UUID/ID de conta Asaas real e não um e-mail ou CPF/chave Pix simples)
     const isValidAsaasWalletId = (id?: string) => {
       if (!id || typeof id !== 'string') return false;
       const clean = id.trim();
       if (clean.length < 10) return false;
       if (clean.includes('@') || clean.includes('loja_parceira') || clean.includes('asaas_wallet_') || clean.includes('wallet_master')) return false;
-      return true;
+      // Valida se possui formato UUID ou ID alfanumérico longo característico de walletId do Asaas
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
+      const isAsaasId = clean.length >= 20 && !clean.match(/^\d+$/); // Evita sequências puras de CPF/CNPJ/Telefone
+      return isUuid || isAsaasId;
     };
 
+    let totalSplitValue = 0;
     const formattedSplit = Array.isArray(split) ? split.map((s: any) => {
       const val = typeof s.fixedValue === 'number' ? s.fixedValue : (typeof s.amount === 'number' ? s.amount : null);
       if (s.walletId && val !== null && val > 0 && isValidAsaasWalletId(s.walletId)) {
+        const roundedVal = Number(val.toFixed(2));
+        totalSplitValue += roundedVal;
         return {
           walletId: s.walletId.trim(),
-          fixedValue: Number(val.toFixed(2))
+          fixedValue: roundedVal
         };
       }
       return null;
     }).filter(Boolean) : undefined;
+
+    // Garantir que a soma das parcelas de split não exceda o valor total da cobrança
+    const validSplit = (formattedSplit && formattedSplit.length > 0 && totalSplitValue < value) 
+      ? formattedSplit 
+      : undefined;
 
     // 2. Criar Cobrança (BillingType PIX)
     const paymentBody: any = {
@@ -161,8 +172,8 @@ export async function POST(request: Request) {
       description: `Pedido AçaíFood #${String(orderId).substring(0, 8)}`
     };
 
-    if (formattedSplit && formattedSplit.length > 0) {
-      paymentBody.split = formattedSplit;
+    if (validSplit && validSplit.length > 0) {
+      paymentBody.split = validSplit;
     }
 
     const payRes = await fetch(`${ASAAS_URL}/payments`, {
