@@ -5,8 +5,16 @@
 -- otimizar o esquema do banco de dados para o Asaas.
 -- ==========================================================
 
--- 1. Remoção de Tabelas Legadas Sem Utilidade
+-- 1. Remoção de Tabelas Legadas Sem Utilidade (Mercado Pago e Antigas)
 DROP TABLE IF EXISTS public.mp_oauth_states CASCADE;
+DROP TABLE IF EXISTS public.mercadopago_tokens CASCADE;
+DROP TABLE IF EXISTS public.mp_payments CASCADE;
+DROP TABLE IF EXISTS public.legacy_orders CASCADE;
+DROP TABLE IF EXISTS public.payments CASCADE;
+DROP TABLE IF EXISTS public.transactions CASCADE;
+DROP TABLE IF EXISTS public.transfers CASCADE;
+DROP TABLE IF EXISTS public.logs CASCADE;
+DROP TABLE IF EXISTS public.webhooks CASCADE;
 
 -- 2. Limpeza de Colunas Legadas
 DO $$
