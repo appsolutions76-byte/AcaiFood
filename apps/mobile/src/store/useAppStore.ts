@@ -1142,7 +1142,7 @@ export const useAppStore = create<AppState>()(
           }
 
           // Salva pedido no estado local
-          const finalPedido = { ...novoPedido, id: dbOrder.id, deliveryPin: pin };
+          const finalPedido = { ...novoPedido, id: orderIdToUse, deliveryPin: pin };
           set({ 
              orders: [finalPedido, ...get().orders], 
              orderCounter: get().orderCounter + 1,
