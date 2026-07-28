@@ -1157,7 +1157,8 @@ export const useAppStore = create<AppState>()(
                 pixCopiaECola: asaasResult.pixCopiaECola || null,
                 paymentId: asaasResult.paymentId,
                 orderId: orderIdToUse,
-                isSandbox: !!asaasResult.isSandbox
+                isSandbox: !!asaasResult.isSandbox,
+                totalValue: totalValue
              };
           }
 

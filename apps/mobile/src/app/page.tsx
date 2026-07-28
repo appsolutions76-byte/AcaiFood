@@ -40,7 +40,7 @@ export default function StorefrontPage() {
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [productSelectModal, setProductSelectModal] = useState<{ open: boolean; lojaId: string; tipo: string; quantity: number }>({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
-  const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string; isSandbox?: boolean; paymentId?: string }>({ open: false });
+  const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string; isSandbox?: boolean; paymentId?: string; totalValue?: number }>({ open: false });
   const [pixPaid, setPixPaid] = useState(false);
   const [cpfModalOpen, setCpfModalOpen] = useState(false);
   const [cpfInputValue, setCpfInputValue] = useState("");
@@ -205,7 +205,8 @@ export default function StorefrontPage() {
             copiaECola: res.pixCopiaECola,
             invoiceUrl: res.invoiceUrl,
             orderId: res.orderId,
-            isSandbox: res.isSandbox
+            isSandbox: res.isSandbox,
+            totalValue: res.totalValue || finalCartTotal
          });
 
          if (res.error) {
@@ -599,9 +600,7 @@ export default function StorefrontPage() {
                 <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-2.5 mb-3 text-center">
                   <span className="text-xs text-purple-900 dark:text-purple-300 font-medium">💰 Valor Total do Pedido: </span>
                   <span className="text-sm font-extrabold text-purple-700 dark:text-purple-300">
-                    {cart.items.length > 0
-                      ? (cart.items.reduce((acc, i) => acc + (i.price || 0) * i.quantity, 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                      : 'R$ 0,00'}
+                    {formatMoney(pixModalData.totalValue ?? (cartItemsTotal + cartFrete))}
                   </span>
                 </div>
 
