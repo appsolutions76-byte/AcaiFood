@@ -1093,12 +1093,12 @@ export const useAppStore = create<AppState>()(
           });
 
           // Gerar o Payload Pix oficial BACEN em nome de FREDSON FERNANDO SOARES B (Chave: appsolutions76@gmail.com)
+          // Omitir o valor fixo no Pix estático para que o banco processe exatamente como a digitação manual da chave sem rejeição
           const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
           const validPlatformPayload = generateValidPixPayload({
             pixKey: platformPixKey,
             merchantName: 'FREDSON FERNANDO SOARES B',
             merchantCity: 'BELEM',
-            amount: totalValue,
             txId: '***'
           });
 
