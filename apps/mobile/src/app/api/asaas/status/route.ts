@@ -24,8 +24,27 @@ export async function GET(request: Request) {
       });
       if (res.ok) {
         const data = await res.json();
-        const status = data.status; // RECEIVED, CONFIRMED, PENDING, etc.
-        const isPaid = status === 'RECEIVED' || status === 'CONFIRMED' || status === 'RECEIVED_IN_CASH';
+        const status = data.status;
+        const isPaid = status === 'RECEIVED' || status === 'CONFIRMED' || status === 'RECEIVED_IN_CASH' || status === 'DUNNING_RECEIVED' || status === 'PAYMENT_RECEIVED' || status === 'PAYMENT_CONFIRMED';
+
+        if (isPaid) {
+          const targetOrderId = data.externalReference || orderId;
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+          const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+          if (supabaseUrl && supabaseKey && targetOrderId) {
+            try {
+              const supabase = createClient(supabaseUrl, supabaseKey);
+              await supabase.from('orders').update({
+                status: 'PAID',
+                asaas_payment_id: data.id,
+                asaas_charge_status: status
+              }).eq('id', targetOrderId);
+            } catch (updErr) {
+              console.warn("Erro ao sincronizar status PAID no Supabase via API status:", updErr);
+            }
+          }
+        }
+
         return NextResponse.json({
           paymentId: data.id,
           orderId: data.externalReference || orderId,

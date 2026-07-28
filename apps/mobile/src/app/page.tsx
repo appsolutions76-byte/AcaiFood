@@ -72,6 +72,9 @@ export default function StorefrontPage() {
           const data = await res.json();
           if (data.isPaid) {
             setPixPaid(true);
+            if (pixModalData.orderId) {
+              store.acaoPedido(pixModalData.orderId, 'confirmar_pagamento');
+            }
           }
         }
       } catch (e) {

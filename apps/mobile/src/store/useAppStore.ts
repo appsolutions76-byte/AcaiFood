@@ -1305,7 +1305,7 @@ export const useAppStore = create<AppState>()(
             if (o.id !== orderId) return o;
             const newOrder = { ...o };
             if (action === 'cancelar_pedido' || action === 'cancelar_cliente') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
-            if (action === 'confirmar_pagamento') { newOrder.status = 'pendente'; newDbStatus = 'PAID'; }
+            if (action === 'confirmar_pagamento' || action === 'pagar') { newOrder.status = 'preparo'; newDbStatus = 'PAID'; }
             if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
             if (action === 'chamar_moto' || action === 'chamar_caminhao') { newOrder.status = 'pronto'; newDbStatus = 'READY'; }
             if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newDbStatus = 'DELIVERING'; driverId = newOrder.motoristaId; }
