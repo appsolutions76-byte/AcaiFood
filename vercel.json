@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm run build --prefix apps/mobile",
+  "outputDirectory": "apps/mobile/.next",
+  "framework": "nextjs"
+}

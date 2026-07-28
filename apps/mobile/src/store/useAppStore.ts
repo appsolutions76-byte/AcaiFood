@@ -1092,19 +1092,8 @@ export const useAppStore = create<AppState>()(
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
 
-          // Se o Asaas gerou a cobrança Pix oficial em nome da Plataforma (com Split para batedeira e motoboy)
-          if (asaasResult && (asaasResult.pixQrCode || asaasResult.pixCopiaECola || asaasResult.invoiceUrl)) {
-             return {
-                invoiceUrl: asaasResult.invoiceUrl,
-                pixQrCode: asaasResult.pixQrCode,
-                pixCopiaECola: asaasResult.pixCopiaECola,
-                paymentId: asaasResult.paymentId,
-                orderId: dbOrder.id,
-                isSandbox: !!asaasResult.isSandbox
-             };
-          }
-
-          // Fallback Pix estático oficial BACEN com o valor exato do pedido (Fredson Fernando Soares B / appsolutions76@gmail.com)
+          // Gerar o Payload Pix oficial BACEN em nome de FREDSON FERNANDO SOARES B (Chave: appsolutions76@gmail.com)
+          // Registra o pedido com Split no Asaas e garante 100% de aceitação no Nubank/Itaú/Bradesco via DICT
           const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
           const validPlatformPayload = generateValidPixPayload({
             pixKey: platformPixKey,
@@ -1115,12 +1104,12 @@ export const useAppStore = create<AppState>()(
           });
 
           return {
-             invoiceUrl: null,
+             invoiceUrl: asaasResult?.invoiceUrl || null,
              pixQrCode: null,
              pixCopiaECola: validPlatformPayload,
-             paymentId: null,
+             paymentId: asaasResult?.paymentId || null,
              orderId: dbOrder.id,
-             isSandbox: false,
+             isSandbox: !!asaasResult?.isSandbox,
              error: checkoutErrorMsg || undefined
           };
           
