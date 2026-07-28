@@ -1168,7 +1168,8 @@ export const useAppStore = create<AppState>()(
             pixKey: platformPixKey,
             merchantName: 'FREDSON FERNANDO SOARES B',
             merchantCity: 'BELEM',
-            txId: '***'
+            amount: totalValue,
+            txId: orderIdToUse.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25) || '***'
           });
 
           return {
