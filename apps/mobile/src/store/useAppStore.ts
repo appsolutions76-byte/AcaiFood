@@ -1399,18 +1399,19 @@ export const useAppStore = create<AppState>()(
          `);
 
          if (currentUser.role === 'loja') {
-            const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id).single();
-            if (sf) {
-                query = query.or(`seller_storefront_id.eq.${sf.id},buyer_id.eq.${currentUser.id}`);
-            } else {
-                query = query.eq('buyer_id', currentUser.id);
-            }
-         } else if (currentUser.role === 'fornecedor') {
-            const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id).single();
-            if (sf) {
-                query = query.eq('seller_storefront_id', sf.id);
-            }
-         } else if (currentUser.role === 'motorista') {
+             const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
+             if (sfList && sfList.length > 0) {
+                 const sfIds = sfList.map((s: any) => s.id).join(',');
+                 query = query.or(`seller_storefront_id.in.(${sfIds}),buyer_id.eq.${currentUser.id}`);
+             } else {
+                 query = query.eq('buyer_id', currentUser.id);
+             }
+          } else if (currentUser.role === 'fornecedor') {
+             const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
+             if (sfList && sfList.length > 0) {
+                 query = query.in('seller_storefront_id', sfList.map((s: any) => s.id));
+             }
+          } else if (currentUser.role === 'motorista') {
             query = query.or(`status.in.(READY,PREPARING,DELIVERING,PAID,PENDING),driver_id.eq.${currentUser.id}`);
          } else if (currentUser.role === 'cliente') {
             query = query.eq('buyer_id', currentUser.id);
