@@ -1090,8 +1090,19 @@ export const useAppStore = create<AppState>()(
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
 
-          // Gerar o Payload Pix estático oficial BACEN vinculado à chave da Plataforma (Fredson Fernando Soares B / appsolutions76@gmail.com)
-          // Omitir o valor fixo no payload estático para garantir 100% de liquidação em qualquer banco (Nubank, Itaú, Bradesco, etc.)
+          // 1. Se o Asaas gerou a cobrança Pix oficial (com Split triplo para batedeira e motoboy)
+          if (asaasResult && (asaasResult.pixCopiaECola || asaasResult.pixQrCode || asaasResult.invoiceUrl)) {
+             return {
+                invoiceUrl: asaasResult.invoiceUrl,
+                pixQrCode: asaasResult.pixQrCode || null,
+                pixCopiaECola: asaasResult.pixCopiaECola || null,
+                paymentId: asaasResult.paymentId,
+                orderId: orderIdToUse,
+                isSandbox: !!asaasResult.isSandbox
+             };
+          }
+
+          // 2. Fallback Pix estático oficial BACEN vinculado à chave da Plataforma (Fredson Fernando Soares B / appsolutions76@gmail.com)
           const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
           const validPlatformPayload = generateValidPixPayload({
             pixKey: platformPixKey,
@@ -1101,12 +1112,12 @@ export const useAppStore = create<AppState>()(
           });
 
           return {
-             invoiceUrl: asaasResult?.invoiceUrl || null,
+             invoiceUrl: null,
              pixQrCode: null,
              pixCopiaECola: validPlatformPayload,
-             paymentId: asaasResult?.paymentId || null,
+             paymentId: null,
              orderId: orderIdToUse,
-             isSandbox: !!asaasResult?.isSandbox,
+             isSandbox: false,
              error: checkoutErrorMsg || undefined
           };
           
