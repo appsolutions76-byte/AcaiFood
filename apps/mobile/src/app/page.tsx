@@ -594,7 +594,16 @@ export default function StorefrontPage() {
                   <span className="text-2xl">⚡</span>
                 </div>
                 <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">Pagamento via Pix</h3>
-                <p className="text-xs text-zinc-500 mb-3">Escaneie o QR Code ou copie o código para pagar</p>
+                <p className="text-xs text-zinc-500 mb-2">Escaneie o QR Code ou copie o código para pagar</p>
+
+                <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-2.5 mb-3 text-center">
+                  <span className="text-xs text-purple-900 dark:text-purple-300 font-medium">💰 Valor Total do Pedido: </span>
+                  <span className="text-sm font-extrabold text-purple-700 dark:text-purple-300">
+                    {cart.items.length > 0
+                      ? (cart.items.reduce((acc, i) => acc + (i.price || 0) * i.quantity, 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                      : 'R$ 0,00'}
+                  </span>
+                </div>
 
                 {(() => {
                   const qrSrc = pixModalData.copiaECola
