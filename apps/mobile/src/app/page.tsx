@@ -597,12 +597,12 @@ export default function StorefrontPage() {
                 <p className="text-xs text-zinc-500 mb-3">Escaneie o QR Code ou copie o código para pagar</p>
 
                 {(() => {
-                  const qrSrc = pixModalData.qrCode
-                    ? (pixModalData.qrCode.startsWith('data:') || pixModalData.qrCode.startsWith('http')
-                        ? pixModalData.qrCode
-                        : `data:image/png;base64,${pixModalData.qrCode}`)
-                    : (pixModalData.copiaECola
-                        ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(pixModalData.copiaECola)}`
+                  const qrSrc = pixModalData.copiaECola
+                    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pixModalData.copiaECola)}`
+                    : (pixModalData.qrCode
+                        ? (pixModalData.qrCode.startsWith('data:') || pixModalData.qrCode.startsWith('http')
+                            ? pixModalData.qrCode
+                            : `data:image/png;base64,${pixModalData.qrCode}`)
                         : null);
 
                   if (!qrSrc) return null;
