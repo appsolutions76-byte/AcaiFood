@@ -303,23 +303,50 @@ function CadastroForm() {
               <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
                 <ShieldCheck size={32} />
               </div>
-              <h3 className="text-xl font-bold">Vincular Conta Asaas</h3>
-              <p className="text-purple-100 text-sm mt-1">Split Automático de Pagamentos</p>
+              <h3 className="text-xl font-bold">Conta Criada com Sucesso!</h3>
+              <p className="text-purple-100 text-sm mt-1">Split Automático Ativado</p>
             </div>
             
-            <div className="p-6 text-center">
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                Sua conta foi criada com sucesso! Agora vincule sua Carteira Asaas ou Chave Pix para receber os repasses automáticos de cada corrida/venda no AçaíFood!
-              </p>
-              
+            <div className="p-6 text-center space-y-4">
+              <div className="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-xl p-4">
+                <p className="text-2xl mb-2">🎉</p>
+                <p className="text-emerald-800 dark:text-emerald-300 font-bold text-sm">
+                  Sua conta parceira foi criada e sua carteira Asaas foi configurada automaticamente!
+                </p>
+              </div>
+
+              <div className="text-left space-y-2">
+                <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg p-3">
+                  <span className="text-xl">✅</span>
+                  <div>
+                    <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Conta Asaas Criada</p>
+                    <p className="text-xs text-zinc-500">Carteira digital para receber seus repasses</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg p-3">
+                  <span className="text-xl">✅</span>
+                  <div>
+                    <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Split Automático Ativo</p>
+                    <p className="text-xs text-zinc-500">Você recebe automaticamente a cada venda concluída</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg p-3">
+                  <span className="text-xl">✅</span>
+                  <div>
+                    <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Pronto para Vender</p>
+                    <p className="text-xs text-zinc-500">Configure seus preços no painel parceiro</p>
+                  </div>
+                </div>
+              </div>
+
               <button 
                 onClick={handleLinkAsaas}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 mb-3 active:scale-95"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95"
               >
-                🤝 Confirmar e Conectar Carteira Asaas
+                🚀 Acessar Meu Painel Parceiro
               </button>
               
-              <p className="text-xs text-zinc-400 mt-4">
+              <p className="text-xs text-zinc-400">
                 Seus repasses serão creditados automaticamente a cada pedido concluído.
               </p>
             </div>

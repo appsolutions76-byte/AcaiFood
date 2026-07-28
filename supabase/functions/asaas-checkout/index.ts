@@ -19,7 +19,7 @@ serve(async (req) => {
       throw new Error('ASAAS_API_KEY não configurada nas variáveis de ambiente do Supabase Secrets');
     }
 
-    const ASAAS_ENV = Deno.env.get('ASAAS_ENV') || 'production';
+    const ASAAS_ENV = Deno.env.get('ASAAS_ENVIRONMENT') || 'production';
     const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg');
     const ASAAS_URL = isSandbox 
       ? 'https://sandbox.asaas.com/api/v3' 

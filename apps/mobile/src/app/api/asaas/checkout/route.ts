@@ -6,35 +6,37 @@ export async function POST(request: Request) {
     const { orderId, value, split, customerEmail, customerName, customerCpfCnpj } = body;
 
     // Tentar primeiro chamar a Edge Function do Supabase a partir do servidor Next.js
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vfsenzzuoisgcvppfbbz.supabase.co';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_eqyQYjFtuSNJUExRiU9R3Q_WAgo_6eX';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-    try {
-      const sfRes = await fetch(`${supabaseUrl}/functions/v1/asaas-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({
-          orderId,
-          value,
-          split,
-          customerEmail,
-          customerName,
-          customerCpfCnpj
-        })
-      });
+    if (supabaseUrl && supabaseAnonKey) {
+      try {
+        const sfRes = await fetch(`${supabaseUrl}/functions/v1/asaas-checkout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${supabaseAnonKey}`
+          },
+          body: JSON.stringify({
+            orderId,
+            value,
+            split,
+            customerEmail,
+            customerName,
+            customerCpfCnpj
+          })
+        });
 
-      if (sfRes.ok) {
-        const sfData = await sfRes.json();
-        if (sfData && (sfData.pixQrCode || sfData.pixCopiaECola || sfData.invoiceUrl)) {
-          return NextResponse.json(sfData);
+        if (sfRes.ok) {
+          const sfData = await sfRes.json();
+          if (sfData && (sfData.pixQrCode || sfData.pixCopiaECola || sfData.invoiceUrl)) {
+            return NextResponse.json(sfData);
+          }
         }
+      } catch (sfErr) {
+        console.warn("Proxy para Supabase Edge Function falhou, tentando Asaas direto:", sfErr);
       }
-    } catch (sfErr) {
-      console.warn("Proxy para Supabase Edge Function falhou, tentando Asaas direto:", sfErr);
     }
 
     const ASAAS_API_KEY = process.env.ASAAS_API_KEY;

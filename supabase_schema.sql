@@ -115,7 +115,7 @@ VALUES (5.00, 3.00, 1.50, 5.00, 10.00, 10.00);
 -- 5. Create Orders Table (Triple Split architecture)
 CREATE TABLE IF NOT EXISTS public.orders (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  order_type TEXT NOT NULL CHECK (order_type IN ('B2C', 'B2B')),
+  order_type TEXT NOT NULL, -- Validado pelo CONSTRAINT orders_type_check abaixo (B2C, B2B, COLETA)
   
   -- Entities Involved
   buyer_id UUID REFERENCES public.users(id) ON DELETE SET NULL, -- Cliente Final ou Batedeira
@@ -146,10 +146,16 @@ CREATE TABLE IF NOT EXISTS public.orders (
   status TEXT NOT NULL DEFAULT 'PENDING',
   CONSTRAINT orders_status_check CHECK (status IN ('PENDING', 'PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'COMPLETED', 'CANCELLED')),
   CONSTRAINT orders_type_check CHECK (order_type IN ('B2C', 'B2B', 'COLETA')),
-  mp_payment_id TEXT,
+  -- Asaas Payment Tracking (substitui o legado mp_payment_id do Mercado Pago)
+  asaas_payment_id TEXT,
+  asaas_charge_status TEXT,
+  delivery_pin VARCHAR(4),
   created_at TIMESTAMPTZ DEFAULT now(),
   picked_up_at TIMESTAMPTZ,
   delivered_at TIMESTAMPTZ,
+  accepted_at TIMESTAMPTZ,
+  ready_at TIMESTAMPTZ,
+  received_at TIMESTAMPTZ,
   is_hidden BOOLEAN DEFAULT false
 );
 

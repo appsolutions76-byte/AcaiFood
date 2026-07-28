@@ -361,7 +361,7 @@ export const useAppStore = create<AppState>()(
           return null;
         }
 
-        // If it's a partner, create storefront
+        // Se for parceiro ou fornecedor, cria vitrine e sub-conta Asaas automaticamente
         if (dbRole === 'PARTNER' || dbRole === 'SUPPLIER') {
             await supabase.from('storefronts').insert({
                 partner_id: newUser.id,
@@ -372,6 +372,65 @@ export const useAppStore = create<AppState>()(
                 price_b2c_medio: newUser.priceB2C?.medio,
                 price_b2c_grosso: newUser.priceB2C?.grosso
             });
+
+            // Cria sub-conta Asaas automaticamente para receber splits
+            try {
+              const { data: asaasData, error: asaasError } = await supabase.functions.invoke('asaas-create-subaccount', {
+                body: {
+                  userId:   newUser.id,
+                  name:     newUser.name,
+                  email:    newUser.email,
+                  cpfCnpj:  newUser.cpfCnpj,
+                  phone:    newUser.telefone,
+                  endereco: newUser.endereco,
+                  bairro:   newUser.bairro,
+                  cidade:   newUser.cidade,
+                  role:     dbRole,
+                }
+              });
+
+              if (asaasData?.walletId) {
+                // Atualiza o usuário local com o walletId recebido
+                newUser.asaasWalletId = asaasData.walletId;
+                newUser.asaasLinked = true;
+                console.log(`✅ Sub-conta Asaas criada! walletId: ${asaasData.walletId}`);
+              } else {
+                // Salva a chave Pix como fallback enquanto o walletId não está disponível
+                console.warn('Sub-conta Asaas não criada:', asaasError?.message || asaasData?.error);
+                if (newUser.pixKey) {
+                  await supabase.from('users').update({ pix_key: newUser.pixKey }).eq('id', newUser.id);
+                }
+              }
+            } catch (asaasErr) {
+              console.warn('Erro ao criar sub-conta Asaas (não bloqueante):', asaasErr);
+            }
+        }
+
+        // Motoristas também têm conta Asaas para receber repasse de entrega
+        if (dbRole === 'COURIER' && newUser.pixKey) {
+            try {
+              const { data: asaasData } = await supabase.functions.invoke('asaas-create-subaccount', {
+                body: {
+                  userId:   newUser.id,
+                  name:     newUser.name,
+                  email:    newUser.email,
+                  cpfCnpj:  newUser.cpfCnpj,
+                  phone:    newUser.telefone,
+                  endereco: newUser.endereco || 'Endereço não informado',
+                  bairro:   newUser.bairro,
+                  cidade:   newUser.cidade,
+                  role:     dbRole,
+                }
+              });
+
+              if (asaasData?.walletId) {
+                newUser.asaasWalletId = asaasData.walletId;
+                newUser.asaasLinked = true;
+                console.log(`✅ Sub-conta Asaas criada para motorista! walletId: ${asaasData.walletId}`);
+              }
+            } catch (e) {
+              console.warn('Erro ao criar sub-conta Asaas para motorista:', e);
+            }
         }
 
         const state = get();
@@ -1062,7 +1121,7 @@ export const useAppStore = create<AppState>()(
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  orderId: dbOrder.id,
+                  orderId: orderIdToUse, // usa o ID com fallback seguro (evita crash quando dbOrder é null por erro de RLS)
                   value: totalValue,
                   split: splitRules,
                   customerEmail: currentUser.email,
