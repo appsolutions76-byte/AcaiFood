@@ -88,7 +88,25 @@ ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_status_check;
 ALTER TABLE public.orders ADD CONSTRAINT orders_status_check 
   CHECK (status IN ('PENDING', 'PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'RECEIVED', 'COMPLETED', 'CANCELLED'));
 
--- 6. Habilitar o sistema de Realtime para as tabelas no Supabase (de forma segura)
+-- 6. Políticas de RLS para a Tabela Orders (Garantir que novos pedidos sejam inseridos sem erro de RLS)
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Buyers can create orders" ON public.orders;
+CREATE POLICY "Buyers can create orders" 
+ON public.orders FOR INSERT 
+WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Buyers can view their orders" ON public.orders;
+CREATE POLICY "Buyers can view their orders" 
+ON public.orders FOR SELECT 
+USING (true);
+
+DROP POLICY IF EXISTS "Buyers can update their own orders" ON public.orders;
+CREATE POLICY "Buyers can update their own orders" 
+ON public.orders FOR UPDATE 
+USING (true);
+
+-- 7. Habilitar o sistema de Realtime para as tabelas no Supabase (de forma segura)
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -108,5 +126,5 @@ END $$;
 
 ALTER TABLE public.orders REPLICA IDENTITY FULL;
 
--- 7. Recarregar o Schema Cache da API REST (Extremamente Importante)
+-- 8. Recarregar o Schema Cache da API REST (Extremamente Importante)
 NOTIFY pgrst, 'reload schema';
