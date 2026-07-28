@@ -268,6 +268,37 @@ export const useAppStore = create<AppState>()(
           };
           
           set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
+
+          // Se for usuário parceiro/motorista legado sem walletId mas com CPF, gera subconta automaticamente em segundo plano
+          if ((appRole === 'loja' || appRole === 'fornecedor' || appRole === 'motorista') && !loggedUser.asaasWalletId && loggedUser.cpfCnpj) {
+            fetch('/api/asaas/subaccount', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: loggedUser.id,
+                name: loggedUser.name,
+                email: loggedUser.email,
+                cpfCnpj: loggedUser.cpfCnpj,
+                phone: loggedUser.telefone,
+                endereco: loggedUser.endereco,
+                bairro: loggedUser.bairro,
+                cidade: loggedUser.cidade,
+                role: userProfile.role
+              })
+            }).then(r => r.json()).then(data => {
+              if (data?.walletId && isValidAsaasWalletId(data.walletId)) {
+                set(prev => {
+                  const u = prev.users[loggedUser.id] || loggedUser;
+                  const updated = { ...u, asaasWalletId: data.walletId, asaasLinked: true };
+                  return {
+                    users: { ...prev.users, [loggedUser.id]: updated },
+                    currentUser: prev.currentUser?.id === loggedUser.id ? updated : prev.currentUser
+                  };
+                });
+              }
+            }).catch(() => {});
+          }
+
           get().setupRealtime(loggedUser.id);
           get().fetchRates();
           get().fetchOrders(loggedUser.id);
@@ -385,31 +416,51 @@ export const useAppStore = create<AppState>()(
 
             // Cria sub-conta Asaas automaticamente para receber splits
             try {
-              const { data: asaasData, error: asaasError } = await supabase.functions.invoke('asaas-create-subaccount', {
-                body: {
-                  userId:   newUser.id,
-                  name:     newUser.name,
-                  email:    newUser.email,
-                  cpfCnpj:  newUser.cpfCnpj,
-                  phone:    newUser.telefone,
-                  endereco: newUser.endereco,
-                  bairro:   newUser.bairro,
-                  cidade:   newUser.cidade,
-                  role:     dbRole,
-                }
-              });
+              let walletId = '';
+              try {
+                const { data: asaasData } = await supabase.functions.invoke('asaas-create-subaccount', {
+                  body: {
+                    userId:   newUser.id,
+                    name:     newUser.name,
+                    email:    newUser.email,
+                    cpfCnpj:  newUser.cpfCnpj,
+                    phone:    newUser.telefone,
+                    endereco: newUser.endereco,
+                    bairro:   newUser.bairro,
+                    cidade:   newUser.cidade,
+                    role:     dbRole,
+                  }
+                });
+                if (asaasData?.walletId) walletId = asaasData.walletId;
+              } catch (e) {
+                console.warn('Edge Function asaas-create-subaccount indisponível, usando API nativa:', e);
+              }
 
-              if (asaasData?.walletId) {
-                // Atualiza o usuário local com o walletId recebido
-                newUser.asaasWalletId = asaasData.walletId;
+              // Fallback para API nativa Next.js se a Edge Function não retornou walletId
+              if (!walletId && newUser.cpfCnpj) {
+                const subRes = await fetch('/api/asaas/subaccount', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId:   newUser.id,
+                    name:     newUser.name,
+                    email:    newUser.email,
+                    cpfCnpj:  newUser.cpfCnpj,
+                    phone:    newUser.telefone,
+                    endereco: newUser.endereco,
+                    bairro:   newUser.bairro,
+                    cidade:   newUser.cidade,
+                    role:     dbRole,
+                  })
+                });
+                const subData = await subRes.json();
+                if (subData?.walletId) walletId = subData.walletId;
+              }
+
+              if (walletId) {
+                newUser.asaasWalletId = walletId;
                 newUser.asaasLinked = true;
-                console.log(`✅ Sub-conta Asaas criada! walletId: ${asaasData.walletId}`);
-              } else {
-                // Salva a chave Pix como fallback enquanto o walletId não está disponível
-                console.warn('Sub-conta Asaas não criada:', asaasError?.message || asaasData?.error);
-                if (newUser.pixKey) {
-                  await supabase.from('users').update({ pix_key: newUser.pixKey }).eq('id', newUser.id);
-                }
+                console.log(`✅ Sub-conta Asaas criada com sucesso! walletId: ${walletId}`);
               }
             } catch (asaasErr) {
               console.warn('Erro ao criar sub-conta Asaas (não bloqueante):', asaasErr);
@@ -417,26 +468,50 @@ export const useAppStore = create<AppState>()(
         }
 
         // Motoristas também têm conta Asaas para receber repasse de entrega
-        if (dbRole === 'COURIER' && newUser.pixKey) {
+        if (dbRole === 'COURIER' && newUser.cpfCnpj) {
             try {
-              const { data: asaasData } = await supabase.functions.invoke('asaas-create-subaccount', {
-                body: {
-                  userId:   newUser.id,
-                  name:     newUser.name,
-                  email:    newUser.email,
-                  cpfCnpj:  newUser.cpfCnpj,
-                  phone:    newUser.telefone,
-                  endereco: newUser.endereco || 'Endereço não informado',
-                  bairro:   newUser.bairro,
-                  cidade:   newUser.cidade,
-                  role:     dbRole,
-                }
-              });
+              let walletId = '';
+              try {
+                const { data: asaasData } = await supabase.functions.invoke('asaas-create-subaccount', {
+                  body: {
+                    userId:   newUser.id,
+                    name:     newUser.name,
+                    email:    newUser.email,
+                    cpfCnpj:  newUser.cpfCnpj,
+                    phone:    newUser.telefone,
+                    endereco: newUser.endereco || 'Centro',
+                    bairro:   newUser.bairro,
+                    cidade:   newUser.cidade,
+                    role:     dbRole,
+                  }
+                });
+                if (asaasData?.walletId) walletId = asaasData.walletId;
+              } catch (e) {}
 
-              if (asaasData?.walletId) {
-                newUser.asaasWalletId = asaasData.walletId;
+              if (!walletId) {
+                const subRes = await fetch('/api/asaas/subaccount', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId:   newUser.id,
+                    name:     newUser.name,
+                    email:    newUser.email,
+                    cpfCnpj:  newUser.cpfCnpj,
+                    phone:    newUser.telefone,
+                    endereco: newUser.endereco || 'Centro',
+                    bairro:   newUser.bairro,
+                    cidade:   newUser.cidade,
+                    role:     dbRole,
+                  })
+                });
+                const subData = await subRes.json();
+                if (subData?.walletId) walletId = subData.walletId;
+              }
+
+              if (walletId) {
+                newUser.asaasWalletId = walletId;
                 newUser.asaasLinked = true;
-                console.log(`✅ Sub-conta Asaas criada para motorista! walletId: ${asaasData.walletId}`);
+                console.log(`✅ Sub-conta Asaas criada para motorista! walletId: ${walletId}`);
               }
             } catch (e) {
               console.warn('Erro ao criar sub-conta Asaas para motorista:', e);
