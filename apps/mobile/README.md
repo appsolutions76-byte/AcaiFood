@@ -1,6 +1,6 @@
 # AçaíFood Pará - Marketplace e Logística de Açaí
 
-Aplicação web e PWA para o ecossistema AçaíFood no Pará.
+Aplicação web e PWA para o ecossistema AçaíFood no Pará. (Versão Produção Asaas - 100% Ativa)
 
 ## 🚀 Como Executar
 
