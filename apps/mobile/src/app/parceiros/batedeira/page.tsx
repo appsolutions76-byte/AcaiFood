@@ -448,7 +448,7 @@ export default function BatedeiraDashboard() {
                       {!isCanceled && o.type === 'B2C' && (o.status === 'pendente' || o.status === 'aguardando_pagamento') && (
                         <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                             <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
-                            <button onClick={() => store.acaoPedido(o.id, 'confirmar_pagamento')} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
+                            <button onClick={() => store.acaoPedido(o.id, 'aceitar_loja')} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
                         </div>
                       )}
 

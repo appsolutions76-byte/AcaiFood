@@ -1618,7 +1618,7 @@ export const useAppStore = create<AppState>()(
                 };
 
                 let finalStatus = appStatus;
-                if (localOrder?.status && (statusPriority[localOrder.status] || 0) > (statusPriority[appStatus] || 0) && appStatus === 'aguardando_pagamento') {
+                if (localOrder?.status && (statusPriority[localOrder.status] || 0) > (statusPriority[appStatus] || 0)) {
                   finalStatus = localOrder.status;
                 }
 

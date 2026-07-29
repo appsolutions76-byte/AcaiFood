@@ -77,17 +77,20 @@ export default function StorefrontPage() {
   };
 
   useEffect(() => {
-    if (!pixModalData.open || !pixModalData.orderId) return;
+    if (!pixModalData.open || !pixModalData.orderId) {
+      setPixPaid(false);
+      return;
+    }
 
-    setPixPaid(false);
+    let isSubscribed = true;
 
     const checkStatus = async () => {
       // 1. Checar status no banco local via store
       const localOrder = store.orders.find(o => o.id === pixModalData.orderId);
       if (localOrder) {
         const s = String(localOrder.status).toLowerCase();
-        if (['pago', 'preparo', 'pronto', 'em_rota', 'entregue', 'paid', 'preparing', 'ready', 'delivering', 'delivered', 'received', 'completed'].includes(s)) {
-          setPixPaid(true);
+        if (['pago', 'pendente', 'preparo', 'pronto', 'em_rota', 'entregue', 'paid', 'preparing', 'ready', 'delivering', 'delivered', 'received', 'completed'].includes(s)) {
+          if (isSubscribed) setPixPaid(true);
           return;
         }
       }
@@ -98,7 +101,7 @@ export default function StorefrontPage() {
           ? `paymentId=${pixModalData.paymentId}&orderId=${pixModalData.orderId}` 
           : `orderId=${pixModalData.orderId}`;
         const res = await fetch(`/api/asaas/status?${query}`);
-        if (res.ok) {
+        if (res.ok && isSubscribed) {
           const data = await res.json();
           if (data.isPaid) {
             setPixPaid(true);
@@ -114,7 +117,10 @@ export default function StorefrontPage() {
 
     checkStatus();
     const interval = setInterval(checkStatus, 3500);
-    return () => clearInterval(interval);
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
   }, [pixModalData.open, pixModalData.orderId, pixModalData.paymentId, store.orders]);
 
   const getCartPrice = (lojaId: string, tipo: string) => {
