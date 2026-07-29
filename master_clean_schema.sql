@@ -146,5 +146,14 @@ END $$;
 
 ALTER TABLE public.orders REPLICA IDENTITY FULL;
 
--- 10. Notificar a API REST do Supabase para recarregar o schema cache
+-- 10. Garantir Políticas RLS Totais na Tabela Orders (Leitura, Inserção e Atualização)
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all update on orders" ON public.orders;
+CREATE POLICY "Allow all update on orders" ON public.orders FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all insert on orders" ON public.orders;
+CREATE POLICY "Allow all insert on orders" ON public.orders FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all select on orders" ON public.orders;
+CREATE POLICY "Allow all select on orders" ON public.orders FOR SELECT USING (true);
+
+-- 11. Notificar a API REST do Supabase para recarregar o schema cache
 NOTIFY pgrst, 'reload schema';

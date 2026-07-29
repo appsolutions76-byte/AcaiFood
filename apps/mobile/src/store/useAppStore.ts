@@ -1552,6 +1552,24 @@ export const useAppStore = create<AppState>()(
                 const storeName = dbOrder.storefront?.store_name || 'Loja';
                 const localOrder = state.orders.find(o => o.id === dbOrder.id);
                 
+                // Preserva o status local se a loja ou usuario ja aceitou/avancou o pedido (evita regressao de status no auto-refresh)
+                const statusPriority: Record<string, number> = {
+                  'aguardando_pagamento': 1,
+                  'pendente': 2,
+                  'preparo': 3,
+                  'pronto': 4,
+                  'em_rota': 5,
+                  'aguardando_cliente': 6,
+                  'entregue': 7,
+                  'arquivado': 8,
+                  'cancelado': 9
+                };
+
+                let finalStatus = appStatus;
+                if (localOrder?.status && (statusPriority[localOrder.status] || 0) > (statusPriority[appStatus] || 0) && appStatus === 'aguardando_pagamento') {
+                  finalStatus = localOrder.status;
+                }
+
                 const deliveryTotal = (dbOrder.delivery_distance_km || 0) * (dbOrder.applied_delivery_fee_per_km || 0);
                 const platformDelivery = deliveryTotal * ((dbOrder.applied_delivery_platform_fee_percent || 0) / 100);
                 const driverAmount = deliveryTotal - platformDelivery;
@@ -1581,7 +1599,7 @@ export const useAppStore = create<AppState>()(
                    id: dbOrder.id,
                    type: dbOrder.order_type as 'B2C'|'B2B'|'COLETA',
                    title: localOrder?.title || `Pedido de ${storeName}`,
-                   status: appStatus as any,
+                   status: finalStatus as any,
                    createdAt: dbOrder.created_at,
                    pickedUpAt: dbOrder.picked_up_at,
                    deliveredAt: dbOrder.delivered_at,
