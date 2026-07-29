@@ -389,32 +389,49 @@ export default function BatedeiraDashboard() {
                   
                   <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
                       {o.status === 'aguardando_pagamento' && (
-                        <div className="flex flex-col items-end gap-1">
+                        <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
                           <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase animate-pulse">⏳ Aguardando Pagamento Pix</span>
-                          <button 
-                            onClick={async () => {
-                              try {
-                                const res = await fetch(`/api/asaas/status?orderId=${o.id}`);
-                                if (res.ok) {
-                                  const data = await res.json();
-                                  if (data.isPaid) {
-                                    store.acaoPedido(o.id, 'confirmar_pagamento');
-                                    alert("✅ Pagamento identificado com sucesso no Asaas! Pedido liberado para preparo.");
-                                  } else {
-                                    alert("O pagamento ainda consta como pendente no Asaas.");
+                          <div className="flex flex-wrap gap-1.5 justify-end w-full">
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch(`/api/asaas/status?orderId=${o.id}`);
+                                  if (res.ok) {
+                                    const data = await res.json();
+                                    if (data.isPaid) {
+                                      store.acaoPedido(o.id, 'confirmar_pagamento');
+                                      alert("✅ Pagamento identificado com sucesso no Asaas! Pedido liberado para preparo.");
+                                    } else {
+                                      alert("O pagamento ainda consta como pendente no Asaas.");
+                                    }
                                   }
+                                } catch (err) {
+                                  alert("Erro ao consultar status no Asaas.");
                                 }
-                              } catch (err) {
-                                alert("Erro ao consultar status no Asaas.");
-                              }
-                            }}
-                            className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold px-2 py-1 rounded transition"
-                          >
-                            🔍 Checar Pix no Asaas
-                          </button>
+                              }}
+                              className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold px-2 py-1.5 rounded-lg transition"
+                            >
+                              🔍 Checar Pix no Asaas
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if (confirm("Deseja aprovar manualmente o pagamento Pix deste pedido e iniciar o preparo?")) {
+                                  store.acaoPedido(o.id, 'confirmar_pagamento');
+                                  alert("✅ Pagamento aprovado! O pedido foi alterado para Em Preparo.");
+                                }
+                              }}
+                              className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm"
+                            >
+                              ✅ Aprovar Pix e Preparar
+                            </button>
+                          </div>
                         </div>
                       )}
-                      {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando</span>}
+                      {o.status === 'pendente' && (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pagamento Aprovado</span>
+                        </div>
+                      )}
                       {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Preparo</span>}
                       {o.status === 'pronto' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase">{o.type === 'B2B' ? '🚛 Aguardando Caminhão' : '🏍️ Aguardando Moto'}</span>}
                       {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
@@ -428,10 +445,10 @@ export default function BatedeiraDashboard() {
                       )}
 
                       {/* Interações */}
-                      {!isCanceled && o.type === 'B2C' && o.status === 'pendente' && (
+                      {!isCanceled && o.type === 'B2C' && (o.status === 'pendente' || o.status === 'aguardando_pagamento') && (
                         <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                             <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
-                            <button onClick={() => store.acaoPedido(o.id, 'aceitar_loja')} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
+                            <button onClick={() => store.acaoPedido(o.id, 'confirmar_pagamento')} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
                         </div>
                       )}
 
