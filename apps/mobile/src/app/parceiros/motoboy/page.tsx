@@ -224,7 +224,10 @@ export default function MotoboyDashboard() {
                             <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-3 rounded-xl flex flex-col gap-2 items-center font-bold">
                                 <p>✅ Entrega Concluída</p>
                                 <button 
-                                  onClick={async () => {
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
                                     const pixKey = currentUser?.pixKey || currentUser?.cpfCnpj || currentUser?.email || currentUser?.asaasWalletId;
                                     const valorEntrega = o.taxas?.entregaMotorista || 0;
                                     if (!pixKey) {
@@ -246,9 +249,14 @@ export default function MotoboyDashboard() {
                                       if (data.success) {
                                         alert(`✅ Repasse Pix de R$ ${valorEntrega.toFixed(2)} enviado para sua conta!`);
                                       } else {
-                                        alert(`Status do Repasse Asaas: ${data.error || 'Não foi possível processar a transferência.'}`);
+                                        const msg = data.error || '';
+                                        if (msg.includes('Saldo insuficiente')) {
+                                          alert(`⚠️ Saldo em Processamento no Asaas:\nO valor da entrega aguarda a liberação de saldo no Asaas. A transferência será processada assim que o saldo estiver disponível no Asaas.`);
+                                        } else {
+                                          alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
+                                        }
                                       }
-                                    } catch(e) {
+                                    } catch(err) {
                                       alert("Erro ao solicitar repasse Pix.");
                                     }
                                   }}

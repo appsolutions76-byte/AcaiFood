@@ -441,7 +441,10 @@ export default function BatedeiraDashboard() {
                         <div className="flex flex-col items-end gap-1">
                           <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>
                           <button 
-                            onClick={async () => {
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
                               const pixKey = currentUser?.pixKey || currentUser?.cpfCnpj || currentUser?.email || currentUser?.asaasWalletId;
                               const valorRepasse = o.taxas?.repasse || 0;
                               if (!pixKey) {
@@ -463,9 +466,14 @@ export default function BatedeiraDashboard() {
                                 if (data.success) {
                                   alert(`✅ Repasse Pix de R$ ${valorRepasse.toFixed(2)} transferido com sucesso!`);
                                 } else {
-                                  alert(`Status do Repasse Asaas: ${data.error || 'Não foi possível processar a transferência.'}`);
+                                  const msg = data.error || '';
+                                  if (msg.includes('Saldo insuficiente')) {
+                                    alert(`⚠️ Saldo em Processamento no Asaas:\nO Pix deste pedido já foi recebido, porém o valor líquido disponível no Asaas aguarda o tempo de liberação da conta. A transferência será processada assim que o Asaas liberar o saldo.`);
+                                  } else {
+                                    alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
+                                  }
                                 }
-                              } catch(e) {
+                              } catch(err) {
                                 alert("Erro ao solicitar repasse Pix.");
                               }
                             }}
