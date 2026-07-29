@@ -392,8 +392,17 @@ export default function StorefrontPage() {
                             {(o.status === 'entregue' || o.status === 'arquivado') && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Entregue</span>}
                             {isCanceled && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
   
-                            {!isCanceled && o.status === 'pendente' && (
-                              <button onClick={() => store.acaoPedido(o.id, 'cancelar_cliente')} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
+                            {!isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'em_rota' && o.status !== 'aguardando_cliente' && (
+                              <button 
+                                onClick={() => {
+                                  if (confirm('Deseja realmente cancelar este pedido?')) {
+                                    store.acaoPedido(o.id, 'cancelar_cliente');
+                                  }
+                                }} 
+                                className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3.5 py-2 rounded-xl transition w-full sm:w-auto mt-2 sm:mt-0 shadow-sm flex items-center justify-center gap-1 active:scale-95"
+                              >
+                                ❌ Cancelar Pedido
+                              </button>
                             )}
 
                             {isCanceled && (
