@@ -1142,6 +1142,18 @@ export const useAppStore = create<AppState>()(
             novoPedido.taxas.repasse = novoPedido.valor - novoPedido.taxas.plataformaVenda - novoPedido.taxas.entregaFornecedor;
         }
 
+        if (tipo === 'COLETA') {
+          novoPedido.title = `Coleta de Carroço / Resíduos (Caçamba)`;
+          novoPedido.lojaId = currentUser.id;
+          novoPedido.taxas.entregaTotal = valColeta;
+          novoPedido.taxas.entregaLoja = valColeta;
+          novoPedido.taxas.plataformaEntrega = valColeta * (state.rates.col_mot_plat / 100);
+          novoPedido.taxas.entregaMotorista = valColeta - novoPedido.taxas.plataformaEntrega;
+          novoPedido.taxas.plataformaVenda = 0;
+          novoPedido.taxas.plataformaTotal = novoPedido.taxas.plataformaEntrega;
+          novoPedido.taxas.repasse = 0;
+        }
+
         // Apenas salva localmente após o sucesso e com o ID real
         
         // 1. Insert into Supabase Orders table
