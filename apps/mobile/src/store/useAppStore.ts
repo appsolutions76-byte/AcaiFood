@@ -96,6 +96,7 @@ export interface Order {
   deliveryLng?: number;
   deliveryReference?: string;
   clienteNome?: string;
+  clienteTelefone?: string;
   lojaNome?: string;
   motoristaNome?: string;
 }
@@ -1106,7 +1107,7 @@ export const useAppStore = create<AppState>()(
           valor: itemsTotal,
           quantity: totalQuantity,
           items: finalCartItems,
-          deliveryAddress: deliveryInfo?.address,
+          deliveryAddress: deliveryInfo?.address || currentUser.endereco || (currentUser.bairro ? `${currentUser.bairro}, ${currentUser.cidade || 'Belém'}` : ''),
           deliveryLat: deliveryInfo?.lat,
           deliveryLng: deliveryInfo?.lng,
           deliveryReference: deliveryInfo?.reference,
@@ -1120,7 +1121,9 @@ export const useAppStore = create<AppState>()(
           novoPedido.title = `${titles} (${loja.name})`;
           novoPedido.clienteId = currentUser.id;
           novoPedido.clienteNome = currentUser.name;
+          novoPedido.clienteTelefone = currentUser.telefone;
           novoPedido.destinoId = currentUser.id;
+
           novoPedido.lojaId = targetId;
           novoPedido.taxas.entregaTotal = calcFrete('B2C', distKM);
           novoPedido.taxas.entregaLoja = novoPedido.taxas.entregaTotal * ((loja.freteSubsidyPct || 0) / 100);

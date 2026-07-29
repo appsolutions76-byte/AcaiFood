@@ -1,4 +1,4 @@
-import { Order } from '@/store/useAppStore';
+import { Order, User } from '@/store/useAppStore';
 
 export interface PrinterConfig {
   paperWidth: '58mm' | '80mm';
@@ -41,7 +41,9 @@ export function generateSingleTicketHTML(
   storeName: string = 'Batedeira AçaíFood',
   paperWidth: '58mm' | '80mm' = '80mm',
   viaNumber: number = 1,
-  totalVias: number = 1
+  totalVias: number = 1,
+  allUsers?: Record<string, User> | null,
+  clientUser?: User | null
 ): string {
   const is58 = paperWidth === '58mm';
   const widthPx = is58 ? '48mm' : '72mm';
@@ -75,6 +77,18 @@ export function generateSingleTicketHTML(
   const viaTitle = totalVias > 1 
     ? (viaNumber === 1 ? '*** VIA 1: PREPARO / BATEDEIRA ***' : '*** VIA 2: ENTREGA / MOTOBOY ***')
     : '*** COMANDA DE PREPARO ***';
+
+  // Resolução inteligente dos dados do cliente (Gabriel ou qualquer cliente)
+  const resolvedClient = clientUser || (allUsers && order.clienteId ? allUsers[order.clienteId] : undefined) 
+    || (allUsers && order.destinoId ? allUsers[order.destinoId] : undefined) 
+    || (allUsers && order.criadoPor ? allUsers[order.criadoPor] : undefined);
+
+  const clienteNome = order.clienteNome || resolvedClient?.name || 'Cliente AçaíFood';
+  const clienteTelefone = order.clienteTelefone || resolvedClient?.telefone || resolvedClient?.email || 'Não informado';
+  const clienteEndereco = order.deliveryAddress 
+    || resolvedClient?.endereco 
+    || (resolvedClient?.bairro ? `${resolvedClient.bairro}, ${resolvedClient.cidade || 'Belém'}` : '') 
+    || 'Endereço não informado';
 
   return `
     <div class="thermal-ticket" style="
@@ -110,7 +124,19 @@ export function generateSingleTicketHTML(
 
       <!-- CLIENTE & ENTREGA -->
       <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <div style="font-weight: bold; font-size: ${is58 ? '11px' : '12px'};">CLIENTE: ${order.clienteNome || 'Cliente AçaíFood'}</div>
+        <div style="font-weight: bold; font-size: ${is58 ? '11px' : '13px'}; text-transform: uppercase;">
+          CLIENTE: ${clienteNome}
+        </div>
+        <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 2px;">
+          📞 TEL: ${clienteTelefone}
+        </div>
+        <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 2px;">
+          <strong>📍 ENDEREÇO:</strong> ${clienteEndereco}
+        </div>
+        ${order.deliveryReference ? `
+          <div style="font-size: ${is58 ? '9px' : '10px'}; font-style: italic; margin-top: 2px;">Ref: ${order.deliveryReference}</div>
+        ` : ''}
+
         <!-- PIN Seguro: Apenas lembrete de solicitar ao cliente na entrega -->
         <div style="
           border: 1px dashed #000;
@@ -122,15 +148,6 @@ export function generateSingleTicketHTML(
         ">
           PIN ENTREGA: Pedir ao Cliente
         </div>
-
-        ${order.deliveryAddress ? `
-          <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 2px;">
-            <strong>Endereço:</strong> ${order.deliveryAddress}
-          </div>
-        ` : ''}
-        ${order.deliveryReference ? `
-          <div style="font-size: ${is58 ? '9px' : '10px'}; font-style: italic;">Ref: ${order.deliveryReference}</div>
-        ` : ''}
       </div>
 
       <!-- ITENS / PRODUTOS -->
@@ -175,7 +192,9 @@ export function generateSingleTicketHTML(
 export function printOrderTicket(
   order: Order,
   storeName: string = 'Batedeira AçaíFood',
-  customConfig?: PrinterConfig
+  customConfig?: PrinterConfig,
+  allUsers?: Record<string, User> | null,
+  clientUser?: User | null
 ): void {
   if (typeof window === 'undefined') return;
 
@@ -191,7 +210,7 @@ export function printOrderTicket(
 
   let fullHTML = '';
   for (let via = 1; via <= copies; via++) {
-    fullHTML += generateSingleTicketHTML(order, storeName, config.paperWidth, via, copies);
+    fullHTML += generateSingleTicketHTML(order, storeName, config.paperWidth, via, copies, allUsers, clientUser);
     if (via < copies) {
       fullHTML += `<div style="page-break-after: always; height: 15px; border-bottom: 2px dashed #000; margin: 15px 0;"></div>`;
     }
@@ -224,9 +243,9 @@ export function printTestTicket(
       { id: '3', name: 'Adicional: Bananas fatiadas', quantity: 1, price: 2.00 }
     ],
     status: 'preparo',
-    criadoPor: 'cliente_123',
+    criadoPor: 'cliente_gabriel',
     origemId: 'loja_123',
-    destinoId: 'cliente_123',
+    destinoId: 'cliente_gabriel',
     distancia: 2.5,
     confirmacao: { entregador: false, recebedor: false },
     motoristaId: null,
@@ -246,9 +265,11 @@ export function printTestTicket(
     deliveryPin: '4829',
     deliveryAddress: 'Av. Nazaré, 1050 - Apt 302, Belém/PA',
     deliveryReference: 'Próximo ao Basílica de Nazaré',
-    clienteNome: 'Maria Silva (Teste Impressora)',
+    clienteNome: 'Gabriel (Teste Impressora)',
+    clienteTelefone: '(91) 98877-6655',
     lojaNome: storeName
   };
 
   printOrderTicket(testOrder, storeName, config);
 }
+

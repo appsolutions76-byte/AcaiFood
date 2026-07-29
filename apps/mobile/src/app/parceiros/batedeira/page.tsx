@@ -85,8 +85,9 @@ export default function BatedeiraDashboard() {
 
     for (const order of autoOrders) {
       printedOrdersRef.current.add(order.id);
-      printOrderTicket(order, currentUser.name, printerConfig);
+      printOrderTicket(order, currentUser.name, printerConfig, store.users);
     }
+
   }, [store.orders, currentUser?.id, currentUser?.name, printerConfig, mounted]);
 
 
@@ -552,13 +553,14 @@ export default function BatedeiraDashboard() {
                       {!isCanceled && (
                         <button
                           type="button"
-                          onClick={() => printOrderTicket(o, currentUser?.name || 'Batedeira AçaíFood', printerConfig)}
+                          onClick={() => printOrderTicket(o, currentUser?.name || 'Batedeira AçaíFood', printerConfig, store.users)}
                           className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-3 py-2 rounded-lg border border-purple-300 dark:border-purple-800 transition shadow-sm flex items-center gap-1 shrink-0 mt-2 sm:mt-0"
                           title="Imprimir comanda térmica deste pedido"
                         >
                           🖨️ Imprimir Comanda
                         </button>
                       )}
+
 
                       {!isCanceled && o.type === 'B2B' && o.status === 'em_rota' && (
                         <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Aguardando caminhão</span>
