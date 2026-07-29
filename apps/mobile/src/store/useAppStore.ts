@@ -838,9 +838,17 @@ export const useAppStore = create<AppState>()(
          // Remove undefined values
          Object.keys(dbUpdates).forEach(key => { if ((dbUpdates as any)[key] === undefined) delete (dbUpdates as any)[key]; });
 
-         const targetId = (get().rates as any).id || 'e2560fbd-14d8-4749-b66e-6b0a24dce799';
-         const { error } = await supabase.from('platform_settings').update(dbUpdates).eq('id', targetId);
-         if (error) console.error("Erro ao salvar taxas no Supabase:", error);
+         const { data: firstRow } = await supabase.from('platform_settings').select('id').limit(1).maybeSingle();
+         const targetId = firstRow?.id || (get().rates as any).id;
+         
+         if (targetId) {
+           const { error } = await supabase.from('platform_settings').update(dbUpdates).eq('id', targetId);
+           if (error) console.error("Erro ao salvar taxas no Supabase:", error);
+         } else {
+           const { error } = await supabase.from('platform_settings').insert(dbUpdates);
+           if (error) console.error("Erro ao inserir taxas no Supabase:", error);
+         }
+         await get().fetchRates();
       },
       
       setFreteSubsidy: async (userId, pct) => {
