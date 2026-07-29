@@ -1689,12 +1689,12 @@ export const useAppStore = create<AppState>()(
          if (!currentUser) return;
          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
          
-         // Atualiza o status em tempo real a cada 5 segundos
+         // Atualiza o estado e pedidos a cada 10 segundos (dá tempo para editar preços e produtos tranquilamente)
          autoRefreshInterval = setInterval(() => {
              get().fetchOrders(currentUser.id);
              get().fetchRates();
              get().fetchAllUsers();
-         }, 5000);
+         }, 10000);
       },
       
       stopAutoRefresh: () => {

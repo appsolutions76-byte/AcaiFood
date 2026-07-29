@@ -193,7 +193,10 @@ export default function MotoboyDashboard() {
                         </div>
                         
                         {o.status === 'em_rota' ? (
-                            <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-3 rounded-lg shadow transition">📍 Confirmar Chegada</button>
+                            <div className="flex gap-2">
+                                <button onClick={() => { if(confirm('Deseja realmente cancelar esta corrida?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
+                                <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-3 rounded-lg shadow transition">📍 Confirmar Chegada</button>
+                            </div>
                         ) : o.status === 'aguardando_cliente' ? (
                             <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 p-4 rounded-xl flex flex-col gap-3 shadow-inner">
                                 <p className="text-xs text-center font-bold">Peça o PIN de Segurança ao cliente</p>
