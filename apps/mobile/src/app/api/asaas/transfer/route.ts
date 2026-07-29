@@ -26,15 +26,27 @@ export async function POST(request: Request) {
       ? 'https://sandbox.asaas.com/api/v3'
       : 'https://www.asaas.com/api/v3';
 
-    // Limpa a chave Pix
+    // Limpa a chave Pix ou WalletId
     const cleanPixKey = String(pixKey).trim();
+    const cleanDigits = cleanPixKey.replace(/\D/g, '');
 
-    // Determina o tipo de chave Pix se necessário ou envia pixAddressKey direto
+    const isWalletId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanPixKey) || (cleanPixKey.length >= 20 && !cleanPixKey.match(/^\d+$/));
+
     const transferBody: any = {
       value: Number(value.toFixed(2)),
-      pixAddressKey: cleanPixKey,
       description: description || `Repasse AçaíFood #${String(orderId || '').substring(0, 8)}`
     };
+
+    if (isWalletId) {
+      transferBody.walletId = cleanPixKey;
+    } else {
+      transferBody.pixAddressKey = cleanPixKey;
+      if (cleanDigits.length === 11) transferBody.pixAddressKeyType = 'CPF';
+      else if (cleanDigits.length === 14) transferBody.pixAddressKeyType = 'CNPJ';
+      else if (cleanPixKey.includes('@')) transferBody.pixAddressKeyType = 'EMAIL';
+      else if (cleanDigits.length >= 10 && cleanDigits.length <= 11) transferBody.pixAddressKeyType = 'PHONE';
+      else transferBody.pixAddressKeyType = 'EVP';
+    }
 
     console.log(`Iniciando transferência Pix no Asaas (${isSandbox ? 'SANDBOX' : 'PRODUÇÃO'}):`, transferBody);
 

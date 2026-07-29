@@ -437,7 +437,44 @@ export default function BatedeiraDashboard() {
                       {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
                       {o.status === 'aguardando_cliente' && o.type === 'B2C' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Cliente Confirmar</span>}
                       {o.status === 'aguardando_cliente' && o.type === 'B2B' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Caminhão Chegou</span>}
-                      {(o.status === 'entregue' || o.status === 'arquivado') && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>}
+                      {(o.status === 'entregue' || o.status === 'arquivado') && (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>
+                          <button 
+                            onClick={async () => {
+                              const pixKey = currentUser?.pixKey || currentUser?.cpfCnpj || currentUser?.email || currentUser?.asaasWalletId;
+                              const valorRepasse = o.taxas?.repasse || 0;
+                              if (!pixKey) {
+                                alert("Cadastre seu CPF ou Chave Pix em seu perfil para receber o repasse.");
+                                return;
+                              }
+                              try {
+                                const res = await fetch('/api/asaas/transfer', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    pixKey,
+                                    value: valorRepasse,
+                                    description: `Repasse Venda AçaíFood #${o.id.substring(0, 8)}`,
+                                    orderId: o.id
+                                  })
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  alert(`✅ Repasse Pix de R$ ${valorRepasse.toFixed(2)} transferido com sucesso!`);
+                                } else {
+                                  alert(`Status do Repasse Asaas: ${data.error || 'Não foi possível processar a transferência.'}`);
+                                }
+                              } catch(e) {
+                                alert("Erro ao solicitar repasse Pix.");
+                              }
+                            }}
+                            className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded transition shadow-sm"
+                          >
+                            💸 Resgatar Repasse (R$ {o.taxas?.repasse?.toFixed(2)})
+                          </button>
+                        </div>
+                      )}
                       {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
                       
                       {isCanceled && (

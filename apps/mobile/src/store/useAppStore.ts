@@ -1486,26 +1486,58 @@ export const useAppStore = create<AppState>()(
                   get().fetchOrders(currentUser.id);
                }
             } else if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
-               // Disparar transferência automática Pix para o Motoboy
+               // Disparar transferências automáticas Pix (Payout) para Loja e Motoboy
                const currentOrder = state.orders.find(o => o.id === orderId);
-               const motoboyId = currentOrder?.motoristaId || state.currentUser?.id;
-               const motoboyUser = motoboyId ? state.users[motoboyId] : null;
-               const pixKey = motoboyUser?.pixKey || motoboyUser?.asaasWalletId;
-               const entregaValor = currentOrder?.taxas?.entregaMotorista || 0;
+               if (currentOrder) {
+                 // 1. Repasse da Loja
+                 const lojaId = currentOrder.lojaId || currentOrder.origemId;
+                 let lojaUser: any = lojaId ? state.users[lojaId] : null;
+                 if (!lojaUser && lojaId) {
+                   const { data: uLoja } = await supabase.from('users').select('pix_key, cpf_cnpj, email, asaas_wallet_id').eq('id', lojaId).maybeSingle();
+                   lojaUser = uLoja;
+                 }
+                 const lojaPixKey = lojaUser?.pix_key || lojaUser?.pixKey || lojaUser?.asaasWalletId || lojaUser?.cpf_cnpj || lojaUser?.cpfCnpj || lojaUser?.email;
+                 const repasseLoja = currentOrder.taxas?.repasse || 0;
 
-               if (pixKey && entregaValor > 0 && !pixKey.includes('asaas_wallet_')) {
-                 fetch('/api/asaas/transfer', {
-                   method: 'POST',
-                   headers: { 'Content-Type': 'application/json' },
-                   body: JSON.stringify({
-                     pixKey,
-                     value: entregaValor,
-                     description: `Repasse Entrega AçaíFood #${orderId.substring(0, 8)}`,
-                     orderId
-                   })
-                 }).then(r => r.json()).then(data => {
-                   console.log("Transferência Pix enviada com sucesso ao Motoboy:", data);
-                 }).catch(e => console.warn("Aviso na transferência Pix ao Motoboy:", e));
+                 if (lojaPixKey && repasseLoja > 0) {
+                   fetch('/api/asaas/transfer', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                       pixKey: lojaPixKey,
+                       value: repasseLoja,
+                       description: `Repasse Venda AçaíFood #${String(orderId).substring(0, 8)}`,
+                       orderId
+                     })
+                   }).then(r => r.json()).then(data => {
+                     console.log("✅ Repasse Pix enviado com sucesso à Loja:", data);
+                   }).catch(e => console.warn("Aviso no repasse Pix à Loja:", e));
+                 }
+
+                 // 2. Repasse do Motoboy
+                 const motoboyId = currentOrder.motoristaId || state.currentUser?.id;
+                 let motoboyUser: any = motoboyId ? state.users[motoboyId] : null;
+                 if (!motoboyUser && motoboyId) {
+                   const { data: uMoto } = await supabase.from('users').select('pix_key, cpf_cnpj, email, asaas_wallet_id').eq('id', motoboyId).maybeSingle();
+                   motoboyUser = uMoto;
+                 }
+                 const motoboyPixKey = motoboyUser?.pix_key || motoboyUser?.asaasWalletId || motoboyUser?.cpf_cnpj || motoboyUser?.cpfCnpj || motoboyUser?.email;
+                 const repasseMotoboy = currentOrder.taxas?.entregaMotorista || 0;
+
+                 if (motoboyPixKey && repasseMotoboy > 0) {
+                   fetch('/api/asaas/transfer', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                       pixKey: motoboyPixKey,
+                       value: repasseMotoboy,
+                       description: `Repasse Entrega AçaíFood #${String(orderId).substring(0, 8)}`,
+                       orderId
+                     })
+                   }).then(r => r.json()).then(data => {
+                     console.log("✅ Repasse Pix enviado com sucesso ao Motoboy:", data);
+                   }).catch(e => console.warn("Aviso no repasse Pix ao Motoboy:", e));
+                 }
                }
             }
          }

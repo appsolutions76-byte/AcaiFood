@@ -221,7 +221,42 @@ export default function MotoboyDashboard() {
                                 </div>
                             </div>
                         ) : o.status === 'entregue' || o.status === 'arquivado' ? (
-                            <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-2 rounded text-center font-bold">✅ Finalizado</div>
+                            <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-3 rounded-xl flex flex-col gap-2 items-center font-bold">
+                                <p>✅ Entrega Concluída</p>
+                                <button 
+                                  onClick={async () => {
+                                    const pixKey = currentUser?.pixKey || currentUser?.cpfCnpj || currentUser?.email || currentUser?.asaasWalletId;
+                                    const valorEntrega = o.taxas?.entregaMotorista || 0;
+                                    if (!pixKey) {
+                                      alert("Cadastre seu CPF ou Chave Pix em seu perfil para receber a entrega.");
+                                      return;
+                                    }
+                                    try {
+                                      const res = await fetch('/api/asaas/transfer', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          pixKey,
+                                          value: valorEntrega,
+                                          description: `Repasse Entrega AçaíFood #${o.id.substring(0, 8)}`,
+                                          orderId: o.id
+                                        })
+                                      });
+                                      const data = await res.json();
+                                      if (data.success) {
+                                        alert(`✅ Repasse Pix de R$ ${valorEntrega.toFixed(2)} enviado para sua conta!`);
+                                      } else {
+                                        alert(`Status do Repasse Asaas: ${data.error || 'Não foi possível processar a transferência.'}`);
+                                      }
+                                    } catch(e) {
+                                      alert("Erro ao solicitar repasse Pix.");
+                                    }
+                                  }}
+                                  className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-md w-full"
+                                >
+                                  💸 Resgatar Repasse (R$ {o.taxas?.entregaMotorista?.toFixed(2)})
+                                </button>
+                            </div>
                         ) : isCanceled ? (
                             <div className="flex flex-col gap-2">
                                <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 text-xs p-2 rounded text-center font-bold">Cancelado</div>
