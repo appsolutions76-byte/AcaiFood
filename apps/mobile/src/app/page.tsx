@@ -441,6 +441,32 @@ export default function StorefrontPage() {
                         </div>
                         
                         <div className="flex flex-col sm:flex-row items-center justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
+                            {o.status === 'aguardando_pagamento' && (
+                              <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
+                                <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase animate-pulse">⏳ Aguardando Pagamento Pix</span>
+                                <button 
+                                  onClick={async () => {
+                                    try {
+                                      const res = await fetch(`/api/asaas/status?orderId=${o.id}`);
+                                      if (res.ok) {
+                                        const data = await res.json();
+                                        if (data.isPaid) {
+                                          store.acaoPedido(o.id, 'confirmar_pagamento');
+                                          alert("✅ Pagamento confirmado no Asaas! Seu pedido foi enviado para a loja.");
+                                        } else {
+                                          alert("Pagamento ainda em processamento no Asaas. Se você realizou o Pix, a loja também pode aprovar diretamente!");
+                                        }
+                                      }
+                                    } catch(err) {
+                                      alert("Erro ao verificar pagamento no Asaas.");
+                                    }
+                                  }}
+                                  className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold px-2 py-1 rounded transition"
+                                >
+                                  🔍 Checar Pix no Asaas
+                                </button>
+                              </div>
+                            )}
                             {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Loja</span>}
                             {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Preparo</span>}
                             {o.status === 'pronto' && <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Entregador</span>}

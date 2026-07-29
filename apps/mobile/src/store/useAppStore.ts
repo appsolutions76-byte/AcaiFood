@@ -1729,10 +1729,26 @@ export const useAppStore = create<AppState>()(
          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
          
          // Atualiza o estado e pedidos a cada 10 segundos (dá tempo para editar preços e produtos tranquilamente)
-         autoRefreshInterval = setInterval(() => {
-             get().fetchOrders(currentUser.id);
+         autoRefreshInterval = setInterval(async () => {
+             await get().fetchOrders(currentUser.id);
              get().fetchRates();
              get().fetchAllUsers();
+
+             // Checar automaticamente status dos pagamentos Pix pendentes no Asaas
+             const pendingOrders = (get().orders || []).filter(o => o.status === 'aguardando_pagamento');
+             for (const pOrder of pendingOrders) {
+                 try {
+                     const res = await fetch(`/api/asaas/status?orderId=${pOrder.id}`);
+                     if (res.ok) {
+                         const data = await res.json();
+                         if (data.isPaid) {
+                             get().acaoPedido(pOrder.id, 'confirmar_pagamento');
+                         }
+                     }
+                 } catch(e) {
+                     console.warn("Erro no autoRefresh ao checar status de pagamento Pix:", e);
+                 }
+             }
          }, 10000);
       },
       
