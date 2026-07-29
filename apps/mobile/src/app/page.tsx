@@ -46,6 +46,36 @@ export default function StorefrontPage() {
   const [cpfInputValue, setCpfInputValue] = useState("");
   const { cart, addToCart, removeFromCart, updateCartQuantity } = store;
 
+  const [addressMode, setAddressMode] = useState<'profile' | 'gps' | 'custom'>('profile');
+  const [customAddress, setCustomAddress] = useState("");
+  const [customReference, setCustomReference] = useState("");
+  const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number; address?: string } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handleGetGpsLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      alert("Geolocalização não é suportada pelo seu navegador.");
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          address: `Localização GPS (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`
+        });
+        setAddressMode('gps');
+        setIsLocating(false);
+      },
+      (err) => {
+        setIsLocating(false);
+        alert("Não foi possível obter sua localização GPS. Verifique as permissões de localização do dispositivo.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   useEffect(() => {
     if (!pixModalData.open || !pixModalData.orderId) return;
 
@@ -191,7 +221,28 @@ export default function StorefrontPage() {
 
   const processCheckout = async () => {
     if (!cart.storeId || cart.items.length === 0) return;
-    const res: any = await store.criarPedido('B2C', cart.storeId);
+
+    let deliveryInfo: { address?: string; lat?: number; lng?: number; reference?: string } | undefined = undefined;
+
+    if (addressMode === 'gps' && gpsLocation) {
+      deliveryInfo = {
+        address: gpsLocation.address || 'Localização GPS em Tempo Real (Rua / Praça)',
+        lat: gpsLocation.lat,
+        lng: gpsLocation.lng,
+        reference: customReference
+      };
+    } else if (addressMode === 'custom' && customAddress) {
+      deliveryInfo = {
+        address: customAddress,
+        reference: customReference
+      };
+    } else if (customReference) {
+      deliveryInfo = {
+        reference: customReference
+      };
+    }
+
+    const res: any = await store.criarPedido('B2C', cart.storeId, deliveryInfo);
     setCheckoutModalOpen(false);
     
     if (res && typeof res === 'object') {
@@ -359,6 +410,12 @@ export default function StorefrontPage() {
                         <div className="w-full sm:w-auto">
                             <p className="font-bold text-zinc-800 dark:text-white">{o.title} <span className="text-xs text-zinc-500">({o.id})</span></p>
                             <p className="text-[10px] text-zinc-600 dark:text-zinc-400 mt-1 uppercase font-bold">Motorista: {o.motoristaNome || 'Aguardando'}</p>
+                            {o.deliveryAddress && (
+                              <p className="text-xs text-purple-700 dark:text-purple-300 font-bold mt-0.5">📍 Destino: {o.deliveryAddress}</p>
+                            )}
+                            {o.deliveryReference && (
+                              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-medium italic">📌 Ref: {o.deliveryReference}</p>
+                            )}
                             <p className="text-xs text-zinc-500 mt-1">Total: {formatMoney(o.valor + o.taxas.entregaCliente)} (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
                             <div className="flex flex-wrap gap-2 mt-2 mb-2">
                                {o.createdAt && <span className="text-[9px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
@@ -516,6 +573,88 @@ export default function StorefrontPage() {
                       ))}
                   </div>
                   
+                  <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-3 mb-5">
+                      <label className="block text-xs font-bold uppercase text-purple-900 dark:text-purple-300 mb-2">📍 Onde deseja receber seu pedido?</label>
+                      
+                      <div className="space-y-2">
+                          <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
+                              <input 
+                                  type="radio" 
+                                  name="addressMode" 
+                                  checked={addressMode === 'profile'} 
+                                  onChange={() => setAddressMode('profile')}
+                                  className="accent-purple-600"
+                              />
+                              <span>🏠 Endereço de Cadastro ({currentUser?.bairro || 'Casa'})</span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
+                              <input 
+                                  type="radio" 
+                                  name="addressMode" 
+                                  checked={addressMode === 'gps'} 
+                                  onChange={() => {
+                                      setAddressMode('gps');
+                                      if (!gpsLocation) handleGetGpsLocation();
+                                  }}
+                                  className="accent-purple-600"
+                              />
+                              <div className="flex-1 flex justify-between items-center">
+                                  <span>📍 Usar GPS Atual (Rua / Praça)</span>
+                                  {isLocating ? (
+                                      <span className="text-[10px] text-purple-600 animate-pulse">Obtendo GPS...</span>
+                                  ) : (
+                                      <button 
+                                          type="button"
+                                          onClick={(e) => { e.preventDefault(); handleGetGpsLocation(); }}
+                                          className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded hover:bg-purple-200"
+                                      >
+                                          {gpsLocation ? '🔄 Atualizar GPS' : '📍 Obter GPS'}
+                                      </button>
+                                  )}
+                              </div>
+                          </label>
+                          {addressMode === 'gps' && gpsLocation && (
+                              <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 ml-6">
+                                  ✅ Posição capturada: Lat {gpsLocation.lat.toFixed(4)}, Lng {gpsLocation.lng.toFixed(4)}
+                              </p>
+                          )}
+
+                          <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
+                              <input 
+                                  type="radio" 
+                                  name="addressMode" 
+                                  checked={addressMode === 'custom'} 
+                                  onChange={() => setAddressMode('custom')}
+                                  className="accent-purple-600"
+                              />
+                              <span>➕ Outro Endereço / Ponto de Encontro</span>
+                          </label>
+
+                          {addressMode === 'custom' && (
+                              <div className="mt-2 space-y-2 ml-1">
+                                  <input 
+                                      type="text" 
+                                      placeholder="Digite a Rua, Bairro e Número..." 
+                                      value={customAddress}
+                                      onChange={e => setCustomAddress(e.target.value)}
+                                      className="w-full text-xs p-2 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium"
+                                  />
+                              </div>
+                          )}
+
+                          <div className="mt-2 pt-2 border-t border-purple-100 dark:border-purple-900/50">
+                              <input 
+                                  type="text" 
+                                  placeholder="Ponto de referência (ex: Na mesa da praça, Em frente à farmácia)" 
+                                  value={customReference}
+                                  onChange={e => setCustomReference(e.target.value)}
+                                  className="w-full text-xs p-2 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium"
+                              />
+                          </div>
+                      </div>
+                  </div>
+
                   <div className="space-y-3 mb-6 text-sm text-zinc-600 dark:text-zinc-400">
                       <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
                           <span>Subtotal ({cartTotalQuantity} itens):</span>

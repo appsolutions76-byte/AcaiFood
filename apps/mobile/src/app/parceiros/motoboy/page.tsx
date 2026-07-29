@@ -173,7 +173,10 @@ export default function MotoboyDashboard() {
                                 <div>
                                     <span className="text-[10px] font-bold uppercase text-zinc-400 block">Entregar ao Cliente</span>
                                     <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.clienteNome || destinoUser?.name || '—'}</span> 
-                                    <span className="text-zinc-500 text-[11px]"> ({destinoUser?.bairro || '—'})</span>
+                                    <span className="text-purple-600 dark:text-purple-400 font-bold text-[11px]"> ({o.deliveryAddress || destinoUser?.bairro || '—'})</span>
+                                    {o.deliveryReference && (
+                                        <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400 italic mt-0.5">📌 Ref: {o.deliveryReference}</p>
+                                    )}
                                 </div>
                             </div>
                             <button 

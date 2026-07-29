@@ -54,6 +54,10 @@ ADD COLUMN IF NOT EXISTS provided_pin TEXT,
 ADD COLUMN IF NOT EXISTS asaas_payment_id TEXT,
 ADD COLUMN IF NOT EXISTS asaas_charge_status TEXT,
 ADD COLUMN IF NOT EXISTS operation_type TEXT DEFAULT 'B2C_ORDER',
+ADD COLUMN IF NOT EXISTS delivery_address TEXT,
+ADD COLUMN IF NOT EXISTS delivery_lat FLOAT8,
+ADD COLUMN IF NOT EXISTS delivery_lng FLOAT8,
+ADD COLUMN IF NOT EXISTS delivery_reference TEXT,
 ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
 
 -- 5. Criação de Índices de Alta Performance (Evita lentidão no carregamento de listas)

@@ -91,6 +91,10 @@ export interface Order {
   readyAt?: string;
   receivedAt?: string;
   deliveryPin?: string;
+  deliveryAddress?: string;
+  deliveryLat?: number;
+  deliveryLng?: number;
+  deliveryReference?: string;
   clienteNome?: string;
   lojaNome?: string;
   motoristaNome?: string;
@@ -135,7 +139,7 @@ interface AppState {
   linkAsaasAccount: (userId: string, walletId: string) => Promise<void>;
   fetchRates: () => Promise<void>;
   saveRates: (newRates: Partial<AppState['rates']>) => Promise<void>;
-  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, subTipoMenu?: string, quantity?: number) => Promise<any>;
+  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => Promise<any>;
   acaoPedido: (orderId: string, action: string, pinStr?: string) => Promise<void>;
   setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => Promise<void>;
@@ -1033,7 +1037,7 @@ export const useAppStore = create<AppState>()(
         await supabase.from('products').delete().eq('id', productId);
       },
 
-      criarPedido: async (tipo, targetId) => {
+      criarPedido: async (tipo, targetId, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => {
         const state = get();
         if (!state.currentUser) return;
         const currentUser = state.currentUser;
@@ -1046,7 +1050,12 @@ export const useAppStore = create<AppState>()(
 
         const p1 = state.users[originId];
         const p2 = state.users[destId];
-        const distKM = (p1?.lat && p2?.lat) ? haversineKm(p1.lat, p1.lng!, p2.lat, p2.lng!) : 0;
+        
+        // Se o cliente forneceu coordenadas dinamicas (GPS ou outro endereco), usa essas coordenadas
+        const destLat = deliveryInfo?.lat ?? p2?.lat;
+        const destLng = deliveryInfo?.lng ?? p2?.lng;
+
+        const distKM = (p1?.lat && destLat && destLng) ? haversineKm(p1.lat, p1.lng!, destLat, destLng) : 0;
 
         const calcFrete = (t: string, d: number) => {
           if (t === 'B2C') {
@@ -1094,6 +1103,10 @@ export const useAppStore = create<AppState>()(
           valor: itemsTotal,
           quantity: totalQuantity,
           items: finalCartItems,
+          deliveryAddress: deliveryInfo?.address,
+          deliveryLat: deliveryInfo?.lat,
+          deliveryLng: deliveryInfo?.lng,
+          deliveryReference: deliveryInfo?.reference,
           taxas: { entregaTotal: 0, entregaMotorista: 0, entregaCliente: 0, entregaLoja: 0, entregaFornecedor: 0, plataformaVenda: 0, plataformaEntrega: 0, plataformaTotal: 0, repasse: 0 }
         };
 
@@ -1171,7 +1184,11 @@ export const useAppStore = create<AppState>()(
               applied_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_plat : (tipo === 'COLETA' ? state.rates.col_plat : state.rates.b2b_plat),
               applied_delivery_fee_per_km: tipo === 'B2C' ? state.rates.b2c_km : (tipo === 'COLETA' ? state.rates.col_km : state.rates.b2b_km),
               applied_delivery_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_mot_plat : (tipo === 'COLETA' ? state.rates.col_mot_plat : state.rates.b2b_mot_plat),
-              delivery_pin: pin
+              delivery_pin: pin,
+              delivery_address: deliveryInfo?.address,
+              delivery_lat: deliveryInfo?.lat,
+              delivery_lng: deliveryInfo?.lng,
+              delivery_reference: deliveryInfo?.reference
             }).select().single();
 
             if (dbError) {
@@ -1572,6 +1589,10 @@ export const useAppStore = create<AppState>()(
                    readyAt: dbOrder.ready_at,
                    receivedAt: dbOrder.received_at,
                    deliveryPin: dbOrder.delivery_pin,
+                   deliveryAddress: dbOrder.delivery_address || localOrder?.deliveryAddress,
+                   deliveryLat: dbOrder.delivery_lat || localOrder?.deliveryLat,
+                   deliveryLng: dbOrder.delivery_lng || localOrder?.deliveryLng,
+                   deliveryReference: dbOrder.delivery_reference || localOrder?.deliveryReference,
                    clienteNome: dbOrder.buyer?.name || allUsers[dbOrder.buyer_id]?.name || localOrder?.clienteNome,
                    lojaNome: dbOrder.storefront?.store_name || allUsers[dbOrder.storefront?.partner_id]?.name,
                    motoristaNome: dbOrder.driver?.name || allUsers[dbOrder.driver_id]?.name,
