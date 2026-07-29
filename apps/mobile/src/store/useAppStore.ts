@@ -1203,22 +1203,74 @@ export const useAppStore = create<AppState>()(
           const orderIdToUse = dbOrder?.id || `ord_${Date.now()}`;
 
           // 2. Processar Pagamento e Split via Asaas em Nome da Plataforma AçaíFood
-          const sellerUser = state.users[targetId || ''];
+          let sellerPartnerId = targetId || '';
+
+          // Resolver se targetId for ID do storefront
+          if (targetId) {
+            const { data: sfData } = await supabase.from('storefronts').select('partner_id').eq('id', targetId).maybeSingle();
+            if (sfData && sfData.partner_id) {
+              sellerPartnerId = sfData.partner_id;
+            }
+          }
+
+          let sellerUser = state.users[sellerPartnerId || ''];
+          let sellerWalletId = sellerUser?.asaasWalletId;
+
+          // Buscar asaas_wallet_id do Supabase se ausente no estado
+          if (!sellerWalletId && sellerPartnerId) {
+            try {
+              const { data: uData } = await supabase.from('users').select('id, name, email, cpf_cnpj, asaas_wallet_id').eq('id', sellerPartnerId).maybeSingle();
+              if (uData) {
+                if (uData.asaas_wallet_id) {
+                  sellerWalletId = uData.asaas_wallet_id;
+                } else if (uData.cpf_cnpj) {
+                  // Tentar auto-criar subconta no Asaas para a loja se tiver CPF/CNPJ
+                  try {
+                    const subRes = await fetch('/api/asaas/subaccount', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        userId: uData.id,
+                        name: uData.name || 'Batedeira Parceira',
+                        email: uData.email || 'batedeira@acaifood.com.br',
+                        cpfCnpj: uData.cpf_cnpj
+                      })
+                    });
+                    if (subRes.ok) {
+                      const subData = await subRes.json();
+                      if (subData.walletId) sellerWalletId = subData.walletId;
+                    }
+                  } catch (subErr) {
+                    console.warn("Auto subaccount error:", subErr);
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn("Erro ao resolver carteira Asaas da loja:", err);
+            }
+          }
+
           const splitRules: { walletId: string; fixedValue: number }[] = [];
 
-          if (sellerUser?.asaasWalletId && isValidAsaasWalletId(sellerUser.asaasWalletId)) {
+          if (sellerWalletId && isValidAsaasWalletId(sellerWalletId)) {
             splitRules.push({
-              walletId: sellerUser.asaasWalletId,
-              fixedValue: novoPedido.taxas.repasse
+              walletId: sellerWalletId,
+              fixedValue: Number(novoPedido.taxas.repasse.toFixed(2))
             });
           }
 
-          if (novoPedido.motoristaId && state.users[novoPedido.motoristaId]?.asaasWalletId) {
-            const motoboyWallet = state.users[novoPedido.motoristaId].asaasWalletId!;
-            if (isValidAsaasWalletId(motoboyWallet)) {
+          if (novoPedido.motoristaId) {
+            let driverWalletId = state.users[novoPedido.motoristaId]?.asaasWalletId;
+            if (!driverWalletId) {
+              try {
+                const { data: dData } = await supabase.from('users').select('asaas_wallet_id').eq('id', novoPedido.motoristaId).maybeSingle();
+                if (dData?.asaas_wallet_id) driverWalletId = dData.asaas_wallet_id;
+              } catch(e) {}
+            }
+            if (driverWalletId && isValidAsaasWalletId(driverWalletId)) {
               splitRules.push({
-                walletId: motoboyWallet,
-                fixedValue: novoPedido.taxas.entregaMotorista
+                walletId: driverWalletId,
+                fixedValue: Number(novoPedido.taxas.entregaMotorista.toFixed(2))
               });
             }
           }
