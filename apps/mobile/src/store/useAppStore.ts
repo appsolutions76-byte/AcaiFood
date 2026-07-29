@@ -722,10 +722,44 @@ export const useAppStore = create<AppState>()(
       },
 
       linkAsaasAccount: async (userId, walletId) => {
-        const isRealWallet = isValidAsaasWalletId(walletId);
+        let isRealWallet = isValidAsaasWalletId(walletId);
+        let finalWalletId = walletId;
+
+        const targetUser = get().users[userId];
+
+        // Se a chave informada não for um walletId nativo de subconta do Asaas, gerar subconta oficial no Asaas
+        if (!isRealWallet && targetUser?.cpfCnpj) {
+          try {
+            const subRes = await fetch('/api/asaas/subaccount', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId,
+                name: targetUser.name || 'Parceiro AçaíFood',
+                email: targetUser.email || 'parceiro@acaifood.com.br',
+                cpfCnpj: targetUser.cpfCnpj,
+                phone: targetUser.telefone || '',
+                endereco: targetUser.endereco || '',
+                bairro: targetUser.bairro || '',
+                cidade: targetUser.cidade || 'Belém',
+                role: targetUser.role
+              })
+            });
+            if (subRes.ok) {
+              const subData = await subRes.json();
+              if (subData.walletId) {
+                finalWalletId = subData.walletId;
+                isRealWallet = true;
+              }
+            }
+          } catch (e) {
+            console.warn("Erro ao auto-criar subconta Asaas:", e);
+          }
+        }
+
         const updatePayload: any = { pix_key: walletId };
-        if (isRealWallet) {
-          updatePayload.asaas_wallet_id = walletId;
+        if (isRealWallet && finalWalletId) {
+          updatePayload.asaas_wallet_id = finalWalletId;
           updatePayload.split_enabled = true;
         }
 
@@ -737,7 +771,7 @@ export const useAppStore = create<AppState>()(
           if (!user) return state;
           const updatedUser = { 
             ...user, 
-            asaasWalletId: isRealWallet ? walletId : user.asaasWalletId, 
+            asaasWalletId: isRealWallet ? finalWalletId : user.asaasWalletId, 
             asaasLinked: true, 
             pixKey: walletId 
           };
@@ -747,45 +781,6 @@ export const useAppStore = create<AppState>()(
             currentUser: isCurrent ? updatedUser : state.currentUser
           };
         });
-
-        // Se for um CPF/CNPJ ou dados de registro sem walletId real, tenta criar subconta via API
-        if (!isRealWallet && userId) {
-          try {
-            const userState = get().users[userId] || get().currentUser;
-            if (userState && userState.cpfCnpj) {
-              const subRes = await fetch('/api/asaas/subaccount', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  userId: userId,
-                  name: userState.name,
-                  email: userState.email,
-                  cpfCnpj: userState.cpfCnpj,
-                  phone: userState.telefone,
-                  endereco: userState.endereco,
-                  bairro: userState.bairro,
-                  cidade: userState.cidade,
-                  role: userState.role
-                })
-              });
-              const subData = await subRes.json();
-              if (subData && subData.walletId && isValidAsaasWalletId(subData.walletId)) {
-                set((state) => {
-                  const user = state.users[userId];
-                  if (!user) return state;
-                  const updatedUser = { ...user, asaasWalletId: subData.walletId, asaasLinked: true };
-                  const isCurrent = state.currentUser?.id === userId;
-                  return {
-                    users: { ...state.users, [userId]: updatedUser },
-                    currentUser: isCurrent ? updatedUser : state.currentUser
-                  };
-                });
-              }
-            }
-          } catch (subErr) {
-            console.warn("Autocriação de subconta Asaas em segundo plano:", subErr);
-          }
-        }
       },
 
       fetchRates: async () => {
