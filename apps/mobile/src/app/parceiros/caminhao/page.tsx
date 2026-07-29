@@ -214,7 +214,50 @@ export default function CaminhaoDashboard() {
                                 </div>
                             </div>
                         ) : o.status === 'entregue' || o.status === 'arquivado' ? (
-                            <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-2 rounded text-center font-bold">✅ Finalizado</div>
+                            <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-3 rounded-xl flex flex-col gap-2 items-center font-bold">
+                                <p>✅ Frete Concluído</p>
+                                <button 
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    const pixKey = currentUser?.pixKey || currentUser?.cpfCnpj || currentUser?.email || currentUser?.asaasWalletId;
+                                    const valorEntrega = o.taxas?.entregaMotorista || 0;
+                                    if (!pixKey) {
+                                      alert("Cadastre seu CPF ou Chave Pix em seu perfil para receber o frete.");
+                                      return;
+                                    }
+                                    try {
+                                      const res = await fetch('/api/asaas/transfer', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          pixKey,
+                                          value: valorEntrega,
+                                          description: `Repasse Frete B2B AçaíFood #${o.id.substring(0, 8)}`,
+                                          orderId: o.id
+                                        })
+                                      });
+                                      const data = await res.json();
+                                      if (data.success) {
+                                        alert(`✅ Repasse Pix de R$ ${valorEntrega.toFixed(2)} enviado para sua conta!`);
+                                      } else {
+                                        const msg = data.error || '';
+                                        if (msg.includes('Saldo insuficiente')) {
+                                          alert(`⚠️ Saldo em Processamento no Asaas:\nO valor do frete aguarda a liberação de saldo no Asaas. A transferência será processada assim que o saldo estiver disponível no Asaas.`);
+                                        } else {
+                                          alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
+                                        }
+                                      }
+                                    } catch(err) {
+                                      alert("Erro ao solicitar repasse Pix.");
+                                    }
+                                  }}
+                                  className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-md w-full"
+                                >
+                                  💸 Resgatar Repasse (R$ {o.taxas?.entregaMotorista?.toFixed(2)})
+                                </button>
+                            </div>
                         ) : null}
                     </div>
                   )})}

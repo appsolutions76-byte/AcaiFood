@@ -275,13 +275,102 @@ export default function FornecedorDashboard() {
                 
                 <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
                     {/* Status Badges */}
-                    {o.status === 'aguardando_pagamento' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase animate-pulse">⏳ Aguardando Pagamento Pix</span>}
+                    {o.status === 'aguardando_pagamento' && (
+                      <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
+                        <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase animate-pulse">⏳ Aguardando Pagamento Pix</span>
+                        <div className="flex flex-wrap gap-1.5 justify-end w-full">
+                          <button 
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              try {
+                                const res = await fetch(`/api/asaas/status?orderId=${o.id}`);
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  if (data.isPaid) {
+                                    store.acaoPedido(o.id, 'confirmar_pagamento');
+                                    alert("✅ Pagamento identificado com sucesso no Asaas! Pedido liberado para separação.");
+                                  } else {
+                                    alert("O pagamento ainda consta como pendente no Asaas.");
+                                  }
+                                }
+                              } catch (err) {
+                                alert("Erro ao consultar status no Asaas.");
+                              }
+                            }}
+                            className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold px-2 py-1.5 rounded-lg transition"
+                          >
+                            🔍 Checar Pix no Asaas
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              if (confirm("Deseja aprovar manualmente o pagamento Pix deste pedido B2B e iniciar a separação?")) {
+                                store.acaoPedido(o.id, 'aceitar_forn');
+                                alert("✅ Pagamento aprovado! O pedido foi alterado para Em Separação.");
+                              }
+                            }}
+                            className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm"
+                          >
+                            ✅ Aprovar Pix e Separar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Você</span>}
                     {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Separação</span>}
                     {o.status === 'pronto' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Caminhão</span>}
                     {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
                     {o.status === 'aguardando_cliente' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Loja Confirmar</span>}
-                    {(o.status === 'entregue' || o.status === 'arquivado') && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>}
+                    {(o.status === 'entregue' || o.status === 'arquivado') && (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>
+                        <button 
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const pixKey = currentUser?.pixKey || currentUser?.cpfCnpj || currentUser?.email || currentUser?.asaasWalletId;
+                            const valorRepasse = o.taxas?.repasse || 0;
+                            if (!pixKey) {
+                              alert("Cadastre seu CPF ou Chave Pix em seu perfil para receber o repasse.");
+                              return;
+                            }
+                            try {
+                              const res = await fetch('/api/asaas/transfer', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  pixKey,
+                                  value: valorRepasse,
+                                  description: `Repasse Venda Fruto AçaíFood #${o.id.substring(0, 8)}`,
+                                  orderId: o.id
+                                })
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                alert(`✅ Repasse Pix de R$ ${valorRepasse.toFixed(2)} transferido com sucesso!`);
+                              } else {
+                                const msg = data.error || '';
+                                if (msg.includes('Saldo insuficiente')) {
+                                  alert(`⚠️ Saldo em Processamento no Asaas:\nO Pix deste pedido já foi recebido, porém o valor líquido disponível no Asaas aguarda o tempo de liberação da conta. A transferência será processada assim que o Asaas liberar o saldo.`);
+                                } else {
+                                  alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
+                                }
+                              }
+                            } catch(err) {
+                              alert("Erro ao solicitar repasse Pix.");
+                            }
+                          }}
+                          className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded transition shadow-sm"
+                        >
+                          💸 Resgatar Repasse (R$ {o.taxas?.repasse?.toFixed(2)})
+                        </button>
+                      </div>
+                    )}
                     {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
                     
                     {isCanceled && (
@@ -289,7 +378,7 @@ export default function FornecedorDashboard() {
                     )}
 
                     {/* Interações */}
-                    {!isCanceled && o.status === 'pendente' && (
+                    {!isCanceled && (o.status === 'pendente' || o.status === 'aguardando_pagamento') && (
                       <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                           <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
                           <button onClick={() => store.acaoPedido(o.id, 'aceitar_forn')} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Separar</button>
