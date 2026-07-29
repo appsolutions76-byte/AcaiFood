@@ -1,13 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Store } from "lucide-react";
+import { ArrowLeft, Store, Printer } from "lucide-react";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/lib/supabase";
+import {
+  getPrinterConfig,
+  savePrinterConfig,
+  printOrderTicket,
+  printTestTicket,
+  DEFAULT_PRINTER_CONFIG,
+  PrinterConfig,
+} from "@/lib/thermalPrinter";
 
 export default function BatedeiraDashboard() {
   const store = useAppStore();
@@ -18,6 +26,15 @@ export default function BatedeiraDashboard() {
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [prices, setPrices] = useState(currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
   const [activeTab, setActiveTab] = useState('pedidos');
+
+  const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(DEFAULT_PRINTER_CONFIG);
+  const [printerModalOpen, setPrinterModalOpen] = useState(false);
+  const printedOrdersRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    setPrinterConfig(getPrinterConfig());
+  }, []);
+
 
   useEffect(() => {
     if (currentUser) {
@@ -56,6 +73,22 @@ export default function BatedeiraDashboard() {
     const interval = setInterval(checkPendingPayments, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!mounted || !printerConfig.enabled || printerConfig.printMode !== 'auto' || !currentUser) return;
+
+    const autoOrders = store.orders.filter(o =>
+      o.lojaId === currentUser.id &&
+      (o.status === 'pendente' || o.status === 'preparo') &&
+      !printedOrdersRef.current.has(o.id)
+    );
+
+    for (const order of autoOrders) {
+      printedOrdersRef.current.add(order.id);
+      printOrderTicket(order, currentUser.name, printerConfig);
+    }
+  }, [store.orders, currentUser?.id, currentUser?.name, printerConfig, mounted]);
+
 
   const isPaused = currentUser?.status === 'paused';
   const handleToggleStatus = () => {
@@ -149,7 +182,15 @@ export default function BatedeiraDashboard() {
             {currentUser.asaasLinked && (
                <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold border border-purple-200 hidden sm:inline-block">Asaas Ativo ✅</span>
             )}
+            <button 
+              onClick={() => setPrinterModalOpen(true)} 
+              className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-purple-200 dark:border-purple-800"
+              title="Configurar Impressora Térmica"
+            >
+              <Printer size={14} /> 🖨️ Impressora
+            </button>
             <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
+
             <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold">📲 Compartilhar</button>
             <ThemeToggle />
             <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 underline">Sair</button>
@@ -508,9 +549,21 @@ export default function BatedeiraDashboard() {
                         <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
                       )}
 
+                      {!isCanceled && (
+                        <button
+                          type="button"
+                          onClick={() => printOrderTicket(o, currentUser?.name || 'Batedeira AçaíFood', printerConfig)}
+                          className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-3 py-2 rounded-lg border border-purple-300 dark:border-purple-800 transition shadow-sm flex items-center gap-1 shrink-0 mt-2 sm:mt-0"
+                          title="Imprimir comanda térmica deste pedido"
+                        >
+                          🖨️ Imprimir Comanda
+                        </button>
+                      )}
+
                       {!isCanceled && o.type === 'B2B' && o.status === 'em_rota' && (
                         <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Aguardando caminhão</span>
                       )}
+
                   </div>
               </div>
             )
@@ -629,6 +682,159 @@ export default function BatedeiraDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal de Configuração de Impressora Térmica */}
+      {printerModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in fade-in zoom-in-95">
+            <div className="bg-purple-900 text-white p-5 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2">
+                <Printer className="text-purple-300" />
+                <h3 className="font-bold text-lg">🖨️ Impressora Térmica</h3>
+              </div>
+              <button onClick={() => setPrinterModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="text-xs uppercase text-zinc-500 font-bold block mb-1">Modo de Impressão</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = { ...printerConfig, printMode: 'manual' as const };
+                      setPrinterConfig(updated);
+                      savePrinterConfig(updated);
+                    }}
+                    className={`p-3 rounded-lg border text-xs font-bold text-center transition ${
+                      printerConfig.printMode === 'manual'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
+                    }`}
+                  >
+                    👆 Manual
+                    <p className="text-[9px] font-normal opacity-80 mt-1">Imprimir ao clicar no botão do pedido</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = { ...printerConfig, printMode: 'auto' as const };
+                      setPrinterConfig(updated);
+                      savePrinterConfig(updated);
+                    }}
+                    className={`p-3 rounded-lg border text-xs font-bold text-center transition ${
+                      printerConfig.printMode === 'auto'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
+                    }`}
+                  >
+                    ⚡ Automático
+                    <p className="text-[9px] font-normal opacity-80 mt-1">Imprimir comanda ao receber/confirmar</p>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase text-zinc-500 font-bold block mb-1">Largura da Bobina / Papel</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = { ...printerConfig, paperWidth: '80mm' as const };
+                      setPrinterConfig(updated);
+                      savePrinterConfig(updated);
+                    }}
+                    className={`p-3 rounded-lg border text-xs font-bold text-center transition ${
+                      printerConfig.paperWidth === '80mm'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
+                    }`}
+                  >
+                    📄 80mm (Padrão)
+                    <p className="text-[9px] font-normal opacity-80 mt-1">Elgin, Bematech, Epson, Daruma</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = { ...printerConfig, paperWidth: '58mm' as const };
+                      setPrinterConfig(updated);
+                      savePrinterConfig(updated);
+                    }}
+                    className={`p-3 rounded-lg border text-xs font-bold text-center transition ${
+                      printerConfig.paperWidth === '58mm'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
+                    }`}
+                  >
+                    📜 58mm (Menor)
+                    <p className="text-[9px] font-normal opacity-80 mt-1">Mini impressoras / Bluetooth</p>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase text-zinc-500 font-bold block mb-1">Quantidade de Vias por Pedido</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = { ...printerConfig, copies: 1 as const };
+                      setPrinterConfig(updated);
+                      savePrinterConfig(updated);
+                    }}
+                    className={`p-2.5 rounded-lg border text-xs font-bold text-center transition ${
+                      printerConfig.copies === 1
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
+                    }`}
+                  >
+                    1 Via (Batedeira)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = { ...printerConfig, copies: 2 as const };
+                      setPrinterConfig(updated);
+                      savePrinterConfig(updated);
+                    }}
+                    className={`p-2.5 rounded-lg border text-xs font-bold text-center transition ${
+                      printerConfig.copies === 2
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
+                    }`}
+                  >
+                    2 Vias (Cozinha + Entrega)
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => printTestTicket(currentUser?.name || 'Batedeira AçaíFood', printerConfig)}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm"
+                >
+                  🧪 Testar Impressão Agora
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end border-t border-zinc-200 dark:border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setPrinterModalOpen(false)}
+                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs transition"
+              >
+                Salvar e Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
