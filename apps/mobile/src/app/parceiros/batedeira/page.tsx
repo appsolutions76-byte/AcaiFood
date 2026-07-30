@@ -1,14 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Store, Printer } from "lucide-react";
+import { Store, Printer } from "lucide-react";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { supabase } from "@/lib/supabase";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -18,42 +16,37 @@ import {
   PrinterConfig,
 } from "@/lib/thermalPrinter";
 
+const emptySubscribe = () => () => {};
+
 export default function BatedeiraDashboard() {
+  const router = useRouter();
   const store = useAppStore();
   const currentUser = store.currentUser;
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [pixModalData, setPixModalData] = useState<PixModalData>({ open: false });
-  const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
+  const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
-  const [prices, setPrices] = useState(currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
+  const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
   const [activeTab, setActiveTab] = useState('pedidos');
 
-  const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(DEFAULT_PRINTER_CONFIG);
+  const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(getPrinterConfig);
   const [printerModalOpen, setPrinterModalOpen] = useState(false);
   const printedOrdersRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    setPrinterConfig(getPrinterConfig());
-  }, []);
-
-
-  useEffect(() => {
-    if (currentUser) {
-      if (currentUser.priceB2C) setPrices(currentUser.priceB2C);
-      if (currentUser.freteSubsidyPct !== undefined) setSubsidyInput(currentUser.freteSubsidyPct.toString());
-    }
-  }, [currentUser?.priceB2C, currentUser?.freteSubsidyPct]);
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
   const [cartModalB2B, setCartModalB2B] = useState<{ open: boolean; fornId: string; quantity: number }>({ open: false, fornId: '', quantity: 1 });
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
   useEffect(() => {
     store.fetchAllUsers();
     store.startRealtime();
-    setMounted(true);
 
     const checkPendingPayments = async () => {
       const pendingOrders = (store.orders || []).filter(o => o.status === 'aguardando_pagamento');
@@ -74,7 +67,7 @@ export default function BatedeiraDashboard() {
 
     const interval = setInterval(checkPendingPayments, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [store]);
 
   useEffect(() => {
     if (!mounted || !printerConfig.enabled || printerConfig.printMode !== 'auto' || !currentUser) return;
@@ -91,7 +84,7 @@ export default function BatedeiraDashboard() {
       printOrderTicket(order, currentUser.name, printerConfig, store.users);
     }
 
-  }, [store.orders, currentUser?.id, currentUser?.name, printerConfig, mounted]);
+  }, [store.orders, currentUser?.id, currentUser?.name, printerConfig, mounted, store.users]);
 
 
   const isPaused = currentUser?.status === 'paused';
@@ -118,9 +111,7 @@ export default function BatedeiraDashboard() {
       setNewProductPrice('');
   };
 
-  const router = useRouter();
-
-  const linkAsaasAccount = useAppStore(state => state.linkAsaasAccount);
+  const linkAsaasAccount = store.linkAsaasAccount;
 
   const handleLinkAsaas = async () => {
     if (!currentUser) return;
@@ -165,7 +156,7 @@ export default function BatedeiraDashboard() {
             alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
           }
         }
-      } catch (err) {
+      } catch (_err) {
         alert("Erro de conexão ao solicitar transferência PIX.");
       }
     }
@@ -569,7 +560,7 @@ export default function BatedeiraDashboard() {
                                       alert("O pagamento ainda consta como pendente no Asaas.");
                                     }
                                   }
-                                } catch (err) {
+                                } catch (_err) {
                                   alert("Erro ao consultar status no Asaas.");
                                 }
                               }}
@@ -637,7 +628,7 @@ export default function BatedeiraDashboard() {
                                     alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
                                   }
                                 }
-                              } catch(err) {
+                              } catch(_err) {
                                 alert("Erro ao solicitar repasse Pix.");
                               }
                             }}

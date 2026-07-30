@@ -2,7 +2,7 @@
 
 import React from "react";
 import { User } from "@/store/useAppStore";
-import { ShieldCheck, PauseCircle, Ban, CheckCircle, Search } from "lucide-react";
+import { PauseCircle, Ban, CheckCircle, Search } from "lucide-react";
 
 interface UserManagementTableProps {
   users: User[];

@@ -4,7 +4,7 @@ import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, Role, User } from "@/store/useAppStore";
-import { ArrowLeft, UserPlus, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 function CadastroForm() {
@@ -108,7 +108,7 @@ function CadastroForm() {
       } else {
         alert("Erro ao criar conta. Verifique os dados informados.");
       }
-    } catch (err) {
+    } catch (_err) {
       setIsLocating(false);
       alert("Ocorreu um erro no processo de cadastro. Tente novamente.");
     }

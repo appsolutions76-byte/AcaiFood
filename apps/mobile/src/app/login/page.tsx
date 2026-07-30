@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
-import { ArrowLeft, KeyRound, Mail } from "lucide-react";
+import { KeyRound, Mail } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function LoginPage() {

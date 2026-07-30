@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useEffect, useState, Suspense } from "react";
+import React, { useEffect, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
-import { PixModal, PixModalData } from "@/components/PixModal";
+import { PixModal } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { validateCpfCnpjDigits } from "@/lib/pix";
+
+const emptySubscribe = () => () => {};
 
 function PaymentHandler() {
   const searchParams = useSearchParams();
@@ -70,7 +72,7 @@ export default function StorefrontPage() {
         setAddressMode('gps');
         setIsLocating(false);
       },
-      (err) => {
+      (_err) => {
         setIsLocating(false);
         alert("Não foi possível obter sua localização GPS. Verifique as permissões de localização do dispositivo.");
       },
@@ -80,7 +82,6 @@ export default function StorefrontPage() {
 
   useEffect(() => {
     if (!pixModalData.open || !pixModalData.orderId) {
-      setPixPaid(false);
       return;
     }
 
@@ -123,7 +124,7 @@ export default function StorefrontPage() {
       isSubscribed = false;
       clearInterval(interval);
     };
-  }, [pixModalData.open, pixModalData.orderId, pixModalData.paymentId, store.orders]);
+  }, [pixModalData.open, pixModalData.orderId, pixModalData.paymentId, store]);
 
   const getCartPrice = (lojaId: string, tipo: string) => {
     const loja = store.users?.[lojaId];
@@ -135,12 +136,15 @@ export default function StorefrontPage() {
     return customProd ? customProd.price : 0;
   };
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   useEffect(() => {
     store.fetchLojas();
-    setMounted(true);
-  }, []);
+  }, [store]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -153,7 +157,7 @@ export default function StorefrontPage() {
       else if (currentUser.role === 'motorista' && currentUser.veiculo === 'Moto') router.replace('/parceiros/motoboy');
       else if (currentUser.role === 'motorista' && (currentUser.veiculo === 'Caminhão' || currentUser.veiculo === 'Caçamba')) router.replace('/parceiros/caminhao');
     }
-  }, [mounted, currentUser?.role, router]);
+  }, [mounted, currentUser, router, store]);
 
   if (!mounted) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;

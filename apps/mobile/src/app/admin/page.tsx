@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Settings, Trash2 } from "lucide-react";
+import { Settings, Trash2 } from "lucide-react";
 import { useAppStore, Order } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+const emptySubscribe = () => () => {};
 
 class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
   constructor(props: any) {
@@ -69,7 +70,7 @@ function AdminDashboardContent() {
 
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
-  const [localRates, setLocalRates] = useState(rates);
+  const [localRates, setLocalRates] = useState(() => rates);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades'>('dashboard');
   const [newCityName, setNewCityName] = useState('');
   const [userFilterRole, setUserFilterRole] = useState<string>('all');
@@ -79,7 +80,11 @@ function AdminDashboardContent() {
   const [pwdModalOpen, setPwdModalOpen] = useState(false);
   const [pwdInputText, setPwdInputText] = useState('');
   const [pwdModalMode, setPwdModalMode] = useState<'create' | 'verify'>('verify');
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   // 3. Efeitos (useEffect)
   const isAdmin = !!store.currentUser && (
@@ -88,13 +93,6 @@ function AdminDashboardContent() {
   );
 
   useEffect(() => {
-    if (store.rates) {
-      setLocalRates(store.rates);
-    }
-  }, [store.rates]);
-
-  useEffect(() => {
-    setMounted(true);
     if (isAdmin) {
        if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers();
        if (typeof store.startRealtime === 'function') store.startRealtime();
@@ -102,7 +100,7 @@ function AdminDashboardContent() {
        if (typeof store.fetchCities === 'function') store.fetchCities();
        if (typeof store.fetchRates === 'function') store.fetchRates();
     }
-  }, [isAdmin]);
+  }, [isAdmin, store]);
 
   // 4. Funções auxiliares
   const formatMoney = (val?: number | null) => (val ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -113,18 +111,7 @@ function AdminDashboardContent() {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return null;
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch (e) {
-      return null;
-    }
-  };
-
-  const safeDate = (dateStr?: string | null) => {
-    if (!dateStr) return null;
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return null;
-      return d.toLocaleDateString('pt-BR');
-    } catch (e) {
+    } catch (_e) {
       return null;
     }
   };

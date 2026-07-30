@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bike } from "lucide-react";
+import { Bike } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+const emptySubscribe = () => () => {};
 
 export default function MotoboyDashboard() {
   const router = useRouter();
@@ -17,14 +18,18 @@ export default function MotoboyDashboard() {
   const [activeTab, setActiveTab] = useState('radar');
   const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
   useEffect(() => {
-    setMounted(true);
     if (store.currentUser?.role === 'motorista') {
         store.fetchAllUsers();
         store.startRealtime();
     }
-  }, [store.currentUser?.role]);
+  }, [store]);
 
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
@@ -65,7 +70,7 @@ export default function MotoboyDashboard() {
     store.updateUserStatus(currentUser.id, isPaused ? 'active' : 'paused');
   };
 
-  const linkAsaasAccount = useAppStore(state => state.linkAsaasAccount);
+  const linkAsaasAccount = store.linkAsaasAccount;
   const handleLinkAsaas = async () => {
     if (!currentUser) return;
     const inputPix = prompt("Informe a sua Chave PIX (CPF, Celular, E-mail ou Aleatória) ou Carteira Asaas para receber os repasses das suas entregas:", currentUser.pixKey || currentUser.asaasWalletId || "");
@@ -109,7 +114,7 @@ export default function MotoboyDashboard() {
             alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
           }
         }
-      } catch (err) {
+      } catch (_err) {
         alert("Erro de conexão ao solicitar transferência PIX.");
       }
     }

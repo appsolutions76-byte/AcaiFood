@@ -1,12 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, PackageOpen, Printer } from "lucide-react";
+import { PackageOpen, Printer } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
-import { supabase } from "@/lib/supabase";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   getPrinterConfig,
@@ -17,23 +15,29 @@ import {
   PrinterConfig,
 } from "@/lib/thermalPrinter";
 
+const emptySubscribe = () => () => {};
+
 export default function FornecedorDashboard() {
   const router = useRouter();
   const store = useAppStore();
   const currentUser = store.currentUser;
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
-  const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(DEFAULT_PRINTER_CONFIG);
   const [printerModalOpen, setPrinterModalOpen] = useState(false);
   const printedOrdersRef = useRef<Set<string>>(new Set());
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
+  const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(getPrinterConfig);
+
   useEffect(() => {
     store.fetchAllUsers();
     store.startRealtime();
-    setPrinterConfig(getPrinterConfig());
-    setMounted(true);
-  }, []);
+  }, [store]);
 
   useEffect(() => {
     if (!mounted || !printerConfig.enabled || printerConfig.printMode !== 'auto' || !currentUser) return;
@@ -49,18 +53,12 @@ export default function FornecedorDashboard() {
       printedOrdersRef.current.add(order.id);
       printOrderTicket(order, currentUser.name, printerConfig, store.users);
     }
-  }, [store.orders, currentUser?.id, currentUser?.name, printerConfig, mounted]);
-  const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
-  const [priceModalOpen, setPriceModalOpen] = useState(false);
-  const [b2bPrice, setB2bPrice] = useState(currentUser?.priceB2B || 140);
-  const [activeTab, setActiveTab] = useState('pedidos');
+  }, [store.orders, currentUser, printerConfig, mounted, store.users]);
 
-  useEffect(() => {
-    if (currentUser) {
-      if (currentUser.priceB2B !== undefined) setB2bPrice(currentUser.priceB2B);
-      if (currentUser.freteSubsidyPct !== undefined) setSubsidyInput(currentUser.freteSubsidyPct.toString());
-    }
-  }, [currentUser?.priceB2B, currentUser?.freteSubsidyPct]);
+  const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
+  const [priceModalOpen, setPriceModalOpen] = useState(false);
+  const [b2bPrice, setB2bPrice] = useState(() => currentUser?.priceB2B ?? 140);
+  const [activeTab, setActiveTab] = useState('pedidos');
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
@@ -89,7 +87,7 @@ export default function FornecedorDashboard() {
       setNewProductPrice('');
   };
 
-  const linkAsaasAccount = useAppStore(state => state.linkAsaasAccount);
+  const linkAsaasAccount = store.linkAsaasAccount;
 
   const handleLinkAsaas = async () => {
     if (!currentUser) return;
@@ -134,7 +132,7 @@ export default function FornecedorDashboard() {
             alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
           }
         }
-      } catch (err) {
+      } catch (_err) {
         alert("Erro de conexão ao solicitar transferência PIX.");
       }
     }
@@ -385,7 +383,7 @@ export default function FornecedorDashboard() {
                                     alert("O pagamento ainda consta como pendente no Asaas.");
                                   }
                                 }
-                              } catch (err) {
+                              } catch (_err) {
                                 alert("Erro ao consultar status no Asaas.");
                               }
                             }}
@@ -451,7 +449,7 @@ export default function FornecedorDashboard() {
                                   alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
                                 }
                               }
-                            } catch(err) {
+                            } catch(_err) {
                               alert("Erro ao solicitar repasse Pix.");
                             }
                           }}

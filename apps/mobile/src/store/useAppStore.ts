@@ -326,10 +326,12 @@ export const useAppStore = create<AppState>()(
       registerUser: async (data) => {
         await supabase.auth.signOut(); // Wipe any stale sessions from localStorage
 
-        let { data: authData, error: authError } = await supabase.auth.signUp({
+        const signUpRes = await supabase.auth.signUp({
           email: data.email || '',
           password: data.password || '123456',
         });
+        let authData = signUpRes.data;
+        const authError = signUpRes.error;
 
         if (authError) {
           const isAlreadyRegistered = authError.message?.toLowerCase().includes('already registered') || 
@@ -494,7 +496,7 @@ export const useAppStore = create<AppState>()(
                   }
                 });
                 if (asaasData?.walletId) walletId = asaasData.walletId;
-              } catch (e) {}
+              } catch (_e) {}
 
               if (!walletId) {
                 const subRes = await fetch('/api/asaas/subaccount', {
@@ -535,7 +537,7 @@ export const useAppStore = create<AppState>()(
         set(state => {
           // If trying to add from a different store, clear the cart first
           const currentStoreId = state.cart.storeId;
-          let newItems = currentStoreId === storeId ? [...state.cart.items] : [];
+          const newItems = currentStoreId === storeId ? [...state.cart.items] : [];
           
           const existingItemIndex = newItems.findIndex(i => i.id === item.id);
           if (existingItemIndex >= 0) {
@@ -681,7 +683,7 @@ export const useAppStore = create<AppState>()(
         }
 
         if (dbUsers) {
-            set((state) => {
+            set(() => {
                 const newUsers: Record<string, any> = {};
                 dbUsers.forEach(dbUser => {
                     const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[0] : null;
@@ -1187,7 +1189,7 @@ export const useAppStore = create<AppState>()(
                  return;
              }
           } else if (targetId) {
-             const { data: sf, error: sfError } = await supabase.from('storefronts').select('id').eq('partner_id', targetId).limit(1).maybeSingle();
+             const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', targetId).limit(1).maybeSingle();
              if (sf) {
                  sellerStorefrontId = sf.id;
              } else {
@@ -1238,7 +1240,7 @@ export const useAppStore = create<AppState>()(
             }
           }
 
-          let sellerUser = state.users[sellerPartnerId || ''];
+          const sellerUser = state.users[sellerPartnerId || ''];
           let sellerWalletId = sellerUser?.asaasWalletId;
 
           // Buscar asaas_wallet_id do Supabase se ausente no estado
@@ -1290,7 +1292,7 @@ export const useAppStore = create<AppState>()(
               try {
                 const { data: dData } = await supabase.from('users').select('asaas_wallet_id').eq('id', novoPedido.motoristaId).maybeSingle();
                 if (dData?.asaas_wallet_id) driverWalletId = dData.asaas_wallet_id;
-              } catch(e) {}
+              } catch(_e) {}
             }
             if (driverWalletId && isValidAsaasWalletId(driverWalletId)) {
               splitRules.push({
@@ -1646,7 +1648,7 @@ export const useAppStore = create<AppState>()(
                if (o.driver_id && !state.users[o.driver_id]?.name) missingUserIds.add(o.driver_id);
             });
 
-            let fetchedUsersMap: Record<string, any> = {};
+            const fetchedUsersMap: Record<string, any> = {};
             if (missingUserIds.size > 0) {
                const { data: uData } = await supabase.from('users').select('id, name, email, bairro, cidade, role').in('id', Array.from(missingUserIds));
                if (uData && uData.length > 0) {
@@ -1766,7 +1768,7 @@ export const useAppStore = create<AppState>()(
          supabase.removeAllChannels();
          
          supabase.channel('public:orders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (_payload) => {
                 get().fetchOrders(userId);
             })
             .subscribe();
@@ -1774,13 +1776,13 @@ export const useAppStore = create<AppState>()(
          const currentUser = get().users[userId];
          if (currentUser && currentUser.role === 'admin') {
              supabase.channel('public:users')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (_payload) => {
                     get().fetchAllUsers();
                 })
                 .subscribe();
              
              supabase.channel('public:storefronts')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'storefronts' }, (payload) => {
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'storefronts' }, (_payload) => {
                     get().fetchAllUsers();
                 })
                 .subscribe();

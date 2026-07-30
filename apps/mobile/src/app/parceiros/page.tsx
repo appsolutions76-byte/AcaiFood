@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Store, Truck, Bike, PackageOpen, User, Recycle } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 

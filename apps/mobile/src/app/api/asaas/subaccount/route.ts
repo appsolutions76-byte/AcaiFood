@@ -12,8 +12,7 @@ export async function POST(request: Request) {
       phone,
       endereco,
       bairro,
-      cidade,
-      role
+      cidade
     } = body;
 
     if (!userId || !name || !email || !cpfCnpj) {
