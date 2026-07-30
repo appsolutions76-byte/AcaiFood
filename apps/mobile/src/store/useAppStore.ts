@@ -794,37 +794,51 @@ export const useAppStore = create<AppState>()(
       },
 
       fetchRates: async () => {
-         const { data, error } = await supabase.from('platform_settings').select('*').limit(1).single();
-         if (data && !error) {
-             set((state) => ({ rates: { 
-                 ...state.rates,
-                 id: data.id,
-                 b2c_plat: data.b2c_fee_percentage,
-                 b2c_km: data.motoboy_fee_per_km,
-                 b2c_mot_plat: data.motoboy_platform_fee_percentage,
-                 b2b_plat: data.b2b_fee_percentage,
-                 b2b_km: data.truck_fee_per_km,
-                 b2b_mot_plat: data.truck_platform_fee_percentage,
-                 col_plat: data.col_fee_percentage || 10,
-                 col_km: data.col_fee_per_km || 8,
-                 col_mot_plat: data.col_platform_fee_percentage || 10,
-                 col_valor: data.col_fixed_price || 50,
-                 payout_time: data.payout_time || '22:00',
-                 courier_payment_mode: data.courier_payment_mode || 'KM',
-                 courier_fixed_fee: data.courier_fixed_fee ?? 8.00,
-                 transporter_payment_mode: data.transporter_payment_mode || 'KM',
-                 transporter_fixed_fee: data.transporter_fixed_fee ?? 150.00,
-                 ecopoint_payment_mode: data.ecopoint_payment_mode || 'KM',
-                 ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? 50.00
-             } }));
-         } else {
-             console.error("Error fetching rates:", error);
+         try {
+           const { data, error } = await supabase.from('platform_settings').select('*').limit(1).maybeSingle();
+           if (data && !error) {
+               set((state) => ({ rates: { 
+                   ...state.rates,
+                   id: data.id,
+                   b2c_plat: data.b2c_fee_percentage ?? state.rates.b2c_plat,
+                   b2c_km: data.motoboy_fee_per_km ?? state.rates.b2c_km,
+                   b2c_mot_plat: data.motoboy_platform_fee_percentage ?? state.rates.b2c_mot_plat,
+                   b2b_plat: data.b2b_fee_percentage ?? state.rates.b2b_plat,
+                   b2b_km: data.truck_fee_per_km ?? state.rates.b2b_km,
+                   b2b_mot_plat: data.truck_platform_fee_percentage ?? state.rates.b2b_mot_plat,
+                   col_plat: data.col_fee_percentage ?? state.rates.col_plat,
+                   col_km: data.col_fee_per_km ?? state.rates.col_km,
+                   col_mot_plat: data.col_platform_fee_percentage ?? state.rates.col_mot_plat,
+                   col_valor: data.col_fixed_price ?? state.rates.col_valor,
+                   payout_time: data.payout_time || state.rates.payout_time || '22:00',
+                   courier_payment_mode: data.courier_payment_mode || state.rates.courier_payment_mode || 'KM',
+                   courier_fixed_fee: data.courier_fixed_fee ?? state.rates.courier_fixed_fee ?? 8.00,
+                   transporter_payment_mode: data.transporter_payment_mode || state.rates.transporter_payment_mode || 'KM',
+                   transporter_fixed_fee: data.transporter_fixed_fee ?? state.rates.transporter_fixed_fee ?? 150.00,
+                   ecopoint_payment_mode: data.ecopoint_payment_mode || state.rates.ecopoint_payment_mode || 'KM',
+                   ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? state.rates.ecopoint_fixed_fee ?? 50.00
+               } }));
+           }
+         } catch (error) {
+           console.error("Error fetching rates:", error);
          }
       },
 
       saveRates: async (newRates) => {
          const currentRates = get().rates;
          const mergedRates = { ...currentRates, ...newRates };
+         
+         // Se o modo for Fixo, sincroniza o valor fixo também com a coluna legada de valor/km para garantir persistência mesmo em bancos legados
+         if (mergedRates.courier_payment_mode === 'FIXED' && mergedRates.courier_fixed_fee !== undefined) {
+           mergedRates.b2c_km = mergedRates.courier_fixed_fee;
+         }
+         if (mergedRates.transporter_payment_mode === 'FIXED' && mergedRates.transporter_fixed_fee !== undefined) {
+           mergedRates.b2b_km = mergedRates.transporter_fixed_fee;
+         }
+         if (mergedRates.ecopoint_payment_mode === 'FIXED' && mergedRates.ecopoint_fixed_fee !== undefined) {
+           mergedRates.col_km = mergedRates.ecopoint_fixed_fee;
+         }
+
          set({ rates: mergedRates });
          
          const dbUpdates: any = {
@@ -850,16 +864,44 @@ export const useAppStore = create<AppState>()(
          // Remove undefined values
          Object.keys(dbUpdates).forEach(key => { if ((dbUpdates as any)[key] === undefined) delete (dbUpdates as any)[key]; });
 
-         const { data: firstRow } = await supabase.from('platform_settings').select('id').limit(1).maybeSingle();
-         const targetId = firstRow?.id || (get().rates as any).id;
-         
-         if (targetId) {
-           const { error } = await supabase.from('platform_settings').update(dbUpdates).eq('id', targetId);
-           if (error) console.error("Erro ao salvar taxas no Supabase:", error);
-         } else {
-           const { error } = await supabase.from('platform_settings').insert(dbUpdates);
-           if (error) console.error("Erro ao inserir taxas no Supabase:", error);
+         try {
+           const { data: firstRow } = await supabase.from('platform_settings').select('id').limit(1).maybeSingle();
+           const targetId = firstRow?.id || (get().rates as any).id;
+           
+           let saveError: any = null;
+           if (targetId) {
+             const res = await supabase.from('platform_settings').update(dbUpdates).eq('id', targetId);
+             saveError = res.error;
+           } else {
+             const res = await supabase.from('platform_settings').insert(dbUpdates);
+             saveError = res.error;
+           }
+
+           if (saveError) {
+             console.warn("Aviso ao salvar colunas em platform_settings, tentando fallback base:", saveError);
+             const baseUpdates = {
+               b2c_fee_percentage: mergedRates.b2c_plat,
+               motoboy_fee_per_km: mergedRates.b2c_km,
+               motoboy_platform_fee_percentage: mergedRates.b2c_mot_plat,
+               b2b_fee_percentage: mergedRates.b2b_plat,
+               truck_fee_per_km: mergedRates.b2b_km,
+               truck_platform_fee_percentage: mergedRates.b2b_mot_plat,
+               col_fee_percentage: mergedRates.col_plat,
+               col_fee_per_km: mergedRates.col_km,
+               col_platform_fee_percentage: mergedRates.col_mot_plat,
+               col_fixed_price: mergedRates.col_valor,
+               payout_time: mergedRates.payout_time
+             };
+             if (targetId) {
+               await supabase.from('platform_settings').update(baseUpdates).eq('id', targetId);
+             } else {
+               await supabase.from('platform_settings').insert(baseUpdates);
+             }
+           }
+         } catch (err) {
+           console.error("Exceção ao persistir taxas no Supabase:", err);
          }
+
          await get().fetchRates();
       },
       

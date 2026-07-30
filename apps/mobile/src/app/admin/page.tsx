@@ -646,14 +646,25 @@ function AdminDashboardContent() {
                       <div><label className="text-[10px] uppercase text-zinc-500 font-bold">App na Venda (%)</label><input type="number" value={localRates?.b2c_plat ?? 10} onChange={e => setLocalRates({...localRates, b2c_plat: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">Modalidade</label>
-                        <select value={localRates?.courier_payment_mode || 'KM'} onChange={e => setLocalRates({...localRates, courier_payment_mode: e.target.value as 'KM' | 'FIXED'})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                        <select value={localRates?.courier_payment_mode || 'KM'} onChange={e => {
+                          const mode = e.target.value as 'KM' | 'FIXED';
+                          const fee = mode === 'FIXED' ? (localRates?.courier_fixed_fee ?? localRates?.b2c_km ?? 8) : (localRates?.b2c_km ?? 2);
+                          setLocalRates({...localRates, courier_payment_mode: mode, courier_fixed_fee: fee, b2c_km: fee});
+                        }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
                           <option value="KM">Por KM</option>
                           <option value="FIXED">Valor Fixo</option>
                         </select>
                       </div>
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates?.courier_payment_mode === 'FIXED' ? 'Frete Fixo (R$)' : 'Valor por KM (R$)'}</label>
-                        <input type="number" step="0.1" value={localRates?.courier_payment_mode === 'FIXED' ? (localRates?.courier_fixed_fee ?? 8) : (localRates?.b2c_km ?? 2)} onChange={e => setLocalRates(localRates?.courier_payment_mode === 'FIXED' ? {...localRates, courier_fixed_fee: Number(e.target.value)} : {...localRates, b2c_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
+                        <input type="number" step="0.1" value={localRates?.courier_payment_mode === 'FIXED' ? (localRates?.courier_fixed_fee ?? 8) : (localRates?.b2c_km ?? 2)} onChange={e => {
+                          const val = Number(e.target.value);
+                          if (localRates?.courier_payment_mode === 'FIXED') {
+                            setLocalRates({...localRates, courier_fixed_fee: val, b2c_km: val});
+                          } else {
+                            setLocalRates({...localRates, b2c_km: val});
+                          }
+                        }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
                       </div>
                       <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates?.b2c_mot_plat ?? 10} onChange={e => setLocalRates({...localRates, b2c_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
@@ -664,14 +675,25 @@ function AdminDashboardContent() {
                       <div><label className="text-[10px] uppercase text-zinc-500 font-bold">App na Venda (%)</label><input type="number" value={localRates?.b2b_plat ?? 10} onChange={e => setLocalRates({...localRates, b2b_plat: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">Modalidade</label>
-                        <select value={localRates?.transporter_payment_mode || 'KM'} onChange={e => setLocalRates({...localRates, transporter_payment_mode: e.target.value as 'KM' | 'FIXED'})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                        <select value={localRates?.transporter_payment_mode || 'KM'} onChange={e => {
+                          const mode = e.target.value as 'KM' | 'FIXED';
+                          const fee = mode === 'FIXED' ? (localRates?.transporter_fixed_fee ?? localRates?.b2b_km ?? 150) : (localRates?.b2b_km ?? 4);
+                          setLocalRates({...localRates, transporter_payment_mode: mode, transporter_fixed_fee: fee, b2b_km: fee});
+                        }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
                           <option value="KM">Por KM</option>
                           <option value="FIXED">Valor Fixo</option>
                         </select>
                       </div>
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates?.transporter_payment_mode === 'FIXED' ? 'Frete Fixo (R$)' : 'Valor por KM (R$)'}</label>
-                        <input type="number" step="0.1" value={localRates?.transporter_payment_mode === 'FIXED' ? (localRates?.transporter_fixed_fee ?? 150) : (localRates?.b2b_km ?? 4)} onChange={e => setLocalRates(localRates?.transporter_payment_mode === 'FIXED' ? {...localRates, transporter_fixed_fee: Number(e.target.value)} : {...localRates, b2b_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
+                        <input type="number" step="0.1" value={localRates?.transporter_payment_mode === 'FIXED' ? (localRates?.transporter_fixed_fee ?? 150) : (localRates?.b2b_km ?? 4)} onChange={e => {
+                          const val = Number(e.target.value);
+                          if (localRates?.transporter_payment_mode === 'FIXED') {
+                            setLocalRates({...localRates, transporter_fixed_fee: val, b2b_km: val});
+                          } else {
+                            setLocalRates({...localRates, b2b_km: val});
+                          }
+                        }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
                       </div>
                       <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates?.b2b_mot_plat ?? 10} onChange={e => setLocalRates({...localRates, b2b_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
@@ -681,14 +703,25 @@ function AdminDashboardContent() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">Modalidade</label>
-                        <select value={localRates?.ecopoint_payment_mode || 'KM'} onChange={e => setLocalRates({...localRates, ecopoint_payment_mode: e.target.value as 'KM' | 'FIXED'})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                        <select value={localRates?.ecopoint_payment_mode || 'KM'} onChange={e => {
+                          const mode = e.target.value as 'KM' | 'FIXED';
+                          const fee = mode === 'FIXED' ? (localRates?.ecopoint_fixed_fee ?? localRates?.col_km ?? 50) : (localRates?.col_km ?? 8);
+                          setLocalRates({...localRates, ecopoint_payment_mode: mode, ecopoint_fixed_fee: fee, col_km: fee});
+                        }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
                           <option value="KM">Por KM</option>
                           <option value="FIXED">Valor Fixo</option>
                         </select>
                       </div>
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates?.ecopoint_payment_mode === 'FIXED' ? 'Coleta Fixa (R$)' : 'Valor por KM (R$)'}</label>
-                        <input type="number" step="0.1" value={localRates?.ecopoint_payment_mode === 'FIXED' ? (localRates?.ecopoint_fixed_fee ?? 50) : (localRates?.col_km ?? 8)} onChange={e => setLocalRates(localRates?.ecopoint_payment_mode === 'FIXED' ? {...localRates, ecopoint_fixed_fee: Number(e.target.value)} : {...localRates, col_km: Number(e.target.value)})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
+                        <input type="number" step="0.1" value={localRates?.ecopoint_payment_mode === 'FIXED' ? (localRates?.ecopoint_fixed_fee ?? 50) : (localRates?.col_km ?? 8)} onChange={e => {
+                          const val = Number(e.target.value);
+                          if (localRates?.ecopoint_payment_mode === 'FIXED') {
+                            setLocalRates({...localRates, ecopoint_fixed_fee: val, col_km: val});
+                          } else {
+                            setLocalRates({...localRates, col_km: val});
+                          }
+                        }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/>
                       </div>
                       <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates?.col_mot_plat ?? 10} onChange={e => setLocalRates({...localRates, col_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
