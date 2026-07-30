@@ -228,31 +228,31 @@ export default function FornecedorDashboard() {
           </div>
         )}
 
-        {activeTab === 'geral' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in zoom-in-95 duration-300">
-          {/* Resumo */}
-          <div className="bg-emerald-900 text-white p-5 rounded-xl shadow flex flex-col justify-between">
-              <div>
-                <h2 className="text-xl font-bold">{currentUser.name}</h2>
-                <p className="text-emerald-300 text-xs mt-1">📍 {currentUser.bairro}</p>
-              </div>
-              <div className="mt-4 pt-4 border-t border-emerald-700">
-                  <p className="text-sm text-emerald-200">Saldo Líquido (Sessão)</p>
-                  <p className="text-2xl font-bold text-green-400">{formatMoney(vendasHoje)}</p>
-                  <p className="text-[10px] text-emerald-300 mt-1">🗓️ Pix Automático: às {rates.payout_time || '22:00'}</p>
-                  {vendasHoje > 0 && (
-                    <button 
-                      onClick={handleResgatarPix}
-                      className="mt-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition shadow flex items-center gap-1 w-full justify-center"
-                    >
-                      💸 Saque Instantâneo Pix
-                    </button>
-                  )}
-              </div>
-          </div>
+        {/* Banner Cofre Virtual & Pix Automático (Sempre Visível) */}
+        <div className="bg-emerald-900 text-white p-5 rounded-2xl shadow flex justify-between items-center border border-emerald-800">
+            <div>
+                <h2 className="text-xl font-bold">🏭 {currentUser.name}</h2>
+                <p className="text-emerald-300 text-xs mt-1">📍 Bairro: {currentUser.bairro || 'Central'}</p>
+            </div>
+            <div className="text-right flex flex-col items-end">
+                <p className="text-xs text-emerald-200">Cofre Virtual (A Receber)</p>
+                <p className="text-2xl font-black text-green-400">{formatMoney(vendasHoje)}</p>
+                <p className="text-[10px] text-emerald-300 mt-1 font-bold">🗓️ Pix Automático: às {rates.payout_time || '22:00'}</p>
+                {vendasHoje > 0 && (
+                  <button 
+                    onClick={handleResgatarPix}
+                    className="mt-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1"
+                  >
+                    💸 Saque Instantâneo Pix
+                  </button>
+                )}
+            </div>
+        </div>
 
+        {activeTab === 'geral' && (
+        <div className="grid grid-cols-1 gap-4 animate-in fade-in zoom-in-95 duration-300">
           {/* Controles */}
-          <div className="col-span-1 md:col-span-2 bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center gap-3">
+          <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center gap-3">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
                   <div>
                       <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🏭 Status e Lata Açaí</h3>
