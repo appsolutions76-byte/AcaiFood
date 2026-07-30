@@ -135,3 +135,93 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    const accountIdParam = searchParams.get('accountId');
+
+    const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+    if (!ASAAS_API_KEY) {
+      return NextResponse.json({ error: 'ASAAS_API_KEY não configurada no ambiente' }, { status: 400 });
+    }
+
+    const ASAAS_ENV = process.env.ASAAS_ENVIRONMENT || 'production';
+    const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg');
+    const ASAAS_URL = isSandbox
+      ? 'https://sandbox.asaas.com/api/v3'
+      : 'https://www.asaas.com/api/v3';
+
+    let accountId = accountIdParam || '';
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+    if (userId && supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      const { data: user } = await supabase
+        .from('users')
+        .select('asaas_account_id, asaas_wallet_id, cpf_cnpj')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (user) {
+        if (!accountId && user.asaas_account_id) {
+          accountId = user.asaas_account_id;
+        }
+
+        if (!accountId && user.cpf_cnpj) {
+          const cleanCpfCnpj = String(user.cpf_cnpj).replace(/\D/g, '');
+          if (cleanCpfCnpj) {
+            const searchRes = await fetch(`${ASAAS_URL}/accounts?cpfCnpj=${cleanCpfCnpj}`, {
+              headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+            });
+            const searchData = await searchRes.json();
+            if (searchData && searchData.data && searchData.data.length > 0) {
+              accountId = searchData.data[0].id;
+            }
+          }
+        }
+      }
+    }
+
+    let asaasResult: any = null;
+    if (accountId) {
+      console.log(`Excluindo subconta Asaas ${accountId}...`);
+      const deleteRes = await fetch(`${ASAAS_URL}/accounts/${accountId}`, {
+        method: 'DELETE',
+        headers: {
+          'access_token': ASAAS_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      });
+      asaasResult = await deleteRes.json();
+    }
+
+    if (userId && supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      await supabase
+        .from('users')
+        .update({
+          asaas_wallet_id: null,
+          asaas_account_id: null,
+          split_enabled: false
+        })
+        .eq('id', userId);
+    }
+
+    return NextResponse.json({
+      success: true,
+      deletedAccountId: accountId,
+      asaasResult
+    });
+
+  } catch (error: any) {
+    console.error("Erro na API DELETE /api/asaas/subaccount:", error);
+    return NextResponse.json(
+      { error: error.message || 'Erro interno ao excluir subconta Asaas' },
+      { status: 500 }
+    );
+  }
+}

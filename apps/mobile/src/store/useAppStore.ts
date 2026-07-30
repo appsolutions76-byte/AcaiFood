@@ -929,6 +929,12 @@ export const useAppStore = create<AppState>()(
             return;
           }
 
+          try {
+            await fetch(`/api/asaas/subaccount?userId=${userId}`, { method: 'DELETE' });
+          } catch (_e) {
+            console.warn("Aviso ao tentar excluir subconta Asaas via API local:", _e);
+          }
+
           const { data: responseData, error: functionError } = await supabase.functions.invoke('remove-account', {
             body: { targetUserId: userId }
           });

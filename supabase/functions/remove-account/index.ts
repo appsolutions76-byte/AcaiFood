@@ -79,6 +79,53 @@ serve(async (req) => {
     // 5. Initialize Admin Client with Service Role Key to bypass RLS and Auth restrictions
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
+    // 5.1 Buscar dados do usuário para verificar e excluir subconta no Asaas se existir
+    try {
+      const { data: targetUser } = await supabaseAdmin
+        .from('users')
+        .select('asaas_account_id, asaas_wallet_id, cpf_cnpj')
+        .eq('id', targetUserId)
+        .maybeSingle()
+
+      if (targetUser) {
+        const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')
+        if (ASAAS_API_KEY) {
+          const ASAAS_ENV = Deno.env.get('ASAAS_ENVIRONMENT') || 'production'
+          const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg')
+          const ASAAS_URL = isSandbox
+            ? 'https://sandbox.asaas.com/api/v3'
+            : 'https://www.asaas.com/api/v3'
+
+          let accountId = targetUser.asaas_account_id
+
+          if (!accountId && targetUser.cpf_cnpj) {
+            const cleanCpfCnpj = String(targetUser.cpf_cnpj).replace(/\D/g, '')
+            if (cleanCpfCnpj) {
+              const searchRes = await fetch(`${ASAAS_URL}/accounts?cpfCnpj=${cleanCpfCnpj}`, {
+                headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+              })
+              const searchData = await searchRes.json()
+              if (searchData && searchData.data && searchData.data.length > 0) {
+                accountId = searchData.data[0].id
+              }
+            }
+          }
+
+          if (accountId) {
+            console.log(`Deletando subconta Asaas ${accountId} para usuário ${targetUserId}...`)
+            const deleteRes = await fetch(`${ASAAS_URL}/accounts/${accountId}`, {
+              method: 'DELETE',
+              headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+            })
+            const deleteData = await deleteRes.json()
+            console.log("Resultado da exclusão da subconta no Asaas:", deleteData)
+          }
+        }
+      }
+    } catch (asaasError) {
+      console.error("Erro ao tentar excluir subconta no Asaas:", asaasError)
+    }
+
     // 6. Delete the user explicitly from public.users first (since there's no ON DELETE CASCADE on the ID)
     const { error: publicDbError } = await supabaseAdmin
       .from('users')
