@@ -96,7 +96,7 @@ export default function FornecedorDashboard() {
     const inputPix = prompt("Informe a sua Chave PIX (CPF, Celular, E-mail ou Aleatória) ou Carteira Asaas para receber os repasses:", currentUser.pixKey || currentUser.asaasWalletId || "");
     if (inputPix !== null && inputPix.trim() !== "") {
       await linkAsaasAccount(currentUser.id, inputPix.trim());
-      alert("Chave PIX / Carteira Asaas salva com sucesso! Repasses liberados.");
+      alert("✅ Chave PIX / Carteira Asaas salva com sucesso! Repasses liberados.\n\n📲 Nota: Se você receber um SMS do Asaas com código de verificação, não se preocupe: sua conta no AçaíFood já está 100% ativa e pronta para receber!");
     }
   };
 
@@ -180,6 +180,9 @@ export default function FornecedorDashboard() {
             >
               🤝 Vincular Conta / Carteira Asaas
             </button>
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 opacity-80 mt-3">
+              📲 <strong>Dica:</strong> Se você receber um SMS do Asaas com código de verificação, não se preocupe: a sua conta AçaíFood é ativada automaticamente via API!
+            </p>
           </div>
         )}
 

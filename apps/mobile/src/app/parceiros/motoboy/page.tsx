@@ -70,7 +70,7 @@ export default function MotoboyDashboard() {
     const inputPix = prompt("Informe a sua Chave PIX (CPF, Celular, E-mail ou Aleatória) ou Carteira Asaas para receber os repasses das suas entregas:", currentUser.pixKey || currentUser.asaasWalletId || "");
     if (inputPix !== null && inputPix.trim() !== "") {
       await linkAsaasAccount(currentUser.id, inputPix.trim());
-      alert("Chave PIX / Carteira Asaas salva com sucesso! Repasses ativados.");
+      alert("✅ Chave PIX / Carteira Asaas salva com sucesso! Repasses ativados.\n\n📲 Nota: Se você receber um SMS do Asaas com código de verificação, não se preocupe: sua conta no AçaíFood já está 100% ativa e pronta para receber!");
     }
   };
 
@@ -83,7 +83,7 @@ export default function MotoboyDashboard() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Corridas (B2C)</h1>
           </div>
           <div className="flex items-center gap-3">
-            {currentUser.asaasLinked && (
+            {currentUser?.asaasLinked && (
                <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold border border-emerald-200 hidden sm:inline-block">Asaas Ativo ✅</span>
             )}
             <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
@@ -103,7 +103,7 @@ export default function MotoboyDashboard() {
       </div>
 
       <main className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
-        {!currentUser.asaasLinked && (
+        {!currentUser?.asaasLinked && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 text-center shadow-sm">
             <h3 className="text-amber-700 dark:text-amber-400 font-bold text-lg mb-2">Atenção: Repasses Pendentes!</h3>
             <p className="text-amber-600 dark:text-amber-300 text-sm mb-4">
@@ -115,6 +115,9 @@ export default function MotoboyDashboard() {
             >
               🤝 Vincular Subconta / Carteira Asaas
             </button>
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 opacity-80 mt-3">
+              📲 <strong>Dica:</strong> Se você receber um SMS do Asaas com código de verificação, não se preocupe: a sua conta AçaíFood é ativada automaticamente via API!
+            </p>
           </div>
         )}
         <div className="bg-zinc-800 dark:bg-zinc-900 text-white p-5 rounded-xl shadow flex justify-between items-center border border-zinc-700 dark:border-zinc-800">
