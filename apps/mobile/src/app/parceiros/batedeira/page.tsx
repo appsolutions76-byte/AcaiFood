@@ -56,7 +56,7 @@ export default function BatedeiraDashboard() {
     setMounted(true);
 
     const checkPendingPayments = async () => {
-      const pendingOrders = store.orders.filter(o => o.status === 'aguardando_pagamento');
+      const pendingOrders = (store.orders || []).filter(o => o.status === 'aguardando_pagamento');
       for (const order of pendingOrders) {
         try {
           const res = await fetch(`/api/asaas/status?orderId=${order.id}`);
@@ -188,9 +188,9 @@ export default function BatedeiraDashboard() {
     );
   }
 
-  const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const meusPedidosAll = store.orders.filter(o => {
+  const meusPedidosAll = (store.orders || []).filter(o => {
     if (o.lojaId !== currentUser.id) return false;
     if (o.type === 'B2C' && o.status === 'aguardando_pagamento') return false;
     return true;
@@ -200,7 +200,7 @@ export default function BatedeiraDashboard() {
   const batedeiraActiveOrders = meusPedidosAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
   const batedeiraHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   const meusPedidos = [...batedeiraActiveOrders, ...batedeiraHistoryOrders];
-  const fornecedores = Object.values(store.users)
+  const fornecedores = Object.values(store.users || {})
     .filter(u => u.role === 'fornecedor' && u.status !== 'paused' && u.status !== 'blocked' && u.cidade === currentUser.cidade)
     .sort((a, b) => {
       const distA = (a.lat && currentUser.lat) ? haversineKm(a.lat, a.lng!, currentUser.lat, currentUser.lng!) : 999;
@@ -208,10 +208,10 @@ export default function BatedeiraDashboard() {
       return distA - distB;
     });
   
-  const distColeta = (currentUser.lat && store.users.ecoponto?.lat) ? haversineKm(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat, store.users.ecoponto.lng!) : 0;
-  const freteColeta = store.rates.ecopoint_payment_mode === 'FIXED' 
+  const distColeta = (currentUser.lat && store.users?.ecoponto?.lat) ? haversineKm(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat!, store.users.ecoponto.lng!) : 0;
+  const freteColeta = (store.rates?.ecopoint_payment_mode === 'FIXED') 
     ? (store.rates.ecopoint_fixed_fee ?? 50) 
-    : (distColeta * store.rates.col_km);
+    : (distColeta * (store.rates?.col_km || 0));
 
   const handleSaveSubsidy = () => {
     store.setFreteSubsidy(currentUser.id, parseFloat(subsidyInput) || 0);

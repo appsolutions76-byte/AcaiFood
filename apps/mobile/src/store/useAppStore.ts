@@ -1881,13 +1881,20 @@ export const useAppStore = create<AppState>()(
     { 
       name: 'acaifood-storage-v4',
       onRehydrateStorage: () => (state, error) => {
-        if (!error && state?.currentUser) {
-          setTimeout(() => {
-            state.setupRealtime(state.currentUser!.id);
-            state.fetchOrders(state.currentUser!.id);
-            state.startAutoRefresh();
-            state.fetchCities(); // Carregar cidades iniciais
-          }, 50);
+        if (!error && state) {
+          // Garantir que arrays e objetos críticos nunca sejam undefined após reidratação
+          if (!Array.isArray(state.orders)) (state as any).orders = [];
+          if (!state.users || typeof state.users !== 'object') (state as any).users = {};
+          if (!state.rates || typeof state.rates !== 'object') (state as any).rates = DB_DEFAULTS.rates;
+
+          if (state.currentUser) {
+            setTimeout(() => {
+              state.setupRealtime(state.currentUser!.id);
+              state.fetchOrders(state.currentUser!.id);
+              state.startAutoRefresh();
+              state.fetchCities();
+            }, 50);
+          }
         }
       }
     }
