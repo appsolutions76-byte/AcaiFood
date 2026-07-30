@@ -189,16 +189,22 @@ function AdminDashboardContent() {
     return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };
   };
 
-  const isMoto = (motId: string | null) => { 
+  const isMoto = (motId?: string | null) => { 
     if (!motId || typeof motId !== 'string') return false;
     const m = users[motId];
-    return m && m.veiculo === 'Moto'; 
+    if (!m) return false;
+    const roleStr = String(m.role || '').toLowerCase();
+    const veicStr = String(m.veiculo || '').toLowerCase();
+    return roleStr === 'motoboy' || (roleStr === 'motorista' && (!veicStr || veicStr.includes('moto'))) || veicStr.includes('moto'); 
   };
 
-  const isCaminhao = (motId: string | null) => { 
+  const isCaminhao = (motId?: string | null) => { 
     if (!motId || typeof motId !== 'string') return false;
     const m = users[motId];
-    return m && (m.veiculo === 'Caminhão' || m.veiculo === 'Caçamba'); 
+    if (!m) return false;
+    const roleStr = String(m.role || '').toLowerCase();
+    const veicStr = String(m.veiculo || '').toLowerCase();
+    return roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb'))) || veicStr.includes('caminh') || veicStr.includes('caçamb'); 
   };
 
   let totaisVendas = 0;
@@ -548,12 +554,12 @@ function AdminDashboardContent() {
                             <td className="p-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                     {u.role !== 'admin' && (
-                                        <button onClick={() => { if(typeof store.updateUserStatus === 'function') store.updateUserStatus(u.id, u.status === 'blocked' ? 'active' : 'blocked'); }} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${u.status === 'blocked' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}`}>
+                                        <button onClick={() => { if(typeof store.updateUserStatus === 'function') { store.updateUserStatus(u.id, u.status === 'blocked' ? 'active' : 'blocked'); showToast(u.status === 'blocked' ? `🔓 Usuário ${u.name} desbloqueado` : `🚫 Usuário ${u.name} bloqueado`); } }} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${u.status === 'blocked' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}`}>
                                             {u.status === 'blocked' ? '🔓 Desbloquear' : '🚫 Bloquear'}
                                         </button>
                                     )}
                                     {u.role !== 'admin' && (
-                                        <button onClick={() => { if(confirm('Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.')) if(typeof store.deleteUser === 'function') store.deleteUser(u.id); }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
+                                        <button onClick={() => { if(confirm('Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.')) { if(typeof store.deleteUser === 'function') store.deleteUser(u.id); showToast("🗑️ Solicitação de exclusão enviada!"); } }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
                                             🗑️
                                         </button>
                                     )}
@@ -578,7 +584,7 @@ function AdminDashboardContent() {
                 <h4 className="font-bold mb-3 text-sm">Adicionar Nova Cidade</h4>
                 <div className="flex gap-2">
                     <input type="text" value={newCityName} onChange={e => setNewCityName(e.target.value)} placeholder="Ex: Marabá" className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500" />
-                    <button onClick={() => { if(newCityName) { if(typeof store.addCity === 'function') store.addCity(newCityName); setNewCityName(''); } }} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-bold transition">Adicionar</button>
+                    <button onClick={() => { if(newCityName) { if(typeof store.addCity === 'function') store.addCity(newCityName); setNewCityName(''); showToast("🌍 Cidade adicionada com sucesso!"); } }} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-bold transition">Adicionar</button>
                 </div>
             </div>
 
@@ -596,10 +602,10 @@ function AdminDashboardContent() {
                                 </td>
                                 <td className="p-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
-                                        <button onClick={() => { if(typeof store.updateCityStatus === 'function') store.updateCityStatus(c.id, c.status === 'active' ? 'paused' : 'active'); }} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${c.status === 'active' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}>
+                                        <button onClick={() => { if(typeof store.updateCityStatus === 'function') { store.updateCityStatus(c.id, c.status === 'active' ? 'paused' : 'active'); showToast(`Cidade ${c.name} ${c.status === 'active' ? 'pausada' : 'ativada'}`); } }} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${c.status === 'active' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}>
                                             {c.status === 'active' ? 'Pausar' : 'Ativar'}
                                         </button>
-                                        <button onClick={() => { if(confirm(`Tem certeza que deseja excluir a cidade ${c.name}?`)) if(typeof store.deleteCity === 'function') store.deleteCity(c.id); }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
+                                        <button onClick={() => { if(confirm(`Tem certeza que deseja excluir a cidade ${c.name}?`)) { if(typeof store.deleteCity === 'function') store.deleteCity(c.id); showToast(`Cidade ${c.name} excluída`); } }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
                                             🗑️ Excluir
                                         </button>
                                     </div>
