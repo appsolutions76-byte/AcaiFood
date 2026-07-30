@@ -275,11 +275,30 @@ export default function BatedeiraDashboard() {
                           const activeColeta = store.orders.find(o => o.type === 'COLETA' && o.origemId === currentUser.id && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado');
                           
                           if (activeColeta) {
-                              const statusText = (activeColeta.status === 'pendente' || activeColeta.status === 'pronto') ? 'Aguardando Caçamba' :
+                              const statusText = activeColeta.status === 'aguardando_pagamento' ? 'Aguardando Pagamento Pix' :
+                                                 (activeColeta.status === 'pendente' || activeColeta.status === 'pronto') ? 'Aguardando Caçamba' :
                                                  activeColeta.status === 'em_rota' ? 'Caçamba a Caminho' : 'Em Andamento';
                               return (
                                   <div className="flex flex-wrap items-center gap-2">
                                       <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded border border-amber-200 shadow-sm animate-pulse">🚛 {statusText}</span>
+                                      {activeColeta.status === 'aguardando_pagamento' && (
+                                          <button 
+                                            type="button"
+                                            onClick={() => {
+                                                setPixModalData({
+                                                    open: true,
+                                                    qrCode: activeColeta.pixQrCode,
+                                                    copiaECola: activeColeta.pixCopiaECola,
+                                                    invoiceUrl: activeColeta.invoiceUrl,
+                                                    orderId: activeColeta.id,
+                                                    totalValue: freteColeta
+                                                });
+                                            }}
+                                            className="text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 rounded shadow-sm flex items-center gap-1"
+                                          >
+                                            ⚡ Pagar Pix
+                                          </button>
+                                      )}
                                       {activeColeta.deliveryPin && (
                                           <span className="text-xs font-black bg-purple-700 text-white px-2.5 py-1 rounded-md shadow-sm border border-purple-500 tracking-widest flex items-center gap-1">
                                               🔑 PIN: {activeColeta.deliveryPin}
@@ -292,9 +311,27 @@ export default function BatedeiraDashboard() {
 
                           return (
                               <button onClick={async () => {
-                                  const url = await store.criarPedido('COLETA');
-                                  if (url && typeof url === 'string' && url.startsWith('http')) {
-                                    window.location.href = url;
+                                  const res: any = await store.criarPedido('COLETA');
+                                  if (res && typeof res === 'object') {
+                                    if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
+                                       setPixModalData({
+                                          open: true,
+                                          qrCode: res.pixQrCode,
+                                          copiaECola: res.pixCopiaECola,
+                                          invoiceUrl: res.invoiceUrl,
+                                          orderId: res.orderId,
+                                          isSandbox: res.isSandbox,
+                                          totalValue: res.totalValue || freteColeta
+                                       });
+                                       return;
+                                    }
+                                    if (res.error) {
+                                       alert(`Aviso do Asaas: ${res.error}`);
+                                    } else {
+                                       alert('✅ Chamada de caçamba registrada com sucesso!');
+                                    }
+                                  } else if (typeof res === 'string' && res.startsWith('http')) {
+                                    window.location.href = res;
                                   } else {
                                     alert('✅ Chamada de caçamba registrada com sucesso!');
                                   }

@@ -1100,7 +1100,7 @@ export const useAppStore = create<AppState>()(
         const novoPedido: Order = {
           id: `PED-${String(state.orderCounter).padStart(3, '0')}`,
           type: tipo,
-          status: tipo === 'COLETA' ? 'pronto' : 'aguardando_pagamento',
+          status: 'aguardando_pagamento',
           criadoPor: currentUser.id,
           origemId: originId,
           destinoId: destId,
@@ -1199,7 +1199,7 @@ export const useAppStore = create<AppState>()(
               buyer_id: currentUser.id,
               seller_storefront_id: sellerStorefrontId,
               order_type: tipo,
-              status: tipo === 'COLETA' ? 'READY' : 'PENDING',
+              status: 'PENDING',
               products_subtotal: novoPedido.valor,
               delivery_distance_km: novoPedido.distancia || 0,
               applied_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_plat : (tipo === 'COLETA' ? state.rates.col_plat : state.rates.b2b_plat),
@@ -1477,7 +1477,10 @@ export const useAppStore = create<AppState>()(
             if (o.id !== orderId) return o;
             const newOrder = { ...o };
             if (action === 'cancelar_pedido' || action === 'cancelar_cliente') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
-            if (action === 'confirmar_pagamento' || action === 'pagar') { newOrder.status = 'preparo'; newDbStatus = 'PAID'; }
+            if (action === 'confirmar_pagamento' || action === 'pagar') { 
+              newOrder.status = o.type === 'COLETA' ? 'pronto' : 'preparo'; 
+              newDbStatus = o.type === 'COLETA' ? 'READY' : 'PAID'; 
+            }
             if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
             if (action === 'chamar_moto' || action === 'chamar_caminhao') { newOrder.status = 'pronto'; newDbStatus = 'READY'; }
             if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newDbStatus = 'DELIVERING'; driverId = newOrder.motoristaId; }
@@ -1654,7 +1657,7 @@ export const useAppStore = create<AppState>()(
                 if (dbOrder.status === 'PENDING') appStatus = 'aguardando_pagamento';
                 if (dbOrder.status === 'PAID') appStatus = 'pendente';
                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
-                if (dbOrder.status === 'READY' || (dbOrder.order_type === 'COLETA' && dbOrder.status !== 'CANCELLED')) appStatus = 'pronto';
+                if (dbOrder.status === 'READY') appStatus = 'pronto';
                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
                 if (dbOrder.status === 'DELIVERED') appStatus = 'aguardando_cliente';
                 if (dbOrder.status === 'RECEIVED') appStatus = 'entregue';
