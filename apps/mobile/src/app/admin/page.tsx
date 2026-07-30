@@ -80,6 +80,14 @@ function AdminDashboardContent() {
   const [pwdModalOpen, setPwdModalOpen] = useState(false);
   const [pwdInputText, setPwdInputText] = useState('');
   const [pwdModalMode, setPwdModalMode] = useState<'create' | 'verify'>('verify');
+  const [isSavingRates, setIsSavingRates] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -239,11 +247,20 @@ function AdminDashboardContent() {
   };
 
   const handleSaveRates = async () => {
-    if (typeof store.saveRates === 'function') {
-      await store.saveRates(localRates);
+    if (isSavingRates) return;
+    setIsSavingRates(true);
+    try {
+      if (typeof store.saveRates === 'function') {
+        await store.saveRates(localRates);
+      }
+      setRatesModalOpen(false);
+      showToast("✅ Taxas do Triplo Split salvas com sucesso!");
+    } catch (_e) {
+      console.error("Erro ao salvar taxas:", _e);
+      showToast("❌ Erro ao salvar taxas.");
+    } finally {
+      setIsSavingRates(false);
     }
-    setRatesModalOpen(false);
-    alert("Taxas do Triplo Split atualizadas com sucesso!");
   };
 
   const handleRefresh = async () => {
@@ -252,6 +269,7 @@ function AdminDashboardContent() {
     if (typeof store.fetchCities === 'function') await store.fetchCities();
     if (typeof store.fetchRates === 'function') await store.fetchRates();
     if (store.rates) setLocalRates(store.rates);
+    showToast("🔄 Painel atualizado!");
   };
 
   const handleClearData = () => {
@@ -286,6 +304,12 @@ function AdminDashboardContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
+      {toastMsg && (
+        <div className="fixed top-5 right-5 z-[300] bg-zinc-900 text-white border border-zinc-700 px-4 py-3 rounded-xl shadow-xl font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
+          <span className="text-sm">{toastMsg}</span>
+          <button onClick={() => setToastMsg(null)} className="text-zinc-400 hover:text-white font-bold text-lg leading-none">&times;</button>
+        </div>
+      )}
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-3">
@@ -674,7 +698,9 @@ function AdminDashboardContent() {
 
             <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
                 <button onClick={() => setRatesModalOpen(false)} className="px-5 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
-                <button onClick={handleSaveRates} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition">Salvar Triplo Split</button>
+                <button disabled={isSavingRates} onClick={handleSaveRates} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl font-bold transition flex items-center gap-2">
+                  {isSavingRates ? 'Salvando...' : 'Salvar Triplo Split'}
+                </button>
             </div>
           </div>
         </div>
