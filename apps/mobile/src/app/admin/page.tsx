@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Settings, Trash2 } from "lucide-react";
-import { useAppStore, Order } from "@/store/useAppStore";
+import { useAppStore, Order, City, getRatesForCity } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -80,6 +80,7 @@ function AdminDashboardContent() {
   const [pwdModalOpen, setPwdModalOpen] = useState(false);
   const [pwdInputText, setPwdInputText] = useState('');
   const [pwdModalMode, setPwdModalMode] = useState<'create' | 'verify'>('verify');
+  const [selectedCityForRates, setSelectedCityForRates] = useState<City | null>(null);
   const [isSavingRates, setIsSavingRates] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -159,31 +160,36 @@ function AdminDashboardContent() {
   const getDynamicTaxes = (o: Order) => {
     let repasseLoja = 0, repasseForn = 0, repasseMoto = 0, platVenda = 0, platEntrega = 0, entregaTotal = 0;
     if (!o) return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };
+    
+    // Resolve as taxas da cidade de origem do pedido
+    const orderCity = (o as any).cidadeOrigem || (o.lojaId && users[o.lojaId] ? users[o.lojaId]?.cidade : undefined);
+    const activeRates = getRatesForCity(orderCity, rates, cities);
+
     const dist = o.distancia || 0;
     
     if (o.type === 'B2C') {
-        entregaTotal = o.taxas?.entregaTotal || (rates.courier_payment_mode === 'FIXED' ? (rates.courier_fixed_fee ?? 8) : dist * (rates.b2c_km || 2));
+        entregaTotal = o.taxas?.entregaTotal || (activeRates.courier_payment_mode === 'FIXED' ? (activeRates.courier_fixed_fee ?? 8) : dist * (activeRates.b2c_km || 2));
         const sub = (o.lojaId && users[o.lojaId] ? users[o.lojaId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteLoja = entregaTotal * sub;
         
-        platVenda = (o.valor || 0) * ((rates.b2c_plat || 10) / 100);
-        platEntrega = entregaTotal * ((rates.b2c_mot_plat || 10) / 100);
+        platVenda = (o.valor || 0) * ((activeRates.b2c_plat || 10) / 100);
+        platEntrega = entregaTotal * ((activeRates.b2c_mot_plat || 10) / 100);
         
         repasseLoja = (o.valor || 0) - platVenda - freteLoja;
         repasseMoto = entregaTotal - platEntrega;
     } else if (o.type === 'B2B') {
-        entregaTotal = o.taxas?.entregaTotal || (rates.transporter_payment_mode === 'FIXED' ? (rates.transporter_fixed_fee ?? 150) : dist * (rates.b2b_km || 4));
+        entregaTotal = o.taxas?.entregaTotal || (activeRates.transporter_payment_mode === 'FIXED' ? (activeRates.transporter_fixed_fee ?? 150) : dist * (activeRates.b2b_km || 4));
         const sub = (o.fornecedorId && users[o.fornecedorId] ? users[o.fornecedorId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteForn = entregaTotal * sub;
         
-        platVenda = (o.valor || 0) * ((rates.b2b_plat || 10) / 100);
-        platEntrega = entregaTotal * ((rates.b2b_mot_plat || 10) / 100);
+        platVenda = (o.valor || 0) * ((activeRates.b2b_plat || 10) / 100);
+        platEntrega = entregaTotal * ((activeRates.b2b_mot_plat || 10) / 100);
         
         repasseForn = (o.valor || 0) - platVenda - freteForn;
         repasseMoto = entregaTotal - platEntrega;
     } else if (o.type === 'COLETA') {
-        entregaTotal = o.taxas?.entregaTotal || (rates.ecopoint_payment_mode === 'FIXED' ? (rates.ecopoint_fixed_fee ?? 50) : dist * (rates.col_km || 8));
-        platEntrega = entregaTotal * ((rates.col_mot_plat || 10) / 100);
+        entregaTotal = o.taxas?.entregaTotal || (activeRates.ecopoint_payment_mode === 'FIXED' ? (activeRates.ecopoint_fixed_fee ?? 50) : dist * (activeRates.col_km || 8));
+        platEntrega = entregaTotal * ((activeRates.col_mot_plat || 10) / 100);
         repasseMoto = entregaTotal - platEntrega;
     }
     
@@ -257,11 +263,19 @@ function AdminDashboardContent() {
     if (isSavingRates) return;
     setIsSavingRates(true);
     try {
-      if (typeof store.saveRates === 'function') {
-        await store.saveRates(localRates);
+      if (selectedCityForRates) {
+        if (typeof store.saveCityRates === 'function') {
+          await store.saveCityRates(selectedCityForRates.id, localRates);
+        }
+        setRatesModalOpen(false);
+        showToast(`✅ Taxas de ${selectedCityForRates.name} salvas com sucesso!`);
+      } else {
+        if (typeof store.saveRates === 'function') {
+          await store.saveRates(localRates);
+        }
+        setRatesModalOpen(false);
+        showToast("✅ Taxas Globais salvas com sucesso!");
       }
-      setRatesModalOpen(false);
-      showToast("✅ Taxas do Triplo Split salvas com sucesso!");
     } catch (_e) {
       console.error("Erro ao salvar taxas:", _e);
       showToast("❌ Erro ao salvar taxas.");
@@ -344,8 +358,8 @@ function AdminDashboardContent() {
               <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
                   🔑 Senha
               </button>
-              <button onClick={() => { setLocalRates(store.rates || rates); setRatesModalOpen(true); }} className="bg-purple-800 hover:bg-purple-900 text-white px-3 py-1.5 rounded-xl font-bold shadow flex items-center gap-2 transition text-xs">
-                  ⚙️ Taxas
+              <button onClick={() => { setSelectedCityForRates(null); setLocalRates(store.rates || rates); setRatesModalOpen(true); }} className="bg-purple-800 hover:bg-purple-900 text-white px-3 py-1.5 rounded-xl font-bold shadow flex items-center gap-2 transition text-xs">
+                  ⚙️ Taxas Padrão
               </button>
               <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
                   <Trash2 size={14} /> Limpar
@@ -617,6 +631,16 @@ function AdminDashboardContent() {
                                 </td>
                                 <td className="p-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
+                                        <button 
+                                            onClick={() => {
+                                                setSelectedCityForRates(c);
+                                                setLocalRates(getRatesForCity(c.name, rates, cities));
+                                                setRatesModalOpen(true);
+                                            }}
+                                            className="px-2.5 py-1.5 text-[10px] font-bold rounded shadow-sm bg-purple-600 hover:bg-purple-700 text-white transition flex items-center gap-1"
+                                        >
+                                            ⚙️ Taxas da Cidade
+                                        </button>
                                         <button onClick={() => { if(typeof store.updateCityStatus === 'function') { store.updateCityStatus(c.id, c.status === 'active' ? 'paused' : 'active'); showToast(`Cidade ${c.name} ${c.status === 'active' ? 'pausada' : 'ativada'}`); } }} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${c.status === 'active' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}>
                                             {c.status === 'active' ? 'Pausar' : 'Ativar'}
                                         </button>
@@ -650,7 +674,9 @@ function AdminDashboardContent() {
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="bg-purple-900 text-white p-5 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-lg">⚙️ Configuração do Triplo Split</h3>
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                    ⚙️ Configuração do Triplo Split {selectedCityForRates ? `— ${selectedCityForRates.name}` : '(Padrão Geral)'}
+                </h3>
                 <button onClick={() => setRatesModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
             </div>
             

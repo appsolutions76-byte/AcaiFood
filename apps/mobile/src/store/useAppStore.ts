@@ -104,10 +104,33 @@ export interface Order {
   invoiceUrl?: string | null;
 }
 
+export interface CityRates {
+  b2c_plat?: number; b2c_km?: number; b2c_mot_plat?: number;
+  b2b_plat?: number; b2b_km?: number; b2b_mot_plat?: number;
+  col_plat?: number; col_km?: number; col_mot_plat?: number; col_valor?: number;
+  payout_time?: string;
+  courier_payment_mode?: 'KM' | 'FIXED';
+  courier_fixed_fee?: number;
+  transporter_payment_mode?: 'KM' | 'FIXED';
+  transporter_fixed_fee?: number;
+  ecopoint_payment_mode?: 'KM' | 'FIXED';
+  ecopoint_fixed_fee?: number;
+}
+
 export interface City {
   id: string;
   name: string;
   status: 'active' | 'paused';
+  rates?: CityRates;
+}
+
+export function getRatesForCity(cityName?: string | null, globalRates?: any, cities?: City[]) {
+  if (!cityName || !cities) return globalRates;
+  const match = cities.find(c => c.name.toLowerCase().trim() === cityName.toLowerCase().trim());
+  if (match && match.rates && Object.keys(match.rates).length > 0) {
+    return { ...globalRates, ...match.rates };
+  }
+  return globalRates;
 }
 
 interface AppState {
@@ -163,6 +186,7 @@ interface AppState {
   fetchCities: () => Promise<void>;
   addCity: (name: string) => Promise<void>;
   updateCityStatus: (id: string, status: 'active' | 'paused') => Promise<void>;
+  saveCityRates: (cityId: string, cityRates: CityRates) => Promise<void>;
   deleteCity: (id: string) => Promise<void>;
   
   // Auto Refresh
@@ -1883,6 +1907,17 @@ export const useAppStore = create<AppState>()(
             set((state) => ({
                cities: state.cities.map(c => c.id === id ? { ...c, status } : c)
             }));
+         }
+      },
+      saveCityRates: async (cityId, cityRates) => {
+         set((state) => ({
+            cities: state.cities.map(c => c.id === cityId ? { ...c, rates: { ...c.rates, ...cityRates } } : c)
+         }));
+         try {
+            const { error } = await supabase.from('cities').update({ rates: cityRates }).eq('id', cityId);
+            if (error) console.warn("Aviso ao salvar taxas da cidade no Supabase (coluna rates):", error);
+         } catch (e) {
+            console.warn("Exceção ao atualizar taxas da cidade no banco:", e);
          }
       },
       deleteCity: async (id) => {
