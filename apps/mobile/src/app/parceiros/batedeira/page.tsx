@@ -81,6 +81,7 @@ export default function BatedeiraDashboard() {
 
     const autoOrders = store.orders.filter(o =>
       o.lojaId === currentUser.id &&
+      o.type === 'B2C' &&
       (o.status === 'pendente' || o.status === 'preparo') &&
       !printedOrdersRef.current.has(o.id)
     );

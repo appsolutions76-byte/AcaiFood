@@ -40,6 +40,7 @@ export default function FornecedorDashboard() {
 
     const autoOrders = store.orders.filter(o =>
       o.fornecedorId === currentUser.id &&
+      o.type === 'B2B' &&
       (o.status === 'pendente' || o.status === 'preparo') &&
       !printedOrdersRef.current.has(o.id)
     );

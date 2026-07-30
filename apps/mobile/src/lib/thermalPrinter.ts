@@ -74,21 +74,30 @@ export function generateSingleTicketHTML(
     ? [{ id: '1', name: `${order.title} (x${order.quantity || 1})`, quantity: order.quantity || 1, price: order.valor }]
     : [{ id: '1', name: 'Pedido Açaí', quantity: 1, price: order.valor }];
 
-  const viaTitle = totalVias > 1 
-    ? (viaNumber === 1 ? '*** VIA 1: PREPARO / BATEDEIRA ***' : '*** VIA 2: ENTREGA / MOTOBOY ***')
-    : '*** COMANDA DE PREPARO ***';
+  const isB2B = order.type === 'B2B';
+  const isColeta = order.type === 'COLETA';
 
-  // Resolução inteligente dos dados do cliente (Gabriel ou qualquer cliente)
-  const resolvedClient = clientUser || (allUsers && order.clienteId ? allUsers[order.clienteId] : undefined) 
+  // Resolução inteligente do comprador (Batedeira no B2B, Cliente no B2C)
+  const buyerUser = clientUser 
+    || (allUsers && isB2B && order.lojaId ? allUsers[order.lojaId] : undefined)
+    || (allUsers && order.clienteId ? allUsers[order.clienteId] : undefined) 
     || (allUsers && order.destinoId ? allUsers[order.destinoId] : undefined) 
     || (allUsers && order.criadoPor ? allUsers[order.criadoPor] : undefined);
 
-  const clienteNome = order.clienteNome || resolvedClient?.name || 'Cliente AçaíFood';
-  const clienteTelefone = order.clienteTelefone || resolvedClient?.telefone || resolvedClient?.email || 'Não informado';
-  const clienteEndereco = order.deliveryAddress 
-    || resolvedClient?.endereco 
-    || (resolvedClient?.bairro ? `${resolvedClient.bairro}, ${resolvedClient.cidade || 'Belém'}` : '') 
+  const buyerRoleLabel = isB2B ? 'BATEDEIRA (COMPRADOR FRUTO)' : isColeta ? 'LOJA (SOLICITANTE CAÇAMBA)' : 'CLIENTE (AÇAÍ BATIDO)';
+  const buyerName = isB2B 
+    ? (buyerUser?.name || order.lojaNome || 'Batedeira Açaí') 
+    : (order.clienteNome || buyerUser?.name || 'Cliente AçaíFood');
+
+  const buyerPhone = order.clienteTelefone || buyerUser?.telefone || buyerUser?.email || 'Não informado';
+  const buyerAddress = order.deliveryAddress 
+    || buyerUser?.endereco 
+    || (buyerUser?.bairro ? `${buyerUser.bairro}, ${buyerUser.cidade || 'Belém'}` : '') 
     || 'Endereço não informado';
+
+  const viaTitle = totalVias > 1 
+    ? (viaNumber === 1 ? (isB2B ? '*** VIA 1: EXPEDIÇÃO / FORNECEDOR ***' : '*** VIA 1: PREPARO / BATEDEIRA ***') : (isB2B ? '*** VIA 2: TRANSPORTE / CAMINHÃO ***' : '*** VIA 2: ENTREGA / MOTOBOY ***'))
+    : (isB2B ? '*** COMANDA DE SAÍDA - AÇAÍ FRUTO ***' : '*** COMANDA DE PREPARO - AÇAÍ BATIDO ***');
 
   return `
     <div class="thermal-ticket" style="
@@ -122,16 +131,16 @@ export function generateSingleTicketHTML(
         </div>
       </div>
 
-      <!-- CLIENTE & ENTREGA -->
+      <!-- CLIENTE / BATEDEIRA & ENTREGA -->
       <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
         <div style="font-weight: bold; font-size: ${is58 ? '11px' : '13px'}; text-transform: uppercase;">
-          CLIENTE: ${clienteNome}
+          ${buyerRoleLabel}: ${buyerName}
         </div>
         <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 2px;">
-          📞 TEL: ${clienteTelefone}
+          📞 TEL: ${buyerPhone}
         </div>
         <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 2px;">
-          <strong>📍 ENDEREÇO:</strong> ${clienteEndereco}
+          <strong>📍 ENDEREÇO:</strong> ${buyerAddress}
         </div>
         ${order.deliveryReference ? `
           <div style="font-size: ${is58 ? '9px' : '10px'}; font-style: italic; margin-top: 2px;">Ref: ${order.deliveryReference}</div>
