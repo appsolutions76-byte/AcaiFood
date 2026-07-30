@@ -33,7 +33,8 @@ function PaymentHandler() {
 
 export default function StorefrontPage() {
   const store = useAppStore();
-  const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const rates = store.rates || { b2c_plat:10, b2c_km:2, b2c_mot_plat:10, b2b_plat:10, b2b_km:4, b2b_mot_plat:10, col_plat:10, col_km:8, col_mot_plat:10, col_valor:50, payout_time:'22:00', courier_payment_mode:'KM' as const, courier_fixed_fee:8, transporter_payment_mode:'KM' as const, transporter_fixed_fee:150, ecopoint_payment_mode:'KM' as const, ecopoint_fixed_fee:50 };
+  const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const currentUser = store.currentUser;
   const router = useRouter();
@@ -87,7 +88,7 @@ export default function StorefrontPage() {
 
     const checkStatus = async () => {
       // 1. Checar status no banco local via store
-      const localOrder = store.orders.find(o => o.id === pixModalData.orderId);
+      const localOrder = (store.orders || []).find(o => o.id === pixModalData.orderId);
       if (localOrder) {
         const s = String(localOrder.status).toLowerCase();
         if (['pago', 'pendente', 'preparo', 'pronto', 'em_rota', 'entregue', 'paid', 'preparing', 'ready', 'delivering', 'delivered', 'received', 'completed'].includes(s)) {
@@ -174,9 +175,9 @@ export default function StorefrontPage() {
     const loja = store.users?.[lojaId];
     if (!loja || !loja.lat || !currentUser?.lat) return { freteCliente: 0, dist: 0, subsidy: 0 };
     const dist = haversineKm(loja.lat, loja.lng!, currentUser!.lat, currentUser!.lng!);
-    const freteTotal = store.rates.courier_payment_mode === 'FIXED' 
-      ? (store.rates.courier_fixed_fee ?? 8) 
-      : dist * store.rates.b2c_km;
+    const freteTotal = rates.courier_payment_mode === 'FIXED' 
+      ? (rates.courier_fixed_fee ?? 8) 
+      : dist * rates.b2c_km;
     const subsidy = loja.freteSubsidyPct || 0;
     const freteCliente = freteTotal * (1 - subsidy / 100);
     return { freteCliente, dist, subsidy };
@@ -694,7 +695,7 @@ export default function StorefrontPage() {
                           <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(cartItemsTotal)}</span>
                       </div>
                       <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                          <span>Frete ({store.rates.courier_payment_mode === 'FIXED' ? 'Valor Fixo' : 'Estimativa por KM'}):</span>
+                          <span>Frete ({rates.courier_payment_mode === 'FIXED' ? 'Valor Fixo' : 'Estimativa por KM'}):</span>
                           <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(cartFrete)}</span>
                       </div>
                       <div className="flex justify-between pt-2 text-lg">

@@ -129,7 +129,7 @@ export default function FornecedorDashboard() {
         } else {
           const msg = data.error || '';
           if (msg.includes('Saldo insuficiente')) {
-            alert(`ℹ️ Saldo em Processamento no Asaas:\nSeus recebimentos aguardam a compensação do Pix no Asaas. O Pix automático de varredura ocorrerá às ${store.rates.payout_time || '22:00'}.`);
+            alert(`ℹ️ Saldo em Processamento no Asaas:\nSeus recebimentos aguardam a compensação do Pix no Asaas. O Pix automático de varredura ocorrerá às ${(store.rates || {payout_time:'22:00'}).payout_time || '22:00'}.`);
           } else {
             alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
           }
@@ -157,6 +157,7 @@ export default function FornecedorDashboard() {
     );
   }
 
+  const rates = store.rates || { b2c_plat:10, b2c_km:2, b2c_mot_plat:10, b2b_plat:10, b2b_km:4, b2b_mot_plat:10, col_plat:10, col_km:8, col_mot_plat:10, col_valor:50, payout_time:'22:00', courier_payment_mode:'KM' as const, courier_fixed_fee:8, transporter_payment_mode:'KM' as const, transporter_fixed_fee:150, ecopoint_payment_mode:'KM' as const, ecopoint_fixed_fee:50 };
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const meusPedidosAll = (store.orders || []).filter(o => o.fornecedorId === currentUser.id && o.status !== 'aguardando_pagamento');
@@ -237,7 +238,7 @@ export default function FornecedorDashboard() {
               <div className="mt-4 pt-4 border-t border-emerald-700">
                   <p className="text-sm text-emerald-200">Saldo Líquido (Sessão)</p>
                   <p className="text-2xl font-bold text-green-400">{formatMoney(vendasHoje)}</p>
-                  <p className="text-[10px] text-emerald-300 mt-1">🗓️ Pix Automático: às {store.rates.payout_time || '22:00'}</p>
+                  <p className="text-[10px] text-emerald-300 mt-1">🗓️ Pix Automático: às {rates.payout_time || '22:00'}</p>
                   {vendasHoje > 0 && (
                     <button 
                       onClick={handleResgatarPix}

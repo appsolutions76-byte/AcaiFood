@@ -160,7 +160,7 @@ export default function BatedeiraDashboard() {
         } else {
           const msg = data.error || '';
           if (msg.includes('Saldo insuficiente')) {
-            alert(`ℹ️ Saldo em Processamento no Asaas:\nSeus recebimentos aguardam a compensação do Pix no Asaas. O Pix automático de varredura ocorrerá às ${store.rates.payout_time || '22:00'}.`);
+            alert(`ℹ️ Saldo em Processamento no Asaas:\nSeus recebimentos aguardam a compensação do Pix no Asaas. O Pix automático de varredura ocorrerá às ${rates.payout_time || '22:00'}.`);
           } else {
             alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
           }
@@ -188,6 +188,7 @@ export default function BatedeiraDashboard() {
     );
   }
 
+  const rates = store.rates || { b2c_plat:10, b2c_km:2, b2c_mot_plat:10, b2b_plat:10, b2b_km:4, b2b_mot_plat:10, col_plat:10, col_km:8, col_mot_plat:10, col_valor:50, payout_time:'22:00', courier_payment_mode:'KM' as const, courier_fixed_fee:8, transporter_payment_mode:'KM' as const, transporter_fixed_fee:150, ecopoint_payment_mode:'KM' as const, ecopoint_fixed_fee:50 };
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const meusPedidosAll = (store.orders || []).filter(o => {
@@ -209,9 +210,9 @@ export default function BatedeiraDashboard() {
     });
   
   const distColeta = (currentUser.lat && store.users?.ecoponto?.lat) ? haversineKm(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat!, store.users.ecoponto.lng!) : 0;
-  const freteColeta = (store.rates?.ecopoint_payment_mode === 'FIXED') 
-    ? (store.rates.ecopoint_fixed_fee ?? 50) 
-    : (distColeta * (store.rates?.col_km || 0));
+  const freteColeta = (rates.ecopoint_payment_mode === 'FIXED') 
+    ? (rates.ecopoint_fixed_fee ?? 50) 
+    : (distColeta * (rates.col_km || 0));
 
   const handleSaveSubsidy = () => {
     store.setFreteSubsidy(currentUser.id, parseFloat(subsidyInput) || 0);
@@ -285,7 +286,7 @@ export default function BatedeiraDashboard() {
               <div className="mt-4 pt-4 border-t border-purple-700">
                   <p className="text-sm text-purple-200">Saldo Líquido (Sessão)</p>
                   <p className="text-2xl font-bold text-green-400">{formatMoney(vendasHoje)}</p>
-                  <p className="text-[10px] text-purple-300 mt-1">🗓️ Pix Automático: às {store.rates.payout_time || '22:00'}</p>
+                  <p className="text-[10px] text-purple-300 mt-1">🗓️ Pix Automático: às {rates.payout_time || '22:00'}</p>
                   {vendasHoje > 0 && (
                     <button 
                       onClick={handleResgatarPix}
@@ -331,7 +332,7 @@ export default function BatedeiraDashboard() {
                       <button onClick={() => setMapModal({ open: true, origem: currentUser.id, destino: 'ecoponto' })} className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">🗺️ {distColeta.toFixed(1)} km</button>
                       
                       {(() => {
-                          const activeColeta = store.orders.find(o => o.type === 'COLETA' && o.origemId === currentUser.id && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado');
+                          const activeColeta = (store.orders || []).find(o => o.type === 'COLETA' && o.origemId === currentUser.id && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado');
                           
                           if (activeColeta) {
                               const statusText = activeColeta.status === 'aguardando_pagamento' ? 'Aguardando Pagamento Pix' :
@@ -439,7 +440,7 @@ export default function BatedeiraDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {fornecedores.map(forn => {
                     const dist = (forn.lat && currentUser.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
-                    const freteTotal = dist * store.rates.b2b_km;
+                    const freteTotal = dist * rates.b2b_km;
                     const subsidy = forn.freteSubsidyPct || 0;
                     const freteLoja = freteTotal * (1 - subsidy / 100);
 
@@ -537,7 +538,7 @@ export default function BatedeiraDashboard() {
                               onClick={() => {
                                 const forn = store.users?.[o.origemId];
                                 const dist = (forn?.lat && currentUser?.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
-                                const freteTotal = dist * store.rates.b2b_km;
+                                const freteTotal = dist * rates.b2b_km;
                                 const subsidy = forn?.freteSubsidyPct || 0;
                                 const freteLoja = freteTotal * (1 - subsidy / 100);
                                 const totalToPay = (o.valor || 0) + freteLoja;
@@ -750,7 +751,7 @@ export default function BatedeiraDashboard() {
                       if (!forn) return <p>Fornecedor não encontrado</p>;
                       
                       const dist = (forn.lat && currentUser?.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
-                      const freteTotal = dist * store.rates.b2b_km;
+                      const freteTotal = dist * rates.b2b_km;
                       const subsidy = forn.freteSubsidyPct || 0;
                       const freteLoja = freteTotal * (1 - subsidy / 100);
                       const unitPrice = forn.priceB2B || 0;
