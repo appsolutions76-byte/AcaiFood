@@ -45,29 +45,10 @@ export default function BatedeiraDashboard() {
   );
 
   useEffect(() => {
-    store.fetchAllUsers();
-    store.startRealtime();
-
-    const checkPendingPayments = async () => {
-      const pendingOrders = (store.orders || []).filter(o => o.status === 'aguardando_pagamento');
-      for (const order of pendingOrders) {
-        try {
-          const res = await fetch(`/api/asaas/status?orderId=${order.id}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.isPaid) {
-              store.acaoPedido(order.id, 'confirmar_pagamento');
-            }
-          }
-        } catch (e) {
-          console.warn("Erro ao checar pagamento no Asaas:", e);
-        }
-      }
-    };
-
-    const interval = setInterval(checkPendingPayments, 10000);
-    return () => clearInterval(interval);
-  }, [store]);
+    const s = useAppStore.getState();
+    s.fetchAllUsers();
+    s.startRealtime();
+  }, []);
 
   useEffect(() => {
     if (!mounted || !printerConfig.enabled || printerConfig.printMode !== 'auto' || !currentUser) return;

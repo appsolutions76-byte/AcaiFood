@@ -164,7 +164,7 @@ interface AppState {
   fetchLojas: () => Promise<void>;
   logout: () => void;
   linkAsaasAccount: (userId: string, walletId: string) => Promise<void>;
-  fetchRates: () => Promise<void>;
+  fetchRates: (force?: boolean) => Promise<void>;
   saveRates: (newRates: Partial<AppState['rates']>) => Promise<void>;
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => Promise<any>;
   acaoPedido: (orderId: string, action: string, pinStr?: string) => Promise<void>;
@@ -176,8 +176,8 @@ interface AppState {
   updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => Promise<void>;
   addProduct: (userId: string, product: Product) => Promise<void>;
   removeProduct: (userId: string, productId: string) => Promise<void>;
-  fetchOrders: (userId: string) => Promise<void>;
-  fetchAllUsers: () => Promise<void>;
+  fetchOrders: (userId: string, force?: boolean) => Promise<void>;
+  fetchAllUsers: (force?: boolean) => Promise<void>;
   setupRealtime: (userId: string) => void;
   clearData: () => Promise<void>;
   setClearPassword: (pwd: string) => void;
@@ -205,8 +205,11 @@ interface AppState {
 }
 
 // Para manter referência ao channel e evitar duplicatas
-let supabaseChannel: any = null;
 let autoRefreshInterval: any = null;
+let supabaseChannel: any = null;
+let lastFetchAllUsersTime = 0;
+let lastFetchRatesTime = 0;
+const lastFetchOrdersTime: Record<string, number> = {};
 
 const DB_DEFAULTS = {
   rates: {
@@ -696,7 +699,13 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      fetchAllUsers: async () => {
+      fetchAllUsers: async (force?: boolean) => {
+        const now = Date.now();
+        if (!force && now - lastFetchAllUsersTime < 12000 && Object.keys(get().users || {}).length > 0) {
+            return;
+        }
+        lastFetchAllUsersTime = now;
+
         const { data: dbUsers, error } = await supabase
             .from('users')
             .select('*, storefronts(*, products(*))');
@@ -817,7 +826,13 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      fetchRates: async () => {
+      fetchRates: async (force?: boolean) => {
+         const now = Date.now();
+         if (!force && now - lastFetchRatesTime < 30000 && get().rates) {
+             return;
+         }
+         lastFetchRatesTime = now;
+
          try {
            const { data, error } = await supabase.from('platform_settings').select('*').limit(1).maybeSingle();
            if (data && !error) {
@@ -1670,7 +1685,13 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      fetchOrders: async (userId) => {
+      fetchOrders: async (userId, force?: boolean) => {
+         const now = Date.now();
+         if (!force && lastFetchOrdersTime[userId] && now - lastFetchOrdersTime[userId] < 3000) {
+             return;
+         }
+         lastFetchOrdersTime[userId] = now;
+
          const state = get();
          const currentUser = (state.currentUser?.id === userId ? state.currentUser : state.users[userId]) || state.currentUser;
          if (!currentUser) return;
@@ -1934,28 +1955,27 @@ export const useAppStore = create<AppState>()(
          if (!currentUser) return;
          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
          
-         // Atualiza o estado e pedidos a cada 10 segundos (dá tempo para editar preços e produtos tranquilamente)
+         // Atualiza os pedidos em segundo plano a cada 20 segundos
          autoRefreshInterval = setInterval(async () => {
-             await get().fetchOrders(currentUser.id);
-             get().fetchRates();
-             get().fetchAllUsers();
-
-             // Checar automaticamente status dos pagamentos Pix pendentes no Asaas
+             await get().fetchOrders(currentUser.id, true);
+             
              const pendingOrders = (get().orders || []).filter(o => o.status === 'aguardando_pagamento');
-             for (const pOrder of pendingOrders) {
-                 try {
-                     const res = await fetch(`/api/asaas/status?orderId=${pOrder.id}`);
-                     if (res.ok) {
-                         const data = await res.json();
-                         if (data.isPaid) {
-                             get().acaoPedido(pOrder.id, 'confirmar_pagamento');
+             if (pendingOrders.length > 0) {
+                 for (const pOrder of pendingOrders) {
+                     try {
+                         const res = await fetch(`/api/asaas/status?orderId=${pOrder.id}`);
+                         if (res.ok) {
+                             const data = await res.json();
+                             if (data.isPaid) {
+                                 get().acaoPedido(pOrder.id, 'confirmar_pagamento');
+                             }
                          }
+                     } catch(e) {
+                         console.warn("Erro no autoRefresh ao checar status de pagamento Pix:", e);
                      }
-                 } catch(e) {
-                     console.warn("Erro no autoRefresh ao checar status de pagamento Pix:", e);
                  }
              }
-         }, 10000);
+         }, 20000);
       },
       
       stopAutoRefresh: () => {

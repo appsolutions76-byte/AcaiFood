@@ -35,9 +35,10 @@ export default function FornecedorDashboard() {
   const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(getPrinterConfig);
 
   useEffect(() => {
-    store.fetchAllUsers();
-    store.startRealtime();
-  }, [store]);
+    const s = useAppStore.getState();
+    s.fetchAllUsers();
+    s.startRealtime();
+  }, []);
 
   useEffect(() => {
     if (!mounted || !printerConfig.enabled || printerConfig.printMode !== 'auto' || !currentUser) return;

@@ -124,7 +124,8 @@ export default function StorefrontPage() {
       isSubscribed = false;
       clearInterval(interval);
     };
-  }, [pixModalData.open, pixModalData.orderId, pixModalData.paymentId, store]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pixModalData.open, pixModalData.orderId, pixModalData.paymentId]);
 
   const getCartPrice = (lojaId: string, tipo: string) => {
     const loja = store.users?.[lojaId];

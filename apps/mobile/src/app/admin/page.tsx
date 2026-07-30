@@ -105,13 +105,14 @@ function AdminDashboardContent() {
 
   useEffect(() => {
     if (isAdmin) {
-       if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers();
-       if (typeof store.startRealtime === 'function') store.startRealtime();
-       if (typeof store.fetchOrders === 'function' && store.currentUser?.id) store.fetchOrders(store.currentUser.id);
-       if (typeof store.fetchCities === 'function') store.fetchCities();
-       if (typeof store.fetchRates === 'function') store.fetchRates();
+       const s = useAppStore.getState();
+       if (typeof s.fetchAllUsers === 'function') s.fetchAllUsers();
+       if (typeof s.startRealtime === 'function') s.startRealtime();
+       if (typeof s.fetchOrders === 'function' && s.currentUser?.id) s.fetchOrders(s.currentUser.id);
+       if (typeof s.fetchCities === 'function') s.fetchCities();
+       if (typeof s.fetchRates === 'function') s.fetchRates();
     }
-  }, [isAdmin, store]);
+  }, [isAdmin]);
 
   // 4. Funções auxiliares
   const formatMoney = (val?: number | null) => (val ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

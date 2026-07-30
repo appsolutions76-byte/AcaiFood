@@ -25,11 +25,12 @@ export default function MotoboyDashboard() {
   );
 
   useEffect(() => {
-    if (store.currentUser?.role === 'motorista') {
-        store.fetchAllUsers();
-        store.startRealtime();
+    const s = useAppStore.getState();
+    if (s.currentUser?.role === 'motorista') {
+        s.fetchAllUsers();
+        s.startRealtime();
     }
-  }, [store]);
+  }, []);
 
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
