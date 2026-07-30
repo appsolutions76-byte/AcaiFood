@@ -767,15 +767,19 @@ export const useAppStore = create<AppState>()(
           updatePayload.split_enabled = true;
         }
 
-        const { error } = await supabase.from('users').update(updatePayload).eq('id', userId);
-        if (error) console.error("Erro ao salvar carteira Asaas no banco:", error);
+        try {
+          const { error } = await supabase.from('users').update(updatePayload).eq('id', userId);
+          if (error) console.error("Erro ao salvar carteira Asaas no banco:", error);
+        } catch (e) {
+          console.warn("Erro ao atualizar banco Supabase:", e);
+        }
 
         set((state) => {
-          const user = state.users[userId];
+          const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user) return state;
           const updatedUser = { 
             ...user, 
-            asaasWalletId: isRealWallet ? finalWalletId : user.asaasWalletId, 
+            asaasWalletId: isRealWallet ? finalWalletId : (user.asaasWalletId || finalWalletId), 
             asaasLinked: true, 
             pixKey: walletId 
           };
