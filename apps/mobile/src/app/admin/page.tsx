@@ -81,6 +81,7 @@ function AdminDashboardContent() {
   const [pwdInputText, setPwdInputText] = useState('');
   const [pwdModalMode, setPwdModalMode] = useState<'create' | 'verify'>('verify');
   const [isSavingRates, setIsSavingRates] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -270,12 +271,24 @@ function AdminDashboardContent() {
   };
 
   const handleRefresh = async () => {
-    if (typeof store.fetchAllUsers === 'function') await store.fetchAllUsers();
-    if (typeof store.fetchOrders === 'function' && store.currentUser?.id) await store.fetchOrders(store.currentUser.id);
-    if (typeof store.fetchCities === 'function') await store.fetchCities();
-    if (typeof store.fetchRates === 'function') await store.fetchRates();
-    if (store.rates) setLocalRates(store.rates);
-    showToast("🔄 Painel atualizado!");
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      if (typeof store.fetchAllUsers === 'function') await store.fetchAllUsers();
+      if (typeof store.fetchOrders === 'function') {
+        const uid = store.currentUser?.id || 'admin';
+        await store.fetchOrders(uid);
+      }
+      if (typeof store.fetchCities === 'function') await store.fetchCities();
+      if (typeof store.fetchRates === 'function') await store.fetchRates();
+      if (store.rates) setLocalRates(store.rates);
+      showToast("🔄 Painel atualizado com sucesso!");
+    } catch (_e) {
+      console.error("Erro ao atualizar painel:", _e);
+      showToast("❌ Erro ao atualizar painel.");
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleClearData = () => {
@@ -323,7 +336,9 @@ function AdminDashboardContent() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
           </div>
           <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end">
-              <button onClick={handleRefresh} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
+              <button disabled={isRefreshing} onClick={handleRefresh} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all disabled:opacity-50">
+                {isRefreshing ? '🔄 Atualizando...' : '🔄 Atualizar'}
+              </button>
               <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1.5 rounded-lg font-bold shadow-sm transition-all">📲 Compartilhar</button>
               <ThemeToggle />
               <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">

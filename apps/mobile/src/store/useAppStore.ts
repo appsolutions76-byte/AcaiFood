@@ -1648,8 +1648,10 @@ export const useAppStore = create<AppState>()(
 
       fetchOrders: async (userId) => {
          const state = get();
-         const currentUser = state.currentUser?.id === userId ? state.currentUser : state.users[userId];
+         const currentUser = (state.currentUser?.id === userId ? state.currentUser : state.users[userId]) || state.currentUser;
          if (!currentUser) return;
+
+         const roleLower = String(currentUser.role || '').toLowerCase();
 
          let query = supabase.from('orders').select(`
             id, order_type, status, products_subtotal, delivery_distance_km, 
@@ -1661,7 +1663,7 @@ export const useAppStore = create<AppState>()(
             driver:users!orders_driver_id_fkey(id, name)
          `);
 
-         if (currentUser.role === 'loja') {
+         if (roleLower === 'loja') {
              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
              if (sfList && sfList.length > 0) {
                  const sfIds = sfList.map((s: any) => s.id).join(',');
@@ -1669,22 +1671,20 @@ export const useAppStore = create<AppState>()(
              } else {
                  query = query.eq('buyer_id', currentUser.id);
              }
-          } else if (currentUser.role === 'fornecedor') {
+          } else if (roleLower === 'fornecedor') {
              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
              if (sfList && sfList.length > 0) {
                  query = query.in('seller_storefront_id', sfList.map((s: any) => s.id));
              }
-          } else if (currentUser.role === 'motorista') {
+          } else if (roleLower === 'motorista' || roleLower === 'courier') {
             query = query.or(`status.in.(READY,PREPARING,DELIVERING,PAID,PENDING),driver_id.eq.${currentUser.id}`);
-         } else if (currentUser.role === 'cliente') {
+         } else if (roleLower === 'cliente') {
             query = query.eq('buyer_id', currentUser.id);
-         } else if (currentUser.role === 'admin') {
-            // Admin sees all orders
-         } else {
-            return;
+         } else if (roleLower === 'admin') {
+            // Admin vê todos os pedidos sem restrição
          }
 
-         if (currentUser.role !== 'admin') {
+         if (roleLower !== 'admin') {
             query = query.eq('is_hidden', false);
          }
 
