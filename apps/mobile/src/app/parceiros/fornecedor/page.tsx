@@ -100,6 +100,46 @@ export default function FornecedorDashboard() {
     }
   };
 
+  const handleResgatarPix = async () => {
+    if (!currentUser) return;
+    const targetKey = currentUser.pixKey || currentUser.asaasWalletId;
+    if (!targetKey) {
+      alert("⚠️ Você precisa vincular sua Chave PIX ou Carteira Asaas antes de solicitar o saque.");
+      return;
+    }
+    if (!vendasHoje || vendasHoje <= 0) {
+      alert("Não há saldo disponível para saque no momento.");
+      return;
+    }
+
+    if (confirm(`Deseja transferir R$ ${vendasHoje.toFixed(2)} instantaneamente via PIX para a sua chave registrada (${targetKey})?`)) {
+      try {
+        const res = await fetch('/api/asaas/transfer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pixKey: targetKey,
+            value: vendasHoje,
+            description: `Saque Instantâneo AçaíFood (${currentUser.name})`
+          })
+        });
+        const data = await res.json();
+        if (res.ok && (data.success || data.transferId)) {
+          alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${vendasHoje.toFixed(2)} já está a caminho do seu banco.`);
+        } else {
+          const msg = data.error || '';
+          if (msg.includes('Saldo insuficiente')) {
+            alert(`ℹ️ Saldo em Processamento no Asaas:\nSeus recebimentos aguardam a compensação do Pix no Asaas. O Pix automático de varredura ocorrerá às ${store.rates.payout_time || '22:00'}.`);
+          } else {
+            alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
+          }
+        }
+      } catch (err) {
+        alert("Erro de conexão ao solicitar transferência PIX.");
+      }
+    }
+  };
+
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
   }
@@ -189,12 +229,23 @@ export default function FornecedorDashboard() {
         {activeTab === 'geral' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in zoom-in-95 duration-300">
           {/* Resumo */}
-          <div className="bg-emerald-900 text-white p-5 rounded-xl shadow">
-              <h2 className="text-xl font-bold">{currentUser.name}</h2>
-              <p className="text-emerald-300 text-xs mt-1">📍 {currentUser.bairro}</p>
+          <div className="bg-emerald-900 text-white p-5 rounded-xl shadow flex flex-col justify-between">
+              <div>
+                <h2 className="text-xl font-bold">{currentUser.name}</h2>
+                <p className="text-emerald-300 text-xs mt-1">📍 {currentUser.bairro}</p>
+              </div>
               <div className="mt-4 pt-4 border-t border-emerald-700">
                   <p className="text-sm text-emerald-200">Saldo Líquido (Sessão)</p>
                   <p className="text-2xl font-bold text-green-400">{formatMoney(vendasHoje)}</p>
+                  <p className="text-[10px] text-emerald-300 mt-1">🗓️ Pix Automático: às {store.rates.payout_time || '22:00'}</p>
+                  {vendasHoje > 0 && (
+                    <button 
+                      onClick={handleResgatarPix}
+                      className="mt-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-lg transition shadow flex items-center gap-1 w-full justify-center"
+                    >
+                      💸 Saque Instantâneo Pix
+                    </button>
+                  )}
               </div>
           </div>
 

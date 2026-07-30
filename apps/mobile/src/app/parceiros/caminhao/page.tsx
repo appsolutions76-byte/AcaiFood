@@ -70,6 +70,46 @@ export default function CaminhaoDashboard() {
     }
   };
 
+  const handleResgatarPix = async () => {
+    if (!currentUser) return;
+    const targetKey = currentUser.pixKey || currentUser.asaasWalletId;
+    if (!targetKey) {
+      alert("⚠️ Você precisa vincular sua Chave PIX ou Carteira Asaas antes de solicitar o saque.");
+      return;
+    }
+    if (!ganhosHoje || ganhosHoje <= 0) {
+      alert("Não há saldo disponível para saque no momento.");
+      return;
+    }
+
+    if (confirm(`Deseja transferir R$ ${ganhosHoje.toFixed(2)} instantaneamente via PIX para a sua chave registrada (${targetKey})?`)) {
+      try {
+        const res = await fetch('/api/asaas/transfer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pixKey: targetKey,
+            value: ganhosHoje,
+            description: `Saque Instantâneo AçaíFood (${currentUser.name})`
+          })
+        });
+        const data = await res.json();
+        if (res.ok && (data.success || data.transferId)) {
+          alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${ganhosHoje.toFixed(2)} já está a caminho do seu banco.`);
+        } else {
+          const msg = data.error || '';
+          if (msg.includes('Saldo insuficiente')) {
+            alert(`ℹ️ Saldo em Processamento no Asaas:\nSeus recebimentos aguardam a compensação do Pix no Asaas. O Pix automático de varredura ocorrerá às ${store.rates.payout_time || '22:00'}.`);
+          } else {
+            alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
+          }
+        }
+      } catch (err) {
+        alert("Erro de conexão ao solicitar transferência PIX.");
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
@@ -122,9 +162,18 @@ export default function CaminhaoDashboard() {
                 <h2 className="text-xl font-bold">{currentUser.icon} {currentUser.name} ({currentUser.veiculo})</h2>
                 <p className="text-blue-300 text-xs mt-1">📍 Base: {currentUser.bairro}</p>
             </div>
-            <div className="text-right">
+            <div className="text-right flex flex-col items-end">
                 <p className="text-sm text-blue-300">Cofre Virtual (A Receber)</p>
                 <p className="text-2xl font-bold text-green-400">{formatMoney(ganhosHoje)}</p>
+                <p className="text-[10px] text-blue-300 mt-1">🗓️ Pix Automático: às {store.rates.payout_time || '22:00'}</p>
+                {ganhosHoje > 0 && (
+                  <button 
+                    onClick={handleResgatarPix}
+                    className="mt-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1"
+                  >
+                    💸 Saque Instantâneo Pix
+                  </button>
+                )}
                 <button onClick={handleToggleStatus} className={`mt-2 px-3 py-1 rounded-lg text-xs font-bold transition border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
                     {isPaused ? 'Offline 🚫' : 'Online ✅'}
                 </button>

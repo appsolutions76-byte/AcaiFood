@@ -669,7 +669,8 @@ function AdminDashboardContent() {
                   </div>
               </div>
               <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>⏰</span> Fechamento de Caixa (Motoboys)</h4>
+                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>⏰</span> Horário do Pix Automático Diário (Todos os Parceiros)</h4>
+                  <p className="text-xs text-zinc-500 mb-3">Define o horário de varredura diária no Asaas para enviar o saldo acumulado via Pix para as Lojas, Fornecedores e Motoristas.</p>
                   <div className="grid grid-cols-1 gap-3">
                       <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Horário Programado para Pix</label><input type="time" value={localRates?.payout_time || '22:00'} onChange={e => setLocalRates({...localRates, payout_time: e.target.value})} className="w-full sm:w-1/3 border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
