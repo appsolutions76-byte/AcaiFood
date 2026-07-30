@@ -442,9 +442,9 @@ export default function StorefrontPage() {
                                    <div className="text-2xl font-black tracking-widest text-emerald-400">{o.deliveryPin}</div>
                                </div>
                             )}
-                            {!isCanceled && (
-                              <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded inline-flex items-center gap-1">🗺️ Ver Rota ({o.distancia.toFixed(1)} km)</button>
-                            )}
+                             {!isCanceled && (
+                               <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded inline-flex items-center gap-1">🗺️ Ver Rota ({(o.distancia || 0).toFixed(1)} km)</button>
+                             )}
                         </div>
                         
                         <div className="flex flex-col sm:flex-row items-center justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">

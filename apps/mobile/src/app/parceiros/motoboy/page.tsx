@@ -261,7 +261,7 @@ export default function MotoboyDashboard() {
                                 onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: currentUser.id })} 
                                 className="mt-2 text-blue-600 bg-blue-100/60 dark:bg-blue-900/30 p-2 rounded-lg font-bold hover:bg-blue-100 dark:hover:bg-blue-900/50 text-center w-full transition border border-blue-200 dark:border-blue-800 flex items-center justify-center gap-1 text-xs"
                             >
-                                🗺️ Ver Rota no Mapa ({o.distancia.toFixed(1)} km)
+                                🗺️ Ver Rota no Mapa ({(o.distancia || 0).toFixed(1)} km)
                             </button>
                         </div>
                         <div className="flex flex-wrap gap-2 mb-3">

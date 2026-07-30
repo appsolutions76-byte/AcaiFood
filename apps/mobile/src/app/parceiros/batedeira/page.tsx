@@ -494,7 +494,7 @@ export default function BatedeiraDashboard() {
                             </span>
                           )}
                           {!isCanceled && (
-                            <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-500 hover:underline">🗺️ {o.distancia.toFixed(1)} km</button>
+                            <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-500 hover:underline">🗺️ {(o.distancia || 0).toFixed(1)} km</button>
                           )}
                       </div>
                       <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
