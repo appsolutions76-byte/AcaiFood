@@ -91,7 +91,7 @@ export default function FornecedorDashboard() {
 
   const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const meusPedidosAll = store.orders.filter(o => o.fornecedorId === currentUser.id);
+  const meusPedidosAll = store.orders.filter(o => o.fornecedorId === currentUser.id && o.status !== 'aguardando_pagamento');
   const vendasHoje = meusPedidosAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + (curr.taxas?.repasse || 0), 0);
 
   const fornActiveOrders = meusPedidosAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
