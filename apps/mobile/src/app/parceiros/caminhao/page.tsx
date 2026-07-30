@@ -60,6 +60,16 @@ export default function CaminhaoDashboard() {
     store.updateUserStatus(currentUser.id, isPaused ? 'active' : 'paused');
   };
 
+  const linkAsaasAccount = useAppStore(state => state.linkAsaasAccount);
+  const handleLinkAsaas = async () => {
+    if (!currentUser) return;
+    const inputPix = prompt("Informe a sua Chave PIX (CPF, Celular, E-mail ou Aleatória) ou Carteira Asaas para receber os repasses dos seus fretes:", currentUser.pixKey || currentUser.asaasWalletId || "");
+    if (inputPix !== null && inputPix.trim() !== "") {
+      await linkAsaasAccount(currentUser.id, inputPix.trim());
+      alert("Chave PIX / Carteira Asaas salva com sucesso! Repasses ativados.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
@@ -69,6 +79,9 @@ export default function CaminhaoDashboard() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Fretes Pesados (B2B / Coleta)</h1>
           </div>
           <div className="flex items-center gap-3">
+            {currentUser.asaasLinked && (
+               <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold border border-emerald-200 hidden sm:inline-block">Asaas Ativo ✅</span>
+            )}
             <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
             <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold">📲 Compartilhar</button>
             <ThemeToggle />
@@ -86,6 +99,20 @@ export default function CaminhaoDashboard() {
       </div>
 
       <main className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+        {!currentUser.asaasLinked && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 text-center shadow-sm">
+            <h3 className="text-amber-700 dark:text-amber-400 font-bold text-lg mb-2">Atenção: Repasses Pendentes!</h3>
+            <p className="text-amber-600 dark:text-amber-300 text-sm mb-4">
+              Para receber os pagamentos dos seus fretes diretamente no seu PIX ou subconta Asaas, vincule sua Chave PIX / Carteira Asaas.
+            </p>
+            <button 
+              onClick={handleLinkAsaas}
+              className="inline-block bg-amber-600 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-amber-700 transition"
+            >
+              🤝 Vincular Subconta / Carteira Asaas
+            </button>
+          </div>
+        )}
         {activeTab === 'geral' && (
         <div className="bg-blue-950 text-white p-5 rounded-xl shadow flex justify-between items-center border border-blue-900 animate-in fade-in zoom-in-95 duration-300">
             <div>
