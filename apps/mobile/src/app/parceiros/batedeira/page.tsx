@@ -166,7 +166,9 @@ export default function BatedeiraDashboard() {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center"><p>Carregando...</p></div>;
   }
 
-  if (!currentUser || currentUser.role !== 'loja') {
+  const isLoja = currentUser && String(currentUser.role || '').toLowerCase() === 'loja';
+
+  if (!isLoja) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <Store size={48} className="text-purple-600 mb-4" />

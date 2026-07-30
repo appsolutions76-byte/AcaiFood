@@ -35,7 +35,11 @@ export default function MotoboyDashboard() {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
   }
 
-  if (!currentUser || currentUser.role !== 'motorista' || currentUser.veiculo !== 'Moto') {
+  const roleStr = String(currentUser?.role || '').toLowerCase();
+  const veicStr = String(currentUser?.veiculo || '').toLowerCase();
+  const isMotoboyUser = currentUser && (roleStr === 'motoboy' || (roleStr === 'motorista' && (!veicStr || veicStr.includes('moto'))));
+
+  if (!isMotoboyUser) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <Bike size={48} className="text-amber-600 mb-4" />

@@ -118,11 +118,15 @@ function CadastroForm() {
     const walletId = pixKey || `asaas_wallet_${Math.random().toString(36).substring(2, 10)}`;
     await linkAsaasAccount(newUserId, walletId);
     
+    const roleStr = String(role || '').toLowerCase();
+    const veicStr = String(veiculo || '').toLowerCase();
+
     // Redireciona
-    if (role === 'loja') router.push('/parceiros/batedeira');
-    if (role === 'fornecedor') router.push('/parceiros/fornecedor');
-    if (role === 'motorista' && (veiculo === 'Caminhão' || veiculo === 'Caçamba')) router.push('/parceiros/caminhao');
-    if (role === 'motorista' && veiculo === 'Moto') router.push('/parceiros/motoboy');
+    if (roleStr === 'loja') router.push('/parceiros/batedeira');
+    else if (roleStr === 'fornecedor') router.push('/parceiros/fornecedor');
+    else if (roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb')))) router.push('/parceiros/caminhao');
+    else if (roleStr === 'motoboy' || roleStr === 'motorista') router.push('/parceiros/motoboy');
+    else router.push('/');
   };
 
   const getTermosText = () => {

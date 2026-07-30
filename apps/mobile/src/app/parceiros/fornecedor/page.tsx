@@ -142,7 +142,9 @@ export default function FornecedorDashboard() {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
   }
 
-  if (!currentUser || currentUser.role !== 'fornecedor') {
+  const isFornecedor = currentUser && String(currentUser.role || '').toLowerCase() === 'fornecedor';
+
+  if (!isFornecedor) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <PackageOpen size={48} className="text-emerald-600 mb-4" />

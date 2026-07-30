@@ -22,11 +22,14 @@ export default function LoginPage() {
     if (success) {
       const store = useAppStore.getState();
       const user = store.currentUser;
-      if (user?.role === 'admin') router.push('/admin');
-      else if (user?.role === 'loja') router.push('/parceiros/batedeira');
-      else if (user?.role === 'fornecedor') router.push('/parceiros/fornecedor');
-      else if (user?.role === 'motorista' && (user.veiculo === 'Caminhão' || user.veiculo === 'Caçamba')) router.push('/parceiros/caminhao');
-      else if (user?.role === 'motorista' && user.veiculo === 'Moto') router.push('/parceiros/motoboy');
+      const roleStr = String(user?.role || '').toLowerCase();
+      const veicStr = String(user?.veiculo || '').toLowerCase();
+
+      if (roleStr === 'admin') router.push('/admin');
+      else if (roleStr === 'loja') router.push('/parceiros/batedeira');
+      else if (roleStr === 'fornecedor') router.push('/parceiros/fornecedor');
+      else if (roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb')))) router.push('/parceiros/caminhao');
+      else if (roleStr === 'motoboy' || roleStr === 'motorista') router.push('/parceiros/motoboy');
       else router.push('/'); // Cliente
     } else {
       setError("E-mail ou senha incorretos.");

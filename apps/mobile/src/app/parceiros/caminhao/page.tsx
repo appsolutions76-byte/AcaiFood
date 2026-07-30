@@ -35,7 +35,11 @@ export default function CaminhaoDashboard() {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
   }
 
-  if (!currentUser || currentUser.role !== 'motorista' || (currentUser.veiculo !== 'Caminhão' && currentUser.veiculo !== 'Caçamba')) {
+  const roleStr = String(currentUser?.role || '').toLowerCase();
+  const veicStr = String(currentUser?.veiculo || '').toLowerCase();
+  const isCaminhaoUser = currentUser && (roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb'))));
+
+  if (!isCaminhaoUser) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <Truck size={48} className="text-blue-600 mb-4" />
