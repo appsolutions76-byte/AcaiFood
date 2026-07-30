@@ -45,14 +45,14 @@ export default function MotoboyDashboard() {
 
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const corridasDisponiveis = store.orders.filter(o => {
+  const corridasDisponiveis = (store.orders || []).filter(o => {
     const isReady = o.status === 'pronto' && o.motoristaId === null && o.type === 'B2C';
     if (!isReady) return false;
     const originCity = (o as any).cidadeOrigem?.toLowerCase()?.trim() || 'belém';
     const driverCity = currentUser.cidade?.toLowerCase()?.trim() || 'belém';
     return originCity === driverCity;
   });
-  const minhasCorridasAll = store.orders.filter(o => o.motoristaId === currentUser.id);
+  const minhasCorridasAll = (store.orders || []).filter(o => o.motoristaId === currentUser.id);
   const ganhosHoje = minhasCorridasAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || 0), 0);
 
   const motoActiveOrders = minhasCorridasAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
@@ -194,8 +194,8 @@ export default function MotoboyDashboard() {
                         <p className="text-zinc-500 font-medium">Nenhum chamado no radar no momento.</p>
                     </div>
                   ) : corridasDisponiveis.map(o => {
-                    const origem = store.users[o.origemId];
-                    const destino = store.users[o.destinoId];
+                    const origem = store.users?.[o.origemId];
+                    const destino = store.users?.[o.destinoId];
                     return (
                       <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900/50">
                           <div className="flex justify-between items-start mb-2">
@@ -228,8 +228,8 @@ export default function MotoboyDashboard() {
                     </div>
                   ) : minhasCorridas.map(o => {
                     const isCanceled = o.status === 'cancelado';
-                    const origemUser = store.users[o.origemId];
-                    const destinoUser = store.users[o.destinoId];
+                    const origemUser = store.users?.[o.origemId];
+                    const destinoUser = store.users?.[o.destinoId];
                     return (
                     <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-purple-400 dark:border-purple-600' : isCanceled ? 'border-red-300 opacity-60 border-l-4 border-l-red-400' : 'border-zinc-200 dark:border-zinc-800'}`}>
                         <div className="flex justify-between items-center mb-2">

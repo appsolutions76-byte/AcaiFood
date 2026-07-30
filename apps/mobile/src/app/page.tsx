@@ -125,7 +125,7 @@ export default function StorefrontPage() {
   }, [pixModalData.open, pixModalData.orderId, pixModalData.paymentId, store.orders]);
 
   const getCartPrice = (lojaId: string, tipo: string) => {
-    const loja = store.users[lojaId];
+    const loja = store.users?.[lojaId];
     if (!loja) return 0;
     if (tipo === 'popular' || tipo === 'medio' || tipo === 'grosso') {
         return loja.priceB2C![tipo as keyof typeof loja.priceB2C] || 0;
@@ -158,11 +158,11 @@ export default function StorefrontPage() {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;
   }
 
-  let meusPedidos = currentUser ? store.orders.filter(o => o.clienteId === currentUser.id || o.criadoPor === currentUser.id) : [];
+  let meusPedidos = currentUser ? (store.orders || []).filter(o => o.clienteId === currentUser.id || o.criadoPor === currentUser.id) : [];
   const clientActiveOrders = meusPedidos.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
   const clientHistoryOrders = meusPedidos.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   meusPedidos = [...clientActiveOrders, ...clientHistoryOrders];
-  const batedeiras = Object.values(store.users)
+  const batedeiras = Object.values(store.users || {})
     .filter(u => u.role === 'loja' && u.status !== 'paused' && u.status !== 'blocked')
     .sort((a, b) => {
       const distA = (a.lat && currentUser?.lat) ? haversineKm(a.lat, a.lng!, currentUser!.lat, currentUser!.lng!) : 999;
@@ -171,7 +171,7 @@ export default function StorefrontPage() {
     });
 
   const calcFreteCliente = (lojaId: string) => {
-    const loja = store.users[lojaId];
+    const loja = store.users?.[lojaId];
     if (!loja || !loja.lat || !currentUser?.lat) return { freteCliente: 0, dist: 0, subsidy: 0 };
     const dist = haversineKm(loja.lat, loja.lng!, currentUser!.lat, currentUser!.lng!);
     const freteTotal = store.rates.courier_payment_mode === 'FIXED' 
@@ -185,7 +185,7 @@ export default function StorefrontPage() {
   const handleAddToCart = () => {
     if (!productSelectModal) return;
     const { lojaId, tipo, quantity } = productSelectModal;
-    const loja = store.users[lojaId];
+    const loja = store.users?.[lojaId];
     if (!loja) return;
 
     let price = 0;
@@ -528,7 +528,7 @@ export default function StorefrontPage() {
               
               <div className="p-6">
                   <p className="text-xs text-zinc-500 font-bold uppercase mb-1">Loja selecionada</p>
-                  <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{store.users[productSelectModal.lojaId]?.name}</h4>
+                  <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{store.users?.[productSelectModal.lojaId]?.name}</h4>
                   
                   <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Escolha seu Produto:</label>
                   <select 
@@ -542,7 +542,7 @@ export default function StorefrontPage() {
                           <option value="grosso">Açaí Grosso (Especial)</option>
                       </optgroup>
                       
-                      {store.users[productSelectModal.lojaId]?.products && store.users[productSelectModal.lojaId].products!.length > 0 && (
+                      {store.users?.[productSelectModal.lojaId]?.products && store.users[productSelectModal.lojaId].products!.length > 0 && (
                           <optgroup label="Produtos Extras">
                               {store.users[productSelectModal.lojaId].products!.map(p => (
                                   <option key={p.id} value={p.id}>{p.name}</option>
@@ -585,7 +585,7 @@ export default function StorefrontPage() {
               
               <div className="p-6 overflow-y-auto flex-1">
                   <p className="text-xs text-zinc-500 font-bold uppercase mb-1">Loja selecionada</p>
-                  <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{store.users[cart.storeId]?.name}</h4>
+                  <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{store.users?.[cart.storeId]?.name}</h4>
                   
                   <div className="space-y-4 mb-6">
                       {cart.items.map(item => (
@@ -728,7 +728,7 @@ export default function StorefrontPage() {
                       </div>
                       <div className="text-left">
                           <p className="text-xs text-purple-200 font-medium">Ver Carrinho</p>
-                          <p className="font-bold text-sm truncate max-w-[150px]">{store.users[cart.storeId]?.name}</p>
+                          <p className="font-bold text-sm truncate max-w-[150px]">{store.users?.[cart.storeId]?.name}</p>
                       </div>
                   </div>
                   <div className="font-black text-xl">

@@ -535,7 +535,7 @@ export default function BatedeiraDashboard() {
                             <button 
                               type="button"
                               onClick={() => {
-                                const forn = store.users[o.origemId];
+                                const forn = store.users?.[o.origemId];
                                 const dist = (forn?.lat && currentUser?.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
                                 const freteTotal = dist * store.rates.b2b_km;
                                 const subsidy = forn?.freteSubsidyPct || 0;
@@ -746,7 +746,7 @@ export default function BatedeiraDashboard() {
               
               <div className="p-6">
                   {(() => {
-                      const forn = store.users[cartModalB2B.fornId];
+                      const forn = store.users?.[cartModalB2B.fornId];
                       if (!forn) return <p>Fornecedor não encontrado</p>;
                       
                       const dist = (forn.lat && currentUser?.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;

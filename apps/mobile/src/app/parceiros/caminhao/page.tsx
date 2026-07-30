@@ -43,16 +43,16 @@ export default function CaminhaoDashboard() {
     );
   }
 
-  const formatMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const corridasDisponiveis = store.orders.filter(o => {
+  const corridasDisponiveis = (store.orders || []).filter(o => {
     const isReady = (o.status === 'pronto' || (o.status === 'pendente' && o.type === 'B2B')) && o.motoristaId === null && (o.type === 'B2B' || o.type === 'COLETA');
     if (!isReady) return false;
     const originCity = (o as any).cidadeOrigem?.toLowerCase()?.trim() || 'belém';
     const driverCity = currentUser.cidade?.toLowerCase()?.trim() || 'belém';
     return originCity === driverCity;
   });
-  const minhasCorridas = store.orders.filter(o => o.motoristaId === currentUser.id);
+  const minhasCorridas = (store.orders || []).filter(o => o.motoristaId === currentUser.id);
   const ganhosHoje = minhasCorridas.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || 0), 0);
 
   const isPaused = currentUser.status === 'paused';
@@ -192,8 +192,8 @@ export default function CaminhaoDashboard() {
                         <p className="text-zinc-500 font-medium">Nenhum frete pesado no momento.</p>
                     </div>
                   ) : corridasDisponiveis.map(o => {
-                    const origem = store.users[o.origemId];
-                    const destino = store.users[o.destinoId];
+                    const origem = store.users?.[o.origemId];
+                    const destino = store.users?.[o.destinoId];
                     return (
                       <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900/50">
                           <div className="flex justify-between items-start mb-2">
@@ -225,8 +225,8 @@ export default function CaminhaoDashboard() {
                         <p className="text-zinc-500 font-medium">Você está livre.</p>
                     </div>
                   ) : minhasCorridas.map(o => {
-                    const origemUser = store.users[o.origemId];
-                    const destinoUser = store.users[o.destinoId];
+                    const origemUser = store.users?.[o.origemId];
+                    const destinoUser = store.users?.[o.destinoId];
                     return (
                     <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-blue-400 dark:border-blue-600' : 'border-zinc-200 dark:border-zinc-800'}`}>
                         <div className="flex justify-between items-center mb-2">
