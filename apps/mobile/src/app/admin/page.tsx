@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Trash2 } from "lucide-react";
+import { Settings, Trash2, Search } from "lucide-react";
 import { useAppStore, Order, City, getRatesForCity } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -73,6 +73,7 @@ function AdminDashboardContent() {
   const [localRates, setLocalRates] = useState(() => rates);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades'>('dashboard');
   const [newCityName, setNewCityName] = useState('');
+  const [citySearchText, setCitySearchText] = useState<string>('');
   const [userFilterRole, setUserFilterRole] = useState<string>('all');
   const [userFilterText, setUserFilterText] = useState<string>('');
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
@@ -137,6 +138,12 @@ function AdminDashboardContent() {
        if (!nameMatch && !emailMatch && !bairroMatch) return false;
     }
     return true;
+  });
+
+  const filteredCities = (cities || []).filter(c => {
+    if (!c || !c.name) return false;
+    if (!citySearchText.trim()) return true;
+    return c.name.toLowerCase().includes(citySearchText.toLowerCase().trim());
   });
 
   // 5. Retornos condicionais ocorrem APENAS APÓS TODOS os Hooks declarados
@@ -357,9 +364,6 @@ function AdminDashboardContent() {
               <ThemeToggle />
               <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
                   🔑 Senha
-              </button>
-              <button onClick={() => { setSelectedCityForRates(null); setLocalRates(store.rates || rates); setRatesModalOpen(true); }} className="bg-purple-800 hover:bg-purple-900 text-white px-3 py-1.5 rounded-xl font-bold shadow flex items-center gap-2 transition text-xs">
-                  ⚙️ Taxas Padrão
               </button>
               <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
                   <Trash2 size={14} /> Limpar
@@ -617,13 +621,31 @@ function AdminDashboardContent() {
                 </div>
             </div>
 
+            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-4 mt-4">
+                <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                    <div className="relative w-full sm:w-80">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
+                        <input 
+                            type="text" 
+                            value={citySearchText} 
+                            onChange={e => setCitySearchText(e.target.value)} 
+                            placeholder="Pesquisar cidade por nome..." 
+                            className="w-full pl-9 pr-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-medium" 
+                        />
+                    </div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">
+                        {filteredCities.length} {filteredCities.length === 1 ? 'cidade cadastrada' : 'cidades encontradas'}
+                    </span>
+                </div>
+            </div>
+
             <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-x-auto mt-4 mb-10">
                 <table className="w-full text-left text-sm min-w-max">
                     <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
                         <tr><th className="p-4">Nome da Cidade</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        {cities.map(c => (
+                        {filteredCities.map(c => (
                             <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                                 <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">{c.name}</td>
                                 <td className="p-4">
@@ -651,8 +673,8 @@ function AdminDashboardContent() {
                                 </td>
                             </tr>
                         ))}
-                        {cities.length === 0 && (
-                            <tr><td colSpan={3} className="text-center p-6 text-zinc-500">Nenhuma cidade cadastrada.</td></tr>
+                        {filteredCities.length === 0 && (
+                            <tr><td colSpan={3} className="text-center p-6 text-zinc-500">Nenhuma cidade encontrada com este nome.</td></tr>
                         )}
                     </tbody>
                 </table>
