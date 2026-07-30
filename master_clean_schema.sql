@@ -60,6 +60,20 @@ ADD COLUMN IF NOT EXISTS delivery_lng FLOAT8,
 ADD COLUMN IF NOT EXISTS delivery_reference TEXT,
 ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
 
+-- 4.1. Garante as Colunas de Modalidade de Pagamento na Tabela platform_settings
+CREATE TABLE IF NOT EXISTS public.platform_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.platform_settings
+ADD COLUMN IF NOT EXISTS courier_payment_mode TEXT DEFAULT 'KM',
+ADD COLUMN IF NOT EXISTS courier_fixed_fee NUMERIC DEFAULT 8.00,
+ADD COLUMN IF NOT EXISTS transporter_payment_mode TEXT DEFAULT 'KM',
+ADD COLUMN IF NOT EXISTS transporter_fixed_fee NUMERIC DEFAULT 150.00,
+ADD COLUMN IF NOT EXISTS ecopoint_payment_mode TEXT DEFAULT 'KM',
+ADD COLUMN IF NOT EXISTS ecopoint_fixed_fee NUMERIC DEFAULT 50.00;
+
 -- 5. Criação de Índices de Alta Performance (Evita lentidão no carregamento de listas)
 CREATE INDEX IF NOT EXISTS idx_orders_buyer_id ON public.orders(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_seller_storefront_id ON public.orders(seller_storefront_id);

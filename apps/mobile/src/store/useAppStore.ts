@@ -823,26 +823,28 @@ export const useAppStore = create<AppState>()(
       },
 
       saveRates: async (newRates) => {
-         set((state) => ({ rates: { ...state.rates, ...newRates } }));
+         const currentRates = get().rates;
+         const mergedRates = { ...currentRates, ...newRates };
+         set({ rates: mergedRates });
          
          const dbUpdates: any = {
-             b2c_fee_percentage: newRates.b2c_plat,
-             motoboy_fee_per_km: newRates.b2c_km,
-             motoboy_platform_fee_percentage: newRates.b2c_mot_plat,
-             b2b_fee_percentage: newRates.b2b_plat,
-             truck_fee_per_km: newRates.b2b_km,
-             truck_platform_fee_percentage: newRates.b2b_mot_plat,
-             col_fee_percentage: newRates.col_plat,
-             col_fee_per_km: newRates.col_km,
-             col_platform_fee_percentage: newRates.col_mot_plat,
-             col_fixed_price: newRates.col_valor,
-             payout_time: newRates.payout_time,
-             courier_payment_mode: newRates.courier_payment_mode,
-             courier_fixed_fee: newRates.courier_fixed_fee,
-             transporter_payment_mode: newRates.transporter_payment_mode,
-             transporter_fixed_fee: newRates.transporter_fixed_fee,
-             ecopoint_payment_mode: newRates.ecopoint_payment_mode,
-             ecopoint_fixed_fee: newRates.ecopoint_fixed_fee
+             b2c_fee_percentage: mergedRates.b2c_plat,
+             motoboy_fee_per_km: mergedRates.b2c_km,
+             motoboy_platform_fee_percentage: mergedRates.b2c_mot_plat,
+             b2b_fee_percentage: mergedRates.b2b_plat,
+             truck_fee_per_km: mergedRates.b2b_km,
+             truck_platform_fee_percentage: mergedRates.b2b_mot_plat,
+             col_fee_percentage: mergedRates.col_plat,
+             col_fee_per_km: mergedRates.col_km,
+             col_platform_fee_percentage: mergedRates.col_mot_plat,
+             col_fixed_price: mergedRates.col_valor,
+             payout_time: mergedRates.payout_time,
+             courier_payment_mode: mergedRates.courier_payment_mode,
+             courier_fixed_fee: mergedRates.courier_fixed_fee,
+             transporter_payment_mode: mergedRates.transporter_payment_mode,
+             transporter_fixed_fee: mergedRates.transporter_fixed_fee,
+             ecopoint_payment_mode: mergedRates.ecopoint_payment_mode,
+             ecopoint_fixed_fee: mergedRates.ecopoint_fixed_fee
          };
          
          // Remove undefined values
