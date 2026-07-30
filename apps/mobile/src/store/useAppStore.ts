@@ -1612,57 +1612,60 @@ export const useAppStore = create<AppState>()(
                   get().fetchOrders(currentUser.id);
                }
             } else if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
-               // Disparar transferências automáticas Pix (Payout) para Loja e Motoboy
+               // Disparar transferências automáticas Pix (Payout) para TODOS os parceiros: Batedeira, Fornecedor, Motoboy, Caminhoneiro
                const currentOrder = state.orders.find(o => o.id === orderId);
                if (currentOrder) {
-                 // 1. Repasse da Loja
-                 const lojaId = currentOrder.lojaId || currentOrder.origemId;
-                 let lojaUser: any = lojaId ? state.users[lojaId] : null;
-                 if (!lojaUser && lojaId) {
-                   const { data: uLoja } = await supabase.from('users').select('pix_key, cpf_cnpj, email, asaas_wallet_id').eq('id', lojaId).maybeSingle();
-                   lojaUser = uLoja;
-                 }
-                 const lojaPixKey = lojaUser?.pix_key || lojaUser?.pixKey || lojaUser?.asaasWalletId || lojaUser?.cpf_cnpj || lojaUser?.cpfCnpj || lojaUser?.email;
-                 const repasseLoja = currentOrder.taxas?.repasse || 0;
+                 // 1. Repasse do Vendedor (Loja no B2C ou Fornecedor no B2B)
+                 const sellerId = currentOrder.type === 'B2B' 
+                   ? (currentOrder.fornecedorId || currentOrder.origemId)
+                   : (currentOrder.lojaId || currentOrder.origemId);
 
-                 if (lojaPixKey && repasseLoja > 0) {
+                 let sellerUser: any = sellerId ? state.users[sellerId] : null;
+                 if (!sellerUser && sellerId) {
+                   const { data: uSeller } = await supabase.from('users').select('pix_key, cpf_cnpj, email, asaas_wallet_id').eq('id', sellerId).maybeSingle();
+                   sellerUser = uSeller;
+                 }
+                 const sellerPixKey = sellerUser?.pix_key || sellerUser?.pixKey || sellerUser?.asaasWalletId || sellerUser?.cpf_cnpj || sellerUser?.cpfCnpj || sellerUser?.email;
+                 const repasseSeller = currentOrder.taxas?.repasse || 0;
+
+                 if (sellerPixKey && repasseSeller > 0) {
                    fetch('/api/asaas/transfer', {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
                      body: JSON.stringify({
-                       pixKey: lojaPixKey,
-                       value: repasseLoja,
+                       pixKey: sellerPixKey,
+                       value: repasseSeller,
                        description: `Repasse Venda AçaíFood #${String(orderId).substring(0, 8)}`,
                        orderId
                      })
                    }).then(r => r.json()).then(data => {
-                     console.log("✅ Repasse Pix enviado com sucesso à Loja:", data);
-                   }).catch(e => console.warn("Aviso no repasse Pix à Loja:", e));
+                     console.log("✅ Repasse Pix enviado com sucesso ao Vendedor:", data);
+                   }).catch(e => console.warn("Aviso no repasse Pix ao Vendedor:", e));
                  }
 
-                 // 2. Repasse do Motoboy
-                 const motoboyId = currentOrder.motoristaId || state.currentUser?.id;
-                 let motoboyUser: any = motoboyId ? state.users[motoboyId] : null;
-                 if (!motoboyUser && motoboyId) {
-                   const { data: uMoto } = await supabase.from('users').select('pix_key, cpf_cnpj, email, asaas_wallet_id').eq('id', motoboyId).maybeSingle();
-                   motoboyUser = uMoto;
+                 // 2. Repasse do Entregador (Motoboy no B2C ou Caminhoneiro no B2B/Coleta)
+                 const driverId = currentOrder.motoristaId || state.currentUser?.id;
+                 let driverUser: any = driverId ? state.users[driverId] : null;
+                 if (!driverUser && driverId) {
+                   const { data: uDriver } = await supabase.from('users').select('pix_key, cpf_cnpj, email, asaas_wallet_id').eq('id', driverId).maybeSingle();
+                   driverUser = uDriver;
                  }
-                 const motoboyPixKey = motoboyUser?.pix_key || motoboyUser?.asaasWalletId || motoboyUser?.cpf_cnpj || motoboyUser?.cpfCnpj || motoboyUser?.email;
-                 const repasseMotoboy = currentOrder.taxas?.entregaMotorista || 0;
+                 const driverPixKey = driverUser?.pix_key || driverUser?.pixKey || driverUser?.asaasWalletId || driverUser?.cpf_cnpj || driverUser?.cpfCnpj || driverUser?.email;
+                 const repasseDriver = currentOrder.taxas?.entregaMotorista || 0;
 
-                 if (motoboyPixKey && repasseMotoboy > 0) {
+                 if (driverPixKey && repasseDriver > 0) {
                    fetch('/api/asaas/transfer', {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
                      body: JSON.stringify({
-                       pixKey: motoboyPixKey,
-                       value: repasseMotoboy,
-                       description: `Repasse Entrega AçaíFood #${String(orderId).substring(0, 8)}`,
+                       pixKey: driverPixKey,
+                       value: repasseDriver,
+                       description: `Repasse Frete AçaíFood #${String(orderId).substring(0, 8)}`,
                        orderId
                      })
                    }).then(r => r.json()).then(data => {
-                     console.log("✅ Repasse Pix enviado com sucesso ao Motoboy:", data);
-                   }).catch(e => console.warn("Aviso no repasse Pix ao Motoboy:", e));
+                     console.log("✅ Repasse Pix enviado com sucesso ao Entregador:", data);
+                   }).catch(e => console.warn("Aviso no repasse Pix ao Entregador:", e));
                  }
                }
             }
