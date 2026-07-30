@@ -6,6 +6,7 @@ import { ShoppingCart } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
+import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { validateCpfCnpjDigits } from "@/lib/pix";
 
@@ -745,112 +746,10 @@ export default function StorefrontPage() {
         motoristaId={mapModal.motorista} 
       />
 
-      {pixModalData.open && (
-        <div className="fixed inset-0 bg-black/75 z-[200] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in zoom-in-95">
-            
-            {pixPaid ? (
-              // TELA DE SUCESSO (PÓS-PAGAMENTO CONFIRMADO)
-              <div className="space-y-4 animate-in zoom-in-95">
-                <div className="bg-emerald-100 dark:bg-emerald-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2 text-emerald-600 dark:text-emerald-400">
-                  <span className="text-3xl">🎉</span>
-                </div>
-                <h3 className="text-xl font-black text-emerald-600 dark:text-emerald-400">Pagamento Confirmado!</h3>
-                <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                  Seu Pix foi recebido com sucesso. A loja parceira já recebeu o seu pedido e iniciou o preparo!
-                </p>
-                <button 
-                  onClick={() => {
-                    setPixModalData({ open: false });
-                    setPixPaid(false);
-                    // Abre aba ou lista de pedidos
-                    window.location.hash = '#pedidos';
-                  }} 
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2"
-                >
-                  ✅ Já Paguei / Ver Pedido
-                </button>
-              </div>
-            ) : (
-              // TELA DE COBRANÇA (PENDENTE)
-              <div>
-                <div className="bg-purple-100 dark:bg-purple-900/40 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">⚡</span>
-                </div>
-                <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">Pagamento via Pix</h3>
-                <p className="text-xs text-zinc-500 mb-2">Escaneie o QR Code ou copie o código para pagar</p>
-
-                <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-2.5 mb-3 text-center">
-                  <span className="text-xs text-purple-900 dark:text-purple-300 font-medium">💰 Valor Total do Pedido: </span>
-                  <span className="text-sm font-extrabold text-purple-700 dark:text-purple-300">
-                    {formatMoney(pixModalData.totalValue ?? (cartItemsTotal + cartFrete))}
-                  </span>
-                </div>
-
-                {(() => {
-                  const qrSrc = pixModalData.copiaECola
-                    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pixModalData.copiaECola)}`
-                    : (pixModalData.qrCode
-                        ? (pixModalData.qrCode.startsWith('data:') || pixModalData.qrCode.startsWith('http')
-                            ? pixModalData.qrCode
-                            : `data:image/png;base64,${pixModalData.qrCode}`)
-                        : null);
-
-                  if (!qrSrc) return null;
-                  return (
-                    <div className="bg-white p-3 rounded-xl border border-zinc-200 inline-block mb-3 shadow-inner">
-                      <img src={qrSrc} alt="Pix QR Code" className="w-48 h-48 mx-auto object-contain" />
-                    </div>
-                  );
-                })()}
-
-                {pixModalData.copiaECola ? (
-                  <div className="mb-3">
-                    <input 
-                      type="text" 
-                      readOnly 
-                      value={pixModalData.copiaECola} 
-                      className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2.5 text-xs text-zinc-600 dark:text-zinc-300 font-mono mb-2 text-center select-all"
-                    />
-                    <button 
-                      onClick={() => {
-                        navigator.clipboard.writeText(pixModalData.copiaECola!);
-                        alert('Código Pix Copia e Cola copiado com sucesso!');
-                      }}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 mb-2"
-                    >
-                      📋 Copiar Código Pix Copia e Cola
-                    </button>
-                  </div>
-                ) : null}
-
-                {pixModalData.invoiceUrl ? (
-                  <a 
-                    href={pixModalData.invoiceUrl} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="block w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold py-2 rounded-xl text-xs transition mb-3"
-                  >
-                    🔗 Pagar Fatura Direto no Asaas
-                  </a>
-                ) : null}
-
-                <div className="flex items-center justify-center gap-2 text-xs text-purple-700 dark:text-purple-300 font-medium py-2.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl mb-3 animate-pulse">
-                  <span>⌛</span> Aguardando confirmação do pagamento...
-                </div>
-
-                <button 
-                  onClick={() => setPixModalData({ open: false })} 
-                  className="w-full bg-zinc-800 hover:bg-black text-white font-bold py-2.5 rounded-xl text-xs transition"
-                >
-                  Fechar
-                </button>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
+      <PixModal 
+        data={pixModalData} 
+        onClose={() => setPixModalData({ open: false })} 
+      />
 
       {/* Modal para Solicitação de CPF no Checkout */}
       {cpfModalOpen && (

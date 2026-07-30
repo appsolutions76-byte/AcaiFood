@@ -99,6 +99,9 @@ export interface Order {
   clienteTelefone?: string;
   lojaNome?: string;
   motoristaNome?: string;
+  pixQrCode?: string | null;
+  pixCopiaECola?: string | null;
+  invoiceUrl?: string | null;
 }
 
 export interface City {
@@ -1365,8 +1368,25 @@ export const useAppStore = create<AppState>()(
             }
           }
 
-          // Salva pedido no estado local
-          const finalPedido = { ...novoPedido, id: orderIdToUse, deliveryPin: pin };
+          // Fallback Pix estático oficial BACEN vinculado à chave da Plataforma
+          const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
+          const validPlatformPayload = generateValidPixPayload({
+            pixKey: platformPixKey,
+            merchantName: 'FREDSON FERNANDO SOARES B',
+            merchantCity: 'BELEM',
+            amount: totalValue,
+            txId: orderIdToUse.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25) || '***'
+          });
+
+          // Salva pedido no estado local com dados do Pix anexados
+          const finalPedido: Order = { 
+            ...novoPedido, 
+            id: orderIdToUse, 
+            deliveryPin: pin,
+            pixQrCode: asaasResult?.pixQrCode || null,
+            pixCopiaECola: asaasResult?.pixCopiaECola || validPlatformPayload || null,
+            invoiceUrl: asaasResult?.invoiceUrl || null
+          };
           set({ 
              orders: [finalPedido, ...get().orders], 
              orderCounter: get().orderCounter + 1,
@@ -1385,16 +1405,6 @@ export const useAppStore = create<AppState>()(
                 totalValue: totalValue
              };
           }
-
-          // 2. Fallback Pix estático oficial BACEN vinculado à chave da Plataforma (Fredson Fernando Soares B / appsolutions76@gmail.com)
-          const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
-          const validPlatformPayload = generateValidPixPayload({
-            pixKey: platformPixKey,
-            merchantName: 'FREDSON FERNANDO SOARES B',
-            merchantCity: 'BELEM',
-            amount: totalValue,
-            txId: orderIdToUse.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25) || '***'
-          });
 
           return {
              invoiceUrl: null,

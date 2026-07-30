@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Store, Printer } from "lucide-react";
 import { useAppStore, haversineKm } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
+import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/lib/supabase";
 import {
@@ -22,6 +23,7 @@ export default function BatedeiraDashboard() {
   const currentUser = store.currentUser;
   
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [pixModalData, setPixModalData] = useState<PixModalData>({ open: false });
   const [subsidyInput, setSubsidyInput] = useState(currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [prices, setPrices] = useState(currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
@@ -435,6 +437,29 @@ export default function BatedeiraDashboard() {
                           <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase animate-pulse">⏳ Aguardando Pagamento Pix</span>
                           <div className="flex flex-wrap gap-1.5 justify-end w-full">
                             <button 
+                              type="button"
+                              onClick={() => {
+                                const forn = store.users[o.origemId];
+                                const dist = (forn?.lat && currentUser?.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
+                                const freteTotal = dist * store.rates.b2b_km;
+                                const subsidy = forn?.freteSubsidyPct || 0;
+                                const freteLoja = freteTotal * (1 - subsidy / 100);
+                                const totalToPay = (o.valor || 0) + freteLoja;
+
+                                setPixModalData({
+                                  open: true,
+                                  qrCode: o.pixQrCode,
+                                  copiaECola: o.pixCopiaECola,
+                                  invoiceUrl: o.invoiceUrl,
+                                  orderId: o.id,
+                                  totalValue: totalToPay
+                                });
+                              }}
+                              className="text-[10px] bg-purple-600 hover:bg-purple-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1"
+                            >
+                              ⚡ Pagar via Pix / Ver QR Code
+                            </button>
+                            <button 
                               onClick={async () => {
                                 try {
                                   const res = await fetch(`/api/asaas/status?orderId=${o.id}`);
@@ -532,7 +557,7 @@ export default function BatedeiraDashboard() {
                       )}
 
                       {/* Interações */}
-                      {!isCanceled && o.type === 'B2C' && (o.status === 'pendente' || o.status === 'aguardando_pagamento') && (
+                      {!isCanceled && o.type === 'B2C' && o.status === 'pendente' && (
                         <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                             <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
                             <button onClick={() => store.acaoPedido(o.id, 'aceitar_loja')} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
@@ -668,10 +693,29 @@ export default function BatedeiraDashboard() {
                                   <button onClick={async () => {
                                       store.clearCart();
                                       store.addToCart(forn.id, { id: 'B2B', name: 'Paneiro de Açaí', price: unitPrice, quantity: cartModalB2B.quantity });
-                                      const url = await store.criarPedido('B2B', forn.id);
+                                      const res: any = await store.criarPedido('B2B', forn.id);
                                       setCartModalB2B({ ...cartModalB2B, open: false });
-                                      if (url && typeof url === 'string' && url.startsWith('http')) {
-                                        window.location.href = url;
+
+                                      if (res && typeof res === 'object') {
+                                        if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
+                                           setPixModalData({
+                                              open: true,
+                                              qrCode: res.pixQrCode,
+                                              copiaECola: res.pixCopiaECola,
+                                              invoiceUrl: res.invoiceUrl,
+                                              orderId: res.orderId,
+                                              isSandbox: res.isSandbox,
+                                              totalValue: res.totalValue || totalToPay
+                                           });
+                                           return;
+                                        }
+                                        if (res.error) {
+                                           alert(`Aviso do Asaas: ${res.error}`);
+                                        } else {
+                                           alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
+                                        }
+                                      } else if (typeof res === 'string' && res.startsWith('http')) {
+                                        window.location.href = res;
                                       } else {
                                         alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
                                       }
@@ -836,6 +880,11 @@ export default function BatedeiraDashboard() {
           </div>
         </div>
       )}
+      {/* Modal de Pagamento Pix */}
+      <PixModal 
+        data={pixModalData} 
+        onClose={() => setPixModalData({ open: false })} 
+      />
     </div>
   );
 }
