@@ -1391,7 +1391,11 @@ export const useAppStore = create<AppState>()(
             }
           }
 
-          const totalValue = novoPedido.valor + novoPedido.taxas.entregaTotal;
+          const totalValue = tipo === 'COLETA' 
+            ? Number(valColeta.toFixed(2))
+            : (tipo === 'B2C' 
+                ? Number((novoPedido.valor + (novoPedido.taxas.entregaCliente || 0)).toFixed(2))
+                : Number((novoPedido.valor + (novoPedido.taxas.entregaLoja || 0)).toFixed(2)));
 
           let userCpfCnpj = currentUser.cpfCnpj || get().users[currentUser.id]?.cpfCnpj;
           if (!userCpfCnpj && currentUser.id) {

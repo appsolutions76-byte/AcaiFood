@@ -40,12 +40,22 @@ export async function POST(request: Request) {
     if (isWalletId) {
       transferBody.walletId = cleanPixKey;
     } else {
-      transferBody.pixAddressKey = cleanPixKey;
-      if (cleanDigits.length === 11) transferBody.pixAddressKeyType = 'CPF';
-      else if (cleanDigits.length === 14) transferBody.pixAddressKeyType = 'CNPJ';
-      else if (cleanPixKey.includes('@')) transferBody.pixAddressKeyType = 'EMAIL';
-      else if (cleanDigits.length >= 10 && cleanDigits.length <= 11) transferBody.pixAddressKeyType = 'PHONE';
-      else transferBody.pixAddressKeyType = 'EVP';
+      if (cleanDigits.length === 11) {
+        transferBody.pixAddressKey = cleanDigits;
+        transferBody.pixAddressKeyType = 'CPF';
+      } else if (cleanDigits.length === 14) {
+        transferBody.pixAddressKey = cleanDigits;
+        transferBody.pixAddressKeyType = 'CNPJ';
+      } else if (cleanPixKey.includes('@')) {
+        transferBody.pixAddressKey = cleanPixKey.toLowerCase();
+        transferBody.pixAddressKeyType = 'EMAIL';
+      } else if (cleanDigits.length >= 10 && cleanDigits.length <= 11) {
+        transferBody.pixAddressKey = cleanPixKey.startsWith('+') ? cleanPixKey : `+55${cleanDigits}`;
+        transferBody.pixAddressKeyType = 'PHONE';
+      } else {
+        transferBody.pixAddressKey = cleanPixKey;
+        transferBody.pixAddressKeyType = 'EVP';
+      }
     }
 
     console.log(`Iniciando transferência Pix no Asaas (${isSandbox ? 'SANDBOX' : 'PRODUÇÃO'}):`, transferBody);

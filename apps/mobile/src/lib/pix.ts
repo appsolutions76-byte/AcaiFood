@@ -29,21 +29,40 @@ export function generateValidPixPayload(params: {
     return `${id}${len}${value}`;
   };
 
-  const cleanKey = params.pixKey.trim();
+  let cleanKey = String(params.pixKey || '').trim();
+  const digitsOnly = cleanKey.replace(/\D/g, '');
+
+  if (cleanKey.includes('@')) {
+    cleanKey = cleanKey.toLowerCase();
+  } else if (digitsOnly.length === 11 || digitsOnly.length === 14) {
+    cleanKey = digitsOnly; // CPF ou CNPJ no Pix BACEN deve conter apenas números
+  } else if (digitsOnly.length >= 10 && digitsOnly.length <= 11) {
+    cleanKey = cleanKey.startsWith('+') ? `+${digitsOnly}` : `+55${digitsOnly}`;
+  } else {
+    cleanKey = cleanKey.toLowerCase();
+  }
+
   const name = (params.merchantName || 'ACAIFOOD TECNOLOGIA')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9 ]/g, "")
     .substring(0, 25)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toUpperCase();
+    .trim()
+    .toUpperCase() || 'ACAIFOOD TECNOLOGIA';
+
   const city = (params.merchantCity || 'BELEM')
-    .substring(0, 15)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .toUpperCase();
-  // No padrão Pix Estático BACEN, para chaves diretas sem cobrança registrada via API PSP, o TXID deve ser sempre '***'
-  const txId = (params.txId && params.txId !== '***')
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .substring(0, 15)
+    .trim()
+    .toUpperCase() || 'BELEM';
+
+  // No padrão Pix Estático BACEN, para chaves diretas sem cobrança registrada via API PSP, o TXID deve conter apenas [a-zA-Z0-9] ou '***'
+  let txId = (params.txId && params.txId !== '***')
     ? params.txId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25)
     : '***';
+  if (!txId) txId = '***';
 
   // 26 = Merchant Account Info (GUI + Key)
   const gui = formatField('00', 'BR.GOV.BCB.PIX');
