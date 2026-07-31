@@ -115,7 +115,7 @@ serve(async (req) => {
     };
 
     let totalSplitValue = 0;
-    const formattedSplit = Array.isArray(split) ? split.map((s: any) => {
+    let formattedSplit = Array.isArray(split) ? split.map((s: any) => {
       const val = typeof s.fixedValue === 'number' ? s.fixedValue : (typeof s.amount === 'number' ? s.amount : null);
       if (s.walletId && val !== null && val > 0 && isValidAsaasWalletId(s.walletId)) {
         const roundedVal = Number(val.toFixed(2));
@@ -128,9 +128,16 @@ serve(async (req) => {
       return null;
     }).filter(Boolean) : undefined;
 
-    const validSplit = (formattedSplit && formattedSplit.length > 0 && totalSplitValue < value) 
-      ? formattedSplit 
-      : undefined;
+    const maxAllowedSplit = Number((value - 0.05).toFixed(2));
+    if (formattedSplit && formattedSplit.length > 0 && maxAllowedSplit > 0 && totalSplitValue >= value) {
+      const ratio = maxAllowedSplit / totalSplitValue;
+      formattedSplit = formattedSplit.map((s: any) => ({
+        ...s,
+        fixedValue: Number((s.fixedValue * ratio).toFixed(2))
+      }));
+    }
+
+    const validSplit = (formattedSplit && formattedSplit.length > 0) ? formattedSplit : undefined;
 
     // 2. Criar Cobrança (Payment) no Asaas (com billingType PIX)
     const paymentBody: any = {

@@ -58,12 +58,12 @@ export function generateValidPixPayload(params: {
     .trim()
     .toUpperCase() || 'BELEM';
 
-  // No padrão Pix BACEN, o txId no BR Code deve conter estritamente caracteres alfanuméricos [a-zA-Z0-9] (sem asteriscos nem especiais)
-  let cleanTxId = String(params.txId || '')
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .substring(0, 25);
+  // No padrão Pix Estático BACEN, para transferências diretas sem cobrança pré-registrada na API do PSP, o txId deve ser '***'
+  let cleanTxId = (params.txId && params.txId !== '***' && params.txId !== 'ACAIFOOD')
+    ? params.txId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25)
+    : '***';
   if (!cleanTxId) {
-    cleanTxId = 'ACAIFOOD';
+    cleanTxId = '***';
   }
 
   // 26 = Merchant Account Info (GUI + Key)

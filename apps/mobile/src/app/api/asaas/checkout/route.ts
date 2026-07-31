@@ -144,7 +144,7 @@ export async function POST(request: Request) {
     };
 
     let totalSplitValue = 0;
-    const formattedSplit = Array.isArray(split) ? split.map((s: any) => {
+    let formattedSplit = Array.isArray(split) ? split.map((s: any) => {
       const val = typeof s.fixedValue === 'number' ? s.fixedValue : (typeof s.amount === 'number' ? s.amount : null);
       if (s.walletId && val !== null && val > 0 && isValidAsaasWalletId(s.walletId)) {
         const roundedVal = Number(val.toFixed(2));
@@ -157,10 +157,17 @@ export async function POST(request: Request) {
       return null;
     }).filter(Boolean) : undefined;
 
-    // Garantir que a soma das parcelas de split não exceda o valor total da cobrança
-    const validSplit = (formattedSplit && formattedSplit.length > 0 && totalSplitValue < value) 
-      ? formattedSplit 
-      : undefined;
+    // Garantir que a soma das parcelas de split fique estritamente menor que o valor total (exigência da API Asaas)
+    const maxAllowedSplit = Number((value - 0.05).toFixed(2));
+    if (formattedSplit && formattedSplit.length > 0 && maxAllowedSplit > 0 && totalSplitValue >= value) {
+      const ratio = maxAllowedSplit / totalSplitValue;
+      formattedSplit = formattedSplit.map((s: any) => ({
+        ...s,
+        fixedValue: Number((s.fixedValue * ratio).toFixed(2))
+      }));
+    }
+
+    const validSplit = (formattedSplit && formattedSplit.length > 0) ? formattedSplit : undefined;
 
     // 2. Criar Cobrança (BillingType PIX)
     const paymentBody: any = {
