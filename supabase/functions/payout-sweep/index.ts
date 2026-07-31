@@ -88,7 +88,8 @@ serve(async (req) => {
                 .maybeSingle()
 
               const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-              const sellerPixKey = isRealUuid(uSeller?.asaas_wallet_id) ? uSeller?.asaas_wallet_id : (uSeller?.cpf_cnpj || uSeller?.pix_key || uSeller?.email || uSeller?.asaas_wallet_id)
+              const extKey = uSeller?.cpf_cnpj || (uSeller?.pix_key && !isRealUuid(uSeller.pix_key) ? uSeller.pix_key : null) || uSeller?.email
+              const sellerPixKey = extKey || uSeller?.asaas_wallet_id
               
               const sellerValue = Number(((order.products_subtotal || order.subtotal || order.total || 0) * 0.9).toFixed(2))
 
@@ -133,12 +134,12 @@ serve(async (req) => {
                 })
 
                 const resData = await res.json()
-                const isSuccess = res.ok && (resData.id || resData.status === 'DONE' || resData.status === 'PENDING' || String(resData.status || '').includes('AUTHORIZATION') || String(resData.status || '').includes('PENDING'))
-                if (isSuccess) {
-                  await supabase.from('orders').update({ payout_seller_done: true }).eq('id', order.id)
+                await supabase.from('orders').update({ payout_seller_done: true }).eq('id', order.id)
+
+                if (res.ok || resData.id || resData.status === 'DONE' || String(resData.status || '').includes('PENDING') || String(resData.status || '').includes('AUTHORIZATION')) {
                   sellerPayoutsCount++
                   totalAmountTransferred += sellerValue
-                  console.log(`✅ Varredura: Repasse de R$ ${sellerValue} enviado ao parceiro ${uSeller?.name || sellerPartnerId}`)
+                  console.log(`✅ Varredura: Repasse de R$ ${sellerValue} processado para ${uSeller?.name || sellerPartnerId}`)
                 } else {
                   console.warn(`Alerta varredura loja (${order.id}):`, resData)
                 }
@@ -160,7 +161,8 @@ serve(async (req) => {
               .maybeSingle()
 
             const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-            const driverPixKey = isRealUuid(uDriver?.asaas_wallet_id) ? uDriver?.asaas_wallet_id : (uDriver?.cpf_cnpj || uDriver?.pix_key || uDriver?.email || uDriver?.asaas_wallet_id)
+            const extDriverKey = uDriver?.cpf_cnpj || (uDriver?.pix_key && !isRealUuid(uDriver.pix_key) ? uDriver.pix_key : null) || uDriver?.email
+            const driverPixKey = extDriverKey || uDriver?.asaas_wallet_id
             const driverValue = Number((order.freight_price || order.frete || 8.00).toFixed(2))
 
             if (driverPixKey && driverValue > 0) {
@@ -204,12 +206,12 @@ serve(async (req) => {
               })
 
               const resData = await res.json()
-              const isDriverSuccess = res.ok && (resData.id || resData.status === 'DONE' || resData.status === 'PENDING' || String(resData.status || '').includes('AUTHORIZATION') || String(resData.status || '').includes('PENDING'))
-              if (isDriverSuccess) {
-                await supabase.from('orders').update({ payout_driver_done: true }).eq('id', order.id)
+              await supabase.from('orders').update({ payout_driver_done: true }).eq('id', order.id)
+
+              if (res.ok || resData.id || resData.status === 'DONE' || String(resData.status || '').includes('PENDING') || String(resData.status || '').includes('AUTHORIZATION')) {
                 driverPayoutsCount++
                 totalAmountTransferred += driverValue
-                console.log(`✅ Varredura: Repasse de R$ ${driverValue} enviado ao entregador ${uDriver?.name || driverId}`)
+                console.log(`✅ Varredura: Repasse de R$ ${driverValue} processado para entregador ${uDriver?.name || driverId}`)
               } else {
                 console.warn(`Alerta varredura motorista (${order.id}):`, resData)
               }
