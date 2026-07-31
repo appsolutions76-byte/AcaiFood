@@ -58,6 +58,8 @@ ADD COLUMN IF NOT EXISTS delivery_address TEXT,
 ADD COLUMN IF NOT EXISTS delivery_lat FLOAT8,
 ADD COLUMN IF NOT EXISTS delivery_lng FLOAT8,
 ADD COLUMN IF NOT EXISTS delivery_reference TEXT,
+ADD COLUMN IF NOT EXISTS payout_seller_done BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS payout_driver_done BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
 
 -- 4.1. Garante as Colunas de Modalidade de Pagamento na Tabela platform_settings

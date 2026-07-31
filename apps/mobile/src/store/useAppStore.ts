@@ -1694,8 +1694,11 @@ export const useAppStore = create<AppState>()(
                        description: `Repasse Venda AçaíFood #${String(orderId).substring(0, 8)}`,
                        orderId
                      })
-                   }).then(r => r.json()).then(data => {
-                     console.log("✅ Repasse Pix enviado com sucesso ao Vendedor:", data);
+                   }).then(r => r.json()).then(async data => {
+                     if (data.success || data.transferId) {
+                       console.log("✅ Repasse Pix enviado com sucesso ao Vendedor:", data);
+                       await supabase.from('orders').update({ payout_seller_done: true }).eq('id', orderId);
+                     }
                    }).catch(e => console.warn("Aviso no repasse Pix ao Vendedor:", e));
                  }
 
@@ -1719,8 +1722,11 @@ export const useAppStore = create<AppState>()(
                        description: `Repasse Frete AçaíFood #${String(orderId).substring(0, 8)}`,
                        orderId
                      })
-                   }).then(r => r.json()).then(data => {
-                     console.log("✅ Repasse Pix enviado com sucesso ao Entregador:", data);
+                   }).then(r => r.json()).then(async data => {
+                     if (data.success || data.transferId) {
+                       console.log("✅ Repasse Pix enviado com sucesso ao Entregador:", data);
+                       await supabase.from('orders').update({ payout_driver_done: true }).eq('id', orderId);
+                     }
                    }).catch(e => console.warn("Aviso no repasse Pix ao Entregador:", e));
                  }
                }
