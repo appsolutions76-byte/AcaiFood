@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Store, Printer } from "lucide-react";
-import { useAppStore, haversineKm } from "@/store/useAppStore";
+import { useAppStore, haversineKm, getRatesForCity } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -47,6 +47,8 @@ export default function BatedeiraDashboard() {
   useEffect(() => {
     const s = useAppStore.getState();
     s.fetchAllUsers();
+    if (typeof s.fetchCities === 'function') s.fetchCities();
+    if (typeof s.fetchRates === 'function') s.fetchRates();
     s.startRealtime();
   }, []);
 
@@ -162,7 +164,7 @@ export default function BatedeiraDashboard() {
     );
   }
 
-  const rates = store.rates || { b2c_plat:10, b2c_km:2, b2c_mot_plat:10, b2b_plat:10, b2b_km:4, b2b_mot_plat:10, col_plat:10, col_km:8, col_mot_plat:10, col_valor:50, payout_time:'22:00', courier_payment_mode:'KM' as const, courier_fixed_fee:8, transporter_payment_mode:'KM' as const, transporter_fixed_fee:150, ecopoint_payment_mode:'KM' as const, ecopoint_fixed_fee:50 };
+  const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const meusPedidosAll = (store.orders || []).filter(o => {

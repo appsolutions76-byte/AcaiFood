@@ -1167,21 +1167,24 @@ export const useAppStore = create<AppState>()(
           ? haversineKm(lat1, lon1, lat2, lon2) 
           : 3.0;
 
+        const userCity = currentUser.cidade || 'Belém';
+        const cityRates = getRatesForCity(userCity, state.rates, state.cities);
+
         const calcFrete = (t: string, d: number) => {
           if (t === 'B2C') {
-            return (state.rates.courier_payment_mode === 'FIXED') 
-              ? (state.rates.courier_fixed_fee ?? 8.00) 
-              : d * state.rates.b2c_km;
+            return (cityRates.courier_payment_mode === 'FIXED') 
+              ? (cityRates.courier_fixed_fee ?? 8.00) 
+              : d * cityRates.b2c_km;
           }
           if (t === 'B2B') {
-            return (state.rates.transporter_payment_mode === 'FIXED') 
-              ? (state.rates.transporter_fixed_fee ?? 150.00) 
-              : d * state.rates.b2b_km;
+            return (cityRates.transporter_payment_mode === 'FIXED') 
+              ? (cityRates.transporter_fixed_fee ?? 150.00) 
+              : d * cityRates.b2b_km;
           }
           if (t === 'COLETA') {
-            return (state.rates.ecopoint_payment_mode === 'FIXED') 
-              ? (state.rates.ecopoint_fixed_fee ?? 50.00) 
-              : d * state.rates.col_km;
+            return (cityRates.ecopoint_payment_mode === 'FIXED') 
+              ? (cityRates.ecopoint_fixed_fee ?? cityRates.col_valor ?? 50.00) 
+              : d * cityRates.col_km;
           }
           return 0;
         };
@@ -1234,9 +1237,9 @@ export const useAppStore = create<AppState>()(
           novoPedido.taxas.entregaTotal = calcFrete('B2C', distKM);
           novoPedido.taxas.entregaLoja = novoPedido.taxas.entregaTotal * ((loja.freteSubsidyPct || 0) / 100);
           novoPedido.taxas.entregaCliente = novoPedido.taxas.entregaTotal - novoPedido.taxas.entregaLoja;
-          novoPedido.taxas.plataformaEntrega = novoPedido.taxas.entregaTotal * (state.rates.b2c_mot_plat / 100);
+          novoPedido.taxas.plataformaEntrega = novoPedido.taxas.entregaTotal * (cityRates.b2c_mot_plat / 100);
           novoPedido.taxas.entregaMotorista = novoPedido.taxas.entregaTotal - novoPedido.taxas.plataformaEntrega;
-          novoPedido.taxas.plataformaVenda = novoPedido.valor * (state.rates.b2c_plat / 100);
+          novoPedido.taxas.plataformaVenda = novoPedido.valor * (cityRates.b2c_plat / 100);
           novoPedido.taxas.plataformaTotal = novoPedido.taxas.plataformaVenda + novoPedido.taxas.plataformaEntrega;
           novoPedido.taxas.repasse = novoPedido.valor - novoPedido.taxas.plataformaVenda - novoPedido.taxas.entregaLoja;
         } 
@@ -1252,9 +1255,9 @@ export const useAppStore = create<AppState>()(
             novoPedido.taxas.entregaTotal = calcFrete('B2B', distKM);
             novoPedido.taxas.entregaFornecedor = novoPedido.taxas.entregaTotal * ((forn.freteSubsidyPct || 0) / 100);
             novoPedido.taxas.entregaLoja = novoPedido.taxas.entregaTotal - novoPedido.taxas.entregaFornecedor;
-            novoPedido.taxas.plataformaEntrega = novoPedido.taxas.entregaTotal * (state.rates.b2b_mot_plat / 100);
+            novoPedido.taxas.plataformaEntrega = novoPedido.taxas.entregaTotal * (cityRates.b2b_mot_plat / 100);
             novoPedido.taxas.entregaMotorista = novoPedido.taxas.entregaTotal - novoPedido.taxas.plataformaEntrega;
-            novoPedido.taxas.plataformaVenda = novoPedido.valor * (state.rates.b2b_plat / 100);
+            novoPedido.taxas.plataformaVenda = novoPedido.valor * (cityRates.b2b_plat / 100);
             novoPedido.taxas.plataformaTotal = novoPedido.taxas.plataformaVenda + novoPedido.taxas.plataformaEntrega;
             novoPedido.taxas.repasse = novoPedido.valor - novoPedido.taxas.plataformaVenda - novoPedido.taxas.entregaFornecedor;
         }
@@ -1264,7 +1267,7 @@ export const useAppStore = create<AppState>()(
           novoPedido.lojaId = currentUser.id;
           novoPedido.taxas.entregaTotal = valColeta;
           novoPedido.taxas.entregaLoja = valColeta;
-          novoPedido.taxas.plataformaEntrega = valColeta * (state.rates.col_mot_plat / 100);
+          novoPedido.taxas.plataformaEntrega = valColeta * (cityRates.col_mot_plat / 100);
           novoPedido.taxas.entregaMotorista = valColeta - novoPedido.taxas.plataformaEntrega;
           novoPedido.taxas.plataformaVenda = 0;
           novoPedido.taxas.plataformaTotal = novoPedido.taxas.plataformaEntrega;
