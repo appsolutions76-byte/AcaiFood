@@ -24,6 +24,8 @@ export function isValidAsaasWalletId(id?: string): boolean {
 
 export type Role = 'admin' | 'loja' | 'cliente' | 'motorista' | 'fornecedor' | 'ecoponto';
 
+let lastSweepDate: string = '';
+
 export interface Product {
   id: string;
   name: string;
@@ -2083,6 +2085,26 @@ export const useAppStore = create<AppState>()(
                      }
                  }
              }
+
+              // Disparo Automático por Horário Programado (payout_time)
+              try {
+                const targetPayoutTime = get().rates?.payout_time || '22:00';
+                const now = new Date();
+                const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                if (currentHHMM === targetPayoutTime) {
+                  const todayStr = now.toISOString().split('T')[0];
+                  if (lastSweepDate !== todayStr) {
+                    lastSweepDate = todayStr;
+                    console.log(`⏰ Horário de varredura programada atingido (${targetPayoutTime})! Executando payout-sweep...`);
+                    supabase.functions.invoke('payout-sweep').then(({ data, error }) => {
+                      if (error) console.warn("Aviso auto-sweep por horário:", error);
+                      else console.log("✅ Varredura automática das", targetPayoutTime, "executada:", data);
+                    }).catch(err => console.warn("Exceção no auto-sweep:", err));
+                  }
+                }
+              } catch(eSweep) {
+                console.warn("Erro na checagem de horário da varredura:", eSweep);
+              }
          }, 20000);
       },
       
