@@ -203,6 +203,225 @@ export default function BatedeiraDashboard() {
     ? (rates.ecopoint_fixed_fee ?? rates.col_valor ?? 50) 
     : (distColeta > 0 ? (distColeta * (rates.col_km || 0)) : (rates.ecopoint_fixed_fee ?? rates.col_valor ?? 50));
 
+  const renderOrderCard = (o: any) => {
+    const isCanceled = o.status === 'cancelado';
+    
+    let financeText = '';
+    if (o.type === 'B2C') financeText = `Bruto: ${formatMoney(o.valor)} | Sub. Frete: ${formatMoney(o.taxas.entregaLoja)} | Líquido: ${formatMoney(o.taxas.repasse)}`;
+    else if (o.type === 'B2B') financeText = `Custo Lata Açaí: ${formatMoney(o.valor)} | Frete Pago: ${formatMoney(o.taxas.entregaLoja)} | Gasto Total: ${formatMoney(o.valor + o.taxas.entregaLoja)}`;
+    else if (o.type === 'COLETA') financeText = `Serviço Base: ${formatMoney(o.valor)} | Gasto Extra: ${formatMoney(-o.taxas.repasse - o.valor)} | Custo Total: ${formatMoney(-o.taxas.repasse)}`;
+
+    return (
+      <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-l-4 ${isCanceled ? 'border-red-300 opacity-60 border-l-red-400' : (o.type === 'B2C' ? 'border-l-purple-500' : o.type === 'B2B' ? 'border-l-emerald-500' : 'border-l-amber-500')} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
+          <div className="w-full sm:w-auto">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${o.type === 'B2C' ? 'bg-purple-100 text-purple-700' : o.type === 'B2B' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{o.type}</span>
+                  <span className="font-bold text-zinc-800 dark:text-white text-sm">{o.title}</span>
+                  {o.createdAt && (
+                    <span className="text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+                       📅 {new Date(o.createdAt).toLocaleDateString('pt-BR')} às {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
+                  )}
+                  {!isCanceled && (
+                    <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-500 hover:underline">🗺️ {(o.distancia || 0).toFixed(1)} km</button>
+                  )}
+              </div>
+              <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
+                  <span>
+                    {o.type === 'B2C' ? `👤 Cliente: ${o.clienteNome || store.users[o.destinoId]?.name || store.users[o.clienteId!]?.name || store.users[o.criadoPor]?.name || 'Cliente'}` :
+                     o.type === 'B2B' ? `🏭 Fornecedor: ${store.users[o.origemId]?.name || '—'}` :
+                     `🚛 Caçamba Ecoponto`}
+                  </span>
+                  <span className="text-zinc-400">|</span>
+                  <span className="text-zinc-500">🛵 Motorista: {o.motoristaNome || 'Aguardando'}</span>
+              </div>
+              <p className="text-xs text-zinc-500 mt-1">{financeText}</p>
+              <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                 {o.createdAt && <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleDateString('pt-BR')} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                 {o.acceptedAt && <span className="text-[9px] bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded font-bold">👨‍🍳 Aceito: {new Date(o.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                 {o.readyAt && <span className="text-[9px] bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded font-bold">🛎️ Pronto: {new Date(o.readyAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                 {o.pickedUpAt && <span className="text-[9px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded font-bold">📦 Retirada: {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                 {o.deliveredAt && <span className="text-[9px] bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded font-bold">📍 Chegou: {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                 {o.receivedAt && <span className="text-[9px] bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded font-bold">✅ Recebido: {new Date(o.receivedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+              </div>
+
+              {o.deliveryPin && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && o.type !== 'B2C' && (
+                 <div className="mt-2 mb-2 bg-purple-900 dark:bg-purple-950 text-white p-3 rounded-lg flex items-center justify-between shadow-md border border-purple-700">
+                     <div>
+                         <p className="text-[10px] font-bold uppercase text-purple-300">🔑 PIN de Segurança</p>
+                         <p className="text-[10px] text-purple-100 leading-tight">Forneça ao motorista na entrega/coleta</p>
+                     </div>
+                     <div className="text-xl font-black tracking-widest text-white bg-purple-950 px-3 py-1 rounded border border-purple-600">{o.deliveryPin}</div>
+                 </div>
+              )}
+          </div>
+          
+          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
+              {o.status === 'aguardando_pagamento' && (
+                <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
+                  <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase animate-pulse">⏳ Aguardando Pagamento Pix</span>
+                  <div className="flex flex-wrap gap-1.5 justify-end w-full">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const forn = store.users?.[o.origemId];
+                        const dist = (forn?.lat && currentUser?.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
+                        const freteTotal = dist * rates.b2b_km;
+                        const subsidy = forn?.freteSubsidyPct || 0;
+                        const freteLoja = freteTotal * (1 - subsidy / 100);
+                        const totalToPay = (o.valor || 0) + freteLoja;
+
+                        setPixModalData({
+                          open: true,
+                          qrCode: o.pixQrCode,
+                          copiaECola: o.pixCopiaECola,
+                          invoiceUrl: o.invoiceUrl,
+                          orderId: o.id,
+                          totalValue: totalToPay
+                        });
+                      }}
+                      className="text-[10px] bg-purple-600 hover:bg-purple-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1"
+                    >
+                      ⚡ Pagar via Pix / Ver QR Code
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/asaas/status?orderId=${o.id}`);
+                          if (res.ok) {
+                            const data = await res.json();
+                            if (data.isPaid) {
+                              store.acaoPedido(o.id, 'confirmar_pagamento');
+                              alert("✅ Pagamento identificado com sucesso no Asaas! Pedido liberado para preparo.");
+                            } else {
+                              alert("O pagamento ainda consta como pendente no Asaas.");
+                            }
+                          }
+                        } catch (_err) {
+                          alert("Erro ao consultar status no Asaas.");
+                        }
+                      }}
+                      className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold px-2 py-1.5 rounded-lg transition"
+                    >
+                      🔍 Checar Pix no Asaas
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        if (confirm("Deseja realmente cancelar este pedido? Em caso de Pix já pago, o estorno automático será solicitado no Asaas.")) {
+                          store.acaoPedido(o.id, 'cancelar_pedido');
+                          alert("❌ Pedido cancelado com sucesso. Caso o Pix tenha sido pago, o estorno foi solicitado no Asaas.");
+                        }
+                      }}
+                      className="text-[10px] bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm"
+                    >
+                      ❌ Cancelar Pedido
+                    </button>
+                  </div>
+                </div>
+              )}
+              {o.status === 'pendente' && (
+                <div className="flex flex-col items-end gap-1">
+                  <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pagamento Aprovado</span>
+                </div>
+              )}
+              {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Preparo</span>}
+              {o.status === 'pronto' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase">{o.type === 'B2B' ? '🚛 Aguardando Caminhão' : '🏍️ Aguardando Moto'}</span>}
+              {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
+              {o.status === 'aguardando_cliente' && o.type === 'B2C' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Cliente Confirmar</span>}
+              {o.status === 'aguardando_cliente' && o.type === 'B2B' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Caminhão Chegou</span>}
+              {(o.status === 'entregue' || o.status === 'arquivado') && (
+                <div className="flex flex-col items-end gap-1">
+                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>
+                  <button 
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+                      let targetPixKey = currentUser.pixKey && !isRealUuid(currentUser.pixKey) ? currentUser.pixKey : (currentUser.cpfCnpj || currentUser.email);
+
+                      if (!targetPixKey || isRealUuid(targetPixKey)) {
+                        const inputPix = prompt("Informe a sua Chave PIX externa (CPF, Celular, E-mail ou Aleatória) para receber a transferência no seu banco:", currentUser.cpfCnpj || currentUser.email || "");
+                        if (inputPix && inputPix.trim()) {
+                          targetPixKey = inputPix.trim();
+                        } else {
+                          return;
+                        }
+                      }
+                      const valorRepasse = o.taxas?.repasse || 0;
+                      try {
+                        const res = await fetch('/api/asaas/transfer', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            pixKey: targetPixKey,
+                            value: valorRepasse,
+                            description: `Repasse Venda AçaíFood #${o.id.substring(0, 8)}`,
+                            orderId: o.id
+                          })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          alert(`✅ Repasse Pix de R$ ${valorRepasse.toFixed(2)} transferido com sucesso!`);
+                        } else {
+                          const msg = data.error || '';
+                          alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
+                        }
+                      } catch(_err) {
+                        alert("Erro ao solicitar repasse Pix.");
+                      }
+                    }}
+                    className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded transition shadow-sm"
+                  >
+                    💸 Resgatar Repasse (R$ {o.taxas?.repasse?.toFixed(2)})
+                  </button>
+                </div>
+              )}
+              {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
+              
+              {isCanceled && (
+                <button onClick={() => { if(confirm('Deseja excluir este pedido permanentemente?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-lg transition mt-2 sm:mt-0">🗑️ Excluir</button>
+              )}
+
+              {/* Interações */}
+              {!isCanceled && o.type === 'B2C' && o.status === 'pendente' && (
+                <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                    <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
+                    <button onClick={() => store.acaoPedido(o.id, 'aceitar_loja')} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
+                </div>
+              )}
+
+              {!isCanceled && o.type === 'B2C' && o.status === 'preparo' && (
+                <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                    <button onClick={() => { if(confirm('Deseja cancelar este pedido?')) store.acaoPedido(o.id, 'cancelar_pedido') }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Cancelar</button>
+                    <button onClick={() => store.acaoPedido(o.id, 'chamar_moto')} className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition">🏍️ Chamar Moto</button>
+                </div>
+              )}
+              
+              {!isCanceled && (o.type === 'B2B' || o.type === 'COLETA') && (o.status === 'pendente' || (o.type === 'COLETA' && o.status === 'preparo' && !o.motoristaId)) && (
+                <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
+              )}
+
+              {!isCanceled && (
+                <button
+                  type="button"
+                  onClick={() => printOrderTicket(o, currentUser?.name || 'Batedeira AçaíFood', printerConfig, store.users)}
+                  className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-3 py-2 rounded-lg border border-purple-300 dark:border-purple-800 transition shadow-sm flex items-center gap-1 shrink-0 mt-2 sm:mt-0"
+                  title="Imprimir comanda térmica deste pedido"
+                >
+                  🖨️ Imprimir Comanda
+                </button>
+              )}
+
+              {!isCanceled && o.type === 'B2B' && o.status === 'em_rota' && (
+                <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Aguardando caminhão</span>
+              )}
+          </div>
+      </div>
+    );
+  };
+
   const handleSaveSubsidy = () => {
     store.setFreteSubsidy(currentUser.id, parseFloat(subsidyInput) || 0);
     alert('Subsídio salvo com sucesso!');
@@ -455,237 +674,41 @@ export default function BatedeiraDashboard() {
                     )
                   })}
               </div>
+
+              {/* Lista de Pedidos de Abastecimento B2B */}
+              <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase mb-3 flex items-center gap-2">
+                  📦 Histórico e Pedidos de Abastecimento (B2B / Coleta)
+                </h3>
+                <div className="grid grid-cols-1 gap-4">
+                  {meusPedidos.filter(o => o.type === 'B2B' || o.type === 'COLETA').length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-zinc-900 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
+                      <span className="text-3xl mb-2 opacity-50">🚚</span>
+                      <p className="text-zinc-500 text-xs font-medium">Nenhum pedido de abastecimento B2B registrado ainda.</p>
+                    </div>
+                  ) : (
+                    meusPedidos.filter(o => o.type === 'B2B' || o.type === 'COLETA').map(renderOrderCard)
+                  )}
+                </div>
+              </div>
           </div>
         )}
 
         {activeTab === 'pedidos' && (
           <div className="animate-in fade-in zoom-in-95 duration-300">
-            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">Gestão de Pedidos (Vendas e Abastecimento)</h3>
+            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">Gestão de Pedidos e Vendas (B2C)</h3>
             
             <div className="grid grid-cols-1 gap-4">
-          {meusPedidos.length === 0 ? (
-             <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
-                <span className="text-4xl mb-3 opacity-50">📋</span>
-                <p className="text-zinc-500 font-medium">Nenhuma movimentação registrada na loja ainda.</p>
+              {meusPedidos.filter(o => o.type === 'B2C').length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
+                  <span className="text-4xl mb-3 opacity-50">🛍️</span>
+                  <p className="text-zinc-500 font-medium">Nenhuma venda B2C registrada na loja ainda.</p>
+                </div>
+              ) : (
+                meusPedidos.filter(o => o.type === 'B2C').map(renderOrderCard)
+              )}
             </div>
-          ) : meusPedidos.filter(o => o.type !== 'COLETA').map(o => {
-            const isCanceled = o.status === 'cancelado';
-            
-            let financeText = '';
-            if (o.type === 'B2C') financeText = `Bruto: ${formatMoney(o.valor)} | Sub. Frete: ${formatMoney(o.taxas.entregaLoja)} | Líquido: ${formatMoney(o.taxas.repasse)}`;
-            else if (o.type === 'B2B') financeText = `Custo Lata Açaí: ${formatMoney(o.valor)} | Frete Pago: ${formatMoney(o.taxas.entregaLoja)} | Gasto Total: ${formatMoney(o.valor + o.taxas.entregaLoja)}`;
-            else if (o.type === 'COLETA') financeText = `Serviço Base: ${formatMoney(o.valor)} | Gasto Extra: ${formatMoney(-o.taxas.repasse - o.valor)} | Custo Total: ${formatMoney(-o.taxas.repasse)}`;
-
-            return (
-              <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-l-4 ${isCanceled ? 'border-red-300 opacity-60 border-l-red-400' : (o.type === 'B2C' ? 'border-l-purple-500' : o.type === 'B2B' ? 'border-l-emerald-500' : 'border-l-amber-500')} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
-                  <div className="w-full sm:w-auto">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${o.type === 'B2C' ? 'bg-purple-100 text-purple-700' : o.type === 'B2B' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{o.type}</span>
-                          <span className="font-bold text-zinc-800 dark:text-white text-sm">{o.title}</span>
-                          {o.createdAt && (
-                            <span className="text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800">
-                               📅 {new Date(o.createdAt).toLocaleDateString('pt-BR')} às {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </span>
-                          )}
-                          {!isCanceled && (
-                            <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-500 hover:underline">🗺️ {(o.distancia || 0).toFixed(1)} km</button>
-                          )}
-                      </div>
-                      <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
-                          <span>
-                            {o.type === 'B2C' ? `👤 Cliente: ${o.clienteNome || store.users[o.destinoId]?.name || store.users[o.clienteId!]?.name || store.users[o.criadoPor]?.name || 'Cliente'}` :
-                             o.type === 'B2B' ? `🏭 Fornecedor: ${store.users[o.origemId]?.name || '—'}` :
-                             `🚛 Caçamba Ecoponto`}
-                          </span>
-                          <span className="text-zinc-400">|</span>
-                          <span className="text-zinc-500">🛵 Motorista: {o.motoristaNome || 'Aguardando'}</span>
-                      </div>
-                      <p className="text-xs text-zinc-500 mt-1">{financeText}</p>
-                      <div className="flex flex-wrap gap-2 mt-2 mb-2">
-                         {o.createdAt && <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleDateString('pt-BR')} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                         {o.acceptedAt && <span className="text-[9px] bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded font-bold">👨‍🍳 Aceito: {new Date(o.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                         {o.readyAt && <span className="text-[9px] bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded font-bold">🛎️ Pronto: {new Date(o.readyAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                         {o.pickedUpAt && <span className="text-[9px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded font-bold">📦 Retirada: {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                         {o.deliveredAt && <span className="text-[9px] bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded font-bold">📍 Chegou: {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                         {o.receivedAt && <span className="text-[9px] bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded font-bold">✅ Recebido: {new Date(o.receivedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                      </div>
-
-                      {o.deliveryPin && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && o.type !== 'B2C' && (
-                         <div className="mt-2 mb-2 bg-purple-900 dark:bg-purple-950 text-white p-3 rounded-lg flex items-center justify-between shadow-md border border-purple-700">
-                             <div>
-                                 <p className="text-[10px] font-bold uppercase text-purple-300">🔑 PIN de Segurança</p>
-                                 <p className="text-[10px] text-purple-100 leading-tight">Forneça ao motorista na entrega/coleta</p>
-                             </div>
-                             <div className="text-xl font-black tracking-widest text-white bg-purple-950 px-3 py-1 rounded border border-purple-600">{o.deliveryPin}</div>
-                         </div>
-                      )}
-                  </div>
-                  
-                  <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
-                      {o.status === 'aguardando_pagamento' && (
-                        <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
-                          <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase animate-pulse">⏳ Aguardando Pagamento Pix</span>
-                          <div className="flex flex-wrap gap-1.5 justify-end w-full">
-                            <button 
-                              type="button"
-                              onClick={() => {
-                                const forn = store.users?.[o.origemId];
-                                const dist = (forn?.lat && currentUser?.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
-                                const freteTotal = dist * rates.b2b_km;
-                                const subsidy = forn?.freteSubsidyPct || 0;
-                                const freteLoja = freteTotal * (1 - subsidy / 100);
-                                const totalToPay = (o.valor || 0) + freteLoja;
-
-                                setPixModalData({
-                                  open: true,
-                                  qrCode: o.pixQrCode,
-                                  copiaECola: o.pixCopiaECola,
-                                  invoiceUrl: o.invoiceUrl,
-                                  orderId: o.id,
-                                  totalValue: totalToPay
-                                });
-                              }}
-                              className="text-[10px] bg-purple-600 hover:bg-purple-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1"
-                            >
-                              ⚡ Pagar via Pix / Ver QR Code
-                            </button>
-                            <button 
-                              onClick={async () => {
-                                try {
-                                  const res = await fetch(`/api/asaas/status?orderId=${o.id}`);
-                                  if (res.ok) {
-                                    const data = await res.json();
-                                    if (data.isPaid) {
-                                      store.acaoPedido(o.id, 'confirmar_pagamento');
-                                      alert("✅ Pagamento identificado com sucesso no Asaas! Pedido liberado para preparo.");
-                                    } else {
-                                      alert("O pagamento ainda consta como pendente no Asaas.");
-                                    }
-                                  }
-                                } catch (_err) {
-                                  alert("Erro ao consultar status no Asaas.");
-                                }
-                              }}
-                              className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold px-2 py-1.5 rounded-lg transition"
-                            >
-                              🔍 Checar Pix no Asaas
-                            </button>
-                            <button 
-                              type="button"
-                              onClick={() => {
-                                if (confirm("Deseja realmente cancelar este pedido? Em caso de Pix já pago, o estorno automático será solicitado no Asaas.")) {
-                                  store.acaoPedido(o.id, 'cancelar_pedido');
-                                  alert("❌ Pedido cancelado com sucesso. Caso o Pix tenha sido pago, o estorno foi solicitado no Asaas.");
-                                }
-                              }}
-                              className="text-[10px] bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm"
-                            >
-                              ❌ Cancelar Pedido
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {o.status === 'pendente' && (
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pagamento Aprovado</span>
-                        </div>
-                      )}
-                      {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Preparo</span>}
-                      {o.status === 'pronto' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase">{o.type === 'B2B' ? '🚛 Aguardando Caminhão' : '🏍️ Aguardando Moto'}</span>}
-                      {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
-                      {o.status === 'aguardando_cliente' && o.type === 'B2C' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Cliente Confirmar</span>}
-                      {o.status === 'aguardando_cliente' && o.type === 'B2B' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Caminhão Chegou</span>}
-                      {(o.status === 'entregue' || o.status === 'arquivado') && (
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>
-                          <button 
-                            type="button"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              const pixKey = currentUser?.pixKey || currentUser?.cpfCnpj || currentUser?.email || currentUser?.asaasWalletId;
-                              const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-                              const targetPixKey = isRealUuid(currentUser.asaasWalletId) ? currentUser.asaasWalletId : (currentUser.cpfCnpj || currentUser.pixKey || currentUser.asaasWalletId);
-                              const valorRepasse = o.taxas?.repasse || 0;
-                              if (!targetPixKey) {
-                                alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber o repasse.");
-                                return;
-                              }
-                              try {
-                                const res = await fetch('/api/asaas/transfer', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    pixKey: targetPixKey,
-                                    value: valorRepasse,
-                                    description: `Repasse Venda AçaíFood #${o.id.substring(0, 8)}`,
-                                    orderId: o.id
-                                  })
-                                });
-                                const data = await res.json();
-                                if (data.success) {
-                                  alert(`✅ Repasse Pix de R$ ${valorRepasse.toFixed(2)} transferido com sucesso!`);
-                                } else {
-                                  const msg = data.error || '';
-                                  alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
-                                }
-                              } catch(_err) {
-                                alert("Erro ao solicitar repasse Pix.");
-                              }
-                            }}
-                            className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded transition shadow-sm"
-                          >
-                            💸 Resgatar Repasse (R$ {o.taxas?.repasse?.toFixed(2)})
-                          </button>
-                        </div>
-                      )}
-                      {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
-                      
-                      {isCanceled && (
-                        <button onClick={() => { if(confirm('Deseja excluir este pedido permanentemente?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-lg transition mt-2 sm:mt-0">🗑️ Excluir</button>
-                      )}
-
-                      {/* Interações */}
-                      {!isCanceled && o.type === 'B2C' && o.status === 'pendente' && (
-                        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                            <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
-                            <button onClick={() => store.acaoPedido(o.id, 'aceitar_loja')} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
-                        </div>
-                      )}
-
-                      {!isCanceled && o.type === 'B2C' && o.status === 'preparo' && (
-                        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                            <button onClick={() => { if(confirm('Deseja cancelar este pedido?')) store.acaoPedido(o.id, 'cancelar_pedido') }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Cancelar</button>
-                            <button onClick={() => store.acaoPedido(o.id, 'chamar_moto')} className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition">🏍️ Chamar Moto</button>
-                        </div>
-                      )}
-                      
-                      {!isCanceled && (o.type === 'B2B' || o.type === 'COLETA') && (o.status === 'pendente' || (o.type === 'COLETA' && o.status === 'preparo' && !o.motoristaId)) && (
-                        <button onClick={() => store.acaoPedido(o.id, 'cancelar_pedido')} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
-                      )}
-
-                      {!isCanceled && (
-                        <button
-                          type="button"
-                          onClick={() => printOrderTicket(o, currentUser?.name || 'Batedeira AçaíFood', printerConfig, store.users)}
-                          className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-3 py-2 rounded-lg border border-purple-300 dark:border-purple-800 transition shadow-sm flex items-center gap-1 shrink-0 mt-2 sm:mt-0"
-                          title="Imprimir comanda térmica deste pedido"
-                        >
-                          🖨️ Imprimir Comanda
-                        </button>
-                      )}
-
-
-                      {!isCanceled && o.type === 'B2B' && o.status === 'em_rota' && (
-                        <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Aguardando caminhão</span>
-                      )}
-
-                  </div>
-              </div>
-            )
-          })}
           </div>
-        </div>
         )}
       </main>
 
