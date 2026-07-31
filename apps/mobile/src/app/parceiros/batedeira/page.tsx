@@ -113,9 +113,10 @@ export default function BatedeiraDashboard() {
 
   const handleResgatarPix = async () => {
     if (!currentUser) return;
-    const targetKey = currentUser.pixKey || currentUser.asaasWalletId;
+    const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const targetKey = isRealUuid(currentUser.asaasWalletId) ? currentUser.asaasWalletId : (currentUser.cpfCnpj || currentUser.pixKey || currentUser.asaasWalletId);
     if (!targetKey) {
-      alert("⚠️ Você precisa vincular sua Chave PIX ou Carteira Asaas antes de solicitar o saque.");
+      alert("⚠️ Você precisa vincular sua Chave PIX, CPF ou Subconta Asaas antes de solicitar o saque.");
       return;
     }
     if (!vendasHoje || vendasHoje <= 0) {
@@ -597,9 +598,11 @@ export default function BatedeiraDashboard() {
                               e.stopPropagation();
                               e.preventDefault();
                               const pixKey = currentUser?.pixKey || currentUser?.cpfCnpj || currentUser?.email || currentUser?.asaasWalletId;
+                              const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+                              const targetPixKey = isRealUuid(currentUser.asaasWalletId) ? currentUser.asaasWalletId : (currentUser.cpfCnpj || currentUser.pixKey || currentUser.asaasWalletId);
                               const valorRepasse = o.taxas?.repasse || 0;
-                              if (!pixKey) {
-                                alert("Cadastre seu CPF ou Chave Pix em seu perfil para receber o repasse.");
+                              if (!targetPixKey) {
+                                alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber o repasse.");
                                 return;
                               }
                               try {
@@ -607,7 +610,7 @@ export default function BatedeiraDashboard() {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({
-                                    pixKey,
+                                    pixKey: targetPixKey,
                                     value: valorRepasse,
                                     description: `Repasse Venda AçaíFood #${o.id.substring(0, 8)}`,
                                     orderId: o.id
@@ -618,11 +621,7 @@ export default function BatedeiraDashboard() {
                                   alert(`✅ Repasse Pix de R$ ${valorRepasse.toFixed(2)} transferido com sucesso!`);
                                 } else {
                                   const msg = data.error || '';
-                                  if (msg.includes('Saldo insuficiente')) {
-                                    alert(`⚠️ Saldo em Processamento no Asaas:\nO Pix deste pedido já foi recebido, porém o valor líquido disponível no Asaas aguarda o tempo de liberação da conta. A transferência será processada assim que o Asaas liberar o saldo.`);
-                                  } else {
-                                    alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
-                                  }
+                                  alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
                                 }
                               } catch(_err) {
                                 alert("Erro ao solicitar repasse Pix.");

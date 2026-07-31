@@ -4,6 +4,7 @@ import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Settings, Trash2, Search } from "lucide-react";
 import { useAppStore, Order, City, getRatesForCity } from "@/store/useAppStore";
+import { supabase } from "@/lib/supabase";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 

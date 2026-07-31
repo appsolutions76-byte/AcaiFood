@@ -87,9 +87,10 @@ export default function MotoboyDashboard() {
 
   const handleResgatarPix = async () => {
     if (!currentUser) return;
-    const targetKey = currentUser.pixKey || currentUser.asaasWalletId;
+    const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const targetKey = isRealUuid(currentUser.asaasWalletId) ? currentUser.asaasWalletId : (currentUser.cpfCnpj || currentUser.pixKey || currentUser.asaasWalletId);
     if (!targetKey) {
-      alert("⚠️ Você precisa vincular sua Chave PIX ou Carteira Asaas antes de solicitar o saque.");
+      alert("⚠️ Você precisa vincular sua Chave PIX, CPF ou Carteira Asaas antes de solicitar o saque.");
       return;
     }
     if (!ganhosHoje || ganhosHoje <= 0) {
@@ -113,11 +114,7 @@ export default function MotoboyDashboard() {
           alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${ganhosHoje.toFixed(2)} já está a caminho do seu banco.`);
         } else {
           const msg = data.error || '';
-          if (msg.includes('Saldo insuficiente')) {
-            alert(`ℹ️ Saldo em Processamento no Asaas:\nSeus recebimentos aguardam a compensação do Pix no Asaas. O Pix automático de varredura ocorrerá às ${rates.payout_time || '22:00'}.`);
-          } else {
-            alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
-          }
+          alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
         }
       } catch (_err) {
         alert("Erro de conexão ao solicitar transferência PIX.");
@@ -317,10 +314,11 @@ export default function MotoboyDashboard() {
                                   onClick={async (e) => {
                                     e.stopPropagation();
                                     e.preventDefault();
-                                    const pixKey = currentUser?.pixKey || currentUser?.cpfCnpj || currentUser?.email || currentUser?.asaasWalletId;
+                                    const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+                                    const targetPixKey = isRealUuid(currentUser?.asaasWalletId) ? currentUser.asaasWalletId : (currentUser?.cpfCnpj || currentUser?.pixKey || currentUser?.asaasWalletId);
                                     const valorEntrega = o.taxas?.entregaMotorista || 0;
-                                    if (!pixKey) {
-                                      alert("Cadastre seu CPF ou Chave Pix em seu perfil para receber a entrega.");
+                                    if (!targetPixKey) {
+                                      alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber a entrega.");
                                       return;
                                     }
                                     try {
@@ -328,7 +326,7 @@ export default function MotoboyDashboard() {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({
-                                          pixKey,
+                                          pixKey: targetPixKey,
                                           value: valorEntrega,
                                           description: `Repasse Entrega AçaíFood #${o.id.substring(0, 8)}`,
                                           orderId: o.id
@@ -339,11 +337,7 @@ export default function MotoboyDashboard() {
                                         alert(`✅ Repasse Pix de R$ ${valorEntrega.toFixed(2)} enviado para sua conta!`);
                                       } else {
                                         const msg = data.error || '';
-                                        if (msg.includes('Saldo insuficiente')) {
-                                          alert(`⚠️ Saldo em Processamento no Asaas:\nO valor da entrega aguarda a liberação de saldo no Asaas. A transferência será processada assim que o saldo estiver disponível no Asaas.`);
-                                        } else {
-                                          alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
-                                        }
+                                        alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
                                       }
                                     } catch(err) {
                                       alert("Erro ao solicitar repasse Pix.");
