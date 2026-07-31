@@ -1501,24 +1501,24 @@ export const useAppStore = create<AppState>()(
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
 
-          // 1. Se o Asaas gerou a cobrança Pix oficial (com Split triplo para batedeira e motoboy)
-          if (asaasResult && (asaasResult.pixCopiaECola || asaasResult.pixQrCode || asaasResult.invoiceUrl)) {
+          // 1. Se o Asaas gerou a cobrança Pix oficial em PRODUÇÃO (não Sandbox)
+          if (asaasResult && !asaasResult.isSandbox && (asaasResult.pixCopiaECola || asaasResult.pixQrCode || asaasResult.invoiceUrl)) {
              return {
                 invoiceUrl: asaasResult.invoiceUrl,
                 pixQrCode: asaasResult.pixQrCode || null,
                 pixCopiaECola: asaasResult.pixCopiaECola || null,
                 paymentId: asaasResult.paymentId,
                 orderId: orderIdToUse,
-                isSandbox: !!asaasResult.isSandbox,
+                isSandbox: false,
                 totalValue: totalValue
              };
           }
 
           return {
-             invoiceUrl: null,
+             invoiceUrl: asaasResult?.invoiceUrl || null,
              pixQrCode: null,
              pixCopiaECola: validPlatformPayload,
-             paymentId: null,
+             paymentId: asaasResult?.paymentId || null,
              orderId: orderIdToUse,
              isSandbox: false,
              totalValue: totalValue,
