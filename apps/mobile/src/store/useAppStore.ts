@@ -1803,10 +1803,13 @@ export const useAppStore = create<AppState>()(
           } else if (roleLower === 'fornecedor') {
              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
              if (sfList && sfList.length > 0) {
-                 query = query.in('seller_storefront_id', sfList.map((s: any) => s.id));
+                 const sfIds = sfList.map((s: any) => s.id).join(',');
+                 query = query.or(`seller_storefront_id.in.(${sfIds}),buyer_id.eq.${currentUser.id}`);
+             } else {
+                 query = query.or(`buyer_id.eq.${currentUser.id}`);
              }
-          } else if (roleLower === 'motorista' || roleLower === 'courier') {
-            query = query.or(`status.in.(READY,PREPARING,DELIVERING,PAID,PENDING),driver_id.eq.${currentUser.id}`);
+          } else if (roleLower === 'motorista' || roleLower === 'courier' || roleLower === 'caminhao' || roleLower === 'motoboy') {
+            query = query.or(`driver_id.is.null,driver_id.eq.${currentUser.id},status.in.(READY,PREPARING,DELIVERING,PAID,PENDING,pronto,preparo)`);
          } else if (roleLower === 'cliente') {
             query = query.eq('buyer_id', currentUser.id);
          } else if (roleLower === 'admin') {

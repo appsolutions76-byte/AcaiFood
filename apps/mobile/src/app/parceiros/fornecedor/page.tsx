@@ -115,25 +115,26 @@ export default function FornecedorDashboard() {
       alert("⚠️ Você precisa vincular sua Chave PIX, CPF ou Carteira Asaas antes de solicitar o saque.");
       return;
     }
-    if (!vendasHoje || vendasHoje <= 0) {
+    const valorSaque = (vendasHoje && vendasHoje > 0) ? vendasHoje : (emProcessamento || 0);
+    if (!valorSaque || valorSaque <= 0) {
       alert("Não há saldo disponível para saque no momento.");
       return;
     }
 
-    if (confirm(`Deseja transferir R$ ${vendasHoje.toFixed(2)} instantaneamente via PIX para a sua chave registrada (${targetKey})?`)) {
+    if (confirm(`Deseja transferir R$ ${valorSaque.toFixed(2)} instantaneamente via PIX para a sua conta registrada (${targetKey})?`)) {
       try {
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             pixKey: targetKey,
-            value: vendasHoje,
+            value: valorSaque,
             description: `Saque Instantâneo AçaíFood (${currentUser.name})`
           })
         });
         const data = await res.json();
         if (res.ok && (data.success || data.transferId)) {
-          alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${vendasHoje.toFixed(2)} já está a caminho do seu banco.`);
+          alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${valorSaque.toFixed(2)} já está a caminho do seu banco.`);
         } else {
           const msg = data.error || '';
           alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
@@ -166,11 +167,30 @@ export default function FornecedorDashboard() {
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const meusPedidosAll = (store.orders || []).filter(o => o.fornecedorId === currentUser.id && o.status !== 'aguardando_pagamento');
-  const vendasHoje = meusPedidosAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + (curr.taxas?.repasse || 0), 0);
+  const getSupplierRepasse = (o: any) => {
+    if (o.taxas?.repasse && o.taxas.repasse > 0) return o.taxas.repasse;
+    const val = o.valor || o.totalValue || 0;
+    const cityRates = rates;
+    const platPct = (cityRates.b2b_plat ?? 5) / 100;
+    const subFrete = o.taxas?.entregaFornecedor || 0;
+    return Math.max(0, val * (1 - platPct) - subFrete);
+  };
 
-  const fornActiveOrders = meusPedidosAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
-  const fornHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
+  const isCompleted = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
+  const isPaidOrProcessing = (st?: string) => st === 'pendente' || st === 'preparo' || st === 'pronto' || st === 'em_rota' || st === 'aguardando_cliente' || st === 'PAID' || st === 'PREPARING' || st === 'READY' || st === 'IN_TRANSIT';
+
+  const isMyOrder = (o: any) => {
+    if (!currentUser) return false;
+    const isSupplier = o.fornecedorId === currentUser.id || (o as any).fornecedor_id === currentUser.id || o.origemId === currentUser.id;
+    return isSupplier && o.status !== 'aguardando_pagamento' && o.status !== 'PENDING';
+  };
+
+  const meusPedidosAll = (store.orders || []).filter(o => isMyOrder(o));
+  const vendasHoje = meusPedidosAll.filter(o => isCompleted(o.status)).reduce((acc, curr) => acc + getSupplierRepasse(curr), 0);
+  const emProcessamento = meusPedidosAll.filter(o => isPaidOrProcessing(o.status)).reduce((acc, curr) => acc + getSupplierRepasse(curr), 0);
+
+  const fornActiveOrders = meusPedidosAll.filter(o => !isCompleted(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
+  const fornHistoryOrders = meusPedidosAll.filter(o => isCompleted(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
   const meusPedidos = [...fornActiveOrders, ...fornHistoryOrders];
 
   const handleSaveSubsidy = () => {
@@ -240,15 +260,20 @@ export default function FornecedorDashboard() {
                 <p className="text-emerald-300 text-xs mt-1">📍 Bairro: {currentUser.bairro || 'Central'}</p>
             </div>
             <div className="text-right flex flex-col items-end">
-                <p className="text-xs text-emerald-200">Cofre Virtual (A Receber)</p>
+                <p className="text-xs text-emerald-200 font-bold">Cofre Virtual (Disponível p/ Saque)</p>
                 <p className="text-2xl font-black text-green-400">{formatMoney(vendasHoje)}</p>
+                {emProcessamento > 0 && (
+                  <p className="text-[11px] text-amber-300 font-bold mt-1 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/80">
+                    ⏳ Em Processamento: {formatMoney(emProcessamento)}
+                  </p>
+                )}
                 <p className="text-[10px] text-emerald-300 mt-1 font-bold">🗓️ Pix Automático: às {rates.payout_time || '22:00'}</p>
-                {vendasHoje > 0 && (
+                {(vendasHoje > 0 || emProcessamento > 0) && (
                   <button 
                     onClick={handleResgatarPix}
                     className="mt-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1"
                   >
-                    💸 Saque Instantâneo Pix
+                    💸 Saque Instantâneo Pix ({formatMoney(vendasHoje > 0 ? vendasHoje : emProcessamento)})
                   </button>
                 )}
             </div>
