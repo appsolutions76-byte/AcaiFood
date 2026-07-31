@@ -773,31 +773,51 @@ export const useAppStore = create<AppState>()(
         let isRealWallet = isValidAsaasWalletId(walletId);
         let finalWalletId = walletId;
 
-        const targetUser = get().users[userId];
+        let targetUser = get().users[userId];
+        if (!targetUser) {
+          const { data: dbU } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+          if (dbU) {
+            targetUser = {
+              id: dbU.id,
+              name: dbU.name,
+              email: dbU.email,
+              cpfCnpj: dbU.cpf_cnpj,
+              telefone: dbU.phone,
+              endereco: dbU.endereco,
+              bairro: dbU.bairro,
+              cidade: dbU.cidade,
+              role: dbU.role
+            } as any;
+          }
+        }
 
         // Se a chave informada não for um walletId nativo de subconta do Asaas, gerar subconta oficial no Asaas
-        if (!isRealWallet && targetUser?.cpfCnpj) {
+        if (!isRealWallet) {
           try {
-            const subRes = await fetch('/api/asaas/subaccount', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId,
-                name: targetUser.name || 'Parceiro AçaíFood',
-                email: targetUser.email || 'parceiro@acaifood.com.br',
-                cpfCnpj: targetUser.cpfCnpj,
-                phone: targetUser.telefone || '',
-                endereco: targetUser.endereco || '',
-                bairro: targetUser.bairro || '',
-                cidade: targetUser.cidade || 'Belém',
-                role: targetUser.role
-              })
-            });
-            if (subRes.ok) {
-              const subData = await subRes.json();
-              if (subData.walletId) {
-                finalWalletId = subData.walletId;
-                isRealWallet = true;
+            const uAny = targetUser as any;
+            const cpfCnpjToUse = uAny?.cpfCnpj || uAny?.cpf_cnpj;
+            if (cpfCnpjToUse) {
+              const subRes = await fetch('/api/asaas/subaccount', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId,
+                  name: uAny?.name || 'Parceiro AçaíFood',
+                  email: uAny?.email || 'parceiro@acaifood.com.br',
+                  cpfCnpj: cpfCnpjToUse,
+                  phone: uAny?.telefone || uAny?.phone || '',
+                  endereco: uAny?.endereco || '',
+                  bairro: uAny?.bairro || '',
+                  cidade: uAny?.cidade || 'Belém',
+                  role: uAny?.role
+                })
+              });
+              if (subRes.ok) {
+                const subData = await subRes.json();
+                if (subData.walletId) {
+                  finalWalletId = subData.walletId;
+                  isRealWallet = true;
+                }
               }
             }
           } catch (e) {

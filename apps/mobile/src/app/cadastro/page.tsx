@@ -115,8 +115,37 @@ function CadastroForm() {
   };
 
   const handleLinkAsaas = async () => {
-    const walletId = pixKey || `asaas_wallet_${Math.random().toString(36).substring(2, 10)}`;
-    await linkAsaasAccount(newUserId, walletId);
+    setIsLocating(true);
+    let finalWalletId = pixKey;
+
+    try {
+      if (newUserId && name && email && cpfCnpj) {
+        const subRes = await fetch('/api/asaas/subaccount', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: newUserId,
+            name,
+            email,
+            cpfCnpj,
+            phone: telefone,
+            bairro,
+            cidade
+          })
+        });
+        const subData = await subRes.json();
+        if (subData.walletId) {
+          finalWalletId = subData.walletId;
+        }
+      }
+    } catch (_e) {
+      console.warn("Aviso ao gerar subconta Asaas no cadastro:", _e);
+    }
+
+    if (finalWalletId) {
+      await linkAsaasAccount(newUserId, finalWalletId);
+    }
+    setIsLocating(false);
     
     const roleStr = String(role || '').toLowerCase();
     const veicStr = String(veiculo || '').toLowerCase();
