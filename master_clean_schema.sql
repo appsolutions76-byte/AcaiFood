@@ -169,5 +169,34 @@ CREATE POLICY "Allow all insert on orders" ON public.orders FOR INSERT WITH CHEC
 DROP POLICY IF EXISTS "Allow all select on orders" ON public.orders;
 CREATE POLICY "Allow all select on orders" ON public.orders FOR SELECT USING (true);
 
--- 11. Notificar a API REST do Supabase para recarregar o schema cache
+-- 12. Garante a Tabela Cities e Coluna rates com RLS Permissivo
+CREATE TABLE IF NOT EXISTS public.cities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  status TEXT DEFAULT 'active',
+  rates JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.cities ADD COLUMN IF NOT EXISTS rates JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.cities ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all select on cities" ON public.cities;
+CREATE POLICY "Allow all select on cities" ON public.cities FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow all update on cities" ON public.cities;
+CREATE POLICY "Allow all update on cities" ON public.cities FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all insert on cities" ON public.cities;
+CREATE POLICY "Allow all insert on cities" ON public.cities FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all delete on cities" ON public.cities;
+CREATE POLICY "Allow all delete on cities" ON public.cities FOR DELETE USING (true);
+
+-- 13. Garante RLS Permissivo na Tabela platform_settings
+ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all select on platform_settings" ON public.platform_settings;
+CREATE POLICY "Allow all select on platform_settings" ON public.platform_settings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow all update on platform_settings" ON public.platform_settings;
+CREATE POLICY "Allow all update on platform_settings" ON public.platform_settings FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all insert on platform_settings" ON public.platform_settings;
+CREATE POLICY "Allow all insert on platform_settings" ON public.platform_settings FOR INSERT WITH CHECK (true);
+
+-- 14. Notificar a API REST do Supabase para recarregar o schema cache
 NOTIFY pgrst, 'reload schema';
