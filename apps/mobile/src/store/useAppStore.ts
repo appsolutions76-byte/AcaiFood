@@ -102,6 +102,7 @@ export interface Order {
   pixQrCode?: string | null;
   pixCopiaECola?: string | null;
   invoiceUrl?: string | null;
+  totalValue?: number;
 }
 
 export interface CityRates {
@@ -1157,7 +1158,14 @@ export const useAppStore = create<AppState>()(
         const destLat = deliveryInfo?.lat ?? p2?.lat;
         const destLng = deliveryInfo?.lng ?? p2?.lng;
 
-        const distKM = (p1?.lat && destLat && destLng) ? haversineKm(p1.lat, p1.lng!, destLat, destLng) : 0;
+        const lat1 = Number(p1?.lat || 0);
+        const lon1 = Number(p1?.lng || 0);
+        const lat2 = Number(destLat || 0);
+        const lon2 = Number(destLng || 0);
+
+        const distKM = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) 
+          ? haversineKm(lat1, lon1, lat2, lon2) 
+          : 3.0;
 
         const calcFrete = (t: string, d: number) => {
           if (t === 'B2C') {
@@ -1484,7 +1492,8 @@ export const useAppStore = create<AppState>()(
             deliveryPin: pin,
             pixQrCode: asaasResult?.pixQrCode || null,
             pixCopiaECola: asaasResult?.pixCopiaECola || validPlatformPayload || null,
-            invoiceUrl: asaasResult?.invoiceUrl || null
+            invoiceUrl: asaasResult?.invoiceUrl || null,
+            totalValue: totalValue
           };
           set({ 
              orders: [finalPedido, ...get().orders], 
@@ -1512,6 +1521,7 @@ export const useAppStore = create<AppState>()(
              paymentId: null,
              orderId: orderIdToUse,
              isSandbox: false,
+             totalValue: totalValue,
              error: checkoutErrorMsg || undefined
           };
           

@@ -413,8 +413,12 @@ export default function BatedeiraDashboard() {
               <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Comprar Lata Açaí (Fornecedores B2B)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {fornecedores.map(forn => {
-                    const dist = (forn.lat && currentUser.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
-                    const freteTotal = dist * rates.b2b_km;
+                    const lat1 = Number(forn?.lat || 0);
+                    const lon1 = Number(forn?.lng || 0);
+                    const lat2 = Number(currentUser?.lat || 0);
+                    const lon2 = Number(currentUser?.lng || 0);
+                    const dist = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) ? haversineKm(lat1, lon1, lat2, lon2) : 3.0;
+                    const freteTotal = (rates.transporter_payment_mode === 'FIXED') ? (rates.transporter_fixed_fee ?? 150.00) : dist * rates.b2b_km;
                     const subsidy = forn.freteSubsidyPct || 0;
                     const freteLoja = freteTotal * (1 - subsidy / 100);
 
@@ -711,7 +715,7 @@ export default function BatedeiraDashboard() {
       )}
 
       {/* B2B Cart Modal */}
-      {cartModalB2B.open && (
+{cartModalB2B.open && (
         <div className="fixed inset-0 bg-black/70 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95">
               <div className="bg-emerald-700 text-white p-4 sm:p-5 flex justify-between items-center">
@@ -724,8 +728,12 @@ export default function BatedeiraDashboard() {
                       const forn = store.users?.[cartModalB2B.fornId];
                       if (!forn) return <p>Fornecedor não encontrado</p>;
                       
-                      const dist = (forn.lat && currentUser?.lat) ? haversineKm(forn.lat, forn.lng!, currentUser.lat, currentUser.lng!) : 0;
-                      const freteTotal = dist * rates.b2b_km;
+                      const lat1 = Number(forn?.lat || 0);
+                      const lon1 = Number(forn?.lng || 0);
+                      const lat2 = Number(currentUser?.lat || 0);
+                      const lon2 = Number(currentUser?.lng || 0);
+                      const dist = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) ? haversineKm(lat1, lon1, lat2, lon2) : 3.0;
+                      const freteTotal = (rates.transporter_payment_mode === 'FIXED') ? (rates.transporter_fixed_fee ?? 150.00) : dist * rates.b2b_km;
                       const subsidy = forn.freteSubsidyPct || 0;
                       const freteLoja = freteTotal * (1 - subsidy / 100);
                       const unitPrice = forn.priceB2B || 0;
