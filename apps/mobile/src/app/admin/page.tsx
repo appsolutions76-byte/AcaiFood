@@ -793,8 +793,27 @@ function AdminDashboardContent() {
               <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>⏰</span> Horário do Pix Automático Diário (Todos os Parceiros)</h4>
                   <p className="text-xs text-zinc-500 mb-3">Define o horário de varredura diária no Asaas para enviar o saldo acumulado via Pix para as Lojas, Fornecedores e Motoristas.</p>
-                  <div className="grid grid-cols-1 gap-3">
-                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Horário Programado para Pix</label><input type="time" value={localRates?.payout_time || '22:00'} onChange={e => setLocalRates({...localRates, payout_time: e.target.value})} className="w-full sm:w-1/3 border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Horário Programado para Pix</label><input type="time" value={localRates?.payout_time || '22:00'} onChange={e => setLocalRates({...localRates, payout_time: e.target.value})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                      <div>
+                        <button 
+                          type="button" 
+                          onClick={async () => {
+                            if (confirm("Deseja executar a varredura e envio de Pix pendentes do dia agora mesmo?")) {
+                              try {
+                                const { data, error } = await supabase.functions.invoke('payout-sweep');
+                                if (error) throw error;
+                                alert(`✅ Varredura concluída com sucesso!\n\nPedidos Processados: ${data?.processedOrders || 0}\nRepasses Lojas: ${data?.sellerPayoutsCount || 0}\nRepasses Motoristas: ${data?.driverPayoutsCount || 0}\nTotal Transferido: R$ ${(data?.totalAmountTransferred || 0).toFixed(2)}`);
+                              } catch (err: any) {
+                                alert("Erro ao disparar varredura: " + (err.message || JSON.stringify(err)));
+                              }
+                            }
+                          }}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2"
+                        >
+                          🚀 Executar Varredura de Pix Agora
+                        </button>
+                      </div>
                   </div>
               </div>
             </div>
