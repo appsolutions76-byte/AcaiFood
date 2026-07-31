@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { pixKey, value, description, orderId } = body;
+    const { pixKey, value, description, orderId, scheduleDate } = body;
 
     if (!pixKey || !value || value <= 0) {
       return NextResponse.json(
@@ -36,6 +36,10 @@ export async function POST(request: Request) {
       value: Number(value.toFixed(2)),
       description: description || `Repasse AçaíFood #${String(orderId || '').substring(0, 8)}`
     };
+
+    if (scheduleDate) {
+      transferBody.scheduleDate = String(scheduleDate).trim();
+    }
 
     if (isWalletId) {
       transferBody.walletId = cleanPixKey;
