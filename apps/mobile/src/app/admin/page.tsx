@@ -364,6 +364,9 @@ function AdminDashboardContent() {
               </button>
               <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1.5 rounded-lg font-bold shadow-sm transition-all">📲 Compartilhar</button>
               <ThemeToggle />
+              <button onClick={() => { setSelectedCityForRates(null); setLocalRates(rates); setRatesModalOpen(true); }} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs shadow-sm">
+                  ⚙️ Taxas & Repasses Pix
+              </button>
               <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
                   🔑 Senha
               </button>
