@@ -187,8 +187,8 @@ export default function BatedeiraDashboard() {
   
   const distColeta = (currentUser.lat && store.users?.ecoponto?.lat) ? haversineKm(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat!, store.users.ecoponto.lng!) : 0;
   const freteColeta = (rates.ecopoint_payment_mode === 'FIXED') 
-    ? (rates.ecopoint_fixed_fee ?? 50) 
-    : (distColeta * (rates.col_km || 0));
+    ? (rates.ecopoint_fixed_fee ?? rates.col_valor ?? 50) 
+    : (distColeta > 0 ? (distColeta * (rates.col_km || 0)) : (rates.ecopoint_fixed_fee ?? rates.col_valor ?? 50));
 
   const handleSaveSubsidy = () => {
     store.setFreteSubsidy(currentUser.id, parseFloat(subsidyInput) || 0);

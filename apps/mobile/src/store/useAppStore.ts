@@ -127,7 +127,14 @@ export interface City {
 
 export function getRatesForCity(cityName?: string | null, globalRates?: any, cities?: City[]) {
   if (!cityName || !cities) return globalRates;
-  const match = cities.find(c => c.name.toLowerCase().trim() === cityName.toLowerCase().trim());
+  const norm = (str?: string | null) => String(str || '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+  const target = norm(cityName);
+  const match = cities.find(c => norm(c.name) === target);
   if (match && match.rates && Object.keys(match.rates).length > 0) {
     return { ...globalRates, ...match.rates };
   }
