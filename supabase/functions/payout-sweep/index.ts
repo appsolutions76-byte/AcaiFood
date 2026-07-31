@@ -43,7 +43,7 @@ serve(async (req) => {
     }
 
     // Filtrar pedidos concluídos com repasses pendentes
-    const validStatuses = ['RECEIVED', 'DELIVERED', 'entregue', 'concluido', 'aguardando_cliente']
+    const validStatuses = ['RECEIVED', 'DELIVERED', 'COMPLETED', 'entregue', 'concluido', 'aguardando_cliente']
     const pendingOrders = (rawOrders || []).filter((o: any) => {
       const isCompleted = validStatuses.includes(String(o.status || ''))
       const sellerPending = o.payout_seller_done !== true
@@ -133,7 +133,8 @@ serve(async (req) => {
                 })
 
                 const resData = await res.json()
-                if (res.ok && (resData.id || resData.status === 'DONE' || resData.status === 'PENDING')) {
+                const isSuccess = res.ok && (resData.id || resData.status === 'DONE' || resData.status === 'PENDING' || String(resData.status || '').includes('AUTHORIZATION') || String(resData.status || '').includes('PENDING'))
+                if (isSuccess) {
                   await supabase.from('orders').update({ payout_seller_done: true }).eq('id', order.id)
                   sellerPayoutsCount++
                   totalAmountTransferred += sellerValue
@@ -203,7 +204,8 @@ serve(async (req) => {
               })
 
               const resData = await res.json()
-              if (res.ok && (resData.id || resData.status === 'DONE' || resData.status === 'PENDING')) {
+              const isDriverSuccess = res.ok && (resData.id || resData.status === 'DONE' || resData.status === 'PENDING' || String(resData.status || '').includes('AUTHORIZATION') || String(resData.status || '').includes('PENDING'))
+              if (isDriverSuccess) {
                 await supabase.from('orders').update({ payout_driver_done: true }).eq('id', order.id)
                 driverPayoutsCount++
                 totalAmountTransferred += driverValue
