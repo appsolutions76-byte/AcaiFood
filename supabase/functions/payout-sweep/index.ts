@@ -30,35 +30,49 @@ serve(async (req) => {
 
     console.log(`Iniciando Varredura Noturna de Repasses Pix (${isSandbox ? 'SANDBOX' : 'PRODUÇÃO'})...`)
 
-    // 1. Buscar todos os pedidos concluídos onde pelo menos um repasse está pendente
-    const { data: pendingOrders, error: fetchError } = await supabase
+    // 1. Buscar últimos 200 pedidos do Supabase
+    const { data: rawOrders, error: fetchError } = await supabase
       .from('orders')
-      .select('id, buyer_id, seller_storefront_id, driver_id, status, products_subtotal, order_type, payout_seller_done, payout_driver_done, received_at, delivered_at')
-      .or('payout_seller_done.eq.false,payout_driver_done.eq.false')
-      .in('status', ['RECEIVED', 'DELIVERED'])
-      .limit(100)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200)
 
     if (fetchError) {
-      console.error('Erro ao buscar pedidos pendentes no Supabase:', fetchError)
+      console.error('Erro ao buscar pedidos no Supabase:', fetchError)
       throw fetchError
     }
+
+    // Filtrar pedidos concluídos com repasses pendentes
+    const validStatuses = ['RECEIVED', 'DELIVERED', 'entregue', 'concluido', 'aguardando_cliente']
+    const pendingOrders = (rawOrders || []).filter((o: any) => {
+      const isCompleted = validStatuses.includes(String(o.status || ''))
+      const sellerPending = o.payout_seller_done !== true
+      const driverPending = o.payout_driver_done !== true
+      return isCompleted && (sellerPending || driverPending)
+    })
+
+    console.log(`Pedidos pendentes de repasse encontrados: ${pendingOrders.length}`)
 
     let sellerPayoutsCount = 0
     let driverPayoutsCount = 0
     let totalAmountTransferred = 0
 
-    if (pendingOrders && pendingOrders.length > 0) {
+    if (pendingOrders.length > 0) {
       for (const order of pendingOrders) {
-        // 2. Resolver Repasse do Vendedor se pendente
-        if (!order.payout_seller_done && order.seller_storefront_id) {
+        // 2. Resolver Repasse do Vendedor (Loja/Fornecedor)
+        if (order.payout_seller_done !== true) {
           try {
-            const { data: sf } = await supabase
-              .from('storefronts')
-              .select('partner_id')
-              .eq('id', order.seller_storefront_id)
-              .maybeSingle()
+            let sellerPartnerId = order.seller_storefront_id || order.loja_id || order.fornecedor_id || order.origem_id || order.partner_id
 
-            const sellerPartnerId = sf?.partner_id
+            if (!sellerPartnerId && order.seller_storefront_id) {
+              const { data: sf } = await supabase
+                .from('storefronts')
+                .select('partner_id')
+                .eq('id', order.seller_storefront_id)
+                .maybeSingle()
+              sellerPartnerId = sf?.partner_id
+            }
+
             if (sellerPartnerId) {
               const { data: uSeller } = await supabase
                 .from('users')
@@ -66,14 +80,15 @@ serve(async (req) => {
                 .eq('id', sellerPartnerId)
                 .maybeSingle()
 
-              const sellerPixKey = uSeller?.asaas_wallet_id || uSeller?.pix_key || uSeller?.cpf_cnpj || uSeller?.email
+              const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+              const sellerPixKey = isRealUuid(uSeller?.asaas_wallet_id) ? uSeller?.asaas_wallet_id : (uSeller?.cpf_cnpj || uSeller?.pix_key || uSeller?.email || uSeller?.asaas_wallet_id)
               
-              const sellerValue = Number(((order.products_subtotal || 0) * 0.9).toFixed(2))
+              const sellerValue = Number(((order.products_subtotal || order.subtotal || order.total || 0) * 0.9).toFixed(2))
 
               if (sellerPixKey && sellerValue > 0) {
                 const cleanKey = String(sellerPixKey).trim()
                 const cleanDigits = cleanKey.replace(/\D/g, '')
-                const isWalletId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanKey) || (cleanKey.length >= 20 && !cleanKey.match(/^\d+$/))
+                const isWalletId = isRealUuid(cleanKey)
 
                 const transferBody: any = {
                   value: sellerValue,
@@ -91,10 +106,15 @@ serve(async (req) => {
                 } else if (cleanKey.includes('@')) {
                   transferBody.pixAddressKey = cleanKey.toLowerCase()
                   transferBody.pixAddressKeyType = 'EMAIL'
+                } else if (cleanDigits.length >= 10 && cleanDigits.length <= 11) {
+                  transferBody.pixAddressKey = cleanKey.startsWith('+') ? cleanKey : `+55${cleanDigits}`
+                  transferBody.pixAddressKeyType = 'PHONE'
                 } else {
                   transferBody.pixAddressKey = cleanKey
                   transferBody.pixAddressKeyType = 'EVP'
                 }
+
+                console.log(`Disparando repasse Loja #${order.id.substring(0,8)} (R$ ${sellerValue}) ->`, transferBody)
 
                 const res = await fetch(`${ASAAS_URL}/transfers`, {
                   method: 'POST',
@@ -121,22 +141,24 @@ serve(async (req) => {
           }
         }
 
-        // 3. Resolver Repasse do Motorista se pendente
-        if (!order.payout_driver_done && order.driver_id) {
+        // 3. Resolver Repasse do Motorista
+        const driverId = order.driver_id || order.motorista_id
+        if (order.payout_driver_done !== true && driverId) {
           try {
             const { data: uDriver } = await supabase
               .from('users')
               .select('id, name, email, pix_key, cpf_cnpj, asaas_wallet_id')
-              .eq('id', order.driver_id)
+              .eq('id', driverId)
               .maybeSingle()
 
-            const driverPixKey = uDriver?.asaas_wallet_id || uDriver?.pix_key || uDriver?.cpf_cnpj || uDriver?.email
-            const driverValue = 8.00
+            const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+            const driverPixKey = isRealUuid(uDriver?.asaas_wallet_id) ? uDriver?.asaas_wallet_id : (uDriver?.cpf_cnpj || uDriver?.pix_key || uDriver?.email || uDriver?.asaas_wallet_id)
+            const driverValue = Number((order.freight_price || order.frete || 8.00).toFixed(2))
 
             if (driverPixKey && driverValue > 0) {
               const cleanKey = String(driverPixKey).trim()
               const cleanDigits = cleanKey.replace(/\D/g, '')
-              const isWalletId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanKey) || (cleanKey.length >= 20 && !cleanKey.match(/^\d+$/))
+              const isWalletId = isRealUuid(cleanKey)
 
               const transferBody: any = {
                 value: driverValue,
@@ -154,10 +176,15 @@ serve(async (req) => {
               } else if (cleanKey.includes('@')) {
                 transferBody.pixAddressKey = cleanKey.toLowerCase()
                 transferBody.pixAddressKeyType = 'EMAIL'
+              } else if (cleanDigits.length >= 10 && cleanDigits.length <= 11) {
+                transferBody.pixAddressKey = cleanKey.startsWith('+') ? cleanKey : `+55${cleanDigits}`
+                transferBody.pixAddressKeyType = 'PHONE'
               } else {
                 transferBody.pixAddressKey = cleanKey
                 transferBody.pixAddressKeyType = 'EVP'
               }
+
+              console.log(`Disparando repasse Motorista #${order.id.substring(0,8)} (R$ ${driverValue}) ->`, transferBody)
 
               const res = await fetch(`${ASAAS_URL}/transfers`, {
                 method: 'POST',
@@ -173,7 +200,7 @@ serve(async (req) => {
                 await supabase.from('orders').update({ payout_driver_done: true }).eq('id', order.id)
                 driverPayoutsCount++
                 totalAmountTransferred += driverValue
-                console.log(`✅ Varredura: Repasse de R$ ${driverValue} enviado ao entregador ${uDriver?.name || order.driver_id}`)
+                console.log(`✅ Varredura: Repasse de R$ ${driverValue} enviado ao entregador ${uDriver?.name || driverId}`)
               } else {
                 console.warn(`Alerta varredura motorista (${order.id}):`, resData)
               }
@@ -185,24 +212,22 @@ serve(async (req) => {
       }
     }
 
-    console.log(`🏁 Varredura concluída: ${sellerPayoutsCount} repasses de loja, ${driverPayoutsCount} repasses de entregador. Total: R$ ${totalAmountTransferred.toFixed(2)}`)
-
     return new Response(
       JSON.stringify({
         success: true,
-        processedOrders: pendingOrders ? pendingOrders.length : 0,
+        processedOrders: pendingOrders.length,
         sellerPayoutsCount,
         driverPayoutsCount,
-        totalAmountTransferred: Number(totalAmountTransferred.toFixed(2))
+        totalAmountTransferred
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error: any) {
-    console.error('Erro na Edge Function payout-sweep:', error)
+    console.error('Erro na Varredura Noturna:', error)
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({ success: false, error: error.message || String(error) }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
