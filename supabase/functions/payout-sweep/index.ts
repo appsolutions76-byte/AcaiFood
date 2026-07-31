@@ -62,15 +62,17 @@ serve(async (req) => {
         // 2. Resolver Repasse do Vendedor (Loja/Fornecedor)
         if (order.payout_seller_done !== true) {
           try {
-            let sellerPartnerId = order.seller_storefront_id || order.loja_id || order.fornecedor_id || order.origem_id || order.partner_id
+            let sellerPartnerId = order.loja_id || order.fornecedor_id || order.origem_id || order.partner_id
 
-            if (!sellerPartnerId && order.seller_storefront_id) {
+            if (order.seller_storefront_id) {
               const { data: sf } = await supabase
                 .from('storefronts')
                 .select('partner_id')
                 .eq('id', order.seller_storefront_id)
                 .maybeSingle()
-              sellerPartnerId = sf?.partner_id
+              if (sf?.partner_id) {
+                sellerPartnerId = sf.partner_id
+              }
             }
 
             if (sellerPartnerId) {
