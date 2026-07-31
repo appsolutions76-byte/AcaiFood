@@ -110,18 +110,24 @@ export default function FornecedorDashboard() {
   const handleResgatarPix = async () => {
     if (!currentUser) return;
     const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    const targetKey = isRealUuid(currentUser.asaasWalletId) ? currentUser.asaasWalletId : (currentUser.cpfCnpj || currentUser.pixKey || currentUser.asaasWalletId);
-    if (!targetKey) {
-      alert("⚠️ Você precisa vincular sua Chave PIX, CPF ou Carteira Asaas antes de solicitar o saque.");
-      return;
+    let targetKey = currentUser.pixKey && !isRealUuid(currentUser.pixKey) ? currentUser.pixKey : (currentUser.cpfCnpj || currentUser.email);
+
+    if (!targetKey || isRealUuid(targetKey)) {
+      const inputPix = prompt("Informe a sua Chave PIX externa (CPF, Celular, E-mail ou Aleatória) para receber a transferência no seu banco:", currentUser.cpfCnpj || currentUser.email || "");
+      if (inputPix && inputPix.trim()) {
+        targetKey = inputPix.trim();
+      } else {
+        return;
+      }
     }
+
     const valorSaque = (vendasHoje && vendasHoje > 0) ? vendasHoje : (emProcessamento || 0);
     if (!valorSaque || valorSaque <= 0) {
       alert("Não há saldo disponível para saque no momento.");
       return;
     }
 
-    if (confirm(`Deseja transferir R$ ${valorSaque.toFixed(2)} instantaneamente via PIX para a sua conta registrada (${targetKey})?`)) {
+    if (confirm(`Deseja transferir R$ ${valorSaque.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?`)) {
       try {
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
@@ -134,10 +140,14 @@ export default function FornecedorDashboard() {
         });
         const data = await res.json();
         if (res.ok && (data.success || data.transferId)) {
-          alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${valorSaque.toFixed(2)} já está a caminho do seu banco.`);
+          alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${valorSaque.toFixed(2)} já está a caminho do seu banco (${targetKey}).`);
         } else {
           const msg = data.error || '';
-          alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
+          if (msg.includes('Saldo insuficiente')) {
+            alert(`ℹ️ Saldo já creditado na Subconta Asaas:\nO valor de R$ ${valorSaque.toFixed(2)} já consta na sua subconta Asaas oficial (${currentUser.asaasWalletId || 'Ativa'}).\nA varredura automática de repasse para o seu banco externo ocorrerá às ${rates.payout_time || '22:00'}.`);
+          } else {
+            alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
+          }
         }
       } catch (_err) {
         alert("Erro de conexão ao solicitar transferência PIX.");

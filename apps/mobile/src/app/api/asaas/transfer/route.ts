@@ -73,7 +73,17 @@ export async function POST(request: Request) {
       body: JSON.stringify(transferBody)
     });
 
-    const data = await res.json();
+    const resText = await res.text();
+    let data: any = {};
+    try {
+      data = JSON.parse(resText);
+    } catch (_e) {
+      console.error("Resposta não-JSON do Asaas:", resText);
+      return NextResponse.json(
+        { error: `Status ${res.status}: ${resText || 'Sem resposta do Asaas'}` },
+        { status: 400 }
+      );
+    }
 
     if (!res.ok || data.errors) {
       const msg = data.errors
