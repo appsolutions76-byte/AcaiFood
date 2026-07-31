@@ -412,7 +412,21 @@ export default function FornecedorDashboard() {
                       </div>
                     )}
                     {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Você</span>}
-                    {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Separação</span>}
+                    {o.status === 'preparo' && (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Separação</span>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            store.acaoPedido(o.id, 'chamar_caminhao');
+                            alert("✅ Pedido marcado como Pronto! O frete agora está disponível no Radar dos Caminhoneiros.");
+                          }}
+                          className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1"
+                        >
+                          🚚 Concluir Separação (Liberar Frete)
+                        </button>
+                      </div>
+                    )}
                     {o.status === 'pronto' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Caminhão</span>}
                     {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
                     {o.status === 'aguardando_cliente' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Loja Confirmar</span>}
