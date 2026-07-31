@@ -429,7 +429,8 @@ export const useAppStore = create<AppState>()(
           vehicle_type: vehicleType,
           pix_key: newUser.pixKey,
           cpf_cnpj: cleanedCpfCnpj,
-          status: 'active'
+          status: 'active',
+          split_enabled: dbRole !== 'CLIENT'
         };
 
         let { error: dbError } = await supabase.from('users').insert(insertPayload);
@@ -1350,24 +1351,29 @@ export const useAppStore = create<AppState>()(
           const sellerUser = state.users[sellerPartnerId || ''];
           let sellerWalletId = sellerUser?.asaasWalletId;
 
-          // Buscar asaas_wallet_id do Supabase se ausente no estado
-          if (!sellerWalletId && sellerPartnerId) {
+          // Buscar/Gerar asaas_wallet_id real no Supabase/Asaas se ausente ou inválido (ex: se for CPF/Telefone em vez de UUID)
+          if ((!sellerWalletId || !isValidAsaasWalletId(sellerWalletId)) && sellerPartnerId) {
             try {
-              const { data: uData } = await supabase.from('users').select('id, name, email, cpf_cnpj, asaas_wallet_id').eq('id', sellerPartnerId).maybeSingle();
+              const { data: uData } = await supabase.from('users').select('id, name, email, cpf_cnpj, asaas_wallet_id, role, phone, endereco, bairro, cidade').eq('id', sellerPartnerId).maybeSingle();
               if (uData) {
-                if (uData.asaas_wallet_id) {
+                if (isValidAsaasWalletId(uData.asaas_wallet_id)) {
                   sellerWalletId = uData.asaas_wallet_id;
                 } else if (uData.cpf_cnpj) {
-                  // Tentar auto-criar subconta no Asaas para a loja se tiver CPF/CNPJ
+                  // Tentar auto-criar subconta no Asaas para o parceiro/batedeira se tiver CPF/CNPJ
                   try {
                     const subRes = await fetch('/api/asaas/subaccount', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         userId: uData.id,
-                        name: uData.name || 'Batedeira Parceira',
-                        email: uData.email || 'batedeira@acaifood.com.br',
-                        cpfCnpj: uData.cpf_cnpj
+                        name: uData.name || 'Parceiro AçaíFood',
+                        email: uData.email || 'parceiro@acaifood.com.br',
+                        cpfCnpj: uData.cpf_cnpj,
+                        phone: uData.phone,
+                        endereco: uData.endereco,
+                        bairro: uData.bairro,
+                        cidade: uData.cidade,
+                        role: uData.role || 'PARTNER'
                       })
                     });
                     if (subRes.ok) {
@@ -1375,7 +1381,7 @@ export const useAppStore = create<AppState>()(
                       if (subData.walletId) sellerWalletId = subData.walletId;
                     }
                   } catch (subErr) {
-                    console.warn("Auto subaccount error:", subErr);
+                    console.warn("Auto subaccount error para loja:", subErr);
                   }
                 }
               }
@@ -1395,10 +1401,36 @@ export const useAppStore = create<AppState>()(
 
           if (novoPedido.motoristaId) {
             let driverWalletId = state.users[novoPedido.motoristaId]?.asaasWalletId;
-            if (!driverWalletId) {
+            if (!driverWalletId || !isValidAsaasWalletId(driverWalletId)) {
               try {
-                const { data: dData } = await supabase.from('users').select('asaas_wallet_id').eq('id', novoPedido.motoristaId).maybeSingle();
-                if (dData?.asaas_wallet_id) driverWalletId = dData.asaas_wallet_id;
+                const { data: dData } = await supabase.from('users').select('id, name, email, cpf_cnpj, asaas_wallet_id, role, phone, endereco, bairro, cidade').eq('id', novoPedido.motoristaId).maybeSingle();
+                if (dData) {
+                  if (isValidAsaasWalletId(dData.asaas_wallet_id)) {
+                    driverWalletId = dData.asaas_wallet_id;
+                  } else if (dData.cpf_cnpj) {
+                    try {
+                      const subRes = await fetch('/api/asaas/subaccount', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          userId: dData.id,
+                          name: dData.name || 'Entregador AçaíFood',
+                          email: dData.email || 'entregador@acaifood.com.br',
+                          cpfCnpj: dData.cpf_cnpj,
+                          phone: dData.phone,
+                          endereco: dData.endereco,
+                          bairro: dData.bairro,
+                          cidade: dData.cidade,
+                          role: dData.role || 'COURIER'
+                        })
+                      });
+                      if (subRes.ok) {
+                        const subData = await subRes.json();
+                        if (subData.walletId) driverWalletId = subData.walletId;
+                      }
+                    } catch (_e) {}
+                  }
+                }
               } catch(_e) {}
             }
             if (driverWalletId && isValidAsaasWalletId(driverWalletId)) {
