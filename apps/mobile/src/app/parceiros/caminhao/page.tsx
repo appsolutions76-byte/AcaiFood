@@ -252,7 +252,7 @@ export default function CaminhaoDashboard() {
                     <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-blue-400 dark:border-blue-600' : 'border-zinc-200 dark:border-zinc-800'}`}>
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-bold text-zinc-800 dark:text-white text-sm">{o.title}</span>
-                            <span className="text-xs font-bold text-green-600 dark:text-green-400">Líquido: {formatMoney(o.taxas?.entregaMotorista || 0)}</span>
+                            <span className="text-xs font-bold text-green-600 dark:text-green-400">Líquido: {formatMoney(getDriverFee(o))}</span>
                         </div>
                         
                         <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded-lg text-xs mb-3 flex flex-col gap-1.5 border border-zinc-100 dark:border-zinc-800">
@@ -322,7 +322,7 @@ export default function CaminhaoDashboard() {
                                     e.stopPropagation();
                                     const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
                                     const targetPixKey = isRealUuid(currentUser?.asaasWalletId) ? currentUser.asaasWalletId : (currentUser?.cpfCnpj || currentUser?.pixKey || currentUser?.asaasWalletId);
-                                    const valorEntrega = o.taxas?.entregaMotorista || 0;
+                                    const valorEntrega = getDriverFee(o);
                                     if (!targetPixKey) {
                                       alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber o frete.");
                                       return;
@@ -351,7 +351,7 @@ export default function CaminhaoDashboard() {
                                   }}
                                   className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-md w-full"
                                 >
-                                  💸 Resgatar Repasse (R$ {o.taxas?.entregaMotorista?.toFixed(2)})
+                                  💸 Resgatar Repasse (R$ {getDriverFee(o).toFixed(2)})
                                 </button>
                             </div>
                         ) : null}

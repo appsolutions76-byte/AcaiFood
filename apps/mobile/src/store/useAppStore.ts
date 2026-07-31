@@ -1726,11 +1726,22 @@ export const useAppStore = create<AppState>()(
                  const driverId = currentOrder.motoristaId || state.currentUser?.id;
                  let driverUser: any = driverId ? state.users[driverId] : null;
                  if (!driverUser && driverId) {
-                   const { data: uDriver } = await supabase.from('users').select('pix_key, cpf_cnpj, email, asaas_wallet_id').eq('id', driverId).maybeSingle();
+                   const { data: uDriver } = await supabase.from('users').select('pix_key, cpf_cnpj, email, asaas_wallet_id, cidade').eq('id', driverId).maybeSingle();
                    driverUser = uDriver;
                  }
                  const driverPixKey = driverUser?.pix_key || driverUser?.pixKey || driverUser?.asaasWalletId || driverUser?.cpf_cnpj || driverUser?.cpfCnpj || driverUser?.email;
-                 const repasseDriver = currentOrder.taxas?.entregaMotorista || 0;
+                 let repasseDriver = currentOrder.taxas?.entregaMotorista || 0;
+                 if (!repasseDriver || repasseDriver <= 0) {
+                    const cityRates = getRatesForCity(driverUser?.cidade || currentUser.cidade, state.rates, state.cities) || state.rates;
+                    const dist = currentOrder.distancia || 1.0;
+                    const totalFrete = currentOrder.type === 'COLETA'
+                      ? (cityRates.ecopoint_payment_mode === 'FIXED' ? (cityRates.ecopoint_fixed_fee ?? 50.00) : dist * (cityRates.col_km || 8.00))
+                      : (currentOrder.type === 'B2B' 
+                        ? (cityRates.transporter_payment_mode === 'FIXED' ? (cityRates.transporter_fixed_fee ?? 150.00) : dist * (cityRates.b2b_km || 4.00))
+                        : (cityRates.courier_payment_mode === 'FIXED' ? (cityRates.courier_fixed_fee ?? 8.00) : dist * (cityRates.b2c_km || 2.00)));
+                    const platPct = ((currentOrder.type === 'COLETA' ? cityRates.col_mot_plat : (currentOrder.type === 'B2B' ? cityRates.b2b_mot_plat : cityRates.b2c_mot_plat)) ?? 10) / 100;
+                    repasseDriver = totalFrete * (1 - platPct);
+                 }
 
                  if (driverPixKey && repasseDriver > 0) {
                    fetch('/api/asaas/transfer', {
