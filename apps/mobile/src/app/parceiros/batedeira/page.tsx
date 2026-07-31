@@ -28,6 +28,12 @@ export default function BatedeiraDashboard() {
   const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
+
+  useEffect(() => {
+    if (currentUser?.priceB2C) {
+      setPrices(currentUser.priceB2C);
+    }
+  }, [currentUser?.priceB2C]);
   const [activeTab, setActiveTab] = useState('pedidos');
 
   const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(getPrinterConfig);

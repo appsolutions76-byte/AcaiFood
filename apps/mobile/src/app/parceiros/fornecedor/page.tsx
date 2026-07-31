@@ -61,6 +61,12 @@ export default function FornecedorDashboard() {
   const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [b2bPrice, setB2bPrice] = useState(() => currentUser?.priceB2B ?? 140);
+  
+  useEffect(() => {
+    if (currentUser?.priceB2B !== undefined) {
+      setB2bPrice(currentUser.priceB2B);
+    }
+  }, [currentUser?.priceB2B]);
   const [activeTab, setActiveTab] = useState('pedidos');
 
   const [newProductName, setNewProductName] = useState('');

@@ -198,5 +198,52 @@ CREATE POLICY "Allow all update on platform_settings" ON public.platform_setting
 DROP POLICY IF EXISTS "Allow all insert on platform_settings" ON public.platform_settings;
 CREATE POLICY "Allow all insert on platform_settings" ON public.platform_settings FOR INSERT WITH CHECK (true);
 
--- 14. Notificar a API REST do Supabase para recarregar o schema cache
+-- 15. Garante Estrutura e RLS Permissivo nas Tabelas storefronts e products
+CREATE TABLE IF NOT EXISTS public.storefronts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  partner_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  store_name TEXT,
+  price_b2b NUMERIC DEFAULT 140.00,
+  price_b2c_popular NUMERIC DEFAULT 20.00,
+  price_b2c_medio NUMERIC DEFAULT 26.00,
+  price_b2c_grosso NUMERIC DEFAULT 35.00,
+  frete_subsidy_pct NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.storefronts ADD COLUMN IF NOT EXISTS price_b2b NUMERIC DEFAULT 140.00;
+ALTER TABLE public.storefronts ADD COLUMN IF NOT EXISTS price_b2c_popular NUMERIC DEFAULT 20.00;
+ALTER TABLE public.storefronts ADD COLUMN IF NOT EXISTS price_b2c_medio NUMERIC DEFAULT 26.00;
+ALTER TABLE public.storefronts ADD COLUMN IF NOT EXISTS price_b2c_grosso NUMERIC DEFAULT 35.00;
+ALTER TABLE public.storefronts ADD COLUMN IF NOT EXISTS frete_subsidy_pct NUMERIC DEFAULT 0;
+
+ALTER TABLE public.storefronts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all select on storefronts" ON public.storefronts;
+CREATE POLICY "Allow all select on storefronts" ON public.storefronts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow all update on storefronts" ON public.storefronts;
+CREATE POLICY "Allow all update on storefronts" ON public.storefronts FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all insert on storefronts" ON public.storefronts;
+CREATE POLICY "Allow all insert on storefronts" ON public.storefronts FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all delete on storefronts" ON public.storefronts;
+CREATE POLICY "Allow all delete on storefronts" ON public.storefronts FOR DELETE USING (true);
+
+CREATE TABLE IF NOT EXISTS public.products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  storefront_id UUID REFERENCES public.storefronts(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  price NUMERIC NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all select on products" ON public.products;
+CREATE POLICY "Allow all select on products" ON public.products FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow all update on products" ON public.products;
+CREATE POLICY "Allow all update on products" ON public.products FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all insert on products" ON public.products;
+CREATE POLICY "Allow all insert on products" ON public.products FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all delete on products" ON public.products;
+CREATE POLICY "Allow all delete on products" ON public.products FOR DELETE USING (true);
+
+-- 16. Notificar a API REST do Supabase para recarregar o schema cache
 NOTIFY pgrst, 'reload schema';
