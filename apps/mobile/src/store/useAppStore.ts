@@ -1501,15 +1501,15 @@ export const useAppStore = create<AppState>()(
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
 
-          // 1. Se o Asaas gerou a cobrança Pix oficial em PRODUÇÃO (não Sandbox)
-          if (asaasResult && !asaasResult.isSandbox && (asaasResult.pixCopiaECola || asaasResult.pixQrCode || asaasResult.invoiceUrl)) {
+          // 1. Se o Asaas gerou a cobrança Pix oficial (com Split para batedeira/fornecedor e motorista)
+          if (asaasResult && (asaasResult.pixCopiaECola || asaasResult.pixQrCode || asaasResult.invoiceUrl)) {
              return {
                 invoiceUrl: asaasResult.invoiceUrl,
                 pixQrCode: asaasResult.pixQrCode || null,
                 pixCopiaECola: asaasResult.pixCopiaECola || null,
                 paymentId: asaasResult.paymentId,
                 orderId: orderIdToUse,
-                isSandbox: false,
+                isSandbox: !!asaasResult.isSandbox,
                 totalValue: totalValue
              };
           }
