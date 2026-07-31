@@ -1482,7 +1482,7 @@ export const useAppStore = create<AppState>()(
             merchantName: 'FREDSON FERNANDO SOARES B',
             merchantCity: 'BELEM',
             amount: totalValue,
-            txId: orderIdToUse.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25) || '***'
+            txId: orderIdToUse.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25) || 'ACAIFOOD'
           });
 
           // Salva pedido no estado local com dados do Pix anexados

@@ -58,11 +58,13 @@ export function generateValidPixPayload(params: {
     .trim()
     .toUpperCase() || 'BELEM';
 
-  // No padrão Pix Estático BACEN, para chaves diretas sem cobrança registrada via API PSP, o TXID deve conter apenas [a-zA-Z0-9] ou '***'
-  let txId = (params.txId && params.txId !== '***')
-    ? params.txId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25)
-    : '***';
-  if (!txId) txId = '***';
+  // No padrão Pix BACEN, o txId no BR Code deve conter estritamente caracteres alfanuméricos [a-zA-Z0-9] (sem asteriscos nem especiais)
+  let cleanTxId = String(params.txId || '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .substring(0, 25);
+  if (!cleanTxId) {
+    cleanTxId = 'ACAIFOOD';
+  }
 
   // 26 = Merchant Account Info (GUI + Key)
   const gui = formatField('00', 'BR.GOV.BCB.PIX');
@@ -88,7 +90,7 @@ export function generateValidPixPayload(params: {
   const merchantCityField = formatField('60', city);
 
   // 62 = Additional Data Field Template (TXID)
-  const txIdSubField = formatField('05', txId);
+  const txIdSubField = formatField('05', cleanTxId);
   const additionalDataField = formatField('62', txIdSubField);
 
   // Payload base com o identificador do CRC no final (6304)
