@@ -56,18 +56,31 @@ export default function MotoboyDashboard() {
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  const getMotoboyFee = (o: any) => {
+    if (o.taxas?.entregaMotorista && o.taxas.entregaMotorista > 0) return o.taxas.entregaMotorista;
+    const cityRates = rates;
+    const dist = o.distancia || 1.0;
+    const totalFrete = cityRates.courier_payment_mode === 'FIXED' 
+      ? (cityRates.courier_fixed_fee ?? 8.00) 
+      : dist * (cityRates.b2c_km || 2.00);
+    const platPct = (cityRates.b2c_mot_plat ?? 10) / 100;
+    return totalFrete * (1 - platPct);
+  };
+
+  const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
+
   const corridasDisponiveis = (store.orders || []).filter(o => {
-    const isReady = o.status === 'pronto' && o.motoristaId === null && o.type === 'B2C';
+    const isReady = (o.status === 'pronto' || (o.status as string) === 'READY') && (o.motoristaId === null || !o.motoristaId) && o.type === 'B2C';
     if (!isReady) return false;
     const originCity = (o as any).cidadeOrigem?.toLowerCase()?.trim() || 'belém';
     const driverCity = currentUser.cidade?.toLowerCase()?.trim() || 'belém';
     return originCity === driverCity;
   });
   const minhasCorridasAll = (store.orders || []).filter(o => o.motoristaId === currentUser.id);
-  const ganhosHoje = minhasCorridasAll.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || 0), 0);
+  const ganhosHoje = minhasCorridasAll.filter(o => isDelivered(o.status)).reduce((acc, curr) => acc + getMotoboyFee(curr), 0);
 
-  const motoActiveOrders = minhasCorridasAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
-  const motoHistoryOrders = minhasCorridasAll.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
+  const motoActiveOrders = minhasCorridasAll.filter(o => !isDelivered(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
+  const motoHistoryOrders = minhasCorridasAll.filter(o => isDelivered(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
   const minhasCorridas = [...motoActiveOrders, ...motoHistoryOrders];
 
   const isPaused = currentUser.status === 'paused';
@@ -208,7 +221,7 @@ export default function MotoboyDashboard() {
                       <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900/50">
                           <div className="flex justify-between items-start mb-2">
                               <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">Nova Rota B2C</span>
-                              <span className="font-bold text-green-600 dark:text-green-400">Líquido: {formatMoney(o.taxas?.entregaMotorista || 0)}</span>
+                              <span className="font-bold text-green-600 dark:text-green-400">Líquido: {formatMoney(getMotoboyFee(o))}</span>
                           </div>
                           <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded text-sm mb-4 flex flex-col gap-1 border border-zinc-100 dark:border-zinc-800">
                               <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">📍</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{origem?.bairro || '—'}</span></div>
@@ -242,7 +255,7 @@ export default function MotoboyDashboard() {
                     <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-purple-400 dark:border-purple-600' : isCanceled ? 'border-red-300 opacity-60 border-l-4 border-l-red-400' : 'border-zinc-200 dark:border-zinc-800'}`}>
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-bold text-zinc-800 dark:text-white text-sm">{o.title}</span>
-                            <span className="text-xs font-bold text-green-600 dark:text-green-400">Líquido: {formatMoney(o.taxas?.entregaMotorista || 0)}</span>
+                            <span className="text-xs font-bold text-green-600 dark:text-green-400">Líquido: {formatMoney(getMotoboyFee(o))}</span>
                         </div>
                         
                         <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded-lg text-xs mb-3 flex flex-col gap-1.5 border border-zinc-100 dark:border-zinc-800">
@@ -316,7 +329,7 @@ export default function MotoboyDashboard() {
                                     e.preventDefault();
                                     const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
                                     const targetPixKey = isRealUuid(currentUser?.asaasWalletId) ? currentUser.asaasWalletId : (currentUser?.cpfCnpj || currentUser?.pixKey || currentUser?.asaasWalletId);
-                                    const valorEntrega = o.taxas?.entregaMotorista || 0;
+                                    const valorEntrega = getMotoboyFee(o);
                                     if (!targetPixKey) {
                                       alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber a entrega.");
                                       return;
@@ -345,7 +358,7 @@ export default function MotoboyDashboard() {
                                   }}
                                   className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-md w-full"
                                 >
-                                  💸 Resgatar Repasse (R$ {o.taxas?.entregaMotorista?.toFixed(2)})
+                                  💸 Resgatar Repasse (R$ {getMotoboyFee(o).toFixed(2)})
                                 </button>
                             </div>
                         ) : isCanceled ? (

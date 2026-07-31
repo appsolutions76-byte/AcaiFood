@@ -56,15 +56,28 @@ export default function CaminhaoDashboard() {
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  const getDriverFee = (o: any) => {
+    if (o.taxas?.entregaMotorista && o.taxas.entregaMotorista > 0) return o.taxas.entregaMotorista;
+    const cityRates = rates;
+    const dist = o.distancia || 1.0;
+    const totalFrete = o.type === 'COLETA'
+      ? (cityRates.ecopoint_payment_mode === 'FIXED' ? (cityRates.ecopoint_fixed_fee ?? 50.00) : dist * (cityRates.col_km || 8.00))
+      : (cityRates.transporter_payment_mode === 'FIXED' ? (cityRates.transporter_fixed_fee ?? 150.00) : dist * (cityRates.b2b_km || 4.00));
+    const platPct = ((o.type === 'COLETA' ? cityRates.col_mot_plat : cityRates.b2b_mot_plat) ?? 10) / 100;
+    return totalFrete * (1 - platPct);
+  };
+
+  const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
+
   const corridasDisponiveis = (store.orders || []).filter(o => {
-    const isReady = (o.status === 'pronto' || o.status === 'preparo' || o.status === 'pendente') && o.motoristaId === null && (o.type === 'B2B' || o.type === 'COLETA');
+    const isReady = (o.status === 'pronto' || o.status === 'preparo' || o.status === 'pendente' || (o.status as string) === 'READY') && (o.motoristaId === null || !o.motoristaId) && (o.type === 'B2B' || o.type === 'COLETA');
     if (!isReady) return false;
     const originCity = (o as any).cidadeOrigem?.toLowerCase()?.trim() || 'belém';
     const driverCity = currentUser.cidade?.toLowerCase()?.trim() || 'belém';
     return originCity === driverCity;
   });
   const minhasCorridas = (store.orders || []).filter(o => o.motoristaId === currentUser.id);
-  const ganhosHoje = minhasCorridas.filter(o => o.status === 'entregue').reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || 0), 0);
+  const ganhosHoje = minhasCorridas.filter(o => isDelivered(o.status)).reduce((acc, curr) => acc + getDriverFee(curr), 0);
 
   const isPaused = currentUser.status === 'paused';
   const handleToggleStatus = () => {
