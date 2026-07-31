@@ -467,7 +467,7 @@ export default function StorefrontPage() {
                                           store.acaoPedido(o.id, 'confirmar_pagamento');
                                           alert("✅ Pagamento confirmado no Asaas! Seu pedido foi enviado para a loja.");
                                         } else {
-                                          alert("Pagamento ainda em processamento no Asaas. Se você realizou o Pix, a loja também pode aprovar diretamente!");
+                                          alert("Pagamento ainda em processamento no Asaas. Aguarde alguns instantes até a confirmação automática pelo banco.");
                                         }
                                       }
                                     } catch(err) {

@@ -556,15 +556,16 @@ export default function BatedeiraDashboard() {
                               🔍 Checar Pix no Asaas
                             </button>
                             <button 
+                              type="button"
                               onClick={() => {
-                                if (confirm("Deseja aprovar manualmente o pagamento Pix deste pedido e iniciar o preparo?")) {
-                                  store.acaoPedido(o.id, 'confirmar_pagamento');
-                                  alert("✅ Pagamento aprovado! O pedido foi alterado para Em Preparo.");
+                                if (confirm("Deseja realmente cancelar este pedido? Em caso de Pix já pago, o estorno automático será solicitado no Asaas.")) {
+                                  store.acaoPedido(o.id, 'cancelar_pedido');
+                                  alert("❌ Pedido cancelado com sucesso. Caso o Pix tenha sido pago, o estorno foi solicitado no Asaas.");
                                 }
                               }}
-                              className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm"
+                              className="text-[10px] bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm"
                             >
-                              ✅ Aprovar Pix e Preparar
+                              ❌ Cancelar Pedido
                             </button>
                           </div>
                         </div>

@@ -1687,17 +1687,16 @@ export const useAppStore = create<AppState>()(
 
         if (newDbStatus === 'CANCELLED') {
            try {
-              const { data: { session } } = await supabase.auth.getSession();
-              if (session) {
-                 const { data, error } = await supabase.functions.invoke('mp-refund', {
-                    body: { orderId },
-                    headers: { Authorization: `Bearer ${session.access_token}` }
-                 });
-                 if (error) console.error("Error invoking mp-refund:", error);
-                 else console.log("Refund response:", data);
-              }
+              fetch('/api/asaas/refund', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId })
+              }).then(r => r.json()).then(data => {
+                if (data.success) console.log("✅ Estorno Asaas efetuado com sucesso:", data);
+                else console.warn("Aviso no estorno Asaas:", data);
+              }).catch(e => console.warn("Erro ao solicitar estorno Asaas:", e));
            } catch(e) {
-              console.error("Exception invoking mp-refund:", e);
+              console.error("Exceção ao solicitar estorno:", e);
            }
         }
       },

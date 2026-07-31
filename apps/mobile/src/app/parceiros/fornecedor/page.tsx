@@ -399,14 +399,14 @@ export default function FornecedorDashboard() {
                             onClick={(e) => {
                               e.stopPropagation();
                               e.preventDefault();
-                              if (confirm("Deseja aprovar manualmente o pagamento Pix deste pedido B2B e iniciar a separação?")) {
-                                store.acaoPedido(o.id, 'aceitar_forn');
-                                alert("✅ Pagamento aprovado! O pedido foi alterado para Em Separação.");
+                              if (confirm("Deseja realmente cancelar este pedido B2B? Em caso de Pix já pago, o estorno automático será solicitado no Asaas.")) {
+                                store.acaoPedido(o.id, 'cancelar_pedido');
+                                alert("❌ Pedido cancelado com sucesso. Caso o Pix tenha sido pago, o estorno foi solicitado no Asaas.");
                               }
                             }}
-                            className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm"
+                            className="text-[10px] bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm"
                           >
-                            ✅ Aprovar Pix e Separar
+                            ❌ Cancelar Pedido
                           </button>
                         </div>
                       </div>
