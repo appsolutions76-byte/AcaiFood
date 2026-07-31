@@ -59,12 +59,13 @@ serve(async (req) => {
 
     if (pendingOrders.length > 0) {
       for (const order of pendingOrders) {
-        // 2. Resolver Repasse do Vendedor (Loja/Fornecedor)
+        // 2. Resolver Repasse do Vendedor (Loja no B2C ou Fornecedor no B2B)
         if (order.payout_seller_done !== true) {
           try {
-            let sellerPartnerId = order.loja_id || order.fornecedor_id || order.origem_id || order.partner_id
+            const isB2B = String(order.order_type || '').toUpperCase() === 'B2B'
+            let sellerPartnerId = isB2B ? (order.fornecedor_id || order.seller_id) : (order.loja_id || order.seller_id)
 
-            if (order.seller_storefront_id) {
+            if (!sellerPartnerId && order.seller_storefront_id) {
               const { data: sf } = await supabase
                 .from('storefronts')
                 .select('partner_id')
@@ -73,6 +74,10 @@ serve(async (req) => {
               if (sf?.partner_id) {
                 sellerPartnerId = sf.partner_id
               }
+            }
+
+            if (!sellerPartnerId) {
+              sellerPartnerId = order.fornecedor_id || order.loja_id || order.origem_id || order.partner_id
             }
 
             if (sellerPartnerId) {
@@ -116,7 +121,7 @@ serve(async (req) => {
                   transferBody.pixAddressKeyType = 'EVP'
                 }
 
-                console.log(`Disparando repasse Loja #${order.id.substring(0,8)} (R$ ${sellerValue}) ->`, transferBody)
+                console.log(`Disparando repasse Loja/Fornecedor #${order.id.substring(0,8)} (R$ ${sellerValue}) ->`, transferBody)
 
                 const res = await fetch(`${ASAAS_URL}/transfers`, {
                   method: 'POST',
@@ -132,7 +137,7 @@ serve(async (req) => {
                   await supabase.from('orders').update({ payout_seller_done: true }).eq('id', order.id)
                   sellerPayoutsCount++
                   totalAmountTransferred += sellerValue
-                  console.log(`✅ Varredura: Repasse de R$ ${sellerValue} enviado à loja ${uSeller?.name || sellerPartnerId}`)
+                  console.log(`✅ Varredura: Repasse de R$ ${sellerValue} enviado ao parceiro ${uSeller?.name || sellerPartnerId}`)
                 } else {
                   console.warn(`Alerta varredura loja (${order.id}):`, resData)
                 }
