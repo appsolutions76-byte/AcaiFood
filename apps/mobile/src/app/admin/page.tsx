@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Trash2, Search } from "lucide-react";
+import { Settings, Trash2, Search, BookOpen } from "lucide-react";
 import { useAppStore, Order, City, getRatesForCity } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AdminManualModal } from "@/components/AdminManualModal";
 
 const emptySubscribe = () => () => {};
 
@@ -344,8 +345,11 @@ function AdminDashboardContent() {
     }
   };
 
+  const [adminManualOpen, setAdminManualOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
+      <AdminManualModal isOpen={adminManualOpen} onClose={() => setAdminManualOpen(false)} />
       {toastMsg && (
         <div className="fixed top-5 right-5 z-[300] bg-zinc-900 text-white border border-zinc-700 px-4 py-3 rounded-xl shadow-xl font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
           <span className="text-sm">{toastMsg}</span>
@@ -359,6 +363,9 @@ function AdminDashboardContent() {
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
           </div>
           <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end">
+              <button onClick={() => setAdminManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">
+                <BookOpen size={13} /> Manual
+              </button>
               <button disabled={isRefreshing} onClick={handleRefresh} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all disabled:opacity-50">
                 {isRefreshing ? '🔄 Atualizando...' : '🔄 Atualizar'}
               </button>

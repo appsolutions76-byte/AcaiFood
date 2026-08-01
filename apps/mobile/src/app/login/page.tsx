@@ -4,8 +4,9 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
-import { KeyRound, Mail } from "lucide-react";
+import { KeyRound, Mail, BookOpen } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PartnerManualModal } from "@/components/PartnerManualModal";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loginManualOpen, setLoginManualOpen] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +40,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative">
+      <PartnerManualModal isOpen={loginManualOpen} onClose={() => setLoginManualOpen(false)} role="login" />
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
@@ -106,6 +109,17 @@ export default function LoginPage() {
               </button>
             </div>
           </form>
+
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setLoginManualOpen(true)}
+              className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-amber-300 dark:border-amber-700 rounded-xl text-sm font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition active:scale-95"
+            >
+              <BookOpen size={16} />
+              Manual de Uso &amp; Cadastro
+            </button>
+          </div>
         </div>
       </div>
     </div>

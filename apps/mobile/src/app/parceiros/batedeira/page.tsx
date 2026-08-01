@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Store, Printer } from "lucide-react";
+import { Store, Printer, BookOpen } from "lucide-react";
 import { useAppStore, haversineKm, getRatesForCity } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PartnerManualModal } from "@/components/PartnerManualModal";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -427,8 +428,11 @@ export default function BatedeiraDashboard() {
     alert('Subsídio salvo com sucesso!');
   };
 
+  const [partnerManualOpen, setPartnerManualOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
+      <PartnerManualModal isOpen={partnerManualOpen} onClose={() => setPartnerManualOpen(false)} role="batedeira" />
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
         <div className="flex justify-between items-center max-w-5xl mx-auto">
           <div className="flex items-center gap-3">
@@ -447,6 +451,9 @@ export default function BatedeiraDashboard() {
               <Printer size={14} /> 🖨️ Impressora
             </button>
             <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
+            <button onClick={() => setPartnerManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">
+              <BookOpen size={13} /> Manual
+            </button>
 
             <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold">📲 Compartilhar</button>
             <ThemeToggle />
