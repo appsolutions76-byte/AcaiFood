@@ -4,8 +4,9 @@ import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, Role, User } from "@/store/useAppStore";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, BookOpen } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PartnerManualModal } from "@/components/PartnerManualModal";
 
 function CadastroForm() {
   const router = useRouter();
@@ -36,6 +37,7 @@ function CadastroForm() {
   const [isLocating, setIsLocating] = useState(false);
   const [termosAceitos, setTermosAceitos] = useState(false);
   const [termosModalOpen, setTermosModalOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   
   const [step, setStep] = useState(1); // 1 = Formulario, 2 = Asaas (apenas parceiros)
   const [newUserId, setNewUserId] = useState("");
@@ -192,6 +194,7 @@ function CadastroForm() {
 
   return (
     <>
+      <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role="login" />
       {step === 1 && (
         <>
           <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -323,6 +326,17 @@ function CadastroForm() {
                   </button>
                 </div>
               </form>
+
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setManualOpen(true)}
+                  className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-amber-300 dark:border-amber-700 rounded-xl text-sm font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition active:scale-95"
+                >
+                  <BookOpen size={16} />
+                  Manual de Uso &amp; Cadastro
+                </button>
+              </div>
             </div>
             {/* Remover link voltar loja pois a loja agora é privada */}
           </div>
