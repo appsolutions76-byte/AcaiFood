@@ -1078,16 +1078,26 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      changePassword: (userId, newPassword) => set((state) => {
-        const user = state.users[userId];
-        if (!user) return state;
-        const updatedUser = { ...user, password: newPassword };
-        const isCurrent = state.currentUser?.id === userId;
-        return { 
-          users: { ...state.users, [userId]: updatedUser },
-          currentUser: isCurrent ? updatedUser : state.currentUser
-        };
-      }),
+      changePassword: async (userId, newPassword) => {
+        set((state) => {
+          const user = state.users[userId];
+          if (!user) return state;
+          const updatedUser = { ...user, password: newPassword };
+          const isCurrent = state.currentUser?.id === userId;
+          return { 
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
+
+        try {
+          if (get().currentUser?.id === userId) {
+            await supabase.auth.updateUser({ password: newPassword });
+          }
+        } catch (err) {
+          console.warn("Erro ao atualizar senha no Supabase Auth:", err);
+        }
+      },
 
       updateUserPrice: async (userId, b2cPrices, b2bPrice) => {
         set((state) => {
@@ -1651,6 +1661,7 @@ export const useAppStore = create<AppState>()(
             const newOrder = { ...o };
             if (action === 'cancelar_pedido' || action === 'cancelar_cliente') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
             if (action === 'confirmar_pagamento' || action === 'pagar') { 
+              if (o.status !== 'aguardando_pagamento') return o;
               newOrder.status = o.type === 'COLETA' ? 'pronto' : 'preparo'; 
               newDbStatus = o.type === 'COLETA' ? 'READY' : 'PAID'; 
             }
@@ -1691,7 +1702,7 @@ export const useAppStore = create<AppState>()(
                }
             } else if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
                // Disparar transferências automáticas Pix (Payout) para TODOS os parceiros: Batedeira, Fornecedor, Motoboy, Caminhoneiro
-               const currentOrder = state.orders.find(o => o.id === orderId);
+               const currentOrder = get().orders.find(o => o.id === orderId) || state.orders.find(o => o.id === orderId);
                if (currentOrder) {
                  // 1. Repasse do Vendedor (Loja no B2C ou Fornecedor no B2B)
                  const sellerId = currentOrder.type === 'B2B' 
