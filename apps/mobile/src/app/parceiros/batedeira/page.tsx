@@ -44,6 +44,7 @@ export default function BatedeiraDashboard() {
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
   const [cartModalB2B, setCartModalB2B] = useState<{ open: boolean; fornId: string; quantity: number }>({ open: false, fornId: '', quantity: 1 });
+  const [partnerManualOpen, setPartnerManualOpen] = useState(false);
 
   const mounted = useSyncExternalStore(
     emptySubscribe,
@@ -428,7 +429,6 @@ export default function BatedeiraDashboard() {
     alert('Subsídio salvo com sucesso!');
   };
 
-  const [partnerManualOpen, setPartnerManualOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">

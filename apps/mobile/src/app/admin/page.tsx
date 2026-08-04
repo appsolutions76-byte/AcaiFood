@@ -87,6 +87,7 @@ function AdminDashboardContent() {
   const [isSavingRates, setIsSavingRates] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [adminManualOpen, setAdminManualOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -345,7 +346,6 @@ function AdminDashboardContent() {
     }
   };
 
-  const [adminManualOpen, setAdminManualOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">

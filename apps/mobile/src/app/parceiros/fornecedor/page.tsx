@@ -72,6 +72,7 @@ export default function FornecedorDashboard() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+  const [partnerManualOpen, setPartnerManualOpen] = useState(false);
 
   const isPaused = currentUser?.status === 'paused';
   const handleToggleStatus = () => {
@@ -209,7 +210,6 @@ export default function FornecedorDashboard() {
     alert('Subsídio salvo com sucesso!');
   };
 
-  const [partnerManualOpen, setPartnerManualOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">

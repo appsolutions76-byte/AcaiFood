@@ -18,6 +18,7 @@ export default function CaminhaoDashboard() {
   const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
   const [activeTab, setActiveTab] = useState('radar');
   const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
+  const [partnerManualOpen, setPartnerManualOpen] = useState(false);
 
   const mounted = useSyncExternalStore(
     emptySubscribe,
@@ -142,7 +143,6 @@ export default function CaminhaoDashboard() {
     }
   };
 
-  const [partnerManualOpen, setPartnerManualOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
