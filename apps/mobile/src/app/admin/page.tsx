@@ -88,10 +88,44 @@ function AdminDashboardContent() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [adminManualOpen, setAdminManualOpen] = useState(false);
+  const [payingPartnerId, setPayingPartnerId] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  // Função de pagamento individual de parceiro via Pix
+  const pagarParceiro = async (u: any, pendingOrders: Order[], amountOwed: number) => {
+    const pixKey = u.pixKey || u.cpfCnpj || u.email;
+    if (!pixKey) {
+      showToast(`❌ ${u.name} não tem chave Pix cadastrada`);
+      return;
+    }
+    if (!confirm(`Confirmar pagamento de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} via Pix para ${u.name}?\n\nChave Pix: ${pixKey}\nPedidos a liquidar: ${pendingOrders.length}`)) return;
+    setPayingPartnerId(u.id);
+    try {
+      const res = await fetch('/api/asaas/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
+        body: JSON.stringify({ pixKey, value: amountOwed, description: `Repasse Manual AçaíFood – ${u.name}` })
+      });
+      const data = await res.json();
+      if (data.success || data.transferId) {
+        const field = u.role === 'motorista' ? 'payout_driver_done' : 'payout_seller_done';
+        for (const order of pendingOrders) {
+          await supabase.from('orders').update({ [field]: true }).eq('id', order.id);
+        }
+        showToast(`✅ Pix de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} enviado para ${u.name}!`);
+        if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
+      } else {
+        showToast(`❌ Falha no Pix: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (e: any) {
+      showToast(`❌ Erro ao pagar: ${e.message}`);
+    } finally {
+      setPayingPartnerId(null);
+    }
   };
 
   const mounted = useSyncExternalStore(
@@ -561,26 +595,74 @@ function AdminDashboardContent() {
                                           <p className="text-[10px] text-zinc-500 font-mono">{u.id}</p>
                                       </div>
                                   </div>
-                                  {u.role === 'motorista' && (
-                                    (() => {
-                                      const pendingOrders = orders.filter(o => o && o.motoristaId === u.id && o.status === 'entregue');
-                                      const amountOwed = pendingOrders.reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || getDynamicTaxes(curr).repasseMoto || 0), 0);
-                                      if (pendingOrders.length > 0) {
-                                        return (
-                                          <div className="mt-2 bg-green-50 border border-green-200 p-2 rounded-lg flex items-center justify-between flex-wrap gap-2">
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-xs font-bold text-green-700">A Pagar: {formatMoney(amountOwed)}</span>
-                                              {u.pixKey && <span className="text-[10px] text-zinc-500 bg-zinc-200 px-2 py-0.5 rounded font-mono">PIX: {u.pixKey}</span>}
-                                            </div>
-                                            <button onClick={() => { if(confirm(`Confirmar o pagamento via Pix de ${formatMoney(amountOwed)} para ${u.name}? O saldo será zerado.`)) if(typeof store.acaoPedido === 'function') store.acaoPedido(u.id, 'pagar_motorista'); }} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
-                                              Pagar e Zerar
-                                            </button>
-                                          </div>
-                                        );
-                                      }
-                                      return <div className="mt-2 text-[10px] text-zinc-400">Nenhum repasse pendente.</div>;
-                                    })()
-                                  )}
+                                  {(u.role === 'motorista' || u.role === 'loja' || u.role === 'fornecedor') && (() => {
+                                    // Calcular saldo pendente por tipo de parceiro
+                                    let pendingOrders: Order[];
+                                    let amountOwed: number;
+
+                                    if (u.role === 'motorista') {
+                                      pendingOrders = orders.filter(o =>
+                                        o && o.motoristaId === u.id &&
+                                        o.status === 'entregue' &&
+                                        !(o as any).payout_driver_done
+                                      );
+                                      amountOwed = pendingOrders.reduce((acc, curr) =>
+                                        acc + (curr.taxas?.entregaMotorista || getDynamicTaxes(curr).repasseMoto || 0), 0
+                                      );
+                                    } else if (u.role === 'loja') {
+                                      pendingOrders = orders.filter(o =>
+                                        o && o.lojaId === u.id &&
+                                        o.status === 'entregue' &&
+                                        !(o as any).payout_seller_done
+                                      );
+                                      amountOwed = pendingOrders.reduce((acc, curr) =>
+                                        acc + (curr.taxas?.repasse || getDynamicTaxes(curr).repasseLoja || 0), 0
+                                      );
+                                    } else {
+                                      // fornecedor
+                                      pendingOrders = orders.filter(o =>
+                                        o && o.fornecedorId === u.id &&
+                                        o.status === 'entregue' &&
+                                        !(o as any).payout_seller_done
+                                      );
+                                      amountOwed = pendingOrders.reduce((acc, curr) =>
+                                        acc + (curr.taxas?.repasse || getDynamicTaxes(curr).repasseForn || 0), 0
+                                      );
+                                    }
+
+                                    const isPaying = payingPartnerId === u.id;
+                                    const pixKey = u.pixKey || u.cpfCnpj || u.email;
+
+                                    return (
+                                      <div className={`mt-2 border p-2 rounded-lg flex items-center justify-between flex-wrap gap-2 ${
+                                        amountOwed > 0
+                                          ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                                          : 'bg-zinc-50 border-zinc-200 dark:bg-zinc-800/50 dark:border-zinc-700'
+                                      }`}>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className={`text-xs font-bold ${
+                                            amountOwed > 0 ? 'text-green-700 dark:text-green-400' : 'text-zinc-400 dark:text-zinc-500'
+                                          }`}>
+                                            {amountOwed > 0 ? `A Pagar: ${formatMoney(amountOwed)}` : 'Repasse: R$ 0,00'}
+                                          </span>
+                                          {pixKey && (
+                                            <span className="text-[10px] text-zinc-500 bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded font-mono">
+                                              PIX: {pixKey}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {amountOwed > 0 && (
+                                          <button
+                                            disabled={isPaying}
+                                            onClick={() => pagarParceiro(u, pendingOrders, amountOwed)}
+                                            className="bg-green-600 hover:bg-green-700 disabled:bg-zinc-400 text-white text-[10px] font-bold px-3 py-1 rounded shadow-sm transition flex items-center gap-1"
+                                          >
+                                            {isPaying ? '⏳ Pagando...' : '💸 Pagar e Zerar'}
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                             </td>
                             <td className="p-4 text-xs text-zinc-600 dark:text-zinc-400">
