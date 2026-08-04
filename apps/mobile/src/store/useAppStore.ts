@@ -1395,7 +1395,10 @@ export const useAppStore = create<AppState>()(
                   try {
                     const subRes = await fetch('/api/asaas/subaccount', {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
+                      headers: { 
+                        'Content-Type': 'application/json',
+                        'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || ''
+                      },
                       body: JSON.stringify({
                         userId: uData.id,
                         name: uData.name || 'Parceiro AçaíFood',
@@ -1720,7 +1723,10 @@ export const useAppStore = create<AppState>()(
                  if (sellerPixKey && repasseSeller > 0) {
                    fetch('/api/asaas/transfer', {
                      method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
+                     headers: { 
+                       'Content-Type': 'application/json',
+                       'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || ''
+                     },
                      body: JSON.stringify({
                        pixKey: sellerPixKey,
                        value: repasseSeller,
@@ -1759,7 +1765,10 @@ export const useAppStore = create<AppState>()(
                  if (driverPixKey && repasseDriver > 0) {
                    fetch('/api/asaas/transfer', {
                      method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
+                     headers: { 
+                       'Content-Type': 'application/json',
+                       'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || ''
+                     },
                      body: JSON.stringify({
                        pixKey: driverPixKey,
                        value: repasseDriver,
@@ -1781,7 +1790,10 @@ export const useAppStore = create<AppState>()(
            try {
               fetch('/api/asaas/refund', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || ''
+                },
                 body: JSON.stringify({ orderId })
               }).then(r => r.json()).then(data => {
                 if (data.success) console.log("✅ Estorno Asaas efetuado com sucesso:", data);
@@ -2128,6 +2140,15 @@ export const useAppStore = create<AppState>()(
     }),
     { 
       name: 'acaifood-storage-v4',
+      // Exclui campos sensíveis do localStorage (senhas não devem ser persistidas)
+      partialize: (state) => {
+        const { users, currentUser, ...rest } = state;
+        const safeUsers = Object.fromEntries(
+          Object.entries(users || {}).map(([k, u]) => [k, { ...u, password: undefined }])
+        ) as typeof users;
+        const safeCurrentUser = currentUser ? { ...currentUser, password: undefined } : null;
+        return { ...rest, users: safeUsers, currentUser: safeCurrentUser };
+      },
       onRehydrateStorage: () => (state, error) => {
         if (!error && state) {
           // Garantir que arrays e objetos críticos nunca sejam undefined após reidratação

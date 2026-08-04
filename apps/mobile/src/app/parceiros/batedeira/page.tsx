@@ -136,7 +136,7 @@ export default function BatedeiraDashboard() {
       try {
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
           body: JSON.stringify({
             pixKey: targetKey,
             value: vendasHoje,
@@ -355,7 +355,7 @@ export default function BatedeiraDashboard() {
                       try {
                         const res = await fetch('/api/asaas/transfer', {
                           method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
+                          headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
                           body: JSON.stringify({
                             pixKey: targetPixKey,
                             value: valorRepasse,

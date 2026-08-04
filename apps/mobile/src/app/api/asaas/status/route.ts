@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAuthorizedRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
   try {
@@ -132,6 +133,8 @@ export async function GET(request: Request) {
 
 // 4. Endpoint Webhook (POST) para receber notificações oficiais do Asaas em tempo real
 export async function POST(request: Request) {
+  // Verifica token do webhook (configurado na URL do Asaas como ?wh_token=...)
+  if (!isAuthorizedRequest(request)) return unauthorizedResponse();
   try {
     const body = await request.json();
     console.log("Recebido Webhook Asaas (POST):", JSON.stringify(body));
