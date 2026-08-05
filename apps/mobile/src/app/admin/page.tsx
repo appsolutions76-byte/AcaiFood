@@ -917,11 +917,40 @@ function AdminDashboardContent() {
               </div>
             </div>
 
-            <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
-                <button onClick={() => setRatesModalOpen(false)} className="px-5 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
-                <button disabled={isSavingRates} onClick={handleSaveRates} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl font-bold transition flex items-center gap-2">
-                  {isSavingRates ? 'Salvando...' : 'Salvar Triplo Split'}
-                </button>
+            <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-between items-center border-t border-zinc-200 dark:border-zinc-800 gap-3 flex-wrap">
+                <div>
+                  {selectedCityForRates && (
+                    <button 
+                      type="button"
+                      disabled={isSavingRates}
+                      onClick={async () => {
+                        if (confirm(`Deseja limpar as taxas específicas de ${selectedCityForRates.name} e fazê-la obedecer ao Padrão Geral?`)) {
+                          setIsSavingRates(true);
+                          try {
+                            if (typeof store.saveCityRates === 'function') {
+                              await store.saveCityRates(selectedCityForRates.id, {});
+                            }
+                            setRatesModalOpen(false);
+                            showToast(`✅ Taxas de ${selectedCityForRates.name} redefinidas para o Padrão Geral!`);
+                          } catch (_e) {
+                            showToast("❌ Erro ao redefinir taxas.");
+                          } finally {
+                            setIsSavingRates(false);
+                          }
+                        }
+                      }}
+                      className="px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 disabled:opacity-50 rounded-xl font-bold text-xs transition"
+                    >
+                      🗑️ Limpar Taxas (Usar Padrão Geral)
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setRatesModalOpen(false)} className="px-5 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
+                  <button disabled={isSavingRates} onClick={handleSaveRates} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl font-bold transition flex items-center gap-2">
+                    {isSavingRates ? 'Salvando...' : 'Salvar Triplo Split'}
+                  </button>
+                </div>
             </div>
           </div>
         </div>
