@@ -182,7 +182,7 @@ export default function BatedeiraDashboard() {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
 
-      const { error } = await supabase.from('users').update({ lat, lng }).eq('id', currentUser.id);
+      const { error } = await supabase.from('users').update({ latitude: lat, longitude: lng }).eq('id', currentUser.id);
       if (error) {
         alert("Erro ao atualizar no banco de dados: " + error.message);
       } else {
