@@ -89,6 +89,61 @@ function AdminDashboardContent() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [adminManualOpen, setAdminManualOpen] = useState(false);
   const [payingPartnerId, setPayingPartnerId] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<'historical' | 'monthly' | 'daily'>('historical');
+  const [adminBalances, setAdminBalances] = useState<{
+    historical: any;
+    monthly: any;
+    daily: any;
+  } | null>(null);
+
+  const fetchAdminBalances = async () => {
+    try {
+      const { data, error } = await supabase.from('admin_balances').select('*');
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const hist = data.find(d => d.id === 'historical');
+        const month = data.find(d => d.id === 'monthly');
+        const day = data.find(d => d.id === 'daily');
+        setAdminBalances({
+          historical: hist || null,
+          monthly: month || null,
+          daily: day || null
+        });
+      }
+    } catch (err) {
+      console.warn("Tabela admin_balances não encontrada ou erro ao carregar. Usando cálculo dinâmico local de fallback.", err);
+    }
+  };
+
+  const handleResetBalance = async (balanceId: 'historical' | 'monthly' | 'daily') => {
+    const label = balanceId === 'historical' ? 'Acumulado Histórico' : balanceId === 'monthly' ? 'Balanço Mensal' : 'Balanço Diário';
+    if (!confirm(`Tem certeza de que deseja ZERAR o ${label} financeiro?\n\n(Esta ação não afetará os pedidos concluídos, apenas redefinirá os totalizadores na tela)`)) return;
+
+    try {
+      const { error } = await supabase.from('admin_balances').update({
+        total_orders: 0,
+        total_volume: 0,
+        app_revenue: 0,
+        fornecedores_bruto: 0,
+        fornecedores_liquido: 0,
+        batedeiras_bruto: 0,
+        batedeiras_liquido: 0,
+        motoristas_bruto: 0,
+        motoristas_liquido: 0,
+        caminhoes_bruto: 0,
+        caminhoes_liquido: 0
+      }).eq('id', balanceId);
+
+      if (error) {
+        alert("Erro ao zerar acumulador no banco de dados: " + error.message);
+      } else {
+        showToast(`✅ ${label} zerado com sucesso!`);
+        fetchAdminBalances();
+      }
+    } catch (err: any) {
+      alert("Erro ao atualizar: " + err.message);
+    }
+  };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -154,6 +209,7 @@ function AdminDashboardContent() {
        if (typeof s.fetchOrders === 'function' && s.currentUser?.id) s.fetchOrders(s.currentUser.id);
        if (typeof s.fetchCities === 'function') s.fetchCities();
        if (typeof s.fetchRates === 'function') s.fetchRates();
+       fetchAdminBalances();
     }
   }, [isAdmin]);
 
@@ -300,14 +356,114 @@ function AdminDashboardContent() {
       }
   });
 
+  const getFilteredLocalStats = (period: 'historical' | 'monthly' | 'daily') => {
+    let list = concluidos;
+    const now = new Date();
+    if (period === 'daily') {
+      list = concluidos.filter(o => {
+        if (!o.createdAt) return false;
+        const d = new Date(o.createdAt);
+        return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+    } else if (period === 'monthly') {
+      list = concluidos.filter(o => {
+        if (!o.createdAt) return false;
+        const d = new Date(o.createdAt);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+    }
+
+    let localVendas = 0, localFretes = 0, localMov = 0;
+    let localBatBruto = 0, localBatLiq = 0;
+    let localFornBruto = 0, localFornLiq = 0;
+    let localMotBruto = 0, localMotLiq = 0;
+    let localCamBruto = 0, localCamLiq = 0;
+
+    list.forEach(o => {
+      const dyn = getDynamicTaxes(o);
+      localVendas += dyn.platVenda || 0;
+      localFretes += dyn.platEntrega || 0;
+      localMov += (o.valor || 0) + (dyn.entregaTotal || 0);
+
+      if (o.type === 'B2C') {
+        localBatBruto += o.valor || 0;
+        localBatLiq += dyn.repasseLoja || 0;
+      } else if (o.type === 'B2B') {
+        localFornBruto += o.valor || 0;
+        localFornLiq += dyn.repasseForn || 0;
+      }
+
+      if (isMoto(o.motoristaId)) {
+        localMotBruto += dyn.entregaTotal || 0;
+        localMotLiq += dyn.repasseMoto || 0;
+      } else if (isCaminhao(o.motoristaId)) {
+        localCamBruto += dyn.entregaTotal || 0;
+        localCamLiq += dyn.repasseMoto || 0;
+      }
+    });
+
+    const totalPedidosFiltered = period === 'historical' ? orders.length : list.length;
+    const aceitosFiltered = period === 'historical' 
+      ? orders.filter(o => o && ['preparo', 'em_rota', 'entregue'].includes(o.status)).length 
+      : list.filter(o => o && ['preparo', 'em_rota', 'entregue'].includes(o.status)).length;
+    const canceladosFiltered = period === 'historical'
+      ? orders.filter(o => o && o.status === 'cancelado').length
+      : orders.filter(o => {
+          if (o.status !== 'cancelado') return false;
+          if (!o.createdAt) return false;
+          const d = new Date(o.createdAt);
+          if (period === 'daily') {
+            return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+          } else {
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+          }
+        }).length;
+
+    return {
+      ordersCount: totalPedidosFiltered,
+      aceitos: aceitosFiltered,
+      cancelados: canceladosFiltered,
+      concluidosCount: list.length,
+      volume: localMov,
+      appRev: localVendas + localFretes,
+      fornBruto: localFornBruto,
+      fornLiq: localFornLiq,
+      batBruto: localBatBruto,
+      batLiq: localBatLiq,
+      motBruto: localMotBruto,
+      motLiq: localMotLiq,
+      camBruto: localCamBruto,
+      camLiq: localCamLiq
+    };
+  };
+
+  const localStats = getFilteredLocalStats(selectedPeriod);
+
+  const currentOrdersCount = adminBalances?.[selectedPeriod]?.total_orders ?? localStats.ordersCount;
+  const currentConcluidosCount = adminBalances?.[selectedPeriod]?.total_orders ?? localStats.concluidosCount;
+  const currentAppRevenue = adminBalances?.[selectedPeriod]?.app_revenue ?? localStats.appRev;
+  const currentVolumeTotal = adminBalances?.[selectedPeriod]?.total_volume ?? localStats.volume;
+  
+  const currentFornBruto = adminBalances?.[selectedPeriod]?.fornecedores_bruto ?? localStats.fornBruto;
+  const currentFornLiq = adminBalances?.[selectedPeriod]?.fornecedores_liquido ?? localStats.fornLiq;
+  
+  const currentBatBruto = adminBalances?.[selectedPeriod]?.batedeiras_bruto ?? localStats.batBruto;
+  const currentBatLiq = adminBalances?.[selectedPeriod]?.batedeiras_liquido ?? localStats.batLiq;
+  
+  const currentMotBruto = adminBalances?.[selectedPeriod]?.motoristas_bruto ?? localStats.motBruto;
+  const currentMotLiq = adminBalances?.[selectedPeriod]?.motoristas_liquido ?? localStats.motLiq;
+  
+  const currentCamBruto = adminBalances?.[selectedPeriod]?.caminhoes_bruto ?? localStats.camBruto;
+  const currentCamLiq = adminBalances?.[selectedPeriod]?.caminhoes_liquido ?? localStats.camLiq;
+
   const totais = {
-      pedidos: orders.length,
-      aceitos: orders.filter(o => o && ['preparo', 'em_rota', 'entregue'].includes(o.status)).length,
-      cancelados: orders.filter(o => o && o.status === 'cancelado').length,
-      concluidos: concluidos.length,
+      pedidos: currentOrdersCount,
+      aceitos: selectedPeriod === 'historical' ? orders.filter(o => o && ['preparo', 'em_rota', 'entregue'].includes(o.status)).length : localStats.aceitos,
+      cancelados: selectedPeriod === 'historical' ? orders.filter(o => o && o.status === 'cancelado').length : localStats.cancelados,
+      concluidos: currentConcluidosCount,
       emRota: orders.filter(o => o && o.status === 'em_rota').length,
-      receitaVendas: totaisVendas,
-      receitaFretes: totaisFretes
+      receitaVendas: currentAppRevenue,
+      receitaFretes: 0
   };
 
   const handleSaveRates = async () => {
@@ -347,6 +503,7 @@ function AdminDashboardContent() {
       if (typeof store.fetchCities === 'function') await store.fetchCities();
       if (typeof store.fetchRates === 'function') await store.fetchRates();
       if (store.rates) setLocalRates(store.rates);
+      await fetchAdminBalances();
       showToast("🔄 Painel atualizado com sucesso!");
     } catch (_e) {
       console.error("Erro ao atualizar painel:", _e);
@@ -432,7 +589,25 @@ function AdminDashboardContent() {
       <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
         
         {activeTab === 'dashboard' && (
-          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300 font-medium">
+            {/* Seletor de Períodos e Botão Zerar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">🗓️ Balanço do Período</span>
+                <div className="flex gap-1.5 bg-zinc-100 dark:bg-zinc-800/60 p-1 rounded-lg mt-1">
+                  <button onClick={() => setSelectedPeriod('historical')} className={`py-1.5 px-3 rounded-md text-xs font-bold transition-all ${selectedPeriod === 'historical' ? 'bg-white dark:bg-zinc-900 text-purple-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>Geral Acumulado</button>
+                  <button onClick={() => setSelectedPeriod('monthly')} className={`py-1.5 px-3 rounded-md text-xs font-bold transition-all ${selectedPeriod === 'monthly' ? 'bg-white dark:bg-zinc-900 text-purple-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>Mensal Parcial</button>
+                  <button onClick={() => setSelectedPeriod('daily')} className={`py-1.5 px-3 rounded-md text-xs font-bold transition-all ${selectedPeriod === 'daily' ? 'bg-white dark:bg-zinc-900 text-purple-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>Diário Parcial</button>
+                </div>
+              </div>
+              <button 
+                onClick={() => handleResetBalance(selectedPeriod)}
+                className="bg-red-50 hover:bg-red-100 dark:bg-red-950/20 text-red-600 border border-red-200 dark:border-red-900/50 hover:border-red-300 font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm mt-2 sm:mt-0 active:scale-95"
+              >
+                🗑️ Zerar {selectedPeriod === 'historical' ? 'Acumulado Histórico' : selectedPeriod === 'monthly' ? 'Balanço Mensal' : 'Balanço Diário'}
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
             <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800">
                 <p className="text-zinc-500 dark:text-zinc-400 text-[11px] uppercase font-bold">Volume Total</p>
@@ -456,7 +631,7 @@ function AdminDashboardContent() {
             </div>
             <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-xl shadow-sm border border-purple-200 dark:border-purple-900/50">
                 <p className="text-purple-700 dark:text-purple-400 text-[11px] uppercase font-bold">Receita App</p>
-                <p className="text-xl font-bold text-purple-800 dark:text-purple-300">{formatMoney(totais.receitaVendas + totais.receitaFretes)}</p>
+                <p className="text-xl font-bold text-purple-800 dark:text-purple-300">{formatMoney(totais.receitaVendas)}</p>
             </div>
         </div>
 
@@ -466,7 +641,7 @@ function AdminDashboardContent() {
                 <p className="text-purple-200 text-xs mt-1">Volume Financeiro Total (Produto + Frete transacionados com sucesso)</p>
             </div>
             <div className="text-left sm:text-right">
-                <p className="text-4xl font-extrabold text-green-400">{formatMoney(movimentacaoTotal)}</p>
+                <p className="text-4xl font-extrabold text-green-400">{formatMoney(currentVolumeTotal)}</p>
             </div>
         </div>
 
@@ -477,8 +652,8 @@ function AdminDashboardContent() {
             <div className="bg-emerald-50 dark:bg-emerald-900/10 p-5 rounded-xl shadow-sm border border-emerald-200 dark:border-emerald-900 flex flex-col justify-center">
                 <p className="text-emerald-800 dark:text-emerald-400 text-sm font-bold flex items-center justify-center gap-1 mb-3"><span>👨🌾</span> Fornecedores</p>
                 <div className="flex justify-between items-center w-full">
-                    <div><p className="text-[10px] text-emerald-600 dark:text-emerald-500 uppercase font-bold">Bruto</p><p className="text-lg font-bold text-emerald-900 dark:text-emerald-100">{formatMoney(fatBrutoFornecedores)}</p></div>
-                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(fatLiqFornecedores)}</p></div>
+                    <div><p className="text-[10px] text-emerald-600 dark:text-emerald-500 uppercase font-bold">Bruto</p><p className="text-lg font-bold text-emerald-900 dark:text-emerald-100">{formatMoney(currentFornBruto)}</p></div>
+                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(currentFornLiq)}</p></div>
                 </div>
             </div>
             
@@ -486,8 +661,8 @@ function AdminDashboardContent() {
             <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-xl shadow-sm border border-indigo-200 dark:border-indigo-900 flex flex-col justify-center">
                 <p className="text-indigo-800 dark:text-indigo-400 text-sm font-bold flex items-center justify-center gap-1 mb-3"><span>🏪</span> Batedeiras</p>
                 <div className="flex justify-between items-center w-full">
-                    <div><p className="text-[10px] text-indigo-500 uppercase font-bold">Bruto</p><p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{formatMoney(fatBrutoBatedeiras)}</p></div>
-                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(fatLiqBatedeiras)}</p></div>
+                    <div><p className="text-[10px] text-indigo-500 uppercase font-bold">Bruto</p><p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{formatMoney(currentBatBruto)}</p></div>
+                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(currentBatLiq)}</p></div>
                 </div>
             </div>
             
@@ -495,8 +670,8 @@ function AdminDashboardContent() {
             <div className="bg-amber-50 dark:bg-amber-900/10 p-5 rounded-xl shadow-sm border border-amber-200 dark:border-amber-900 flex flex-col justify-center">
                 <p className="text-amber-800 dark:text-amber-400 text-sm font-bold flex items-center justify-center gap-1 mb-3"><span>🛵</span> Motociclistas</p>
                 <div className="flex justify-between items-center w-full">
-                    <div><p className="text-[10px] text-amber-600 dark:text-amber-500 uppercase font-bold">Frete Bruto</p><p className="text-lg font-bold text-amber-900 dark:text-amber-100">{formatMoney(fatBrutoMotos)}</p></div>
-                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(fatLiqMotos)}</p></div>
+                    <div><p className="text-[10px] text-amber-600 dark:text-amber-500 uppercase font-bold">Frete Bruto</p><p className="text-lg font-bold text-amber-900 dark:text-amber-100">{formatMoney(currentMotBruto)}</p></div>
+                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(currentMotLiq)}</p></div>
                 </div>
             </div>
             
@@ -504,8 +679,8 @@ function AdminDashboardContent() {
             <div className="bg-blue-50 dark:bg-blue-900/10 p-5 rounded-xl shadow-sm border border-blue-200 dark:border-blue-900 flex flex-col justify-center">
                 <p className="text-blue-800 dark:text-blue-400 text-sm font-bold flex items-center justify-center gap-1 mb-3"><span>🚚</span> Caminhões</p>
                 <div className="flex justify-between items-center w-full">
-                    <div><p className="text-[10px] text-blue-500 uppercase font-bold">Frete Bruto</p><p className="text-lg font-bold text-blue-900 dark:text-blue-100">{formatMoney(fatBrutoCaminhoes)}</p></div>
-                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(fatLiqCaminhoes)}</p></div>
+                    <div><p className="text-[10px] text-blue-500 uppercase font-bold">Frete Bruto</p><p className="text-lg font-bold text-blue-900 dark:text-blue-100">{formatMoney(currentCamBruto)}</p></div>
+                    <div className="text-right"><p className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold">Líquido</p><p className="text-lg font-bold text-green-700 dark:text-green-400">{formatMoney(currentCamLiq)}</p></div>
                 </div>
             </div>
           </div>

@@ -188,6 +188,7 @@ interface AppState {
   saveRates: (newRates: Partial<AppState['rates']>) => Promise<void>;
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => Promise<any>;
   acaoPedido: (orderId: string, action: string, pinStr?: string) => Promise<void>;
+  incrementAdminBalances: (order: Order) => Promise<void>;
   setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
@@ -1733,6 +1734,7 @@ export const useAppStore = create<AppState>()(
                // Disparar transferências automáticas Pix (Payout) para TODOS os parceiros: Batedeira, Fornecedor, Motoboy, Caminhoneiro
                const currentOrder = get().orders.find(o => o.id === orderId) || state.orders.find(o => o.id === orderId);
                if (currentOrder) {
+                 get().incrementAdminBalances(currentOrder);
                  // 1. Repasse do Vendedor (Loja no B2C ou Fornecedor no B2B)
                  const sellerId = currentOrder.type === 'B2B' 
                    ? (currentOrder.fornecedorId || currentOrder.origemId)
@@ -1824,7 +1826,70 @@ export const useAppStore = create<AppState>()(
               });
            } catch(e) {
               console.error("Exceção ao solicitar estorno:", e);
-           }
+            }
+         }
+      },
+
+      incrementAdminBalances: async (order) => {
+        if (!order) return;
+        const volume = (order.valor || 0) + (order.taxas?.entregaTotal || 0);
+        const appRev = order.taxas?.plataformaTotal || 0;
+
+        let fornBruto = 0, fornLiq = 0;
+        let batBruto = 0, batLiq = 0;
+        let motBruto = 0, motLiq = 0;
+        let camBruto = 0, camLiq = 0;
+
+        if (order.type === 'B2B') {
+          fornBruto = order.valor || 0;
+          fornLiq = order.taxas?.repasse || 0;
+          camBruto = order.taxas?.entregaTotal || 0;
+          camLiq = order.taxas?.entregaMotorista || 0;
+        } else if (order.type === 'B2C') {
+          batBruto = order.valor || 0;
+          batLiq = order.taxas?.repasse || 0;
+          motBruto = order.taxas?.entregaTotal || 0;
+          motLiq = order.taxas?.entregaMotorista || 0;
+        } else if (order.type === 'COLETA') {
+          motBruto = order.taxas?.entregaTotal || 0;
+          motLiq = order.taxas?.entregaMotorista || 0;
+        }
+
+        const ids = ['historical', 'monthly', 'daily'];
+
+        for (const id of ids) {
+          try {
+            const { data } = await supabase.from('admin_balances').select('*').eq('id', id).maybeSingle();
+            
+            const currentOrders = Number(data?.total_orders || 0);
+            const currentVolume = Number(data?.total_volume || 0);
+            const currentAppRev = Number(data?.app_revenue || 0);
+            const currentFornBruto = Number(data?.fornecedores_bruto || 0);
+            const currentFornLiq = Number(data?.fornecedores_liquido || 0);
+            const currentBatBruto = Number(data?.batedeiras_bruto || 0);
+            const currentBatLiq = Number(data?.batedeiras_liquido || 0);
+            const currentMotBruto = Number(data?.motoristas_bruto || 0);
+            const currentMotLiq = Number(data?.motoristas_liquido || 0);
+            const currentCamBruto = Number(data?.caminhoes_bruto || 0);
+            const currentCamLiq = Number(data?.caminhoes_liquido || 0);
+
+            await supabase.from('admin_balances').update({
+              total_orders: currentOrders + 1,
+              total_volume: currentVolume + volume,
+              app_revenue: currentAppRev + appRev,
+              fornecedores_bruto: currentFornBruto + fornBruto,
+              fornecedores_liquido: currentFornLiq + fornLiq,
+              batedeiras_bruto: currentBatBruto + batBruto,
+              batedeiras_liquido: currentBatLiq + batLiq,
+              motoristas_bruto: currentMotBruto + motBruto,
+              motoristas_liquido: currentMotLiq + motLiq,
+              caminhoes_bruto: currentCamBruto + camBruto,
+              caminhoes_liquido: currentCamLiq + camLiq,
+              updated_at: new Date().toISOString()
+            }).eq('id', id);
+          } catch (err) {
+            console.error("Erro ao incrementar admin_balances para " + id + ":", err);
+          }
         }
       },
 
