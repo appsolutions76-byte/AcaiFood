@@ -295,12 +295,36 @@ export default function MotoboyDashboard() {
                                     )}
                                 </div>
                             </div>
-                            <button 
-                                onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: currentUser.id })} 
-                                className="mt-2 text-blue-600 bg-blue-100/60 dark:bg-blue-900/30 p-2 rounded-lg font-bold hover:bg-blue-100 dark:hover:bg-blue-900/50 text-center w-full transition border border-blue-200 dark:border-blue-800 flex items-center justify-center gap-1 text-xs"
-                            >
-                                🗺️ Ver Rota no Mapa ({(o.distancia || 0).toFixed(1)} km)
-                            </button>
+                            <div className="mt-2 flex flex-col sm:flex-row gap-2 w-full">
+                              <button 
+                                  onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: currentUser.id })} 
+                                  className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/30 p-2.5 rounded-xl font-bold text-center transition border border-blue-200 dark:border-blue-800/80 flex items-center justify-center gap-1.5 text-xs shadow-sm"
+                              >
+                                  🗺️ Ver Mapa ({(o.distancia || 0).toFixed(1)} km)
+                              </button>
+                              
+                              {origemUser?.lat && (
+                                <a 
+                                  href={`https://www.google.com/maps/dir/?api=1&destination=${origemUser.lat},${origemUser.lng}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                                >
+                                  🚀 GPS p/ Retirada
+                                </a>
+                              )}
+
+                              {(o.deliveryLat || destinoUser?.lat) && (
+                                <a 
+                                  href={`https://www.google.com/maps/dir/?api=1&destination=${o.deliveryLat || destinoUser?.lat},${o.deliveryLng || destinoUser?.lng}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                                >
+                                  🏁 GPS p/ Cliente
+                                </a>
+                              )}
+                            </div>
                         </div>
                         <div className="flex flex-wrap gap-2 mb-3">
                            {o.createdAt && <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
