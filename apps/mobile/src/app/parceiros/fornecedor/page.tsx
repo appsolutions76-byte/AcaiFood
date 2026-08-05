@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { PackageOpen, Printer, BookOpen } from "lucide-react";
-import { useAppStore, getRatesForCity } from "@/store/useAppStore";
+import { useAppStore, getRatesForCity, generateUUID } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
@@ -90,7 +90,7 @@ export default function FornecedorDashboard() {
   const handleAddProduct = () => {
       if (!currentUser || !newProductName || !newProductPrice) return;
       store.addProduct(currentUser.id, {
-          id: `prod_${Date.now()}`,
+          id: generateUUID(),
           name: newProductName,
           price: Number(newProductPrice)
       });

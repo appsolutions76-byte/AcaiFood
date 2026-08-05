@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Store, Printer, BookOpen } from "lucide-react";
-import { useAppStore, haversineKm, getRatesForCity } from "@/store/useAppStore";
+import { useAppStore, haversineKm, getRatesForCity, generateUUID } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
 import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -94,7 +94,7 @@ export default function BatedeiraDashboard() {
   const handleAddProduct = () => {
       if (!currentUser || !newProductName || !newProductPrice) return;
       store.addProduct(currentUser.id, {
-          id: `prod_${Date.now()}`,
+          id: generateUUID(),
           name: newProductName,
           price: Number(newProductPrice)
       });
@@ -193,7 +193,13 @@ export default function BatedeiraDashboard() {
   const batedeiraHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   const meusPedidos = [...batedeiraActiveOrders, ...batedeiraHistoryOrders];
   const fornecedores = Object.values(store.users || {})
-    .filter(u => u.role === 'fornecedor' && u.status !== 'paused' && u.status !== 'blocked' && u.cidade === currentUser.cidade)
+    .filter(u => {
+      if (u.role !== 'fornecedor' || u.status === 'paused' || u.status === 'blocked') return false;
+      if (!u.cidade || !currentUser.cidade) return true; // Se alguma das partes estiver sem cidade, mostra mesmo assim para evitar sumiço
+      const c1 = u.cidade.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      const c2 = currentUser.cidade.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      return c1 === c2;
+    })
     .sort((a, b) => {
       const distA = (a.lat && currentUser.lat) ? haversineKm(a.lat, a.lng!, currentUser.lat, currentUser.lng!) : 999;
       const distB = (b.lat && currentUser.lat) ? haversineKm(b.lat, b.lng!, currentUser.lat, currentUser.lng!) : 999;
