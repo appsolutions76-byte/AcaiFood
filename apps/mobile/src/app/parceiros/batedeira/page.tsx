@@ -167,6 +167,36 @@ export default function BatedeiraDashboard() {
     }
   };
 
+  const [isUpdatingGPS, setIsUpdatingGPS] = useState(false);
+
+  const handleUpdateGPS = async () => {
+    if (isUpdatingGPS) return;
+    if (!currentUser) return;
+    if (!confirm("Deseja atualizar a localização GPS do seu estabelecimento para a sua posição atual do celular agora?\n\n(Recomendado fazer isso quando você estiver fisicamente na loja)")) return;
+    
+    setIsUpdatingGPS(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, enableHighAccuracy: true });
+      });
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      const { error } = await supabase.from('users').update({ lat, lng }).eq('id', currentUser.id);
+      if (error) {
+        alert("Erro ao atualizar no banco de dados: " + error.message);
+      } else {
+        alert("✅ GPS do estabelecimento atualizado com sucesso para as novas coordenadas!");
+        const s = useAppStore.getState();
+        s.fetchAllUsers(true);
+      }
+    } catch (err) {
+      alert("Não foi possível capturar sua geolocalização. Certifique-se de que o GPS do aparelho está ativado e as permissões foram concedidas.");
+    } finally {
+      setIsUpdatingGPS(false);
+    }
+  };
+
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center"><p>Carregando...</p></div>;
   }
@@ -508,6 +538,13 @@ export default function BatedeiraDashboard() {
             <div>
                 <h2 className="text-xl font-bold">🏪 {currentUser.name}</h2>
                 <p className="text-purple-300 text-xs mt-1">📍 Bairro: {currentUser.bairro || 'Central'}</p>
+                <button 
+                  onClick={handleUpdateGPS}
+                  disabled={isUpdatingGPS}
+                  className="mt-2 text-[10px] bg-purple-800/80 hover:bg-purple-700 disabled:bg-purple-800/40 text-white font-bold px-2.5 py-1 rounded-lg border border-purple-700 transition shadow flex items-center gap-1 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
+                >
+                  {isUpdatingGPS ? '⏳ Buscando GPS...' : '📍 Atualizar GPS da Loja'}
+                </button>
             </div>
             <div className="text-right flex flex-col items-end">
                 <p className="text-xs text-purple-200">Cofre Virtual (A Receber)</p>

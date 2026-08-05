@@ -38,6 +38,7 @@ function CadastroForm() {
   const [termosAceitos, setTermosAceitos] = useState(false);
   const [termosModalOpen, setTermosModalOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [isRegisteringAtStore, setIsRegisteringAtStore] = useState(true);
   
   const [step, setStep] = useState(1); // 1 = Formulario, 2 = Asaas (apenas parceiros)
   const [newUserId, setNewUserId] = useState("");
@@ -67,14 +68,16 @@ function CadastroForm() {
     let lat = -1.45575;
     let lng = -48.49018;
 
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, enableHighAccuracy: false });
-      });
-      lat = position.coords.latitude;
-      lng = position.coords.longitude;
-    } catch (geoErr) {
-      console.warn("GPS não obtido. Utilizando coordenadas padrão da cidade base.", geoErr);
+    if (role === 'cliente' || role === 'motorista' || isRegisteringAtStore) {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, enableHighAccuracy: false });
+        });
+        lat = position.coords.latitude;
+        lng = position.coords.longitude;
+      } catch (geoErr) {
+        console.warn("GPS não obtido. Utilizando coordenadas padrão da cidade base.", geoErr);
+      }
     }
 
     try {
@@ -290,6 +293,34 @@ function CadastroForm() {
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Endereço Completo (com número)</label>
                   <input type="text" required value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Ex: Rua das Mangueiras, 123" className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
                 </div>
+
+                {(role === 'loja' || role === 'fornecedor') && (
+                  <div className="bg-purple-50 dark:bg-purple-950/20 p-4 rounded-xl border border-purple-200 dark:border-purple-900 my-2">
+                    <label className="block text-xs uppercase text-purple-800 dark:text-purple-300 font-bold mb-2">📍 Localização de Cadastro</label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="loc_mode" 
+                          checked={isRegisteringAtStore === true} 
+                          onChange={() => setIsRegisteringAtStore(true)} 
+                          className="text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Estou no meu estabelecimento físico agora (capturar GPS)</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="loc_mode" 
+                          checked={isRegisteringAtStore === false} 
+                          onChange={() => setIsRegisteringAtStore(false)} 
+                          className="text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Estou em outro local (definir GPS padrão e ajustar depois)</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Telefone (WhatsApp)</label>

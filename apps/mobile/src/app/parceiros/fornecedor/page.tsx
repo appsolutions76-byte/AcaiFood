@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PackageOpen, Printer, BookOpen } from "lucide-react";
 import { useAppStore, getRatesForCity, generateUUID } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
+import { supabase } from "@/lib/supabase";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import {
@@ -131,9 +132,15 @@ export default function FornecedorDashboard() {
 
     if (confirm(`Deseja transferir R$ ${valorSaque.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?`)) {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const authHeaders: any = { 'Content-Type': 'application/json' };
+        if (session?.access_token) {
+          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+        }
+
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
+          headers: authHeaders,
           body: JSON.stringify({
             pixKey: targetKey,
             value: valorSaque,
@@ -154,6 +161,36 @@ export default function FornecedorDashboard() {
       } catch (_err) {
         alert("Erro de conexão ao solicitar transferência PIX.");
       }
+    }
+  };
+
+  const [isUpdatingGPS, setIsUpdatingGPS] = useState(false);
+
+  const handleUpdateGPS = async () => {
+    if (isUpdatingGPS) return;
+    if (!currentUser) return;
+    if (!confirm("Deseja atualizar a localização GPS do seu estabelecimento para a sua posição atual do celular agora?\n\n(Recomendado fazer isso quando você estiver fisicamente na loja)")) return;
+    
+    setIsUpdatingGPS(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, enableHighAccuracy: true });
+      });
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      const { error } = await supabase.from('users').update({ lat, lng }).eq('id', currentUser.id);
+      if (error) {
+        alert("Erro ao atualizar no banco de dados: " + error.message);
+      } else {
+        alert("✅ GPS do estabelecimento atualizado com sucesso para as novas coordenadas!");
+        const s = useAppStore.getState();
+        s.fetchAllUsers(true);
+      }
+    } catch (err) {
+      alert("Não foi possível capturar sua geolocalização. Certifique-se de que o GPS do aparelho está ativado e as permissões foram concedidas.");
+    } finally {
+      setIsUpdatingGPS(false);
     }
   };
 
@@ -275,6 +312,13 @@ export default function FornecedorDashboard() {
             <div>
                 <h2 className="text-xl font-bold">🏭 {currentUser.name}</h2>
                 <p className="text-emerald-300 text-xs mt-1">📍 Bairro: {currentUser.bairro || 'Central'}</p>
+                <button 
+                  onClick={handleUpdateGPS}
+                  disabled={isUpdatingGPS}
+                  className="mt-2 text-[10px] bg-emerald-800/80 hover:bg-emerald-700 disabled:bg-emerald-800/40 text-white font-bold px-2.5 py-1 rounded-lg border border-emerald-700 transition shadow flex items-center gap-1 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
+                >
+                  {isUpdatingGPS ? '⏳ Buscando GPS...' : '📍 Atualizar GPS da Usina'}
+                </button>
             </div>
             <div className="text-right flex flex-col items-end">
                 <p className="text-xs text-emerald-200 font-bold">Cofre Virtual (Disponível p/ Saque)</p>
