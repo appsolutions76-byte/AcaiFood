@@ -104,10 +104,16 @@ function AdminDashboardContent() {
     }
     if (!confirm(`Confirmar pagamento de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} via Pix para ${u.name}?\n\nChave Pix: ${pixKey}\nPedidos a liquidar: ${pendingOrders.length}`)) return;
     setPayingPartnerId(u.id);
+    const { data: { session } } = await supabase.auth.getSession();
+    const authHeaders: any = { 'Content-Type': 'application/json' };
+    if (session?.access_token) {
+      authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
     try {
       const res = await fetch('/api/asaas/transfer', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
+        headers: authHeaders,
         body: JSON.stringify({ pixKey, value: amountOwed, description: `Repasse Manual AçaíFood – ${u.name}` })
       });
       const data = await res.json();

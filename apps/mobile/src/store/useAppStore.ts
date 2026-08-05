@@ -231,6 +231,17 @@ let lastFetchAllUsersTime = 0;
 let lastFetchRatesTime = 0;
 const lastFetchOrdersTime: Record<string, number> = {};
 
+async function getAuthHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+  return headers;
+}
+
 const DB_DEFAULTS = {
   rates: {
     b2c_plat: 10, b2c_km: 2.00, b2c_mot_plat: 10,
@@ -496,9 +507,10 @@ export const useAppStore = create<AppState>()(
 
               // Fallback para API nativa Next.js se a Edge Function não retornou walletId
               if (!walletId && newUser.cpfCnpj) {
+                const subHeaders = await getAuthHeaders();
                 const subRes = await fetch('/api/asaas/subaccount', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: subHeaders,
                   body: JSON.stringify({
                     userId:   newUser.id,
                     name:     newUser.name,
@@ -547,9 +559,10 @@ export const useAppStore = create<AppState>()(
               } catch (_e) {}
 
               if (!walletId) {
+                const subHeaders = await getAuthHeaders();
                 const subRes = await fetch('/api/asaas/subaccount', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: subHeaders,
                   body: JSON.stringify({
                     userId:   newUser.id,
                     name:     newUser.name,
@@ -1054,7 +1067,11 @@ export const useAppStore = create<AppState>()(
           }
 
           try {
-            await fetch(`/api/asaas/subaccount?userId=${userId}`, { method: 'DELETE' });
+            const subHeaders = await getAuthHeaders();
+            await fetch(`/api/asaas/subaccount?userId=${userId}`, { 
+              method: 'DELETE',
+              headers: subHeaders
+            });
           } catch (_e) {
             console.warn("Aviso ao tentar excluir subconta Asaas via API local:", _e);
           }
@@ -1403,12 +1420,10 @@ export const useAppStore = create<AppState>()(
                 } else if (uData.cpf_cnpj) {
                   // Tentar auto-criar subconta no Asaas para o parceiro/batedeira se tiver CPF/CNPJ
                   try {
+                    const subHeaders = await getAuthHeaders();
                     const subRes = await fetch('/api/asaas/subaccount', {
                       method: 'POST',
-                      headers: { 
-                        'Content-Type': 'application/json',
-                        'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || ''
-                      },
+                      headers: subHeaders,
                       body: JSON.stringify({
                         userId: uData.id,
                         name: uData.name || 'Parceiro AçaíFood',
@@ -1454,9 +1469,10 @@ export const useAppStore = create<AppState>()(
                     driverWalletId = dData.asaas_wallet_id;
                   } else if (dData.cpf_cnpj) {
                     try {
+                      const subHeaders = await getAuthHeaders();
                       const subRes = await fetch('/api/asaas/subaccount', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: subHeaders,
                         body: JSON.stringify({
                           userId: dData.id,
                           name: dData.name || 'Entregador AçaíFood',
@@ -1731,24 +1747,23 @@ export const useAppStore = create<AppState>()(
                  const repasseSeller = currentOrder.taxas?.repasse || 0;
 
                  if (sellerPixKey && repasseSeller > 0) {
-                   fetch('/api/asaas/transfer', {
-                     method: 'POST',
-                     headers: { 
-                       'Content-Type': 'application/json',
-                       'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || ''
-                     },
-                     body: JSON.stringify({
-                       pixKey: sellerPixKey,
-                       value: repasseSeller,
-                       description: `Repasse Venda AçaíFood #${String(orderId).substring(0, 8)}`,
-                       orderId
-                     })
-                   }).then(r => r.json()).then(async data => {
-                     if (data.success || data.transferId) {
-                       console.log("✅ Repasse Pix enviado com sucesso ao Vendedor:", data);
-                       await supabase.from('orders').update({ payout_seller_done: true }).eq('id', orderId);
-                     }
-                   }).catch(e => console.warn("Aviso no repasse Pix ao Vendedor:", e));
+                   getAuthHeaders().then(authHeaders => {
+                     fetch('/api/asaas/transfer', {
+                       method: 'POST',
+                       headers: authHeaders,
+                       body: JSON.stringify({
+                         pixKey: sellerPixKey,
+                         value: repasseSeller,
+                         description: `Repasse Venda AçaíFood #${String(orderId).substring(0, 8)}`,
+                         orderId
+                       })
+                     }).then(r => r.json()).then(async data => {
+                       if (data.success || data.transferId) {
+                         console.log("✅ Repasse Pix enviado com sucesso ao Vendedor:", data);
+                         await supabase.from('orders').update({ payout_seller_done: true }).eq('id', orderId);
+                       }
+                     }).catch(e => console.warn("Aviso no repasse Pix ao Vendedor:", e));
+                   });
                  }
 
                  // 2. Repasse do Entregador (Motoboy no B2C ou Caminhoneiro no B2B/Coleta)
@@ -1773,24 +1788,23 @@ export const useAppStore = create<AppState>()(
                  }
 
                  if (driverPixKey && repasseDriver > 0) {
-                   fetch('/api/asaas/transfer', {
-                     method: 'POST',
-                     headers: { 
-                       'Content-Type': 'application/json',
-                       'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || ''
-                     },
-                     body: JSON.stringify({
-                       pixKey: driverPixKey,
-                       value: repasseDriver,
-                       description: `Repasse Frete AçaíFood #${String(orderId).substring(0, 8)}`,
-                       orderId
-                     })
-                   }).then(r => r.json()).then(async data => {
-                     if (data.success || data.transferId) {
-                       console.log("✅ Repasse Pix enviado com sucesso ao Entregador:", data);
-                       await supabase.from('orders').update({ payout_driver_done: true }).eq('id', orderId);
-                     }
-                   }).catch(e => console.warn("Aviso no repasse Pix ao Entregador:", e));
+                   getAuthHeaders().then(authHeaders => {
+                     fetch('/api/asaas/transfer', {
+                       method: 'POST',
+                       headers: authHeaders,
+                       body: JSON.stringify({
+                         pixKey: driverPixKey,
+                         value: repasseDriver,
+                         description: `Repasse Frete AçaíFood #${String(orderId).substring(0, 8)}`,
+                         orderId
+                       })
+                     }).then(r => r.json()).then(async data => {
+                       if (data.success || data.transferId) {
+                         console.log("✅ Repasse Pix enviado com sucesso ao Entregador:", data);
+                         await supabase.from('orders').update({ payout_driver_done: true }).eq('id', orderId);
+                       }
+                     }).catch(e => console.warn("Aviso no repasse Pix ao Entregador:", e));
+                   });
                  }
                }
             }
@@ -1798,17 +1812,16 @@ export const useAppStore = create<AppState>()(
 
         if (newDbStatus === 'CANCELLED') {
            try {
-              fetch('/api/asaas/refund', {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || ''
-                },
-                body: JSON.stringify({ orderId })
-              }).then(r => r.json()).then(data => {
-                if (data.success) console.log("✅ Estorno Asaas efetuado com sucesso:", data);
-                else console.warn("Aviso no estorno Asaas:", data);
-              }).catch(e => console.warn("Erro ao solicitar estorno Asaas:", e));
+              getAuthHeaders().then(authHeaders => {
+                fetch('/api/asaas/refund', {
+                  method: 'POST',
+                  headers: authHeaders,
+                  body: JSON.stringify({ orderId })
+                }).then(r => r.json()).then(data => {
+                  if (data.success) console.log("✅ Estorno Asaas efetuado com sucesso:", data);
+                  else console.warn("Aviso no estorno Asaas:", data);
+                }).catch(e => console.warn("Erro ao solicitar estorno Asaas:", e));
+              });
            } catch(e) {
               console.error("Exceção ao solicitar estorno:", e);
            }

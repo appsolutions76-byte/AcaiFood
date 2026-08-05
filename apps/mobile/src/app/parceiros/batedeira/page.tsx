@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Store, Printer, BookOpen } from "lucide-react";
 import { useAppStore, haversineKm, getRatesForCity, generateUUID } from "@/store/useAppStore";
 import { MapModal } from "@/components/MapModal";
+import { supabase } from "@/lib/supabase";
 import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
@@ -134,9 +135,15 @@ export default function BatedeiraDashboard() {
 
     if (confirm(`Deseja transferir R$ ${vendasHoje.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?`)) {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const authHeaders: any = { 'Content-Type': 'application/json' };
+        if (session?.access_token) {
+          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+        }
+
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
+          headers: authHeaders,
           body: JSON.stringify({
             pixKey: targetKey,
             value: vendasHoje,

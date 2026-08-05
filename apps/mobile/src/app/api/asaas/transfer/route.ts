@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { isAuthorizedRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
-  if (!isAuthorizedRequest(request)) return unauthorizedResponse();
+  const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
+  if (!auth.authorized) return unauthorizedResponse(auth.error);
   try {
     const body = await request.json();
     const { pixKey, value, description, orderId, scheduleDate } = body;
