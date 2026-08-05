@@ -44,7 +44,7 @@ export default function BatedeiraDashboard() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
-  const [cartModalB2B, setCartModalB2B] = useState<{ open: boolean; fornId: string; quantity: number }>({ open: false, fornId: '', quantity: 1 });
+  const [cartModalB2B, setCartModalB2B] = useState<{ open: boolean; fornId: string; quantity: number; productId: string }>({ open: false, fornId: '', quantity: 1, productId: 'base' });
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
 
   const mounted = useSyncExternalStore(
@@ -688,8 +688,13 @@ export default function BatedeiraDashboard() {
                                 <span>Frete {subsidy > 0 ? <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded uppercase font-bold ml-1">Forn. paga {subsidy}%</span> : ''}</span> 
                                 <span className="font-bold">{formatMoney(freteLoja)}</span>
                               </div>
+                              {forn.products && forn.products.length > 0 && (
+                                <div className="mt-2 pt-1.5 border-t border-emerald-200/50 text-[10px] text-emerald-800 dark:text-emerald-300">
+                                  <strong>📦 Extras:</strong> {forn.products.map(p => `${p.name} (${formatMoney(p.price)})`).join(', ')}
+                                </div>
+                              )}
                           </div>
-                          <button onClick={() => setCartModalB2B({ open: true, fornId: forn.id, quantity: 1 })} className="w-full mt-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg transition">Comprar Paneiros</button>
+                          <button onClick={() => setCartModalB2B({ open: true, fornId: forn.id, quantity: 1, productId: 'base' })} className="w-full mt-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg transition">Comprar</button>
                       </div>
                     )
                   })}
@@ -793,16 +798,37 @@ export default function BatedeiraDashboard() {
                       const freteTotal = (rates.transporter_payment_mode === 'FIXED') ? (rates.transporter_fixed_fee ?? 150.00) : dist * rates.b2b_km;
                       const subsidy = forn.freteSubsidyPct || 0;
                       const freteLoja = freteTotal * (1 - subsidy / 100);
-                      const unitPrice = forn.priceB2B || 0;
+                      
+                      const isBase = cartModalB2B.productId === 'base';
+                      const selectedProd = !isBase ? forn.products?.find(p => p.id === cartModalB2B.productId) : null;
+                      const unitPrice = isBase ? (forn.priceB2B || 0) : (selectedProd?.price || 0);
+                      const productName = isBase ? 'Paneiro de Açaí' : (selectedProd?.name || 'Produto Extra');
+
                       const subtotal = unitPrice * cartModalB2B.quantity;
                       const totalToPay = subtotal + freteLoja;
-
+ 
                       return (
                           <>
                               <p className="text-xs text-zinc-500 font-bold uppercase mb-1">Fornecedor Selecionado</p>
                               <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{forn.name}</h4>
                               
-                              <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Quantidade de Paneiros / Latas:</label>
+                              <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Escolha seu Produto:</label>
+                              <select 
+                                value={cartModalB2B.productId} 
+                                onChange={e => setCartModalB2B({ ...cartModalB2B, productId: e.target.value })}
+                                className="w-full border-2 border-emerald-105 dark:border-zinc-700 rounded-xl p-3 bg-emerald-50 dark:bg-zinc-800 text-emerald-900 dark:text-emerald-300 font-bold outline-none focus:border-emerald-500 transition mb-4"
+                              >
+                                  <option value="base">Paneiro de Açaí (Lata) - {formatMoney(forn.priceB2B || 0)}</option>
+                                  {forn.products && forn.products.length > 0 && (
+                                      <optgroup label="Produtos Extras">
+                                          {forn.products.map(p => (
+                                              <option key={p.id} value={p.id}>{p.name} - {formatMoney(p.price)}</option>
+                                          ))}
+                                      </optgroup>
+                                  )}
+                              </select>
+
+                              <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Quantidade:</label>
                               <div className="flex items-center gap-4 mb-6">
                                   <button onClick={() => setCartModalB2B(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1)}))} className="bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 w-10 h-10 rounded-full font-bold text-xl flex items-center justify-center hover:bg-zinc-300 transition">-</button>
                                   <span className="text-2xl font-bold text-zinc-900 dark:text-white w-8 text-center">{cartModalB2B.quantity}</span>
@@ -828,10 +854,15 @@ export default function BatedeiraDashboard() {
                                   <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="flex-1 px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition">Cancelar</button>
                                   <button onClick={async () => {
                                       store.clearCart();
-                                      store.addToCart(forn.id, { id: 'B2B', name: 'Paneiro de Açaí', price: unitPrice, quantity: cartModalB2B.quantity });
+                                      store.addToCart(forn.id, { 
+                                          id: cartModalB2B.productId === 'base' ? 'B2B' : cartModalB2B.productId, 
+                                          name: productName, 
+                                          price: unitPrice, 
+                                          quantity: cartModalB2B.quantity 
+                                      });
                                       const res: any = await store.criarPedido('B2B', forn.id);
                                       setCartModalB2B({ ...cartModalB2B, open: false });
-
+ 
                                       if (res && typeof res === 'object') {
                                         if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
                                            setPixModalData({
@@ -849,7 +880,7 @@ export default function BatedeiraDashboard() {
                                            alert(`Aviso do Asaas: ${res.error}`);
                                         } else {
                                            alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
-                                        }
+                                         }
                                       } else if (typeof res === 'string' && res.startsWith('http')) {
                                         window.location.href = res;
                                       } else {

@@ -537,25 +537,34 @@ export default function StorefrontPage() {
                   <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{store.users?.[productSelectModal.lojaId]?.name}</h4>
                   
                   <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Escolha seu Produto:</label>
-                  <select 
-                    value={productSelectModal.tipo} 
-                    onChange={e => setProductSelectModal({ ...productSelectModal, tipo: e.target.value })}
-                    className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-4"
-                  >
-                      <optgroup label="Açaí Padrão (1L)">
-                          <option value="popular">Açaí Popular</option>
-                          <option value="medio">Açaí Médio</option>
-                          <option value="grosso">Açaí Grosso (Especial)</option>
-                      </optgroup>
-                      
-                      {store.users?.[productSelectModal.lojaId]?.products && store.users[productSelectModal.lojaId].products!.length > 0 && (
-                          <optgroup label="Produtos Extras">
-                              {store.users[productSelectModal.lojaId].products!.map(p => (
-                                  <option key={p.id} value={p.id}>{p.name}</option>
-                              ))}
-                          </optgroup>
-                      )}
-                  </select>
+                  {(() => {
+                      const loja = store.users?.[productSelectModal.lojaId];
+                      const pricePopular = loja?.priceB2C?.popular ?? 18;
+                      const priceMedio = loja?.priceB2C?.medio ?? 25;
+                      const priceGrosso = loja?.priceB2C?.grosso ?? 33;
+
+                      return (
+                          <select 
+                            value={productSelectModal.tipo} 
+                            onChange={e => setProductSelectModal({ ...productSelectModal, tipo: e.target.value })}
+                            className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-4"
+                          >
+                              <optgroup label="Açaí Padrão (1L)">
+                                  <option value="popular">Açaí Popular - {formatMoney(pricePopular)}</option>
+                                  <option value="medio">Açaí Médio - {formatMoney(priceMedio)}</option>
+                                  <option value="grosso">Açaí Grosso (Especial) - {formatMoney(priceGrosso)}</option>
+                              </optgroup>
+                              
+                              {loja?.products && loja.products.length > 0 && (
+                                  <optgroup label="Produtos Extras">
+                                      {loja.products.map(p => (
+                                          <option key={p.id} value={p.id}>{p.name} - {formatMoney(p.price)}</option>
+                                      ))}
+                                  </optgroup>
+                              )}
+                          </select>
+                      );
+                  })()}
 
                   <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Quantidade:</label>
                   <div className="flex items-center gap-4 mb-6">
