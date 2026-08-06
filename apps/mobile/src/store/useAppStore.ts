@@ -649,25 +649,31 @@ export const useAppStore = create<AppState>()(
 
       startRealtime: () => {
           const currentUser = get().currentUser;
-          if (!currentUser) return;
           
           get().fetchRates();
           get().fetchAllUsers();
-          get().fetchOrders(currentUser.id);
+          if (currentUser) {
+              get().fetchOrders(currentUser.id);
+          }
           get().startAutoRefresh();
 
           if (supabaseChannel) {
               supabaseChannel.unsubscribe();
           }
 
-          supabaseChannel = supabase.channel('schema-db-changes')
-              .on(
+          let channel = supabase.channel('schema-db-changes');
+
+          if (currentUser) {
+              channel = channel.on(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'orders' },
                   () => {
                       get().fetchOrders(currentUser.id);
                   }
-              )
+              );
+          }
+
+          supabaseChannel = channel
               .on(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'storefronts' },
