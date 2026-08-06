@@ -1307,6 +1307,9 @@ export const useAppStore = create<AppState>()(
           origemId: originId,
           destinoId: destId,
           distancia: distKM,
+          clienteId: currentUser.id,
+          clienteNome: currentUser.name || 'Cliente AçaíFood',
+          clienteTelefone: currentUser.telefone || (currentUser as any).phone || currentUser.email || '',
           confirmacao: { entregador: false, recebedor: false },
           motoristaId: null,
           valor: itemsTotal,
@@ -1315,7 +1318,7 @@ export const useAppStore = create<AppState>()(
           deliveryAddress: deliveryInfo?.address || currentUser.endereco || (currentUser.bairro ? `${currentUser.bairro}, ${currentUser.cidade || 'Belém'}` : ''),
           deliveryLat: deliveryInfo?.lat,
           deliveryLng: deliveryInfo?.lng,
-          deliveryReference: deliveryInfo?.reference,
+          deliveryReference: deliveryInfo?.reference || (currentUser as any).referencia || '',
           taxas: { entregaTotal: 0, entregaMotorista: 0, entregaCliente: 0, entregaLoja: 0, entregaFornecedor: 0, plataformaVenda: 0, plataformaEntrega: 0, plataformaTotal: 0, repasse: 0 }
         };
 

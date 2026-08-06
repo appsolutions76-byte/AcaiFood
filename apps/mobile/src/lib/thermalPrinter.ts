@@ -79,6 +79,7 @@ export function generateSingleTicketHTML(
 
   // Resolução inteligente do comprador (Batedeira no B2B, Cliente no B2C)
   const buyerUser = clientUser 
+    || (allUsers && (order as any).buyerId ? allUsers[(order as any).buyerId] : undefined)
     || (allUsers && isB2B && order.lojaId ? allUsers[order.lojaId] : undefined)
     || (allUsers && order.clienteId ? allUsers[order.clienteId] : undefined) 
     || (allUsers && order.destinoId ? allUsers[order.destinoId] : undefined) 
@@ -87,13 +88,13 @@ export function generateSingleTicketHTML(
   const buyerRoleLabel = isB2B ? 'BATEDEIRA (COMPRADOR FRUTO)' : isColeta ? 'LOJA (SOLICITANTE CAÇAMBA)' : 'CLIENTE (AÇAÍ BATIDO)';
   const buyerName = isB2B 
     ? (buyerUser?.name || order.lojaNome || 'Batedeira Açaí') 
-    : (order.clienteNome || buyerUser?.name || 'Cliente AçaíFood');
+    : (buyerUser?.name || order.clienteNome || 'Cliente AçaíFood');
 
-  const buyerPhone = order.clienteTelefone || buyerUser?.telefone || buyerUser?.email || 'Não informado';
+  const buyerPhone = order.clienteTelefone || buyerUser?.telefone || (buyerUser as any)?.phone || buyerUser?.email || 'Contato via App';
   const buyerAddress = order.deliveryAddress 
     || buyerUser?.endereco 
     || (buyerUser?.bairro ? `${buyerUser.bairro}, ${buyerUser.cidade || 'Belém'}` : '') 
-    || 'Endereço não informado';
+    || 'Retirada no Balcão';
 
   const viaTitle = totalVias > 1 
     ? (viaNumber === 1 ? (isB2B ? '*** VIA 1: EXPEDIÇÃO / FORNECEDOR ***' : '*** VIA 1: PREPARO / BATEDEIRA ***') : (isB2B ? '*** VIA 2: TRANSPORTE / CAMINHÃO ***' : '*** VIA 2: ENTREGA / MOTOBOY ***'))

@@ -303,12 +303,19 @@ export default function BatedeiraDashboard() {
               </div>
               <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
                   <span>
-                    {o.type === 'B2C' ? `👤 Cliente: ${o.clienteNome || store.users[o.destinoId]?.name || store.users[o.clienteId!]?.name || store.users[o.criadoPor]?.name || 'Cliente'}` :
+                    {o.type === 'B2C' ? `👤 Cliente: ${o.clienteNome || store.users[(o as any).buyerId!]?.name || store.users[o.destinoId]?.name || store.users[o.clienteId!]?.name || store.users[o.criadoPor]?.name || 'Cliente'}` :
                      o.type === 'B2B' ? `🏭 Fornecedor: ${store.users[o.origemId]?.name || '—'}` :
                      `🚛 Caçamba Ecoponto`}
                   </span>
                   <span className="text-zinc-400">|</span>
-                  <span className="text-zinc-500">🛵 Motorista: {o.motoristaNome || 'Aguardando'}</span>
+                  <span>
+                    🛵 Entregador: {(() => {
+                      const mUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                      const dName = o.motoristaNome || mUser?.name;
+                      const isFinished = o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado' || !!o.receivedAt || !!o.deliveredAt;
+                      return dName || (isFinished ? 'Concluído' : 'Aguardando');
+                    })()}
+                  </span>
               </div>
               <p className="text-xs text-zinc-500 mt-1">{financeText}</p>
               <div className="flex flex-wrap gap-2 mt-2 mb-2">

@@ -462,7 +462,14 @@ export default function FornecedorDashboard() {
                     <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
                         <span>🏪 Loja Compradora: {store.users[o.destinoId]?.name || store.users[o.lojaId!]?.name || o.clienteNome || '—'}</span>
                         <span className="text-zinc-400">|</span>
-                        <span className="text-zinc-500">🚛 Caminhão: {o.motoristaNome || 'Aguardando'}</span>
+                        <span>
+                          🚛 Caminhão: {(() => {
+                            const mUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                            const dName = o.motoristaNome || mUser?.name;
+                            const isFinished = o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado' || !!o.receivedAt || !!o.deliveredAt;
+                            return dName || (isFinished ? 'Concluído' : 'Aguardando');
+                          })()}
+                        </span>
                     </div>
                     <p className="text-xs text-zinc-500 mt-1">
                         Bruto: {formatMoney(o.valor)} |
