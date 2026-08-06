@@ -530,7 +530,9 @@ export default function FornecedorDashboard() {
                             e.stopPropagation();
                             e.preventDefault();
                             const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-                            const targetPixKey = isRealUuid(currentUser?.asaasWalletId) ? currentUser.asaasWalletId : (currentUser?.cpfCnpj || currentUser?.pixKey || currentUser?.asaasWalletId);
+                            const targetPixKey = (currentUser?.pixKey && !isRealUuid(currentUser.pixKey))
+                               ? currentUser.pixKey
+                               : (isRealUuid(currentUser?.asaasWalletId) ? currentUser.asaasWalletId : (currentUser?.cpfCnpj || currentUser?.asaasWalletId));
                             const valorRepasse = o.taxas?.repasse || 0;
                             if (!targetPixKey) {
                               alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber o repasse.");

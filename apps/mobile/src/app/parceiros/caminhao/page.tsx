@@ -362,7 +362,9 @@ export default function CaminhaoDashboard() {
                                   onClick={async (e) => {
                                     e.stopPropagation();
                                     const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-                                    const targetPixKey = isRealUuid(currentUser?.asaasWalletId) ? currentUser.asaasWalletId : (currentUser?.cpfCnpj || currentUser?.pixKey || currentUser?.asaasWalletId);
+                                    const targetPixKey = (currentUser?.pixKey && !isRealUuid(currentUser.pixKey))
+                                       ? currentUser.pixKey
+                                       : (isRealUuid(currentUser?.asaasWalletId) ? currentUser.asaasWalletId : (currentUser?.cpfCnpj || currentUser?.asaasWalletId));
                                     const valorEntrega = getDriverFee(o);
                                     if (!targetPixKey) {
                                       alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber o frete.");
