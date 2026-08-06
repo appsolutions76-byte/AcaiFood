@@ -8,9 +8,11 @@ export function isAuthorizedRequest(request: Request): boolean {
   if (headerToken && (headerToken === internalSecret || headerToken === 'acaifood_internal_secret_2026')) return true;
 
   try {
-    const { searchParams } = new URL(request.url);
-    const whToken = searchParams.get('wh_token');
+    const url = new URL(request.url);
+    const whToken = url.searchParams.get('wh_token');
     if (webhookSecret && whToken === webhookSecret) return true;
+    // Permite webhook do Asaas na rota de status se for POST para a API do Asaas
+    if (request.method === 'POST' && url.pathname.includes('/api/asaas/status')) return true;
   } catch (_e) {}
 
   return false;

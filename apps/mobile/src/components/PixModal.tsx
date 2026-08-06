@@ -49,9 +49,9 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
       }
     };
 
-    // Checar imediatamente e depois a cada 5s
+    // Checar imediatamente e depois a cada 2.5s
     checkStatus();
-    const interval = setInterval(checkStatus, 5000);
+    const interval = setInterval(checkStatus, 2500);
     return () => clearInterval(interval);
   }, [data.open, data.orderId, isPaid, acaoPedido, onPaymentConfirmed]);
 
