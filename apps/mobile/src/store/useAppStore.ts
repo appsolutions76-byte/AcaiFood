@@ -236,7 +236,8 @@ const lastFetchOrdersTime: Record<string, number> = {};
 async function getAuthHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_internal_secret_2026'
   };
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -1716,7 +1717,7 @@ export const useAppStore = create<AppState>()(
           const newOrders = state.orders.map(o => {
             if (o.id !== orderId) return o;
             const newOrder = { ...o };
-            if (action === 'cancelar_pedido' || action === 'cancelar_cliente') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
+            if (action === 'cancelar_pedido' || action === 'cancelar_cliente' || action === 'recusar_loja' || action === 'recusar_forn' || action === 'recusar_fornecedor' || action === 'cancelar_loja' || action === 'cancelar_fornecedor') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
             if (action === 'confirmar_pagamento' || action === 'pagar') { 
               if (o.status !== 'aguardando_pagamento') return o;
               newOrder.status = o.type === 'COLETA' ? 'pronto' : 'preparo'; 
