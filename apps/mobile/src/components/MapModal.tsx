@@ -11,14 +11,6 @@ interface MapModalProps {
   motoristaId?: string | null;
 }
 
-const MAP_BOUNDS = { latMin: -1.51, latMax: -1.38, lonMin: -48.55, lonMax: -48.41 };
-
-function latLngToMapPct(lat: number, lng: number) {
-  const x = ((lng - MAP_BOUNDS.lonMin) / (MAP_BOUNDS.lonMax - MAP_BOUNDS.lonMin)) * 100;
-  const y = ((lat - MAP_BOUNDS.latMax) / (MAP_BOUNDS.latMin - MAP_BOUNDS.latMax)) * 100;
-  return { x: Math.max(5, Math.min(95, x)), y: Math.max(5, Math.min(90, y)) };
-}
-
 export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: MapModalProps) {
   const users = useAppStore(state => state.users);
 
@@ -30,12 +22,49 @@ export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: 
 
   if (!p1 || !p2 || !p1.lat || !p2.lat || !p1.lng || !p2.lng) return null;
 
-
   const dist = haversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
 
-  const pos1 = latLngToMapPct(p1.lat, p1.lng!);
-  const pos2 = latLngToMapPct(p2.lat, p2.lng!);
-  const posM = (pm && pm.lat) ? latLngToMapPct(pm.lat, pm.lng!) : null;
+  // 1. Extrair pontos válidos para calcular o enquadramento (Bounding Box) do mapa
+  const points: { lat: number; lng: number }[] = [];
+  points.push({ lat: p1.lat, lng: p1.lng });
+  points.push({ lat: p2.lat, lng: p2.lng });
+  if (pm && pm.lat && pm.lng) {
+    points.push({ lat: pm.lat, lng: pm.lng });
+  }
+
+  // 2. Definir caixa delimitadora dinâmica
+  const lats = points.map(p => p.lat);
+  const lons = points.map(p => p.lng);
+
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+
+  const latDiff = maxLat - minLat || 0.01;
+  const lonDiff = maxLon - minLon || 0.01;
+
+  // Margem de conforto de 20% para os marcadores não encostarem na borda superior/lateral
+  const bounds = {
+    latMin: minLat - latDiff * 0.20,
+    latMax: maxLat + latDiff * 0.20,
+    lonMin: minLon - lonDiff * 0.20,
+    lonMax: maxLon + lonDiff * 0.20
+  };
+
+  // 3. Projetar coordenadas geográficas em percentual da tela
+  const latLngToMapPct = (lat: number, lng: number) => {
+    const x = ((lng - bounds.lonMin) / (bounds.lonMax - bounds.lonMin)) * 100;
+    const y = ((lat - bounds.latMax) / (bounds.latMin - bounds.latMax)) * 100;
+    return { 
+      x: Math.max(8, Math.min(92, x)), 
+      y: Math.max(8, Math.min(88, y)) 
+    };
+  };
+
+  const pos1 = latLngToMapPct(p1.lat, p1.lng);
+  const pos2 = latLngToMapPct(p2.lat, p2.lng);
+  const posM = (pm && pm.lat && pm.lng) ? latLngToMapPct(pm.lat, pm.lng) : null;
 
   const motIcon = pm?.veiculo === 'Moto' ? '🛵' : pm?.veiculo === 'Caminhão' ? '🚚' : '🚛';
 
