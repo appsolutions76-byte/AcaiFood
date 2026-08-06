@@ -158,9 +158,25 @@ BEGIN
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'storefronts'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.storefronts;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'platform_settings'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.platform_settings;
+  END IF;
 END $$;
 
 ALTER TABLE public.orders REPLICA IDENTITY FULL;
+ALTER TABLE public.storefronts REPLICA IDENTITY FULL;
+ALTER TABLE public.platform_settings REPLICA IDENTITY FULL;
 
 -- 10. Garantir Políticas RLS Totais na Tabela Orders (Leitura, Inserção e Atualização)
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;

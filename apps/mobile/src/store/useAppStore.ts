@@ -2183,50 +2183,64 @@ export const useAppStore = create<AppState>()(
       },
 
       startAutoRefresh: () => {
-         const currentUser = get().currentUser;
-         if (!currentUser) return;
          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
          
-         // Atualiza os pedidos em segundo plano a cada 20 segundos
+         // Atualiza preços, taxas e pedidos em segundo plano a cada 20 segundos
          autoRefreshInterval = setInterval(async () => {
-             await get().fetchOrders(currentUser.id, true);
-             
-             const pendingOrders = (get().orders || []).filter(o => o.status === 'aguardando_pagamento');
-             if (pendingOrders.length > 0) {
-                 for (const pOrder of pendingOrders) {
-                     try {
-                         const res = await fetch(`/api/asaas/status?orderId=${pOrder.id}`);
-                         if (res.ok) {
-                             const data = await res.json();
-                             if (data.isPaid) {
-                                 get().acaoPedido(pOrder.id, 'confirmar_pagamento');
-                             }
-                         }
-                     } catch(e) {
-                         console.warn("Erro no autoRefresh ao checar status de pagamento Pix:", e);
-                     }
-                 }
+             // 1. Atualiza lojas (preços e subsídios) e taxas da plataforma para todos (logados ou não)
+             try {
+                 await get().fetchAllUsers(true);
+                 await get().fetchRates();
+             } catch(e) {
+                 console.warn("Erro ao atualizar usuários e taxas no auto-refresh:", e);
              }
 
-              // Disparo Automático por Horário Programado (payout_time)
-              try {
-                const targetPayoutTime = get().rates?.payout_time || '22:00';
-                const now = new Date();
-                const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                if (currentHHMM === targetPayoutTime) {
-                  const todayStr = now.toISOString().split('T')[0];
-                  if (lastSweepDate !== todayStr) {
-                    lastSweepDate = todayStr;
-                    console.log(`⏰ Horário de varredura programada atingido (${targetPayoutTime})! Executando payout-sweep...`);
-                    supabase.functions.invoke('payout-sweep').then(({ data, error }) => {
-                      if (error) console.warn("Aviso auto-sweep por horário:", error);
-                      else console.log("✅ Varredura automática das", targetPayoutTime, "executada:", data);
-                    }).catch(err => console.warn("Exceção no auto-sweep:", err));
-                  }
-                }
-              } catch(eSweep) {
-                console.warn("Erro na checagem de horário da varredura:", eSweep);
-              }
+             const currentUser = get().currentUser;
+             if (currentUser) {
+                 // 2. Se logado, atualiza pedidos e checa pagamentos
+                 try {
+                     await get().fetchOrders(currentUser.id, true);
+                     
+                     const pendingOrders = (get().orders || []).filter(o => o.status === 'aguardando_pagamento');
+                     if (pendingOrders.length > 0) {
+                         for (const pOrder of pendingOrders) {
+                             try {
+                                 const res = await fetch(`/api/asaas/status?orderId=${pOrder.id}`);
+                                 if (res.ok) {
+                                     const data = await res.json();
+                                     if (data.isPaid) {
+                                         get().acaoPedido(pOrder.id, 'confirmar_pagamento');
+                                     }
+                                 }
+                             } catch(e) {
+                                 console.warn("Erro no autoRefresh ao checar status de pagamento Pix:", e);
+                             }
+                         }
+                     }
+                 } catch(eOrders) {
+                     console.warn("Erro ao buscar pedidos no auto-refresh:", eOrders);
+                 }
+
+                 // Disparo Automático por Horário Programado (payout_time)
+                 try {
+                   const targetPayoutTime = get().rates?.payout_time || '22:00';
+                   const now = new Date();
+                   const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                   if (currentHHMM === targetPayoutTime) {
+                     const todayStr = now.toISOString().split('T')[0];
+                     if (lastSweepDate !== todayStr) {
+                       lastSweepDate = todayStr;
+                       console.log(`⏰ Horário de varredura programada atingido (${targetPayoutTime})! Executando payout-sweep...`);
+                       supabase.functions.invoke('payout-sweep').then(({ data, error }) => {
+                         if (error) console.warn("Aviso auto-sweep por horário:", error);
+                         else console.log("✅ Varredura automática das", targetPayoutTime, "executada:", data);
+                       }).catch(err => console.warn("Exceção no auto-sweep:", err));
+                     }
+                   }
+                 } catch(eSweep) {
+                   console.warn("Erro na checagem de horário da varredura:", eSweep);
+                 }
+             }
          }, 20000);
       },
       
