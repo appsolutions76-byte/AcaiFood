@@ -41,6 +41,12 @@ export default function BatedeiraDashboard() {
       setPrices(currentUser.priceB2C);
     }
   }, [currentUser?.priceB2C]);
+
+  useEffect(() => {
+    if (currentUser?.freteSubsidyPct !== undefined) {
+      setSubsidyInput(currentUser.freteSubsidyPct.toString());
+    }
+  }, [currentUser?.freteSubsidyPct]);
   const [activeTab, setActiveTab] = useState('pedidos');
 
   const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(getPrinterConfig);

@@ -672,7 +672,7 @@ export const useAppStore = create<AppState>()(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'storefronts' },
                   () => {
-                      get().fetchAllUsers();
+                      get().fetchAllUsers(true);
                   }
               )
               .on(
@@ -1209,6 +1209,7 @@ export const useAppStore = create<AppState>()(
       },
 
       criarPedido: async (tipo, targetId, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => {
+        await get().fetchAllUsers(true);
         const state = get();
         if (!state.currentUser) return;
         const currentUser = state.currentUser;
