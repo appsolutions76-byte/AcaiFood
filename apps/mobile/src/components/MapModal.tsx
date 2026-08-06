@@ -17,6 +17,14 @@ export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: 
   const mapInstanceRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
+  // Referências persistentes para evitar oscilação do Leaflet
+  const markerOrigemRef = useRef<any>(null);
+  const markerDestinoRef = useRef<any>(null);
+  const markerMotoristaRef = useRef<any>(null);
+  const polylineEntregaRef = useRef<any>(null);
+  const polylineRetiradaRef = useRef<any>(null);
+  const hasCenteredRef = useRef<boolean>(false);
+
   // 1. Injetar assets do Leaflet dinamicamente se ainda não presentes
   useEffect(() => {
     if (!isOpen) return;
@@ -61,7 +69,25 @@ export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: 
     }
   }, [isOpen]);
 
-  // 2. Montar e desenhar o mapa Leaflet
+  // 2. Destruir mapa e limpar referências quando o modal fechar
+  useEffect(() => {
+    if (!isOpen) {
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+        } catch (_e) {}
+        mapInstanceRef.current = null;
+      }
+      markerOrigemRef.current = null;
+      markerDestinoRef.current = null;
+      markerMotoristaRef.current = null;
+      polylineEntregaRef.current = null;
+      polylineRetiradaRef.current = null;
+      hasCenteredRef.current = false;
+    }
+  }, [isOpen]);
+
+  // 3. Montar e atualizar dinamicamente o mapa Leaflet
   useEffect(() => {
     if (!isOpen || !leafletLoaded) return;
 
@@ -74,32 +100,28 @@ export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: 
     const L = (window as any).L;
     if (!L) return;
 
-    // Destruir mapa anterior se houver
-    if (mapInstanceRef.current) {
-      try {
-        mapInstanceRef.current.remove();
-      } catch (_e) {}
-      mapInstanceRef.current = null;
+    // Inicializar mapa se ainda não existir
+    if (!mapInstanceRef.current) {
+      const map = L.map("acaifood-leaflet-map", {
+        zoomControl: true,
+        scrollWheelZoom: true,
+        doubleClickZoom: true,
+        touchZoom: true
+      }).setView([p1.lat, p1.lng], 13);
+
+      mapInstanceRef.current = map;
+
+      // Adicionar tiles elegantes CartoDB Voyager
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+      }).addTo(map);
     }
 
-    // Inicializar mapa
-    const map = L.map("acaifood-leaflet-map", {
-      zoomControl: true,
-      scrollWheelZoom: true,
-      doubleClickZoom: true,
-      touchZoom: true
-    }).setView([p1.lat, p1.lng], 13);
+    const map = mapInstanceRef.current;
 
-    mapInstanceRef.current = map;
-
-    // Adicionar tiles elegantes CartoDB Voyager
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
-    }).addTo(map);
-
-    // Definir ícones customizados (emojis + tooltip elegante)
+    // Definir ícone emoji customizado (emoji + tooltip elegante)
     const createEmojiIcon = (emoji: string, label: string) => {
       return L.divIcon({
         html: `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; width: 30px; height: 30px;">
@@ -115,57 +137,83 @@ export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: 
     const iconOrigem = createEmojiIcon(pm?.veiculo === 'Caminhão' ? '🏭' : '🏪', p1.name || 'Retirada');
     const iconDestino = createEmojiIcon('🏁', p2.name || 'Entrega');
     
-    // Adicionar marcadores
-    L.marker([p1.lat, p1.lng], { icon: iconOrigem }).addTo(map);
-    L.marker([p2.lat, p2.lng], { icon: iconDestino }).addTo(map);
+    // Atualizar ou Criar Marcador de Origem (Loja/Fornecedor)
+    if (!markerOrigemRef.current) {
+      markerOrigemRef.current = L.marker([p1.lat, p1.lng], { icon: iconOrigem }).addTo(map);
+    } else {
+      markerOrigemRef.current.setLatLng([p1.lat, p1.lng]).setIcon(iconOrigem);
+    }
+
+    // Atualizar ou Criar Marcador de Destino (Cliente)
+    if (!markerDestinoRef.current) {
+      markerDestinoRef.current = L.marker([p2.lat, p2.lng], { icon: iconDestino }).addTo(map);
+    } else {
+      markerDestinoRef.current.setLatLng([p2.lat, p2.lng]).setIcon(iconDestino);
+    }
 
     const boundsPoints: any[] = [
       [p1.lat, p1.lng],
       [p2.lat, p2.lng]
     ];
 
-    // Rota Loja -> Cliente (Linha azul premium)
-    L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
-      color: '#3b82f6',
-      weight: 4,
-      opacity: 0.85,
-      dashArray: '2, 6'
-    }).addTo(map);
+    // Atualizar Rota Loja -> Cliente (Linha azul premium)
+    if (!polylineEntregaRef.current) {
+      polylineEntregaRef.current = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
+        color: '#3b82f6',
+        weight: 4,
+        opacity: 0.85,
+        dashArray: '2, 6'
+      }).addTo(map);
+    } else {
+      polylineEntregaRef.current.setLatLngs([[p1.lat, p1.lng], [p2.lat, p2.lng]]);
+    }
 
-    // Se houver motorista ativo
+    // Atualizar Motorista (se houver)
     if (pm && pm.lat && pm.lng) {
       const motIconEmoji = pm.veiculo === 'Moto' ? '🛵' : pm.veiculo === 'Caminhão' ? '🚚' : '🚛';
       const iconMotorista = createEmojiIcon(motIconEmoji, pm.name || 'Entregador');
-      L.marker([pm.lat, pm.lng], { icon: iconMotorista }).addTo(map);
+      
+      if (!markerMotoristaRef.current) {
+        markerMotoristaRef.current = L.marker([pm.lat, pm.lng], { icon: iconMotorista }).addTo(map);
+      } else {
+        markerMotoristaRef.current.setLatLng([pm.lat, pm.lng]).setIcon(iconMotorista);
+      }
       boundsPoints.push([pm.lat, pm.lng]);
 
       // Rota Motorista -> Retirada (Linha tracejada laranja)
-      L.polyline([[pm.lat, pm.lng], [p1.lat, p1.lng]], {
-        color: '#f97316',
-        weight: 3,
-        opacity: 0.8,
-        dashArray: '5, 5'
-      }).addTo(map);
+      if (!polylineRetiradaRef.current) {
+        polylineRetiradaRef.current = L.polyline([[pm.lat, pm.lng], [p1.lat, p1.lng]], {
+          color: '#f97316',
+          weight: 3,
+          opacity: 0.8,
+          dashArray: '5, 5'
+        }).addTo(map);
+      } else {
+        polylineRetiradaRef.current.setLatLngs([[pm.lat, pm.lng], [p1.lat, p1.lng]]);
+      }
+    } else {
+      // Se sumir o motorista do pedido
+      if (markerMotoristaRef.current) {
+        map.removeLayer(markerMotoristaRef.current);
+        markerMotoristaRef.current = null;
+      }
+      if (polylineRetiradaRef.current) {
+        map.removeLayer(polylineRetiradaRef.current);
+        polylineRetiradaRef.current = null;
+      }
     }
 
-    // Auto-Ajustar enquadramento do mapa
-    if (boundsPoints.length >= 2) {
+    // Auto-Ajustar enquadramento do mapa apenas uma vez por abertura para respeitar a manipulação do usuário
+    if (boundsPoints.length >= 2 && !hasCenteredRef.current) {
       map.fitBounds(boundsPoints, { padding: [50, 50] });
+      hasCenteredRef.current = true;
     }
 
-    // Forçar recálculo de tamanho do container
+    // Recálculo do tamanho do container após renderização do DOM
     setTimeout(() => {
       if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
     }, 250);
 
-    return () => {
-      if (mapInstanceRef.current) {
-        try {
-          mapInstanceRef.current.remove();
-        } catch (_e) {}
-        mapInstanceRef.current = null;
-      }
-    };
   }, [isOpen, leafletLoaded, users, origemId, destinoId, motoristaId]);
 
   if (!isOpen) return null;
