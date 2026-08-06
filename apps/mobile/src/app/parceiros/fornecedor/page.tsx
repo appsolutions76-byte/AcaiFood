@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation";
 import { PackageOpen, Printer, BookOpen } from "lucide-react";
 import { useAppStore, getRatesForCity, generateUUID } from "@/store/useAppStore";
-import { MapModal } from "@/components/MapModal";
+import { MapModal, MapPoint } from "@/components/MapModal";
 import { supabase } from "@/lib/supabase";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
@@ -24,7 +24,12 @@ export default function FornecedorDashboard() {
   const store = useAppStore();
   const currentUser = store.currentUser;
   
-  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [mapModal, setMapModal] = useState<{
+    open: boolean;
+    origem: MapPoint | null;
+    destino: MapPoint | null;
+    motorista?: MapPoint | null;
+  }>({ open: false, origem: null, destino: null, motorista: null });
   const [printerModalOpen, setPrinterModalOpen] = useState(false);
   const printedOrdersRef = useRef<Set<string>>(new Set());
 
@@ -433,7 +438,26 @@ export default function FornecedorDashboard() {
                              📅 {new Date(o.createdAt).toLocaleDateString('pt-BR')} às {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </span>
                         )}
-                        <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId })} className="text-[10px] text-blue-500 hover:underline">🗺️ Ver Rota de {(o.distancia || 0).toFixed(1)} km</button>
+                        <button 
+                          onClick={() => {
+                            const origemUser = store.users[o.origemId];
+                            const destinoUser = store.users[o.destinoId];
+                            const latOrigem = origemUser?.lat || 0;
+                            const lngOrigem = origemUser?.lng || 0;
+                            const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                            const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                            const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                            setMapModal({
+                              open: true,
+                              origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                              destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                              motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
+                            });
+                          }} 
+                          className="text-[10px] text-blue-500 hover:underline"
+                        >
+                          🗺️ Ver Rota de {(o.distancia || 0).toFixed(1)} km
+                        </button>
                     </div>
                     <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
                         <span>🏪 Loja Compradora: {store.users[o.destinoId]?.name || store.users[o.lojaId!]?.name || o.clienteNome || '—'}</span>
@@ -615,9 +639,9 @@ export default function FornecedorDashboard() {
       <MapModal 
         isOpen={mapModal.open} 
         onClose={() => setMapModal(prev => ({ ...prev, open: false }))} 
-        origemId={mapModal.origem} 
-        destinoId={mapModal.destino} 
-        motoristaId={mapModal.motorista} 
+        origem={mapModal.origem} 
+        destino={mapModal.destino} 
+        motorista={mapModal.motorista} 
       />
 
       {priceModalOpen && (

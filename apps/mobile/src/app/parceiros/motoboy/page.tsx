@@ -4,7 +4,7 @@ import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Bike, BookOpen } from "lucide-react";
 import { useAppStore, getRatesForCity } from "@/store/useAppStore";
-import { MapModal } from "@/components/MapModal";
+import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 
@@ -15,7 +15,12 @@ export default function MotoboyDashboard() {
   const store = useAppStore();
   const currentUser = store.currentUser;
   
-  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [mapModal, setMapModal] = useState<{
+    open: boolean;
+    origem: MapPoint | null;
+    destino: MapPoint | null;
+    motorista?: MapPoint | null;
+  }>({ open: false, origem: null, destino: null, motorista: null });
   const [activeTab, setActiveTab] = useState('radar');
   const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
@@ -243,7 +248,23 @@ export default function MotoboyDashboard() {
                           <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded text-sm mb-4 flex flex-col gap-1 border border-zinc-100 dark:border-zinc-800">
                               <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">📍</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{origem?.bairro || '—'}</span></div>
                               <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">🏁</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{destino?.bairro || '—'}</span></div>
-                              <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: currentUser.id })} className="mt-2 text-blue-600 bg-blue-100/50 dark:bg-blue-900/20 p-2 rounded-lg font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 text-center w-full transition border border-blue-200 dark:border-blue-800">🗺️ Ver Rota de {o.distancia ? o.distancia.toFixed(1) : '0.0'} km</button>
+                              <button 
+                                onClick={() => {
+                                  const latOrigem = origem?.lat || 0;
+                                  const lngOrigem = origem?.lng || 0;
+                                  const latDestino = o.deliveryLat || destino?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                                  const lngDestino = o.deliveryLng || destino?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                                  setMapModal({
+                                    open: true,
+                                    origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origem?.name || 'Retirada' },
+                                    destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destino?.name || 'Entrega' },
+                                    motorista: currentUser?.lat ? { lat: currentUser.lat, lng: currentUser.lng || 0, name: currentUser.name || 'Entregador', veiculo: currentUser.veiculo || 'moto' } : null
+                                  });
+                                }} 
+                                className="mt-2 text-blue-600 bg-blue-100/50 dark:bg-blue-900/20 p-2 rounded-lg font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 text-center w-full transition border border-blue-200 dark:border-blue-800"
+                              >
+                                🗺️ Ver Rota de {o.distancia ? o.distancia.toFixed(1) : '0.0'} km
+                              </button>
                           </div>
                           <button onClick={() => store.acaoPedido(o.id, 'aceitar_motorista')} className="w-full bg-zinc-800 hover:bg-black dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white text-base font-bold py-3.5 rounded-xl transition shadow-md">Aceitar Corrida</button>
                       </div>
@@ -297,7 +318,18 @@ export default function MotoboyDashboard() {
                             </div>
                             <div className="mt-2 flex flex-col sm:flex-row gap-2 w-full">
                               <button 
-                                  onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: currentUser.id })} 
+                                  onClick={() => {
+                                    const latOrigem = origemUser?.lat || 0;
+                                    const lngOrigem = origemUser?.lng || 0;
+                                    const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                                    const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                                    setMapModal({
+                                      open: true,
+                                      origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                                      destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                                      motorista: currentUser?.lat ? { lat: currentUser.lat, lng: currentUser.lng || 0, name: currentUser.name || 'Entregador', veiculo: currentUser.veiculo || 'moto' } : null
+                                    });
+                                  }} 
                                   className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/30 p-2.5 rounded-xl font-bold text-center transition border border-blue-200 dark:border-blue-800/80 flex items-center justify-center gap-1.5 text-xs shadow-sm"
                               >
                                   🗺️ Ver Mapa ({(o.distancia || 0).toFixed(1)} km)
@@ -314,16 +346,22 @@ export default function MotoboyDashboard() {
                                 </a>
                               )}
 
-                              {(o.deliveryLat || destinoUser?.lat) && (
-                                <a 
-                                  href={`https://www.google.com/maps/dir/?api=1&destination=${o.deliveryLat || destinoUser?.lat},${o.deliveryLng || destinoUser?.lng}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                >
-                                  🏁 GPS p/ Cliente
-                                </a>
-                              )}
+                              {(() => {
+                                const latOrig = origemUser?.lat || 0;
+                                const lngOrig = origemUser?.lng || 0;
+                                const latDest = o.deliveryLat || destinoUser?.lat || (latOrig ? latOrig + 0.0045 : -1.4552);
+                                const lngDest = o.deliveryLng || destinoUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.4902);
+                                return (
+                                  <a 
+                                    href={`https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                                  >
+                                    🏁 GPS p/ Cliente
+                                  </a>
+                                );
+                              })()}
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2 mb-3">
@@ -336,9 +374,17 @@ export default function MotoboyDashboard() {
                         </div>
                         
                         {o.status === 'em_rota' ? (
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 w-full">
                                 <button onClick={() => { if(confirm('Deseja realmente cancelar esta corrida?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
-                                <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-3 rounded-lg shadow transition">📍 Confirmar Chegada</button>
+                                {!o.pickedUpAt ? (
+                                  <button onClick={() => store.acaoPedido(o.id, 'retirar_pedido')} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                                    🏪 Confirmar Chegada na Loja
+                                  </button>
+                                ) : (
+                                  <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                                    🏁 Confirmar Chegada no Cliente
+                                  </button>
+                                )}
                             </div>
                         ) : o.status === 'aguardando_cliente' ? (
                             <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 p-4 rounded-xl flex flex-col gap-3 shadow-inner">
@@ -421,9 +467,9 @@ export default function MotoboyDashboard() {
       <MapModal 
         isOpen={mapModal.open} 
         onClose={() => setMapModal(prev => ({ ...prev, open: false }))} 
-        origemId={mapModal.origem} 
-        destinoId={mapModal.destino} 
-        motoristaId={mapModal.motorista} 
+        origem={mapModal.origem} 
+        destino={mapModal.destino} 
+        motorista={mapModal.motorista} 
       />
     </div>
   );

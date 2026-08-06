@@ -1697,7 +1697,11 @@ export const useAppStore = create<AppState>()(
             }
             if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
             if (action === 'chamar_moto' || action === 'chamar_caminhao') { newOrder.status = 'pronto'; newDbStatus = 'READY'; }
-            if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newDbStatus = 'DELIVERING'; driverId = newOrder.motoristaId; }
+            if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newOrder.pickedUpAt = undefined; newDbStatus = 'DELIVERING'; driverId = newOrder.motoristaId; }
+            if (action === 'retirar_pedido') {
+              newOrder.pickedUpAt = new Date().toISOString();
+              newDbStatus = 'DELIVERING';
+            }
             if (action === 'conf_motorista') {
               newOrder.status = 'aguardando_cliente';
               newDbStatus = 'DELIVERED';
@@ -1716,7 +1720,7 @@ export const useAppStore = create<AppState>()(
         if (driverId) updates.driver_id = driverId;
         if (action === 'aceitar_loja' || action === 'aceitar_forn') updates.accepted_at = new Date().toISOString();
         if (action === 'chamar_moto' || action === 'chamar_caminhao') updates.ready_at = new Date().toISOString();
-        if (action === 'aceitar_motorista') updates.picked_up_at = new Date().toISOString();
+        if (action === 'retirar_pedido') updates.picked_up_at = new Date().toISOString();
         if (action === 'conf_motorista') updates.delivered_at = new Date().toISOString();
         if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') updates.received_at = new Date().toISOString();
 

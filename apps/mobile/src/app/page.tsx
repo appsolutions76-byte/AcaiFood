@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm, getRatesForCity } from "@/store/useAppStore";
-import { MapModal } from "@/components/MapModal";
+import { MapModal, MapPoint } from "@/components/MapModal";
 import { PixModal } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { validateCpfCnpjDigits } from "@/lib/pix";
@@ -41,7 +41,12 @@ export default function StorefrontPage() {
   const currentUser = store.currentUser;
   const router = useRouter();
   
-  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [mapModal, setMapModal] = useState<{
+    open: boolean;
+    origem: MapPoint | null;
+    destino: MapPoint | null;
+    motorista?: MapPoint | null;
+  }>({ open: false, origem: null, destino: null, motorista: null });
   const [productSelectModal, setProductSelectModal] = useState<{ open: boolean; lojaId: string; tipo: string; quantity: number }>({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string; isSandbox?: boolean; paymentId?: string; totalValue?: number }>({ open: false });
@@ -377,7 +382,25 @@ export default function StorefrontPage() {
                                       <p className="text-[10px] text-zinc-500">{loja.bairro}</p>
                                   </div>
                               </div>
-                              {currentUser && <button onClick={() => setMapModal({ open: true, origem: loja.id, destino: currentUser.id })} className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">🗺️ {dist.toFixed(1)} km</button>}
+                              {currentUser && (
+                                <button 
+                                  onClick={() => {
+                                    const latOrig = loja?.lat || 0;
+                                    const lngOrig = loja?.lng || 0;
+                                    const latDest = currentUser?.lat || (latOrig ? latOrig + 0.0045 : -1.455);
+                                    const lngDest = currentUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.490);
+                                    setMapModal({
+                                      open: true,
+                                      origem: { lat: latOrig, lng: lngOrig, name: loja.name || 'Retirada' },
+                                      destino: { lat: latDest, lng: lngDest, name: currentUser.name || 'Entrega' },
+                                      motorista: null
+                                    });
+                                  }} 
+                                  className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded"
+                                >
+                                  🗺️ {dist.toFixed(1)} km
+                                </button>
+                              )}
                           </div>
                           
                           <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded flex flex-col gap-1 text-sm mb-4 border border-zinc-100 dark:border-zinc-800">
@@ -449,7 +472,26 @@ export default function StorefrontPage() {
                                </div>
                             )}
                              {!isCanceled && (
-                               <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded inline-flex items-center gap-1">🗺️ Ver Rota ({(o.distancia || 0).toFixed(1)} km)</button>
+                                <button 
+                                  onClick={() => {
+                                    const origemUser = store.users[o.origemId];
+                                    const destinoUser = store.users[o.destinoId];
+                                    const latOrigem = origemUser?.lat || 0;
+                                    const lngOrigem = origemUser?.lng || 0;
+                                    const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                                    const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                                    const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                                    setMapModal({
+                                      open: true,
+                                      origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                                      destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                                      motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
+                                    });
+                                  }} 
+                                  className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded inline-flex items-center gap-1"
+                                >
+                                  🗺️ Ver Rota ({(o.distancia || 0).toFixed(1)} km)
+                                </button>
                              )}
                         </div>
                         
@@ -756,9 +798,9 @@ export default function StorefrontPage() {
       <MapModal 
         isOpen={mapModal.open} 
         onClose={() => setMapModal(prev => ({ ...prev, open: false }))} 
-        origemId={mapModal.origem} 
-        destinoId={mapModal.destino} 
-        motoristaId={mapModal.motorista} 
+        origem={mapModal.origem} 
+        destino={mapModal.destino} 
+        motorista={mapModal.motorista} 
       />
 
       <PixModal 

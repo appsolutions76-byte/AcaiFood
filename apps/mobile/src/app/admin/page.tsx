@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Settings, Trash2, Search, BookOpen } from "lucide-react";
 import { useAppStore, Order, City, getRatesForCity } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
-import { MapModal } from "@/components/MapModal";
+import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminManualModal } from "@/components/AdminManualModal";
 
@@ -70,7 +70,12 @@ function AdminDashboardContent() {
     ecopoint_fixed_fee: 50.00
   };
 
-  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [mapModal, setMapModal] = useState<{
+    open: boolean;
+    origem: MapPoint | null;
+    destino: MapPoint | null;
+    motorista?: MapPoint | null;
+  }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState(() => rates);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades'>('dashboard');
@@ -700,7 +705,26 @@ function AdminDashboardContent() {
                         <tr key={o.id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${o.status === 'cancelado' ? 'opacity-50' : ''}`}>
                             <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">
                                 {o.id}<br/>
-                                <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">🗺️ Ver {(o.distancia || 0).toFixed(1)} km</button>
+                                <button 
+                                  onClick={() => {
+                                    const origemUser = store.users[o.origemId];
+                                    const destinoUser = store.users[o.destinoId];
+                                    const latOrigem = origemUser?.lat || 0;
+                                    const lngOrigem = origemUser?.lng || 0;
+                                    const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                                    const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                                    const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                                    setMapModal({
+                                      open: true,
+                                      origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                                      destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                                      motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
+                                    });
+                                  }} 
+                                  className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                  🗺️ Ver {(o.distancia || 0).toFixed(1)} km
+                                </button>
                                 <div className="mt-1 flex flex-col gap-0.5">
                                     {safeTime(o.createdAt) && <span className="text-[9px] text-zinc-500 font-normal">🕒 {safeTime(o.createdAt)}</span>}
                                     {safeTime(o.acceptedAt) && <span className="text-[9px] text-purple-500 font-normal">👨‍🍳 {safeTime(o.acceptedAt)}</span>}
@@ -959,9 +983,9 @@ function AdminDashboardContent() {
       <MapModal 
         isOpen={mapModal.open} 
         onClose={() => setMapModal(prev => ({ ...prev, open: false }))} 
-        origemId={mapModal.origem} 
-        destinoId={mapModal.destino} 
-        motoristaId={mapModal.motorista} 
+        origem={mapModal.origem} 
+        destino={mapModal.destino} 
+        motorista={mapModal.motorista} 
       />
 
       {ratesModalOpen && (

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation";
 import { Store, Printer, BookOpen } from "lucide-react";
 import { useAppStore, haversineKm, getRatesForCity, generateUUID } from "@/store/useAppStore";
-import { MapModal } from "@/components/MapModal";
+import { MapModal, MapPoint } from "@/components/MapModal";
 import { supabase } from "@/lib/supabase";
 import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -25,7 +25,12 @@ export default function BatedeiraDashboard() {
   const store = useAppStore();
   const currentUser = store.currentUser;
   
-  const [mapModal, setMapModal] = useState<{ open: boolean; origem: string; destino: string; motorista?: string | null }>({ open: false, origem: '', destino: '' });
+  const [mapModal, setMapModal] = useState<{
+    open: boolean;
+    origem: MapPoint | null;
+    destino: MapPoint | null;
+    motorista?: MapPoint | null;
+  }>({ open: false, origem: null, destino: null, motorista: null });
   const [pixModalData, setPixModalData] = useState<PixModalData>({ open: false });
   const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
@@ -268,7 +273,26 @@ export default function BatedeiraDashboard() {
                     </span>
                   )}
                   {!isCanceled && (
-                    <button onClick={() => setMapModal({ open: true, origem: o.origemId, destino: o.destinoId, motorista: o.motoristaId })} className="text-[10px] text-blue-500 hover:underline">🗺️ {(o.distancia || 0).toFixed(1)} km</button>
+                    <button 
+                      onClick={() => {
+                        const origemUser = store.users[o.origemId];
+                        const destinoUser = store.users[o.destinoId];
+                        const latOrigem = origemUser?.lat || 0;
+                        const lngOrigem = origemUser?.lng || 0;
+                        const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                        const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                        const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                        setMapModal({
+                          open: true,
+                          origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                          destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                          motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
+                        });
+                      }} 
+                      className="text-[10px] text-blue-500 hover:underline"
+                    >
+                      🗺️ {(o.distancia || 0).toFixed(1)} km
+                    </button>
                   )}
               </div>
               <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
@@ -594,7 +618,22 @@ export default function BatedeiraDashboard() {
               <div className="flex justify-between items-center mt-2">
                   <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Logística Reversa</h3>
                   <div className="flex items-center gap-2">
-                      <button onClick={() => setMapModal({ open: true, origem: currentUser.id, destino: 'ecoponto' })} className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">🗺️ {distColeta.toFixed(1)} km</button>
+                      <button 
+                        onClick={() => {
+                          const ecopontoUser = store.users['ecoponto'];
+                          const latEcoponto = ecopontoUser?.lat || -1.4558;
+                          const lngEcoponto = ecopontoUser?.lng || -48.4908;
+                          setMapModal({
+                            open: true,
+                            origem: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser?.name || 'Sua Loja' },
+                            destino: { lat: latEcoponto, lng: lngEcoponto, name: ecopontoUser?.name || 'Ecoponto' },
+                            motorista: null
+                          });
+                        }} 
+                        className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded"
+                      >
+                        🗺️ {distColeta.toFixed(1)} km
+                      </button>
                       
                       {(() => {
                           const activeColeta = (store.orders || []).find(o => o.type === 'COLETA' && o.origemId === currentUser.id && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado');
@@ -717,7 +756,19 @@ export default function BatedeiraDashboard() {
                       <div key={forn.id} className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900 rounded-lg p-3 flex flex-col">
                           <div className="flex justify-between items-start mb-2">
                               <div className="flex gap-2 items-center"><span className="text-2xl">{forn.icon}</span><span className="font-bold text-sm text-emerald-900 dark:text-emerald-400">{forn.name}</span></div>
-                              <button onClick={() => setMapModal({ open: true, origem: forn.id, destino: currentUser.id })} className="text-[10px] font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">🗺️ {dist.toFixed(1)} km</button>
+                              <button 
+                                onClick={() => {
+                                  setMapModal({
+                                    open: true,
+                                    origem: { lat: forn?.lat || 0, lng: forn?.lng || 0, name: forn?.name || 'Fornecedor' },
+                                    destino: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser?.name || 'Sua Loja' },
+                                    motorista: null
+                                  });
+                                }} 
+                                className="text-[10px] font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded"
+                              >
+                                🗺️ {dist.toFixed(1)} km
+                              </button>
                           </div>
                           <div className="bg-white/60 dark:bg-black/20 p-2 rounded mb-3 text-xs text-emerald-800 dark:text-emerald-200">
                               <div className="flex justify-between mb-1"><span>Lata Açaí:</span> <span className="font-bold">{formatMoney(forn.priceB2B || 0)}</span></div>
@@ -777,9 +828,9 @@ export default function BatedeiraDashboard() {
       <MapModal 
         isOpen={mapModal.open} 
         onClose={() => setMapModal(prev => ({ ...prev, open: false }))} 
-        origemId={mapModal.origem} 
-        destinoId={mapModal.destino} 
-        motoristaId={mapModal.motorista} 
+        origem={mapModal.origem} 
+        destino={mapModal.destino} 
+        motorista={mapModal.motorista} 
       />
 
       {priceModalOpen && (

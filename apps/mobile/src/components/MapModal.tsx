@@ -1,18 +1,24 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useAppStore, haversineKm } from "@/store/useAppStore";
+import { haversineKm } from "@/store/useAppStore";
+
+export interface MapPoint {
+  lat: number;
+  lng: number;
+  name: string;
+  veiculo?: string;
+}
 
 interface MapModalProps {
   isOpen: boolean;
   onClose: () => void;
-  origemId: string;
-  destinoId: string;
-  motoristaId?: string | null;
+  origem: MapPoint | null;
+  destino: MapPoint | null;
+  motorista?: MapPoint | null;
 }
 
-export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: MapModalProps) {
-  const users = useAppStore(state => state.users);
+export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapModalProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
@@ -91,9 +97,9 @@ export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: 
   useEffect(() => {
     if (!isOpen || !leafletLoaded) return;
 
-    const p1 = users[origemId];
-    const p2 = users[destinoId];
-    const pm = motoristaId ? users[motoristaId] : null;
+    const p1 = origem;
+    const p2 = destino;
+    const pm = motorista;
 
     if (!p1 || !p2 || !p1.lat || !p2.lat || !p1.lng || !p2.lng) return;
 
@@ -192,7 +198,7 @@ export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: 
         polylineRetiradaRef.current.setLatLngs([[pm.lat, pm.lng], [p1.lat, p1.lng]]);
       }
     } else {
-      // Se sumir o motorista do pedido
+      // Se sumir o motorista
       if (markerMotoristaRef.current) {
         map.removeLayer(markerMotoristaRef.current);
         markerMotoristaRef.current = null;
@@ -214,12 +220,12 @@ export function MapModal({ isOpen, onClose, origemId, destinoId, motoristaId }: 
       if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
     }, 250);
 
-  }, [isOpen, leafletLoaded, users, origemId, destinoId, motoristaId]);
+  }, [isOpen, leafletLoaded, origem, destino, motorista]);
 
   if (!isOpen) return null;
 
-  const p1 = users[origemId];
-  const p2 = users[destinoId];
+  const p1 = origem;
+  const p2 = destino;
   const dist = (p1?.lat && p2?.lat) ? haversineKm(p1.lat || 0, p1.lng || 0, p2.lat || 0, p2.lng || 0) : 0;
 
   return (
