@@ -39,6 +39,28 @@ export default function MotoboyDashboard() {
     s.startRealtime();
   }, []);
 
+  // Captura contínua do GPS em tempo real quando Online
+  useEffect(() => {
+    if (!mounted || !currentUser || currentUser.status === 'paused' || typeof window === 'undefined' || !navigator.geolocation) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        if (latitude && longitude) {
+          store.updateUserLocation(currentUser.id, latitude, longitude);
+        }
+      },
+      (err) => {
+        console.warn("Aviso de GPS do Motoboy:", err.message);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [mounted, currentUser?.id, currentUser?.status]);
+
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
   }
@@ -250,15 +272,18 @@ export default function MotoboyDashboard() {
                               <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">🏁</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{destino?.bairro || '—'}</span></div>
                               <button 
                                 onClick={() => {
-                                  const latOrigem = origem?.lat || 0;
-                                  const lngOrigem = origem?.lng || 0;
-                                  const latDestino = o.deliveryLat || destino?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
-                                  const lngDestino = o.deliveryLng || destino?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                                  const latOrigem = (origem?.lat && origem.lat !== 0) ? origem.lat : -1.4558;
+                                  const lngOrigem = (origem?.lng && origem.lng !== 0) ? origem.lng : -48.4908;
+                                  const latDestino = o.deliveryLat || destino?.lat || (latOrigem + 0.0045);
+                                  const lngDestino = o.deliveryLng || destino?.lng || (lngOrigem + 0.0045);
+                                  const driverLat = (currentUser?.lat && currentUser.lat !== 0) ? currentUser.lat : latOrigem - 0.003;
+                                  const driverLng = (currentUser?.lng && currentUser.lng !== 0) ? currentUser.lng : lngOrigem - 0.003;
+
                                   setMapModal({
                                     open: true,
                                     origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origem?.name || 'Retirada' },
                                     destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destino?.name || 'Entrega' },
-                                    motorista: currentUser?.lat ? { lat: currentUser.lat, lng: currentUser.lng || 0, name: currentUser.name || 'Entregador', veiculo: currentUser.veiculo || 'moto' } : null
+                                    motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Sua Moto', veiculo: currentUser?.veiculo || 'Moto' }
                                   });
                                 }} 
                                 className="mt-2 text-blue-600 bg-blue-100/50 dark:bg-blue-900/20 p-2 rounded-lg font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 text-center w-full transition border border-blue-200 dark:border-blue-800"
@@ -319,15 +344,18 @@ export default function MotoboyDashboard() {
                             <div className="mt-2 flex flex-col sm:flex-row gap-2 w-full">
                               <button 
                                   onClick={() => {
-                                    const latOrigem = origemUser?.lat || 0;
-                                    const lngOrigem = origemUser?.lng || 0;
-                                    const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
-                                    const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                                    const latOrigem = (origemUser?.lat && origemUser.lat !== 0) ? origemUser.lat : -1.4558;
+                                    const lngOrigem = (origemUser?.lng && origemUser.lng !== 0) ? origemUser.lng : -48.4908;
+                                    const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem + 0.0045);
+                                    const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem + 0.0045);
+                                    const driverLat = (currentUser?.lat && currentUser.lat !== 0) ? currentUser.lat : latOrigem - 0.003;
+                                    const driverLng = (currentUser?.lng && currentUser.lng !== 0) ? currentUser.lng : lngOrigem - 0.003;
+
                                     setMapModal({
                                       open: true,
                                       origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
                                       destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
-                                      motorista: currentUser?.lat ? { lat: currentUser.lat, lng: currentUser.lng || 0, name: currentUser.name || 'Entregador', veiculo: currentUser.veiculo || 'moto' } : null
+                                      motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Sua Moto', veiculo: currentUser?.veiculo || 'Moto' }
                                     });
                                   }} 
                                   className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/30 p-2.5 rounded-xl font-bold text-center transition border border-blue-200 dark:border-blue-800/80 flex items-center justify-center gap-1.5 text-xs shadow-sm"

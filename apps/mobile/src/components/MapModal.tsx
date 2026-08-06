@@ -162,17 +162,37 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
       [p2.lat, p2.lng]
     ];
 
-    // Atualizar Rota Loja -> Cliente (Linha azul premium)
+    // Helper para buscar rota via ruas reais OSRM (OpenStreetMap)
+    const fetchOSRMRoute = async (latA: number, lngA: number, latB: number, lngB: number) => {
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${lngA},${latA};${lngB},${latB}?overview=full&geometries=geojson`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data.routes && data.routes.length > 0 && data.routes[0].geometry) {
+          const coords = data.routes[0].geometry.coordinates; // [lng, lat]
+          return coords.map((c: [number, number]) => [c[1], c[0]]); // Converte para [lat, lng]
+        }
+      } catch (_e) {}
+      return null;
+    };
+
+    // Atualizar Rota Loja -> Cliente (Linha azul via ruas)
     if (!polylineEntregaRef.current) {
       polylineEntregaRef.current = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
-        color: '#3b82f6',
-        weight: 4,
-        opacity: 0.85,
-        dashArray: '2, 6'
+        color: '#2563eb',
+        weight: 5,
+        opacity: 0.85
       }).addTo(map);
     } else {
       polylineEntregaRef.current.setLatLngs([[p1.lat, p1.lng], [p2.lat, p2.lng]]);
     }
+
+    fetchOSRMRoute(p1.lat, p1.lng, p2.lat, p2.lng).then(routePoints => {
+      if (routePoints && polylineEntregaRef.current) {
+        polylineEntregaRef.current.setLatLngs(routePoints);
+      }
+    });
 
     // Atualizar Motorista (se houver)
     if (pm && pm.lat && pm.lng) {
@@ -186,17 +206,23 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
       }
       boundsPoints.push([pm.lat, pm.lng]);
 
-      // Rota Motorista -> Retirada (Linha tracejada laranja)
+      // Rota Motorista -> Retirada (Linha tracejada laranja via ruas)
       if (!polylineRetiradaRef.current) {
         polylineRetiradaRef.current = L.polyline([[pm.lat, pm.lng], [p1.lat, p1.lng]], {
           color: '#f97316',
-          weight: 3,
-          opacity: 0.8,
-          dashArray: '5, 5'
+          weight: 4,
+          opacity: 0.85,
+          dashArray: '6, 6'
         }).addTo(map);
       } else {
         polylineRetiradaRef.current.setLatLngs([[pm.lat, pm.lng], [p1.lat, p1.lng]]);
       }
+
+      fetchOSRMRoute(pm.lat, pm.lng, p1.lat, p1.lng).then(routePoints => {
+        if (routePoints && polylineRetiradaRef.current) {
+          polylineRetiradaRef.current.setLatLngs(routePoints);
+        }
+      });
     } else {
       // Se sumir o motorista
       if (markerMotoristaRef.current) {

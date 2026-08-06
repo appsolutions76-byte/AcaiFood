@@ -191,6 +191,7 @@ interface AppState {
   incrementAdminBalances: (order: Order) => Promise<void>;
   setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => Promise<void>;
+  updateUserLocation: (userId: string, lat: number, lng: number) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   changePassword: (userId: string, newPassword: string) => void;
   updateCpfCnpj: (cpfCnpj: string) => Promise<void>;
@@ -1130,6 +1131,25 @@ export const useAppStore = create<AppState>()(
           }
         } catch (err) {
           console.warn("Erro ao atualizar senha no Supabase Auth:", err);
+        }
+      },
+
+      updateUserLocation: async (userId, lat, lng) => {
+        set((state) => {
+          const user = state.users[userId];
+          if (!user) return state;
+          const updatedUser = { ...user, lat, lng };
+          const isCurrent = state.currentUser?.id === userId;
+          return {
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
+
+        try {
+          await supabase.from('users').update({ latitude: lat, longitude: lng }).eq('id', userId);
+        } catch (err) {
+          console.warn("Erro ao atualizar coordenadas no Supabase:", err);
         }
       },
 
