@@ -2227,21 +2227,13 @@ export const useAppStore = create<AppState>()(
       startAutoRefresh: () => {
          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
          
-         // Atualiza preços, taxas e pedidos em segundo plano a cada 20 segundos
+         // Atualiza pedidos em segundo plano de forma inteligente a cada 60 segundos
          autoRefreshInterval = setInterval(async () => {
-             // 1. Atualiza lojas (preços e subsídios) e taxas da plataforma para todos (logados ou não)
-             try {
-                 await get().fetchAllUsers(true);
-                 await get().fetchRates();
-             } catch(e) {
-                 console.warn("Erro ao atualizar usuários e taxas no auto-refresh:", e);
-             }
-
              const currentUser = get().currentUser;
              if (currentUser) {
-                 // 2. Se logado, atualiza pedidos e checa pagamentos
                  try {
-                     await get().fetchOrders(currentUser.id, true);
+                     // Atualiza pedidos (sem force, respeitando o cache local se não houver mudanças)
+                     await get().fetchOrders(currentUser.id, false);
                      
                      const pendingOrders = (get().orders || []).filter(o => o.status === 'aguardando_pagamento');
                      if (pendingOrders.length > 0) {
@@ -2283,7 +2275,7 @@ export const useAppStore = create<AppState>()(
                    console.warn("Erro na checagem de horário da varredura:", eSweep);
                  }
              }
-         }, 20000);
+         }, 60000); // 60s em vez de 20s para economizar banda
       },
       
       stopAutoRefresh: () => {
