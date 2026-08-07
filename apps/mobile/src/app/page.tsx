@@ -2,12 +2,13 @@
 
 import React, { useEffect, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, BookOpen } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm, getRatesForCity } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PixModal } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { validateCpfCnpjDigits } from "@/lib/pix";
 
 const emptySubscribe = () => () => {};
@@ -53,6 +54,7 @@ export default function StorefrontPage() {
   const [pixPaid, setPixPaid] = useState(false);
   const [cpfModalOpen, setCpfModalOpen] = useState(false);
   const [cpfInputValue, setCpfInputValue] = useState("");
+  const [manualOpen, setManualOpen] = useState(false);
   const { cart, addToCart, removeFromCart, updateCartQuantity } = store;
 
   const [addressMode, setAddressMode] = useState<'profile' | 'gps' | 'custom'>('profile');
@@ -370,24 +372,27 @@ export default function StorefrontPage() {
             <span className="text-2xl">🥣</span>
             <h1 className="text-xl font-bold">AçaíFood</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+             <button onClick={() => setManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">
+               <BookOpen size={13} /> Manual
+             </button>
              {!currentUser ? (
                <>
-                 <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-200 transition">
+                 <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-200 transition hidden sm:inline-block">
                    📲 Compartilhar
                  </button>
-                 <Link href="/login" className="bg-transparent hover:bg-purple-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-400 transition">
+                 <Link href="/login" className="bg-transparent hover:bg-purple-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-400 transition text-xs sm:text-sm">
                    Entrar
                  </Link>
-                 <Link href="/cadastro" className="bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-500 transition">
+                 <Link href="/cadastro" className="bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-500 transition text-xs sm:text-sm">
                    Criar Conta
                  </Link>
                </>
              ) : (
-               <div className="flex items-center gap-3">
+               <div className="flex items-center gap-2 sm:gap-3">
                  <span className="text-sm font-medium hidden sm:inline-block">Olá, {currentUser.name.split(' ')[0]}</span>
                  <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
-                 <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold">📲 Compartilhar</button>
+                 <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold hidden sm:inline-block">📲 Compartilhar</button>
                  <ThemeToggle />
                  <button onClick={() => store.logout()} className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 underline">Sair</button>
                </div>
@@ -395,6 +400,8 @@ export default function StorefrontPage() {
           </div>
         </div>
       </header>
+
+      <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role="login" />
 
       <main className="p-4 sm:p-6 max-w-3xl mx-auto space-y-8">
         
