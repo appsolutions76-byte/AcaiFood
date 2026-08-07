@@ -281,17 +281,22 @@ export default function BatedeiraDashboard() {
                   {!isCanceled && (
                     <button 
                       onClick={() => {
-                        const origemUser = store.users[o.origemId];
-                        const destinoUser = store.users[o.destinoId];
-                        const latOrigem = origemUser?.lat || 0;
-                        const lngOrigem = origemUser?.lng || 0;
-                        const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
-                        const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                        const lojaUser = store.users[o.lojaId!] || store.users[o.origemId];
+                        const clienteId = o.clienteId || (o.type === 'B2C' ? o.criadoPor : undefined) || o.destinoId;
+                        const clienteUser = store.users[clienteId] || store.users[o.destinoId];
+                        const latOrigem = lojaUser?.lat || 0;
+                        const lngOrigem = lojaUser?.lng || 0;
+                        const latDestino = (o.deliveryLat && o.deliveryLat !== 0) 
+                          ? o.deliveryLat 
+                          : (clienteUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455));
+                        const lngDestino = (o.deliveryLng && o.deliveryLng !== 0) 
+                          ? o.deliveryLng 
+                          : (clienteUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490));
                         const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
                         setMapModal({
                           open: true,
-                          origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
-                          destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                          origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || lojaUser?.name || 'Retirada' },
+                          destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || clienteUser?.name || 'Entrega' },
                           motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
                         });
                       }} 

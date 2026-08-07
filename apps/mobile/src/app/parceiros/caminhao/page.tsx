@@ -309,8 +309,10 @@ export default function CaminhaoDashboard() {
                         <p className="text-zinc-500 font-medium">Você está livre.</p>
                     </div>
                   ) : minhasCorridas.map(o => {
-                    const origemUser = store.users?.[o.origemId];
-                    const destinoUser = store.users?.[o.destinoId];
+                    const origId = o.fornecedorId || o.origemId;
+                    const destId = o.lojaId || o.destinoId;
+                    const origemUser = store.users?.[origId];
+                    const destinoUser = store.users?.[destId];
                     return (
                     <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-blue-400 dark:border-blue-600' : 'border-zinc-200 dark:border-zinc-800'}`}>
                         <div className="flex justify-between items-center mb-2">
@@ -340,8 +342,15 @@ export default function CaminhaoDashboard() {
                                   onClick={() => {
                                     const latOrigem = (origemUser?.lat && origemUser.lat !== 0) ? origemUser.lat : -1.4558;
                                     const lngOrigem = (origemUser?.lng && origemUser.lng !== 0) ? origemUser.lng : -48.4908;
-                                    const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem + 0.0045);
-                                    const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem + 0.0045);
+                                    
+                                    const latDestino = (o.deliveryLat && o.deliveryLat !== 0) 
+                                      ? o.deliveryLat 
+                                      : ((destinoUser?.lat && destinoUser.lat !== 0) ? destinoUser.lat : (latOrigem ? latOrigem + 0.0045 : -1.4552));
+                                    
+                                    const lngDestino = (o.deliveryLng && o.deliveryLng !== 0) 
+                                      ? o.deliveryLng 
+                                      : ((destinoUser?.lng && destinoUser.lng !== 0) ? destinoUser.lng : (lngOrigem ? lngOrigem + 0.0045 : -48.4902));
+
                                     const driverLat = (currentUser?.lat && currentUser.lat !== 0) ? currentUser.lat : latOrigem - 0.003;
                                     const driverLng = (currentUser?.lng && currentUser.lng !== 0) ? currentUser.lng : lngOrigem - 0.003;
 

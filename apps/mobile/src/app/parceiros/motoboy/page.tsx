@@ -312,8 +312,11 @@ export default function MotoboyDashboard() {
                     </div>
                   ) : minhasCorridas.map(o => {
                     const isCanceled = o.status === 'cancelado';
-                    const origemUser = store.users?.[o.origemId];
-                    const destinoUser = store.users?.[o.destinoId];
+                    const lojaUser = store.users?.[o.lojaId!] || store.users?.[o.origemId];
+                    const clienteId = o.clienteId || (o.type === 'B2C' ? o.criadoPor : undefined) || o.destinoId;
+                    const clienteUser = store.users?.[clienteId] || store.users?.[o.destinoId];
+                    const origemUser = lojaUser;
+                    const destinoUser = clienteUser;
                     return (
                     <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-purple-400 dark:border-purple-600' : isCanceled ? 'border-red-300 opacity-60 border-l-4 border-l-red-400' : 'border-zinc-200 dark:border-zinc-800'}`}>
                         <div className="flex justify-between items-center mb-2">
@@ -326,16 +329,16 @@ export default function MotoboyDashboard() {
                                 <span className="text-sm">📍</span> 
                                 <div>
                                     <span className="text-[10px] font-bold uppercase text-zinc-400 block">Retirar na Loja</span>
-                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.lojaNome || origemUser?.name || '—'}</span> 
-                                    <span className="text-zinc-500 text-[11px]"> ({origemUser?.bairro || '—'})</span>
+                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.lojaNome || lojaUser?.name || '—'}</span> 
+                                    <span className="text-zinc-500 text-[11px]"> ({lojaUser?.bairro || '—'})</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 pt-1 border-t border-zinc-200 dark:border-zinc-800">
                                 <span className="text-sm">🏁</span> 
                                 <div>
                                     <span className="text-[10px] font-bold uppercase text-zinc-400 block">Entregar ao Cliente</span>
-                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.clienteNome || destinoUser?.name || '—'}</span> 
-                                    <span className="text-purple-600 dark:text-purple-400 font-bold text-[11px]"> ({o.deliveryAddress || destinoUser?.bairro || '—'})</span>
+                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.clienteNome || clienteUser?.name || '—'}</span> 
+                                    <span className="text-purple-600 dark:text-purple-400 font-bold text-[11px]"> ({o.deliveryAddress || clienteUser?.bairro || '—'})</span>
                                     {o.deliveryReference && (
                                         <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400 italic mt-0.5">📌 Ref: {o.deliveryReference}</p>
                                     )}
@@ -344,17 +347,24 @@ export default function MotoboyDashboard() {
                             <div className="mt-2 flex flex-col sm:flex-row gap-2 w-full">
                               <button 
                                   onClick={() => {
-                                    const latOrigem = (origemUser?.lat && origemUser.lat !== 0) ? origemUser.lat : -1.4558;
-                                    const lngOrigem = (origemUser?.lng && origemUser.lng !== 0) ? origemUser.lng : -48.4908;
-                                    const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem + 0.0045);
-                                    const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem + 0.0045);
+                                    const latOrigem = (lojaUser?.lat && lojaUser.lat !== 0) ? lojaUser.lat : -1.4558;
+                                    const lngOrigem = (lojaUser?.lng && lojaUser.lng !== 0) ? lojaUser.lng : -48.4908;
+                                    
+                                    const latDestino = (o.deliveryLat && o.deliveryLat !== 0) 
+                                      ? o.deliveryLat 
+                                      : ((clienteUser?.lat && clienteUser.lat !== 0) ? clienteUser.lat : (latOrigem ? latOrigem + 0.0045 : -1.4552));
+                                    
+                                    const lngDestino = (o.deliveryLng && o.deliveryLng !== 0) 
+                                      ? o.deliveryLng 
+                                      : ((clienteUser?.lng && clienteUser.lng !== 0) ? clienteUser.lng : (lngOrigem ? lngOrigem + 0.0045 : -48.4902));
+
                                     const driverLat = (currentUser?.lat && currentUser.lat !== 0) ? currentUser.lat : latOrigem - 0.003;
                                     const driverLng = (currentUser?.lng && currentUser.lng !== 0) ? currentUser.lng : lngOrigem - 0.003;
 
                                     setMapModal({
                                       open: true,
-                                      origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
-                                      destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                                      origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || lojaUser?.name || 'Retirada' },
+                                      destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || clienteUser?.name || 'Entrega' },
                                       motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Sua Moto', veiculo: currentUser?.veiculo || 'Moto' }
                                     });
                                   }} 
