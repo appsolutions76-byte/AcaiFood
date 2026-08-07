@@ -357,9 +357,18 @@ export default function CaminhaoDashboard() {
                                   🗺️ Ver Mapa ({(o.distancia || 0).toFixed(1)} km)
                               </button>
                               
-                              {origemUser?.lat && (
+                              {origemUser?.lat ? (
                                 <a 
                                   href={`https://www.google.com/maps/dir/?api=1&destination=${origemUser.lat},${origemUser.lng}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                                >
+                                  🚀 GPS p/ Retirada
+                                </a>
+                              ) : (
+                                <a 
+                                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(origemUser?.name || o.lojaNome || 'Origem, Belém')}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
@@ -371,16 +380,24 @@ export default function CaminhaoDashboard() {
                               {(() => {
                                 const latOrig = origemUser?.lat || 0;
                                 const lngOrig = origemUser?.lng || 0;
-                                const latDest = o.deliveryLat || destinoUser?.lat || (latOrig ? latOrig + 0.0045 : -1.4552);
-                                const lngDest = o.deliveryLng || destinoUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.4902);
+                                const latDest = o.deliveryLat || destinoUser?.lat;
+                                const lngDest = o.deliveryLng || destinoUser?.lng;
+
+                                const hasDistinctDest = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
+                                const destAddress = o.deliveryAddress || destinoUser?.endereco || destinoUser?.bairro || o.clienteNome || 'Destino';
+
+                                const mapsUrl = hasDistinctDest
+                                  ? `https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`
+                                  : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destAddress)}`;
+
                                 return (
                                   <a 
-                                    href={`https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`}
+                                    href={mapsUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
                                   >
-                                    🏁 GPS p/ Loja
+                                    🏁 GPS p/ Destino
                                   </a>
                                 );
                               })()}

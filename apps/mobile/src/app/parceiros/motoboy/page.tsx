@@ -384,36 +384,32 @@ export default function MotoboyDashboard() {
                               )}
 
                               {(() => {
-                                const latOrig = origemUser?.lat || 0;
-                                const lngOrig = origemUser?.lng || 0;
-                                const latDest = o.deliveryLat || destinoUser?.lat;
-                                const lngDest = o.deliveryLng || destinoUser?.lng;
+                                 const latOrig = origemUser?.lat || 0;
+                                 const lngOrig = origemUser?.lng || 0;
+                                 const latDest = o.deliveryLat || destinoUser?.lat;
+                                 const lngDest = o.deliveryLng || destinoUser?.lng;
 
-                                const hasDistinctDestCoords = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
-                                
-                                const clientDestStr = o.deliveryAddress 
-                                  ? o.deliveryAddress 
-                                  : (destinoUser?.bairro ? `${destinoUser.bairro}, ${destinoUser.cidade || 'Belém'}` : (destinoUser?.endereco || o.clienteNome || 'Cliente'));
+                                 const hasDistinctDestCoords = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
+                                 
+                                 const clientDestStr = o.deliveryAddress 
+                                   ? o.deliveryAddress 
+                                   : (destinoUser?.bairro ? `${destinoUser.bairro}, ${destinoUser.cidade || 'Belém'}` : (destinoUser?.endereco || o.clienteNome || 'Cliente'));
 
-                                const mapsUrl = hasDistinctDestCoords
-                                  ? (latOrig !== 0
-                                      ? `https://www.google.com/maps/dir/?api=1&origin=${latOrig},${lngOrig}&destination=${latDest},${lngDest}`
-                                      : `https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`)
-                                  : (latOrig !== 0
-                                      ? `https://www.google.com/maps/dir/?api=1&origin=${latOrig},${lngOrig}&destination=${encodeURIComponent(clientDestStr)}`
-                                      : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clientDestStr)}`);
+                                 const mapsUrl = hasDistinctDestCoords
+                                   ? `https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`
+                                   : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clientDestStr)}`;
 
-                                return (
-                                  <a 
-                                    href={mapsUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                  >
-                                    🏁 GPS p/ Cliente
-                                  </a>
-                                );
-                              })()}
+                                 return (
+                                   <a 
+                                     href={mapsUrl}
+                                     target="_blank"
+                                     rel="noopener noreferrer"
+                                     className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                                   >
+                                     🏁 GPS p/ Cliente
+                                   </a>
+                                 );
+                               })()}
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2 mb-3">
