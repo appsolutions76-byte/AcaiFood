@@ -352,7 +352,7 @@ export default function StorefrontPage() {
   const finalCartTotal = cartItemsTotal + cartFrete;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24 font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-44 sm:pb-48 font-sans">
       <Suspense fallback={null}>
         <PaymentHandler />
       </Suspense>
@@ -1024,18 +1024,22 @@ export default function StorefrontPage() {
       )}
 
       {/* Floating Cart Sticky Bar */}
-      {cart.items.length > 0 && cart.storeId && (
-        <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40">
-          <div className="bg-purple-900 text-white p-4 rounded-2xl shadow-2xl border border-purple-700 flex justify-between items-center backdrop-blur-md animate-in slide-in-from-bottom-5">
-            <div>
-              <p className="text-[10px] uppercase font-bold text-purple-300">Carrinho da Loja ({store.users?.[cart.storeId]?.name || 'Batedeira'})</p>
-              <p className="font-bold text-sm sm:text-base">{cartTotalQuantity} item(ns) • Total: {formatMoney(finalCartTotal)}</p>
+      {!checkoutModalOpen && cart.items.length > 0 && cart.storeId && (
+        <div className="fixed bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 max-w-md mx-auto z-30">
+          <div className="bg-purple-900/95 dark:bg-purple-950/95 text-white p-3 sm:p-3.5 rounded-2xl shadow-2xl border border-purple-700/80 flex justify-between items-center backdrop-blur-md transition-all animate-in slide-in-from-bottom-3">
+            <div className="pr-2 min-w-0 flex-1">
+              <p className="text-[10px] uppercase font-bold text-purple-300 tracking-wider truncate">
+                🛒 {store.users?.[cart.storeId]?.name || 'Carrinho da Loja'}
+              </p>
+              <p className="font-bold text-xs sm:text-sm text-zinc-100 truncate">
+                {cartTotalQuantity} item(ns) • Total: {formatMoney(finalCartTotal)}
+              </p>
             </div>
             <button 
               onClick={() => setCheckoutModalOpen(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow transition active:scale-95 flex items-center gap-1.5"
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-lg transition active:scale-95 flex items-center gap-1 shrink-0"
             >
-              🛒 Ver Pedido
+              Ver Pedido ➔
             </button>
           </div>
         </div>
