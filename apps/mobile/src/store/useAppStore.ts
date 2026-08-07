@@ -2032,8 +2032,23 @@ export const useAppStore = create<AppState>()(
                   finalStatus = localOrder.status;
                 }
 
-                const deliveryTotal = (dbOrder.delivery_distance_km || 0) * (dbOrder.applied_delivery_fee_per_km || 0);
-                const platformDelivery = deliveryTotal * ((dbOrder.applied_delivery_platform_fee_percent || 0) / 100);
+                const orderCity = dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || 'Belém';
+                const orderCityRates = getRatesForCity(orderCity, state.rates, state.cities);
+
+                let deliveryTotal = 0;
+                if (dbOrder.order_type === 'B2C') {
+                  deliveryTotal = (orderCityRates.courier_payment_mode === 'FIXED') 
+                    ? (orderCityRates.courier_fixed_fee ?? 8.00) 
+                    : (dbOrder.delivery_distance_km || 0) * (orderCityRates.b2c_km || 2.00);
+                } else if (dbOrder.order_type === 'B2B') {
+                  deliveryTotal = (orderCityRates.transporter_payment_mode === 'FIXED') 
+                    ? (orderCityRates.transporter_fixed_fee ?? 150.00) 
+                    : (dbOrder.delivery_distance_km || 0) * (orderCityRates.b2b_km || 5.00);
+                } else {
+                  deliveryTotal = (dbOrder.delivery_distance_km || 0) * (dbOrder.applied_delivery_fee_per_km || 0);
+                }
+
+                const platformDelivery = deliveryTotal * ((dbOrder.applied_delivery_platform_fee_percent || orderCityRates.b2c_mot_plat || 15) / 100);
                 const driverAmount = deliveryTotal - platformDelivery;
 
                 const itemsTotal = dbOrder.products_subtotal || 0;

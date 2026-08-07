@@ -86,13 +86,13 @@ export default function MotoboyDashboard() {
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const getMotoboyFee = (o: any) => {
-    if (o.taxas?.entregaMotorista && o.taxas.entregaMotorista > 0) return o.taxas.entregaMotorista;
-    const cityRates = rates;
+    const orderCity = o.cidadeOrigem || currentUser?.cidade || 'Belém';
+    const cityRates = getRatesForCity(orderCity, store.rates, store.cities) || rates;
     const dist = o.distancia || 1.0;
-    const totalFrete = cityRates.courier_payment_mode === 'FIXED' 
+    const totalFrete = (cityRates.courier_payment_mode === 'FIXED') 
       ? (cityRates.courier_fixed_fee ?? 8.00) 
       : dist * (cityRates.b2c_km || 2.00);
-    const platPct = (cityRates.b2c_mot_plat ?? 10) / 100;
+    const platPct = (cityRates.b2c_mot_plat ?? 15) / 100;
     return totalFrete * (1 - platPct);
   };
 
@@ -363,9 +363,18 @@ export default function MotoboyDashboard() {
                                   🗺️ Ver Mapa ({(o.distancia || 0).toFixed(1)} km)
                               </button>
                               
-                              {origemUser?.lat && (
+                              {origemUser?.lat ? (
                                 <a 
                                   href={`https://www.google.com/maps/dir/?api=1&destination=${origemUser.lat},${origemUser.lng}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                                >
+                                  🚀 GPS p/ Retirada
+                                </a>
+                              ) : (
+                                <a 
+                                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.lojaNome || 'Ponto do açaí, Belém')}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
@@ -377,11 +386,26 @@ export default function MotoboyDashboard() {
                               {(() => {
                                 const latOrig = origemUser?.lat || 0;
                                 const lngOrig = origemUser?.lng || 0;
-                                const latDest = o.deliveryLat || destinoUser?.lat || (latOrig ? latOrig + 0.0045 : -1.4552);
-                                const lngDest = o.deliveryLng || destinoUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.4902);
+                                const latDest = o.deliveryLat || destinoUser?.lat;
+                                const lngDest = o.deliveryLng || destinoUser?.lng;
+
+                                const hasDistinctDestCoords = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
+                                
+                                const clientDestStr = o.deliveryAddress 
+                                  ? o.deliveryAddress 
+                                  : (destinoUser?.bairro ? `${destinoUser.bairro}, ${destinoUser.cidade || 'Belém'}` : (destinoUser?.endereco || o.clienteNome || 'Cliente'));
+
+                                const mapsUrl = hasDistinctDestCoords
+                                  ? (latOrig !== 0
+                                      ? `https://www.google.com/maps/dir/?api=1&origin=${latOrig},${lngOrig}&destination=${latDest},${lngDest}`
+                                      : `https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`)
+                                  : (latOrig !== 0
+                                      ? `https://www.google.com/maps/dir/?api=1&origin=${latOrig},${lngOrig}&destination=${encodeURIComponent(clientDestStr)}`
+                                      : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clientDestStr)}`);
+
                                 return (
                                   <a 
-                                    href={`https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`}
+                                    href={mapsUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"

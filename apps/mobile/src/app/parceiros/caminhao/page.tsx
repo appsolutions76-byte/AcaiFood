@@ -86,13 +86,13 @@ export default function CaminhaoDashboard() {
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const getDriverFee = (o: any) => {
-    if (o.taxas?.entregaMotorista && o.taxas.entregaMotorista > 0) return o.taxas.entregaMotorista;
-    const cityRates = rates;
+    const orderCity = o.cidadeOrigem || currentUser?.cidade || 'Belém';
+    const cityRates = getRatesForCity(orderCity, store.rates, store.cities) || rates;
     const dist = o.distancia || 1.0;
     const totalFrete = o.type === 'COLETA'
       ? (cityRates.ecopoint_payment_mode === 'FIXED' ? (cityRates.ecopoint_fixed_fee ?? 50.00) : dist * (cityRates.col_km || 8.00))
       : (cityRates.transporter_payment_mode === 'FIXED' ? (cityRates.transporter_fixed_fee ?? 150.00) : dist * (cityRates.b2b_km || 4.00));
-    const platPct = ((o.type === 'COLETA' ? cityRates.col_mot_plat : cityRates.b2b_mot_plat) ?? 10) / 100;
+    const platPct = ((o.type === 'COLETA' ? cityRates.col_mot_plat : cityRates.b2b_mot_plat) ?? 15) / 100;
     return totalFrete * (1 - platPct);
   };
 
