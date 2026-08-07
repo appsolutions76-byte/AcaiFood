@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
 export function isAuthorizedRequest(request: Request): boolean {
-  const internalSecret = process.env.INTERNAL_API_SECRET || process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_internal_secret_2026';
+  const internalSecret = process.env.INTERNAL_API_SECRET;
   const webhookSecret = process.env.WEBHOOK_SECRET || 'acaifood_webhook_secret_2026';
 
   const headerToken = request.headers.get('x-internal-secret');
-  if (headerToken && (headerToken === internalSecret || headerToken === 'acaifood_internal_secret_2026')) return true;
+  if (headerToken && internalSecret && headerToken === internalSecret) return true;
 
   try {
     const url = new URL(request.url);

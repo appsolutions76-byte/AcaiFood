@@ -178,16 +178,42 @@ ALTER TABLE public.orders REPLICA IDENTITY FULL;
 ALTER TABLE public.storefronts REPLICA IDENTITY FULL;
 ALTER TABLE public.platform_settings REPLICA IDENTITY FULL;
 
--- 10. Garantir Políticas RLS Totais na Tabela Orders (Leitura, Inserção e Atualização)
+-- 10. Garantir Políticas RLS Granulares e Seguras na Tabela Orders
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all update on orders" ON public.orders;
-CREATE POLICY "Allow all update on orders" ON public.orders FOR UPDATE USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all insert on orders" ON public.orders;
-CREATE POLICY "Allow all insert on orders" ON public.orders FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all select on orders" ON public.orders;
-CREATE POLICY "Allow all select on orders" ON public.orders FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Orders Granular Select" ON public.orders;
+DROP POLICY IF EXISTS "Orders Granular Insert" ON public.orders;
+DROP POLICY IF EXISTS "Orders Granular Update" ON public.orders;
 
--- 12. Garante a Tabela Cities e Coluna rates com RLS Permissivo
+CREATE POLICY "Orders Granular Select" ON public.orders 
+FOR SELECT USING (
+  auth.role() = 'authenticated' AND (
+    buyer_id = auth.uid() OR 
+    driver_id = auth.uid() OR 
+    EXISTS (SELECT 1 FROM public.storefronts sf WHERE sf.id = orders.seller_storefront_id AND sf.partner_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+  )
+);
+
+CREATE POLICY "Orders Granular Insert" ON public.orders 
+FOR INSERT WITH CHECK (
+  auth.role() = 'authenticated'
+);
+
+CREATE POLICY "Orders Granular Update" ON public.orders 
+FOR UPDATE USING (
+  auth.role() = 'authenticated' AND (
+    buyer_id = auth.uid() OR 
+    driver_id = auth.uid() OR 
+    driver_id IS NULL OR
+    EXISTS (SELECT 1 FROM public.storefronts sf WHERE sf.id = orders.seller_storefront_id AND sf.partner_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+  )
+) WITH CHECK (true);
+
+-- 12. Garante a Tabela Cities e Coluna rates com RLS Protegido
 CREATE TABLE IF NOT EXISTS public.cities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -199,24 +225,27 @@ CREATE TABLE IF NOT EXISTS public.cities (
 ALTER TABLE public.cities ADD COLUMN IF NOT EXISTS rates JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.cities ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all select on cities" ON public.cities;
-CREATE POLICY "Allow all select on cities" ON public.cities FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow all update on cities" ON public.cities;
-CREATE POLICY "Allow all update on cities" ON public.cities FOR UPDATE USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all insert on cities" ON public.cities;
-CREATE POLICY "Allow all insert on cities" ON public.cities FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all delete on cities" ON public.cities;
-CREATE POLICY "Allow all delete on cities" ON public.cities FOR DELETE USING (true);
 
--- 13. Garante RLS Permissivo na Tabela platform_settings
+CREATE POLICY "Allow public select on cities" ON public.cities FOR SELECT USING (true);
+CREATE POLICY "Allow admin write on cities" ON public.cities FOR ALL USING (
+  auth.role() = 'authenticated' AND EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+);
+
+-- 13. Garante RLS Protegido na Tabela platform_settings
 ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all select on platform_settings" ON public.platform_settings;
-CREATE POLICY "Allow all select on platform_settings" ON public.platform_settings FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow all update on platform_settings" ON public.platform_settings;
-CREATE POLICY "Allow all update on platform_settings" ON public.platform_settings FOR UPDATE USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all insert on platform_settings" ON public.platform_settings;
-CREATE POLICY "Allow all insert on platform_settings" ON public.platform_settings FOR INSERT WITH CHECK (true);
 
--- 15. Garante Estrutura e RLS Permissivo nas Tabelas storefronts e products
+CREATE POLICY "Allow public select on platform_settings" ON public.platform_settings FOR SELECT USING (true);
+CREATE POLICY "Allow admin write on platform_settings" ON public.platform_settings FOR ALL USING (
+  auth.role() = 'authenticated' AND EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+);
+
+-- 15. Garante Estrutura e RLS nas Tabelas storefronts e products
 CREATE TABLE IF NOT EXISTS public.storefronts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   partner_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
@@ -237,13 +266,17 @@ ALTER TABLE public.storefronts ADD COLUMN IF NOT EXISTS frete_subsidy_pct NUMERI
 
 ALTER TABLE public.storefronts ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all select on storefronts" ON public.storefronts;
-CREATE POLICY "Allow all select on storefronts" ON public.storefronts FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow all update on storefronts" ON public.storefronts;
-CREATE POLICY "Allow all update on storefronts" ON public.storefronts FOR UPDATE USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all insert on storefronts" ON public.storefronts;
-CREATE POLICY "Allow all insert on storefronts" ON public.storefronts FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all delete on storefronts" ON public.storefronts;
-CREATE POLICY "Allow all delete on storefronts" ON public.storefronts FOR DELETE USING (true);
+
+CREATE POLICY "Allow public select on storefronts" ON public.storefronts FOR SELECT USING (true);
+CREATE POLICY "Allow partner write on storefronts" ON public.storefronts FOR ALL USING (
+  auth.role() = 'authenticated' AND (
+    partner_id = auth.uid() OR 
+    EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+  )
+);
 
 CREATE TABLE IF NOT EXISTS public.products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -255,13 +288,19 @@ CREATE TABLE IF NOT EXISTS public.products (
 
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all select on products" ON public.products;
-CREATE POLICY "Allow all select on products" ON public.products FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow all update on products" ON public.products;
-CREATE POLICY "Allow all update on products" ON public.products FOR UPDATE USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all insert on products" ON public.products;
-CREATE POLICY "Allow all insert on products" ON public.products FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all delete on products" ON public.products;
-CREATE POLICY "Allow all delete on products" ON public.products FOR DELETE USING (true);
+
+CREATE POLICY "Allow public select on products" ON public.products FOR SELECT USING (true);
+CREATE POLICY "Allow partner write on products" ON public.products FOR ALL USING (
+  auth.role() = 'authenticated' AND EXISTS (
+    SELECT 1 FROM public.storefronts sf WHERE sf.id = products.storefront_id AND (
+      sf.partner_id = auth.uid() OR EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+    )
+  )
+);
 
 -- 16. Notificar a API REST do Supabase para recarregar o schema cache
 NOTIFY pgrst, 'reload schema';
+

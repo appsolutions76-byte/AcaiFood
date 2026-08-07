@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
   if (!auth.authorized) return unauthorizedResponse(auth.error);
+
   try {
     const body = await request.json();
     const { pixKey, value, description, orderId, scheduleDate } = body;
@@ -13,6 +15,38 @@ export async function POST(request: Request) {
         { error: 'Chave Pix e Valor positivo são obrigatórios para a transferência' },
         { status: 400 }
       );
+    }
+
+    // Se a chamada veio de um usuário comum (não-admin e não-internal), exige validação estrita de pedido concluído
+    const isAdminOrInternal = auth.source === 'internal_secret' || auth.profile?.role === 'ADMIN' || auth.profile?.role === 'admin';
+    if (!isAdminOrInternal) {
+      if (!orderId) {
+        return NextResponse.json(
+          { error: 'Acesso negado: Transferências diretas só podem ser disparadas vinculadas a um pedido concluído.' },
+          { status: 403 }
+        );
+      }
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (supabaseUrl && supabaseServiceKey) {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const { data: dbOrder } = await supabase
+          .from('orders')
+          .select('id, status, buyer_id, driver_id, seller_storefront_id')
+          .eq('id', orderId)
+          .maybeSingle();
+
+        if (!dbOrder) {
+          return NextResponse.json({ error: 'Pedido informado não encontrado.' }, { status: 404 });
+        }
+
+        const validStatuses = ['RECEIVED', 'DELIVERED', 'COMPLETED'];
+        if (!validStatuses.includes(dbOrder.status)) {
+          return NextResponse.json({ error: 'Transferência não permitida: O pedido ainda não foi concluído com PIN.' }, { status: 400 });
+        }
+      }
     }
 
     const ASAAS_API_KEY = process.env.ASAAS_API_KEY;

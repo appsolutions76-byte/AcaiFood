@@ -16,7 +16,9 @@ export async function POST(request: Request) {
       phone,
       endereco,
       bairro,
-      cidade
+      cidade,
+      estado,
+      uf
     } = body;
 
     if (!userId || !name || !email || !cpfCnpj) {
@@ -25,6 +27,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const userState = String(estado || uf || 'PA').trim().toUpperCase();
 
     const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
     if (!ASAAS_API_KEY) {
@@ -75,7 +79,7 @@ export async function POST(request: Request) {
         addressNumber: addressNumber,
         province: bairro || 'Centro',
         city: cidade || 'Belém',
-        state: 'PA',
+        state: userState || 'PA',
         country: 'Brasil',
         postalCode: '66015000',
         birthDate: isCpf ? '1990-01-01' : undefined,

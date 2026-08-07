@@ -238,8 +238,7 @@ const lastFetchOrdersTime: Record<string, number> = {};
 async function getAuthHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_internal_secret_2026'
+    'Content-Type': 'application/json'
   };
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;

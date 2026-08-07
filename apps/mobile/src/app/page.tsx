@@ -176,8 +176,15 @@ export default function StorefrontPage() {
   const clientActiveOrders = meusPedidos.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
   const clientHistoryOrders = meusPedidos.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   meusPedidos = [...clientActiveOrders, ...clientHistoryOrders];
+  const norm = (s?: string | null) => String(s || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  const userCityNorm = norm(currentUser?.cidade);
+
   const batedeirasAll = Object.values(store.users || {})
     .filter(u => u.role === 'loja' && u.status !== 'paused' && u.status !== 'blocked')
+    .filter(u => {
+      if (!userCityNorm || !u.cidade) return true;
+      return norm(u.cidade) === userCityNorm;
+    })
     .sort((a, b) => {
       const distA = (a.lat && currentUser?.lat) ? haversineKm(a.lat, a.lng!, currentUser!.lat, currentUser!.lng!) : 999;
       const distB = (b.lat && currentUser?.lat) ? haversineKm(b.lat, b.lng!, currentUser!.lat, currentUser!.lng!) : 999;
@@ -186,11 +193,12 @@ export default function StorefrontPage() {
 
   const batedeiras = batedeirasAll.filter(loja => {
     if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    const nameMatch = (loja.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q);
-    const bairroMatch = (loja.bairro || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q);
-    const prodMatch = loja.products?.some(p => (p.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q));
-    return nameMatch || bairroMatch || prodMatch;
+    const q = norm(searchQuery);
+    const nameMatch = norm(loja.name).includes(q);
+    const bairroMatch = norm(loja.bairro).includes(q);
+    const cidadeMatch = norm(loja.cidade).includes(q);
+    const prodMatch = loja.products?.some(p => norm(p.name).includes(q));
+    return nameMatch || bairroMatch || cidadeMatch || prodMatch;
   });
 
   const calcFreteCliente = (lojaId: string) => {
