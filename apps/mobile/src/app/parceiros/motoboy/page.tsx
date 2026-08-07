@@ -106,7 +106,7 @@ export default function MotoboyDashboard() {
     return originCity === driverCity;
   });
   const minhasCorridasAll = (store.orders || []).filter(o => o.motoristaId === currentUser.id);
-  const ganhosHoje = minhasCorridasAll.filter(o => isDelivered(o.status)).reduce((acc, curr) => acc + getMotoboyFee(curr), 0);
+  const ganhosHoje = minhasCorridasAll.filter(o => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc, curr) => acc + getMotoboyFee(curr), 0);
 
   const motoActiveOrders = minhasCorridasAll.filter(o => !isDelivered(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
   const motoHistoryOrders = minhasCorridasAll.filter(o => isDelivered(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
@@ -457,46 +457,56 @@ export default function MotoboyDashboard() {
                         ) : o.status === 'entregue' || o.status === 'arquivado' ? (
                             <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-3 rounded-xl flex flex-col gap-2 items-center font-bold">
                                 <p>✅ Entrega Concluída</p>
-                                <button 
-                                  type="button"
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-                                    const targetPixKey = (currentUser?.pixKey && !isRealUuid(currentUser.pixKey))
-                                      ? currentUser.pixKey
-                                      : (isRealUuid(currentUser?.asaasWalletId) ? currentUser.asaasWalletId : (currentUser?.cpfCnpj || currentUser?.asaasWalletId));
-                                    const valorEntrega = getMotoboyFee(o);
-                                    if (!targetPixKey) {
-                                      alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber a entrega.");
-                                      return;
-                                    }
-                                    try {
-                                      const res = await fetch('/api/asaas/transfer', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
-                                        body: JSON.stringify({
-                                          pixKey: targetPixKey,
-                                          value: valorEntrega,
-                                          description: `Repasse Entrega AçaíFood #${o.id.substring(0, 8)}`,
-                                          orderId: o.id
-                                        })
-                                      });
-                                      const data = await res.json();
-                                      if (data.success) {
-                                        alert(`✅ Repasse Pix de R$ ${valorEntrega.toFixed(2)} enviado para sua conta!`);
-                                      } else {
-                                        const msg = data.error || '';
-                                        alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
+                                {o.payoutDriverDone ? (
+                                  <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800/60 shadow-sm flex items-center gap-1">
+                                    ✅ Repasse Efetuado (R$ {getMotoboyFee(o).toFixed(2)})
+                                  </span>
+                                ) : (
+                                  <button 
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+                                      const targetPixKey = (currentUser?.pixKey && !isRealUuid(currentUser.pixKey))
+                                        ? currentUser.pixKey
+                                        : (isRealUuid(currentUser?.asaasWalletId) ? currentUser.asaasWalletId : (currentUser?.cpfCnpj || currentUser?.asaasWalletId));
+                                      const valorEntrega = getMotoboyFee(o);
+                                      if (!targetPixKey) {
+                                        alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber a entrega.");
+                                        return;
                                       }
-                                    } catch(err) {
-                                      alert("Erro ao solicitar repasse Pix.");
-                                    }
-                                  }}
-                                  className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-md w-full"
-                                >
-                                  💸 Resgatar Repasse (R$ {getMotoboyFee(o).toFixed(2)})
-                                </button>
+                                      try {
+                                        const res = await fetch('/api/asaas/transfer', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
+                                          body: JSON.stringify({
+                                            pixKey: targetPixKey,
+                                            value: valorEntrega,
+                                            description: `Repasse Entrega AçaíFood #${o.id.substring(0, 8)}`,
+                                            orderId: o.id
+                                          })
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) {
+                                          alert(`✅ Repasse Pix de R$ ${valorEntrega.toFixed(2)} enviado para sua conta!`);
+                                          o.payoutDriverDone = true;
+                                          const { supabase } = await import('@/lib/supabase');
+                                          await supabase.from('orders').update({ payout_driver_done: true }).eq('id', o.id);
+                                          store.fetchOrders(currentUser.id, true);
+                                        } else {
+                                          const msg = data.error || '';
+                                          alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
+                                        }
+                                      } catch(err) {
+                                        alert("Erro ao solicitar repasse Pix.");
+                                      }
+                                    }}
+                                    className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded transition shadow-sm"
+                                  >
+                                    💸 Resgatar Repasse (R$ {getMotoboyFee(o).toFixed(2)})
+                                  </button>
+                                )}
                             </div>
                         ) : isCanceled ? (
                             <div className="flex flex-col gap-2">

@@ -107,6 +107,8 @@ export interface Order {
   deliveryLat?: number;
   deliveryLng?: number;
   deliveryReference?: string;
+  payoutSellerDone?: boolean;
+  payoutDriverDone?: boolean;
   clienteNome?: string;
   clienteTelefone?: string;
   lojaNome?: string;
@@ -2088,6 +2090,8 @@ export const useAppStore = create<AppState>()(
                    deliveryLat: dbOrder.delivery_lat || localOrder?.deliveryLat,
                    deliveryLng: dbOrder.delivery_lng || localOrder?.deliveryLng,
                    deliveryReference: dbOrder.delivery_reference || localOrder?.deliveryReference,
+                   payoutSellerDone: !!dbOrder.payout_seller_done || !!localOrder?.payoutSellerDone,
+                   payoutDriverDone: !!dbOrder.payout_driver_done || !!localOrder?.payoutDriverDone,
                    clienteNome: dbOrder.buyer?.name || allUsers[dbOrder.buyer_id]?.name || localOrder?.clienteNome,
                    lojaNome: dbOrder.storefront?.store_name || allUsers[dbOrder.storefront?.partner_id]?.name,
                    motoristaNome: dbOrder.driver?.name || allUsers[dbOrder.driver_id]?.name,
