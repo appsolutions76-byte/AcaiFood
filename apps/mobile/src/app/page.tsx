@@ -61,6 +61,9 @@ export default function StorefrontPage() {
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number; address?: string } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
   const handleGetGpsLocation = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
       alert("Geolocalização não é suportada pelo seu navegador.");
@@ -173,13 +176,22 @@ export default function StorefrontPage() {
   const clientActiveOrders = meusPedidos.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
   const clientHistoryOrders = meusPedidos.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   meusPedidos = [...clientActiveOrders, ...clientHistoryOrders];
-  const batedeiras = Object.values(store.users || {})
+  const batedeirasAll = Object.values(store.users || {})
     .filter(u => u.role === 'loja' && u.status !== 'paused' && u.status !== 'blocked')
     .sort((a, b) => {
       const distA = (a.lat && currentUser?.lat) ? haversineKm(a.lat, a.lng!, currentUser!.lat, currentUser!.lng!) : 999;
       const distB = (b.lat && currentUser?.lat) ? haversineKm(b.lat, b.lng!, currentUser!.lat, currentUser!.lng!) : 999;
       return distA - distB;
     });
+
+  const batedeiras = batedeirasAll.filter(loja => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const nameMatch = (loja.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q);
+    const bairroMatch = (loja.bairro || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q);
+    const prodMatch = loja.products?.some(p => (p.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q));
+    return nameMatch || bairroMatch || prodMatch;
+  });
 
   const calcFreteCliente = (lojaId: string) => {
     const loja = store.users?.[lojaId];
@@ -193,18 +205,40 @@ export default function StorefrontPage() {
     return { freteCliente, dist, subsidy };
   };
 
+  const handleSelectStore = (lojaId: string) => {
+    if (cart.storeId && cart.storeId !== lojaId && cart.items.length > 0) {
+      const lojaAtualNome = store.users?.[cart.storeId]?.name || 'outra loja';
+      const novaLojaNome = store.users?.[lojaId]?.name || 'esta loja';
+      if (confirm(`⚠️ Seu carrinho possui produtos da loja "${lojaAtualNome}". Você só pode comprar em uma loja por vez.\n\nDeseja limpar o carrinho anterior e entrar na "${novaLojaNome}"?`)) {
+        store.clearCart?.();
+        setSelectedStoreId(lojaId);
+      }
+    } else {
+      setSelectedStoreId(lojaId);
+    }
+  };
+
   const handleAddToCart = () => {
     if (!productSelectModal) return;
     const { lojaId, tipo, quantity } = productSelectModal;
     const loja = store.users?.[lojaId];
     if (!loja) return;
 
+    if (cart.storeId && cart.storeId !== lojaId && cart.items.length > 0) {
+      const lojaAtualNome = store.users?.[cart.storeId]?.name || 'outra loja';
+      const novaLojaNome = store.users?.[lojaId]?.name || 'esta loja';
+      if (!confirm(`⚠️ Seu carrinho possui produtos da loja "${lojaAtualNome}". Você só pode comprar em uma loja por vez.\n\nDeseja limpar o carrinho anterior e adicionar os produtos da "${novaLojaNome}"?`)) {
+        return;
+      }
+      store.clearCart?.();
+    }
+
     let price = 0;
     let name = '';
 
     if (['popular', 'medio', 'grosso'].includes(tipo)) {
       price = loja.priceB2C![tipo as keyof typeof loja.priceB2C] || 0;
-      name = `Açaí ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
+      name = `Açaí ${tipo.charAt(0).toUpperCase() + tipo.slice(1)} (1L)`;
     } else {
       const customProd = loja.products?.find(p => p.id === tipo);
       if (customProd) {
@@ -216,6 +250,7 @@ export default function StorefrontPage() {
     if (price > 0) {
       addToCart(lojaId, { id: tipo, name, price, quantity });
       setProductSelectModal({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
+      setSelectedStoreId(lojaId);
     }
   };
 
@@ -368,63 +403,199 @@ export default function StorefrontPage() {
           <>
 
             <div>
-                <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Batedeiras Próximas</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {batedeiras.map(loja => {
-                    const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
-                    return (
-                      <div key={loja.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-purple-100 dark:border-purple-900/30 flex flex-col transition hover:shadow-md">
-                          <div className="flex justify-between items-center mb-3">
-                              <div className="flex items-center gap-2">
-                                  <span className="text-3xl">{loja.icon}</span>
-                                  <div>
-                                      <p className="font-bold text-zinc-800 dark:text-white leading-tight">{loja.name}</p>
-                                      <p className="text-[10px] text-zinc-500">{loja.bairro}</p>
+                {selectedStoreId && store.users?.[selectedStoreId] ? (() => {
+                  const selLoja = store.users[selectedStoreId];
+                  const { freteCliente, dist, subsidy } = calcFreteCliente(selLoja.id);
+                  const isCartStore = cart.storeId === selLoja.id && cart.items.length > 0;
+
+                  return (
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-purple-200 dark:border-purple-900/40 mb-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4 mb-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-4xl bg-purple-50 dark:bg-purple-950/50 p-2 rounded-2xl">{selLoja.icon || '🏪'}</span>
+                          <div>
+                            <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Loja Selecionada</span>
+                            <h3 className="text-xl font-bold text-zinc-800 dark:text-white leading-tight">{selLoja.name}</h3>
+                            <p className="text-xs text-zinc-500">📍 Bairro: {selLoja.bairro || 'Central'}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                          <button 
+                            onClick={() => {
+                              const latOrig = selLoja?.lat || 0;
+                              const lngOrig = selLoja?.lng || 0;
+                              const latDest = currentUser?.lat || (latOrig ? latOrig + 0.0045 : -1.455);
+                              const lngDest = currentUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.490);
+                              setMapModal({
+                                open: true,
+                                origem: { lat: latOrig, lng: lngOrig, name: selLoja.name || 'Retirada' },
+                                destino: { lat: latDest, lng: lngDest, name: currentUser.name || 'Entrega' },
+                                motorista: null
+                              });
+                            }} 
+                            className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-xl"
+                          >
+                            🗺️ {dist.toFixed(1)} km
+                          </button>
+
+                          <button 
+                            onClick={() => setSelectedStoreId(null)}
+                            className="text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-xl transition"
+                          >
+                            ⬅️ Ver Outras Lojas
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="bg-purple-50 dark:bg-purple-950/30 p-3 rounded-xl mb-4 border border-purple-100 dark:border-purple-900/30 flex justify-between items-center text-xs text-purple-900 dark:text-purple-300 font-medium">
+                        <span>Frete Estimado p/ esta loja: <strong>{formatMoney(freteCliente)}</strong></span>
+                        {subsidy > 0 && <span className="bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded text-[10px] uppercase">Loja Paga {subsidy}%</span>}
+                      </div>
+
+                      {isCartStore && (
+                        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 p-3 rounded-xl text-xs font-bold mb-4 flex justify-between items-center">
+                          <span>🛒 Você tem {cartTotalQuantity} item(ns) no carrinho desta loja ({formatMoney(cartItemsTotal)})</span>
+                          <button onClick={() => setCheckoutModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow transition">
+                            Finalizar Pedido
+                          </button>
+                        </div>
+                      )}
+
+                      <h4 className="font-bold text-sm text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-3">Cardápio & Produtos</h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <div className="bg-gray-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                          <div>
+                            <p className="font-bold text-zinc-800 dark:text-white text-sm">Açaí Popular (1L)</p>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">{formatMoney(selLoja.priceB2C?.popular || 18)}</p>
+                          </div>
+                          <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: 'popular', quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow">
+                            + Adicionar
+                          </button>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                          <div>
+                            <p className="font-bold text-zinc-800 dark:text-white text-sm">Açaí Médio (1L)</p>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">{formatMoney(selLoja.priceB2C?.medio || 25)}</p>
+                          </div>
+                          <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: 'medio', quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow">
+                            + Adicionar
+                          </button>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                          <div>
+                            <p className="font-bold text-zinc-800 dark:text-white text-sm">Açaí Grosso Especial (1L)</p>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">{formatMoney(selLoja.priceB2C?.grosso || 33)}</p>
+                          </div>
+                          <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: 'grosso', quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow">
+                            + Adicionar
+                          </button>
+                        </div>
+
+                        {selLoja.products && selLoja.products.map(p => (
+                          <div key={p.id} className="bg-gray-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                            <div>
+                              <p className="font-bold text-zinc-800 dark:text-white text-sm">{p.name}</p>
+                              <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">{formatMoney(p.price)}</p>
+                            </div>
+                            <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: p.id, quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow">
+                              + Adicionar
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                        <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200">Batedeiras Próximas</h3>
+                        <div className="relative w-full sm:w-72">
+                          <input 
+                            type="text"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="🔍 Buscar loja ou bairro..."
+                            className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl py-2 pl-9 pr-8 text-xs font-medium text-zinc-800 dark:text-white outline-none focus:border-purple-500 shadow-sm"
+                          />
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs">🔍</span>
+                          {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-400 hover:text-zinc-600">✕</button>
+                          )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {batedeiras.length === 0 ? (
+                        <div className="col-span-full p-8 text-center bg-white dark:bg-zinc-900 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 text-sm">
+                          <p className="text-2xl mb-1">🔍</p>
+                          Nenhuma batedeira encontrada com o termo "{searchQuery}".
+                        </div>
+                      ) : batedeiras.map(loja => {
+                        const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
+                        const isSelectedLoja = cart.storeId === loja.id && cart.items.length > 0;
+
+                        return (
+                          <div key={loja.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${isSelectedLoja ? 'border-purple-500 ring-2 ring-purple-500/20' : 'border-purple-100 dark:border-purple-900/30'} flex flex-col transition hover:shadow-md`}>
+                              <div className="flex justify-between items-center mb-3">
+                                  <div className="flex items-center gap-2">
+                                      <span className="text-3xl">{loja.icon}</span>
+                                      <div>
+                                          <p className="font-bold text-zinc-800 dark:text-white leading-tight">{loja.name}</p>
+                                          <p className="text-[10px] text-zinc-500">{loja.bairro}</p>
+                                      </div>
                                   </div>
+                                  {currentUser && (
+                                    <button 
+                                      onClick={() => {
+                                        const latOrig = loja?.lat || 0;
+                                        const lngOrig = loja?.lng || 0;
+                                        const latDest = currentUser?.lat || (latOrig ? latOrig + 0.0045 : -1.455);
+                                        const lngDest = currentUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.490);
+                                        setMapModal({
+                                          open: true,
+                                          origem: { lat: latOrig, lng: lngOrig, name: loja.name || 'Retirada' },
+                                          destino: { lat: latDest, lng: lngDest, name: currentUser.name || 'Entrega' },
+                                          motorista: null
+                                        });
+                                      }} 
+                                      className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded"
+                                    >
+                                      🗺️ {dist.toFixed(1)} km
+                                    </button>
+                                  )}
                               </div>
-                              {currentUser && (
-                                <button 
-                                  onClick={() => {
-                                    const latOrig = loja?.lat || 0;
-                                    const lngOrig = loja?.lng || 0;
-                                    const latDest = currentUser?.lat || (latOrig ? latOrig + 0.0045 : -1.455);
-                                    const lngDest = currentUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.490);
-                                    setMapModal({
-                                      open: true,
-                                      origem: { lat: latOrig, lng: lngOrig, name: loja.name || 'Retirada' },
-                                      destino: { lat: latDest, lng: lngDest, name: currentUser.name || 'Entrega' },
-                                      motorista: null
-                                    });
-                                  }} 
-                                  className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded"
-                                >
-                                  🗺️ {dist.toFixed(1)} km
-                                </button>
+                              
+                              <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded flex flex-col gap-1 text-sm mb-4 border border-zinc-100 dark:border-zinc-800">
+                                  <span className="text-zinc-500 text-[10px] uppercase font-bold">A partir de {formatMoney(loja.priceB2C?.popular || 0)}</span>
+                                  <span className="text-zinc-600 dark:text-zinc-400 text-xs flex justify-between">
+                                    <span>Frete Estimado:</span>
+                                    {subsidy > 0 && <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded uppercase font-bold">Loja paga {subsidy}%</span>}
+                                  </span>
+                                  <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
+                              </div>
+                              
+                              {currentUser ? (
+                                  <button 
+                                    onClick={() => handleSelectStore(loja.id)} 
+                                    className="w-full mt-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2"
+                                  >
+                                      <ShoppingCart size={18} /> Entrar na Loja & Comprar
+                                  </button>
+                              ) : (
+                                  <Link href="/login" className="w-full mt-auto bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-3 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2">
+                                      Fazer Login para Pedir
+                                  </Link>
                               )}
                           </div>
-                          
-                          <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded flex flex-col gap-1 text-sm mb-4 border border-zinc-100 dark:border-zinc-800">
-                              <span className="text-zinc-500 text-[10px] uppercase font-bold">A partir de {formatMoney(loja.priceB2C?.popular || 0)}</span>
-                              <span className="text-zinc-600 dark:text-zinc-400 text-xs flex justify-between">
-                                <span>Frete Estimado:</span>
-                                {subsidy > 0 && <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded uppercase font-bold">Loja paga {subsidy}%</span>}
-                              </span>
-                              <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
-                          </div>
-                          
-                          {currentUser ? (
-                              <button onClick={() => setProductSelectModal({ open: true, lojaId: loja.id, tipo: 'medio', quantity: 1 })} className="w-full mt-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2">
-                                  <ShoppingCart size={18} /> Pedir Agora
-                              </button>
-                          ) : (
-                              <Link href="/login" className="w-full mt-auto bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-3 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2">
-                                  Fazer Login para Pedir
-                              </Link>
-                          )}
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
             </div>
           </>
         )}
@@ -848,6 +1019,24 @@ export default function StorefrontPage() {
                 <button type="submit" className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-md transition">Confirmar e Pagar Pix</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Cart Sticky Bar */}
+      {cart.items.length > 0 && cart.storeId && (
+        <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40">
+          <div className="bg-purple-900 text-white p-4 rounded-2xl shadow-2xl border border-purple-700 flex justify-between items-center backdrop-blur-md animate-in slide-in-from-bottom-5">
+            <div>
+              <p className="text-[10px] uppercase font-bold text-purple-300">Carrinho da Loja ({store.users?.[cart.storeId]?.name || 'Batedeira'})</p>
+              <p className="font-bold text-sm sm:text-base">{cartTotalQuantity} item(ns) • Total: {formatMoney(finalCartTotal)}</p>
+            </div>
+            <button 
+              onClick={() => setCheckoutModalOpen(true)}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow transition active:scale-95 flex items-center gap-1.5"
+            >
+              🛒 Ver Pedido
+            </button>
           </div>
         </div>
       )}
