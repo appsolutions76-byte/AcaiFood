@@ -176,10 +176,13 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                   </div>
                 </li>
                 <li>
-                  <strong>Confirmação via Webhook</strong>: Quando o cliente paga o Pix no app do banco, o Asaas aciona o Webhook configurado que atualiza automaticamente o status do pedido para <code>PAID</code> no Supabase. O Supabase Realtime notifica a batedeira e o cliente instantaneamente.
+                  <strong>Confirmação via Webhook em Tempo Real</strong>: Quando o cliente paga o Pix no app do banco, o Asaas aciona o Webhook da plataforma (<code>POST /api/asaas/status</code>) que atualiza automaticamente o status do pedido para <code>PAID</code> no Supabase. O modal de leitura rápida a 2.5s e o Supabase Realtime notificam a loja e o cliente instantaneamente.
                 </li>
                 <li>
                   <strong>Payout automático pós-entrega</strong>: Após a validação do PIN de segurança (entrega confirmada), a API <code>/api/asaas/transfer</code> dispara as transferências Pix de repasse diretamente para os bancos externos dos parceiros.
+                </li>
+                <li>
+                  <strong>Estorno Pix Integrado em Cancelamentos (`/api/asaas/refund`)</strong>: Caso um pedido seja cancelado pelo cliente antes da saída ou recusado pela loja/fornecedor, o sistema aciona o estorno automático Pix no Asaas devolvendo o dinheiro ao cliente e atualizando o saldo do Cofre Virtual.
                 </li>
               </ol>
 

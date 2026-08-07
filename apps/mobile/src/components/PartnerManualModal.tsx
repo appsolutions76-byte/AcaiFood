@@ -13,11 +13,16 @@ interface PartnerManualModalProps {
 
 // ===================== BATEDEIRA =====================
 function ManualBatedeira() {
-  const [tab, setTab] = useState<'operacao' | 'b2b' | 'financeiro'>('operacao');
+  const [tab, setTab] = useState<'operacao' | 'impressao' | 'b2b' | 'financeiro'>('operacao');
   return (
     <div className="space-y-4 text-sm">
       <div className="flex gap-2 flex-wrap">
-        {[['operacao','📦 Operação B2C'], ['b2b','🏭 Abastecimento B2B'], ['financeiro','💰 Financeiro & Pix']].map(([k, l]) => (
+        {[
+          ['operacao','📦 Operação B2C'],
+          ['impressao','🖨️ Impressão Térmica'],
+          ['b2b','🏭 Abastecimento B2B'],
+          ['financeiro','💰 Financeiro & Pix']
+        ].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k as any)}
             className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${tab === k ? 'bg-purple-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-purple-100'}`}
           >{l}</button>
@@ -28,16 +33,36 @@ function ManualBatedeira() {
         <div className="space-y-3 animate-in fade-in duration-150">
           <h4 className="font-bold text-zinc-900 dark:text-white">🏪 Operação de Vendas B2C</h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-            <p>1. 📊 <strong>Visão Geral</strong>: Acompanhe seu saldo de repasses do dia e status da conta Asaas.</p>
+            <p>1. 📊 <strong>Visão Geral</strong>: Acompanhe seu saldo de repasses do dia, Cofre Virtual e status da conta Asaas.</p>
             <p>2. 📦 <strong>Pedidos</strong>: Veja os pedidos dos clientes em tempo real.</p>
             <p>3. ✅ Pedido chega com <strong>Pagamento Confirmado (Pix pago)</strong> → Clique em <em>Aceitar e Preparar</em>.</p>
-            <p>4. 🏍️ Ao finalizar o preparo → Clique em <em>Chamar Moto</em>. Um motoboy disponível receberá o chamado.</p>
-            <p>5. 🗺️ Clique em <em>Ver Rota no Mapa</em> para visualizar trajeto Loja → Cliente e posição do motoboy.</p>
-            <p>6. ✅ Quando o motoboy entregar e o PIN for validado, o pedido é finalizado automaticamente e o repasse Pix é enviado para sua conta.</p>
+            <p>4. 🏍️ Ao finalizar o preparo → Clique em <em>Chamar Moto</em>. Um motoboy disponível na sua cidade receberá o chamado.</p>
+            <p>5. 🗺️ Clique em <em>Ver Rota no Mapa</em> para visualizar o trajeto real do motoboy pelas ruas até a sua loja e da loja até o cliente final.</p>
+            <p>6. 👤 Nos cards de pedidos em andamento e concluídos, veja o nome real do cliente e a situação atual do entregador (<em>Entregador: Concluído</em> para pedidos finalizados).</p>
+            <p>7. ↩️ <strong>Cancelamento & Estorno Pix Automático</strong>: Caso você recuse o pedido ou o cliente cancele antes do envio, o valor é <strong>estornado automaticamente via Pix</strong> para o banco do cliente e abatido do Cofre Virtual.</p>
           </div>
           <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs">
             <p className="font-bold text-purple-900 dark:text-purple-300">💡 Configurações da Vitrine:</p>
             <p className="text-purple-800 dark:text-purple-300 mt-1">Na <em>Visão Geral</em>, você pode editar os preços do seu açaí (Popular, Médio, Grosso), adicionar produtos extras ao cardápio e configurar o <strong>Subsídio de Frete</strong> (% do frete que você paga para atrair mais clientes).</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'impressao' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white">🖨️ Impressão Térmica de Comandas</h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
+            <p>1. 🖨️ <strong>Conexão da Impressora</strong>: No painel da batedeira, configure a porta ou protocolo da sua impressora térmica (58mm ou 80mm).</p>
+            <p>2. 🔄 <strong>Modo de Impressão</strong>: Escolha entre <em>Imprimir Automaticamente</em> ao aceitar o pedido ou <em>Impressão Manual</em> pelo botão do card.</p>
+            <p>3. 📄 <strong>Vias de Comanda</strong>: Imprima a <em>VIA 1 (Preparo / Cozinha)</em> e a <em>VIA 2 (Entrega / Motoboy)</em>.</p>
+            <p>4. 📋 <strong>Dados Completos na Comanda</strong>: O cupom impresso inclui com precisão:</p>
+            <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
+              <li>Nome Completo do Cliente</li>
+              <li>Telefone com DDD para contato</li>
+              <li>Endereço de Entrega Completo (Bairro, Cidade)</li>
+              <li>Ponto de Referência</li>
+              <li>Lista de Itens, Quantidades e Valor Total com Frete</li>
+            </ul>
           </div>
         </div>
       )}
@@ -85,7 +110,9 @@ function ManualFornecedor() {
         <p>3. 🚚 <strong>Gestão de Pedidos</strong>: Visualize as ordens de compra enviadas pelas batedeiras.</p>
         <p>4. Ao receber um pedido <strong>pago</strong> → Prepare a carga → Clique em <em>Chamar Caminhão</em>.</p>
         <p>5. Um caminhoneiro disponível na sua cidade aceita o frete e vai buscar a carga.</p>
-        <p>6. O caminhoneiro valida a entrega com PIN de segurança → Repasse Pix automático é enviado para sua conta.</p>
+        <p>6. 🖨️ <strong>Comanda de Saída B2B</strong>: Imprima a comanda de expedição com dados completos da loja compradora e endereço.</p>
+        <p>7. O caminhoneiro valida a entrega com PIN de segurança → Repasse Pix automático é enviado para sua conta.</p>
+        <p>8. ↩️ <strong>Estorno Pix Automático</strong>: Em caso de cancelamento/recusa do lote, o valor Pix é estornado automaticamente para a batedeira compradora.</p>
       </div>
       <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs">
         <p className="font-bold text-emerald-900 dark:text-emerald-300">💡 Subsídio de Frete B2B:</p>
@@ -105,22 +132,22 @@ function ManualMotoboy() {
     <div className="space-y-3 text-sm animate-in fade-in duration-150">
       <h4 className="font-bold text-zinc-900 dark:text-white">🛵 Operação do Motoboy B2C</h4>
       <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-        <p>1. 📡 <strong>Radar B2C</strong>: Visualize os chamados de entrega disponíveis para a sua cidade.</p>
-        <p>2. Veja o valor líquido da corrida e o trajeto estimado antes de aceitar.</p>
-        <p>3. Clique em <em>🗺️ Ver Rota no Mapa</em> para visualizar no mapa onde fica a loja (📍) e o cliente (🏁).</p>
-        <p>4. Clique em <em>Aceitar Corrida</em> → Vá até a loja retirar o açaí.</p>
-        <p>5. Desloque-se até o endereço do cliente informado no pedido.</p>
+        <p>1. 📡 <strong>Radar B2C & GPS em Tempo Real</strong>: Ao marcar como <em>Online</em>, seu GPS envia localização contínua para você receber chamados de qualquer bairro da cidade.</p>
+        <p>2. Veja o valor líquido da corrida e a distância antes de aceitar.</p>
+        <p>3. 🗺️ <strong>Rota Real Via Ruas (OSRM)</strong>: Clique em <em>Ver Rota no Mapa</em> para visualizar no mapa os 3 marcadores (Sua Moto 🛵, Loja 🏪 e Cliente 🏁) e os trajetos em linhas coloridas contornando as ruas da cidade.</p>
+        <p>4. Clique em <em>Aceitar Corrida</em> → Siga a linha de trajeto até a loja retirar o açaí.</p>
+        <p>5. Desloque-se até o endereço do cliente indicado no mapa.</p>
         <p>6. Na entrega, clique em <em>📍 Confirmar Chegada</em>.</p>
         <p>7. <strong>Peça o PIN de 4 dígitos ao cliente</strong> → Digite na tela → Clique <em>Validar e Finalizar</em>.</p>
         <p>8. ✅ PIN correto → Entrega concluída → Repasse do frete enviado automaticamente ao seu Pix.</p>
       </div>
       <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs">
         <p className="font-bold text-amber-900 dark:text-amber-300">🔐 Sobre o PIN de Segurança:</p>
-        <p className="text-amber-700 dark:text-amber-300 mt-1">O PIN é gerado no momento da compra e enviado ao cliente. Ele é <strong>obrigatório</strong> para finalizar a entrega. Sem o PIN correto, o sistema não confirma a entrega e o repasse não é liberado. Isso protege o cliente e garante que você entregou ao destinatário certo.</p>
+        <p className="text-amber-700 dark:text-amber-300 mt-1">O PIN é gerado no momento da compra e enviado ao cliente. Ele é <strong>obrigatório</strong> para finalizar a entrega. Sem o PIN correto, o sistema não confirma a entrega e o repasse não é liberado.</p>
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
         <p className="font-bold">💸 Saque Instantâneo:</p>
-        <p className="mt-1">Clique em <em>💸 Saque Instantâneo Pix</em> para transferir seu saldo disponível imediatamente para seu banco externo (CPF, E-mail, Celular ou Chave Aleatória).</p>
+        <p className="mt-1">Clique em <em>💸 Saque Instantâneo Pix</em> para transferir seu saldo disponível imediatamente para seu banco externo.</p>
       </div>
     </div>
   );
@@ -132,10 +159,10 @@ function ManualCaminhao() {
     <div className="space-y-3 text-sm animate-in fade-in duration-150">
       <h4 className="font-bold text-zinc-900 dark:text-white">🚛 Operação do Caminhoneiro (B2B & Coleta)</h4>
       <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-        <p>1. 📡 <strong>Radar de Fretes</strong>: Visualize ordens disponíveis na sua cidade (Fretes B2B e Coleta de Caçamba).</p>
+        <p>1. 📡 <strong>Radar de Fretes & GPS</strong>: Fique <em>Online</em> para transmitir sua localização em tempo real e receber fretes B2B e caçambas de resíduos na sua cidade.</p>
         <p>2. Veja o valor líquido do frete e o destino antes de aceitar.</p>
-        <p>3. Clique em <em>🗺️ Ver Rota no Mapa</em> para visualizar onde buscar (fornecedor/batedeira) e onde entregar (batedeira/ecoponto).</p>
-        <p>4. Clique em <em>Aceitar Frete</em> → Vá ao local de origem buscar a carga.</p>
+        <p>3. 🗺️ <strong>Rota Real pelas Ruas (OSRM)</strong>: Clique em <em>Ver Rota no Mapa</em> para visualizar os pontos de origem, destino e seu veículo com trajetos reais de vias de trânsito.</p>
+        <p>4. Clique em <em>Aceitar Frete</em> → Vá ao local de origem buscar a carga de açaí ou resíduos.</p>
         <p>5. Transporte e entregue no destino indicado.</p>
         <p>6. Clique em <em>Confirmar Chegada</em> → <strong>Solicite o PIN de 4 dígitos</strong> ao responsável no destino.</p>
         <p>7. Digite o PIN → <em>Validar e Finalizar</em> → Frete concluído → Repasse Pix enviado ao seu banco.</p>
@@ -161,7 +188,11 @@ function ManualLogin() {
   return (
     <div className="space-y-4 text-sm">
       <div className="flex gap-2 flex-wrap">
-        {[['como_funciona','🥑 Como Funciona'], ['cadastro','📝 Como se Cadastrar'], ['login','🔑 Como Entrar']].map(([k, l]) => (
+        {[
+          ['como_funciona','🥑 Como Funciona'],
+          ['cadastro','📝 Como se Cadastrar'],
+          ['login','🔑 Como Entrar']
+        ].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k as any)}
             className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${tab === k ? 'bg-purple-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-purple-100'}`}
           >{l}</button>
@@ -175,19 +206,19 @@ function ManualLogin() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <div className="bg-purple-50 dark:bg-purple-950/30 p-3 rounded-xl border border-purple-200 dark:border-purple-800">
               <span className="font-bold block mb-1">👤 Para Consumidores</span>
-              <p className="text-zinc-600 dark:text-zinc-400">Peça açaí fresquinho (Popular, Médio, Grosso) diretamente das batedeiras mais próximas com entrega por motoboy. Pague pelo Pix e acompanhe em tempo real.</p>
+              <p className="text-zinc-600 dark:text-zinc-400">Peça açaí fresquinho diretamente das batedeiras com confirmação instantânea do Pix (2.5s), acompanhamento no mapa via ruas e garantia de estorno automático Pix em caso de cancelamento.</p>
             </div>
             <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800">
               <span className="font-bold block mb-1">🏪 Para Batedeiras</span>
-              <p className="text-zinc-600 dark:text-zinc-400">Receba pedidos automaticamente, gerencie seu cardápio, acione motoboys e receba repasses diretamente no seu Pix.</p>
+              <p className="text-zinc-600 dark:text-zinc-400">Receba pedidos automaticamente, gerencie seu cardápio, imprima comandas em impressoras térmicas (58mm/80mm), acione motoboys e receba repasses no Pix.</p>
             </div>
             <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200 dark:border-amber-800">
               <span className="font-bold block mb-1">🛵 Para Motoboys</span>
-              <p className="text-zinc-600 dark:text-zinc-400">Veja corridas disponíveis, aceite entregas e receba seu frete instantaneamente via Pix após confirmar a entrega com PIN.</p>
+              <p className="text-zinc-600 dark:text-zinc-400">Transmita seu GPS em tempo real, veja corridas no mapa via ruas e receba seu frete instantaneamente via Pix após validar o PIN.</p>
             </div>
             <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-xl border border-blue-200 dark:border-blue-800">
               <span className="font-bold block mb-1">🚛 Para Fornecedores & Caminhoneiros</span>
-              <p className="text-zinc-600 dark:text-zinc-400">Venda insumos B2B para batedeiras, transporte lotes de açaí e realize serviços de coleta de caroços. Tudo com pagamento automático via Pix.</p>
+              <p className="text-zinc-600 dark:text-zinc-400">Venda insumos B2B para batedeiras, transporte lotes de açaí e realize serviços de coleta de caroços com pagamento automático via Pix.</p>
             </div>
           </div>
         </div>
@@ -224,18 +255,7 @@ function ManualLogin() {
             <p>1. Informe o <strong>E-mail</strong> cadastrado no campo correspondente.</p>
             <p>2. Informe a <strong>Senha</strong> definida no cadastro.</p>
             <p>3. Clique em <strong>Entrar na Plataforma</strong>.</p>
-            <p>4. O sistema identifica seu perfil e redireciona automaticamente para a tela correta:
-              <br />• Admin → Painel do Administrador
-              <br />• Batedeira → Painel da Batedeira
-              <br />• Fornecedor → Painel do Fornecedor
-              <br />• Motoboy → Painel do Motoboy
-              <br />• Caminhoneiro → Painel de Fretes
-              <br />• Cliente → Marketplace de Açaí
-            </p>
-          </div>
-          <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs">
-            <p className="font-bold text-amber-900 dark:text-amber-300">⚠️ Conta bloqueada?</p>
-            <p className="text-amber-700 dark:text-amber-300 mt-1">Se sua conta foi bloqueada pelo administrador da plataforma, entre em contato com o suporte do AçaíFood.</p>
+            <p>4. O sistema identifica seu perfil e redireciona automaticamente para a tela correta.</p>
           </div>
         </div>
       )}
