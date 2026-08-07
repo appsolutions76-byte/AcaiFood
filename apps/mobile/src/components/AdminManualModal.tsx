@@ -97,8 +97,8 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
 
           {activeSection === 'taxas' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">⚙️ Configuração de Taxas Globais e por Cidade</h3>
-              <p>Acesse pelo botão <strong>⚙️ Taxas & Repasses Pix</strong> no cabeçalho para configurar as taxas globais. Na aba <strong>🌍 Cidades</strong> você pode definir tarifas específicas por cidade que <strong>sobrepõem</strong> as globais.</p>
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">⚙️ Configuração de Taxas Globais e por Cidade (Brasil)</h3>
+              <p>Acesse pelo botão <strong>⚙️ Taxas & Repasses Pix</strong> no cabeçalho para configurar as taxas globais. Na aba <strong>🌍 Cidades / Expansão</strong> você pode cadastrar qualquer cidade e estado do Brasil com tarifas regionais independentes que <strong>sobrepõem</strong> as globais.</p>
 
               <div className="space-y-2 text-xs bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
                 <p className="font-bold text-zinc-900 dark:text-white mb-2">💰 Taxas de Comissão da Plataforma:</p>
@@ -109,9 +109,9 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
 
               <div className="space-y-2 text-xs bg-blue-50 dark:bg-blue-950/40 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
                 <p className="font-bold text-blue-900 dark:text-blue-300 mb-2">🚗 Modalidade de Frete (por tipo de entregador):</p>
-                <p>• <strong>Por KM (KM)</strong>: O frete é calculado multiplicando a distância em km (da Loja ao Cliente via Haversine) pela tarifa de R$/KM configurada.</p>
+                <p>• <strong>Por KM (KM)</strong>: O frete é calculado multiplicando a distância em km pela tarifa de R$/KM configurada.</p>
                 <p>• <strong>Valor Fixo (FIXED)</strong>: Aplica uma tarifa única para todas as entregas, independente da distância.</p>
-                <p className="mt-2 text-blue-700 dark:text-blue-300 italic">⚠️ Alterar o modo de Fixo para KM ou vice-versa afeta o cálculo de todos os novos pedidos da cidade.</p>
+                <p className="mt-2 text-blue-700 dark:text-blue-300 italic">⚠️ O catálogo da Home exibe automaticamente as lojas filtradas pela cidade do cliente cadastrado.</p>
               </div>
 
               <div className="text-xs bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
@@ -123,8 +123,8 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
 
           {activeSection === 'usuarios' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">👥 Gestão Completa de Usuários</h3>
-              <p>Na aba <strong>👥 Usuários</strong>, visualize e filtre todos os cadastros por perfil:</p>
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">👥 Gestão Completa de Usuários & Subcontas Nacionais</h3>
+              <p>Na aba <strong>👥 Usuários</strong>, visualize e filtre todos os cadastros por perfil e cidade:</p>
 
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-purple-50 dark:bg-purple-950/30 p-2.5 rounded-lg border border-purple-200 dark:border-purple-800">
@@ -158,7 +158,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
 
           {activeSection === 'pagamentos' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">💳 Fluxo de Pagamento Pix & Split Asaas</h3>
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">💳 Fluxo de Pagamento Pix & Proteção de Transferências</h3>
 
               <ol className="list-decimal list-inside space-y-3 text-xs">
                 <li>
@@ -176,10 +176,10 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                   </div>
                 </li>
                 <li>
-                  <strong>Confirmação via Webhook em Tempo Real</strong>: Quando o cliente paga o Pix no app do banco, o Asaas aciona o Webhook da plataforma (<code>POST /api/asaas/status</code>) que atualiza automaticamente o status do pedido para <code>PAID</code> no Supabase. O modal de leitura rápida a 2.5s e o Supabase Realtime notificam a loja e o cliente instantaneamente.
+                  <strong>Confirmação via Webhook em Tempo Real</strong>: Quando o cliente paga o Pix no app do banco, o Asaas aciona o Webhook da plataforma (<code>POST /api/asaas/status</code>) que atualiza automaticamente o status do pedido para <code>PAID</code> no Supabase.
                 </li>
                 <li>
-                  <strong>Payout automático pós-entrega</strong>: Após a validação do PIN de segurança (entrega confirmada), a API <code>/api/asaas/transfer</code> dispara as transferências Pix de repasse diretamente para os bancos externos dos parceiros.
+                  <strong>Payout seguro via PIN de entrega (`/api/asaas/transfer`)</strong>: A API de transferência Pix exige a validação prévia do PIN de 4 dígitos e pedido concluído, protegendo o saldo da conta principal contra saques não autorizados.
                 </li>
                 <li>
                   <strong>Estorno Pix Integrado em Cancelamentos (`/api/asaas/refund`)</strong>: Caso um pedido seja cancelado pelo cliente antes da saída ou recusado pela loja/fornecedor, o sistema aciona o estorno automático Pix no Asaas devolvendo o dinheiro ao cliente e atualizando o saldo do Cofre Virtual.
@@ -187,9 +187,9 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
               </ol>
 
               <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs">
-                <p className="font-bold text-emerald-900 dark:text-emerald-300">💡 Dica Admin — Subconta Asaas:</p>
+                <p className="font-bold text-emerald-900 dark:text-emerald-300">💡 Subcontas Asaas em Todo o Brasil:</p>
                 <p className="text-emerald-800 dark:text-emerald-300 mt-1">
-                  Todo parceiro com CPF/CNPJ cadastrado recebe uma <strong>subconta White-Label Asaas</strong> criada automaticamente no cadastro. Isso viabiliza o Split direto sem necessidade de intervenção manual para cada repasse.
+                  Todo parceiro com CPF/CNPJ cadastrado recebe uma <strong>subconta White-Label Asaas</strong> vinculada dinamicamente ao seu estado (UF) e cidade.
                 </p>
               </div>
             </div>
@@ -197,7 +197,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
 
           {activeSection === 'seguranca' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">🛡️ Mecanismos de Segurança</h3>
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">🛡️ Mecanismos de Segurança e RLS Protegido</h3>
 
               <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-xl border border-blue-200 dark:border-blue-800 text-xs space-y-3">
                 <p className="font-bold text-blue-900 dark:text-blue-300">🔒 Triggers de Proteção no PostgreSQL:</p>
@@ -207,18 +207,13 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                 </div>
                 <div>
                   <p className="font-bold text-blue-800 dark:text-blue-300">2. `validate_delivery_pin_trigger`</p>
-                  <p className="text-blue-700 dark:text-blue-400 mt-0.5">Bloqueia a transição para <code>RECEIVED</code> (Entregue) caso o entregador não forneça o PIN de 4 dígitos exato gerado no momento da criação do pedido. O PIN é limpo do banco após a validação para segurança máxima.</p>
+                  <p className="text-blue-700 dark:text-blue-400 mt-0.5">Bloqueia a transição para <code>RECEIVED</code> (Entregue) caso o entregador não forneça o PIN de 4 dígitos exato gerado no momento da criação do pedido.</p>
                 </div>
               </div>
 
-              <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-xl border border-amber-200 dark:border-amber-800 text-xs space-y-2">
-                <p className="font-bold text-amber-900 dark:text-amber-300">⚠️ Função de Limpeza de Dados (Admin):</p>
-                <p className="text-amber-700 dark:text-amber-300">O botão <strong>🗑️ Limpar</strong> no cabeçalho requer uma senha de segurança e confirmação dupla antes de apagar pedidos arquivados do banco. Isso evita limpezas acidentais.</p>
-              </div>
-
-              <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
-                <p className="font-bold text-zinc-900 dark:text-white mb-2">🔑 Row Level Security (RLS) no Supabase:</p>
-                <p>Políticas de segurança em nível de linha garantem que cada usuário só acessa os pedidos e dados pertinentes ao seu perfil, mesmo que tente manipular a URL ou a API diretamente.</p>
+              <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 text-xs space-y-2">
+                <p className="font-bold text-purple-900 dark:text-purple-300">🔑 Row Level Security (RLS Granular no Supabase):</p>
+                <p className="text-purple-700 dark:text-purple-300">Políticas de segurança em nível de linha garantem que clientes e motoristas acessem estritamente seus próprios pedidos e perfis, impedindo vazamento de CPFs, e-mails, endereços ou cartões.</p>
               </div>
             </div>
           )}
