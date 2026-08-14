@@ -220,6 +220,7 @@ FOR SELECT USING (
   auth.role() = 'authenticated' AND (
     buyer_id = auth.uid() OR 
     driver_id = auth.uid() OR 
+    seller_storefront_id = auth.uid() OR
     EXISTS (SELECT 1 FROM public.storefronts sf WHERE sf.id = orders.seller_storefront_id AND sf.partner_id = auth.uid()) OR
     EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
   )
@@ -236,6 +237,7 @@ FOR UPDATE USING (
     buyer_id = auth.uid() OR 
     driver_id = auth.uid() OR 
     driver_id IS NULL OR
+    seller_storefront_id = auth.uid() OR
     EXISTS (SELECT 1 FROM public.storefronts sf WHERE sf.id = orders.seller_storefront_id AND sf.partner_id = auth.uid()) OR
     EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
   )

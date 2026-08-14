@@ -1963,20 +1963,14 @@ export const useAppStore = create<AppState>()(
 
          if (roleLower === 'loja') {
              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
-             if (sfList && sfList.length > 0) {
-                 const sfIds = sfList.map((s: any) => s.id).join(',');
-                 query = query.or(`seller_storefront_id.in.(${sfIds}),buyer_id.eq.${currentUser.id}`);
-             } else {
-                 query = query.eq('buyer_id', currentUser.id);
-             }
+             const sfIds = (sfList || []).map((s: any) => s.id);
+             sfIds.push(currentUser.id);
+             query = query.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
           } else if (roleLower === 'fornecedor') {
              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
-             if (sfList && sfList.length > 0) {
-                 const sfIds = sfList.map((s: any) => s.id).join(',');
-                 query = query.or(`seller_storefront_id.in.(${sfIds}),buyer_id.eq.${currentUser.id}`);
-             } else {
-                 query = query.or(`buyer_id.eq.${currentUser.id}`);
-             }
+             const sfIds = (sfList || []).map((s: any) => s.id);
+             sfIds.push(currentUser.id);
+             query = query.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
           } else if (roleLower === 'motorista' || roleLower === 'courier' || roleLower === 'caminhao' || roleLower === 'motoboy') {
             query = query.or(`driver_id.is.null,driver_id.eq.${currentUser.id},status.in.(READY,PREPARING,DELIVERING,PAID,PENDING,pronto,preparo)`);
          } else if (roleLower === 'cliente') {
@@ -2109,8 +2103,8 @@ export const useAppStore = create<AppState>()(
                    destinoId: localOrder?.destinoId || dbOrder.buyer_id,
                    cidadeOrigem: dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || 'Belém',
                    clienteId: localOrder?.clienteId || (dbOrder.order_type === 'B2C' ? dbOrder.buyer_id : undefined),
-                   lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : dbOrder.storefront?.partner_id),
-                   fornecedorId: localOrder?.fornecedorId || (dbOrder.order_type === 'B2B' ? dbOrder.storefront?.partner_id : undefined),
+                   lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id)),
+                   fornecedorId: localOrder?.fornecedorId || (dbOrder.order_type === 'B2B' ? (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id) : undefined),
                    distancia: dbOrder.delivery_distance_km,
                    valor: dbOrder.products_subtotal,
                    motoristaId: dbOrder.driver_id,
