@@ -232,6 +232,7 @@ interface AppState {
 let autoRefreshInterval: any = null;
 let supabaseChannel: any = null;
 let lastFetchAllUsersTime = 0;
+let lastFetchLojasTime = 0;
 let lastFetchRatesTime = 0;
 const lastFetchOrdersTime: Record<string, number> = {};
 
@@ -694,7 +695,13 @@ export const useAppStore = create<AppState>()(
               .subscribe();
       },
 
-      fetchLojas: async () => {
+      fetchLojas: async (force?: boolean) => {
+        const now = Date.now();
+        if (!force && now - lastFetchLojasTime < 10000 && Object.keys(get().users || {}).length > 0) {
+            return;
+        }
+        lastFetchLojasTime = now;
+
         const { data: dbLojas, error } = await supabase
             .from('users')
             .select('*, storefronts(*, products(*))')

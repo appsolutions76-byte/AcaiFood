@@ -155,7 +155,9 @@ export default function StorefrontPage() {
 
   useEffect(() => {
     store.fetchLojas();
-  }, [store]);
+    store.fetchRates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!mounted) return;
@@ -168,7 +170,7 @@ export default function StorefrontPage() {
       else if (currentUser.role === 'motorista' && currentUser.veiculo === 'Moto') router.replace('/parceiros/motoboy');
       else if (currentUser.role === 'motorista' && (currentUser.veiculo === 'Caminhão' || currentUser.veiculo === 'Caçamba')) router.replace('/parceiros/caminhao');
     }
-  }, [mounted, currentUser, router, store]);
+  }, [mounted, currentUser?.id, currentUser?.role, router]);
 
   if (!mounted) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;
