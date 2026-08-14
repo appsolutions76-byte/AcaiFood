@@ -256,6 +256,8 @@ DROP POLICY IF EXISTS "Allow all select on cities" ON public.cities;
 DROP POLICY IF EXISTS "Allow all update on cities" ON public.cities;
 DROP POLICY IF EXISTS "Allow all insert on cities" ON public.cities;
 DROP POLICY IF EXISTS "Allow all delete on cities" ON public.cities;
+DROP POLICY IF EXISTS "Allow public select on cities" ON public.cities;
+DROP POLICY IF EXISTS "Allow admin write on cities" ON public.cities;
 
 CREATE POLICY "Allow public select on cities" ON public.cities FOR SELECT USING (true);
 CREATE POLICY "Allow admin write on cities" ON public.cities FOR ALL USING (
@@ -267,6 +269,8 @@ ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all select on platform_settings" ON public.platform_settings;
 DROP POLICY IF EXISTS "Allow all update on platform_settings" ON public.platform_settings;
 DROP POLICY IF EXISTS "Allow all insert on platform_settings" ON public.platform_settings;
+DROP POLICY IF EXISTS "Allow public select on platform_settings" ON public.platform_settings;
+DROP POLICY IF EXISTS "Allow admin write on platform_settings" ON public.platform_settings;
 
 CREATE POLICY "Allow public select on platform_settings" ON public.platform_settings FOR SELECT USING (true);
 CREATE POLICY "Allow admin write on platform_settings" ON public.platform_settings FOR ALL USING (
@@ -297,6 +301,8 @@ DROP POLICY IF EXISTS "Allow all select on storefronts" ON public.storefronts;
 DROP POLICY IF EXISTS "Allow all update on storefronts" ON public.storefronts;
 DROP POLICY IF EXISTS "Allow all insert on storefronts" ON public.storefronts;
 DROP POLICY IF EXISTS "Allow all delete on storefronts" ON public.storefronts;
+DROP POLICY IF EXISTS "Allow public select on storefronts" ON public.storefronts;
+DROP POLICY IF EXISTS "Allow partner write on storefronts" ON public.storefronts;
 
 CREATE POLICY "Allow public select on storefronts" ON public.storefronts FOR SELECT USING (true);
 CREATE POLICY "Allow partner write on storefronts" ON public.storefronts FOR ALL USING (
@@ -319,6 +325,8 @@ DROP POLICY IF EXISTS "Allow all select on products" ON public.products;
 DROP POLICY IF EXISTS "Allow all update on products" ON public.products;
 DROP POLICY IF EXISTS "Allow all insert on products" ON public.products;
 DROP POLICY IF EXISTS "Allow all delete on products" ON public.products;
+DROP POLICY IF EXISTS "Allow public select on products" ON public.products;
+DROP POLICY IF EXISTS "Allow partner write on products" ON public.products;
 
 CREATE POLICY "Allow public select on products" ON public.products FOR SELECT USING (true);
 CREATE POLICY "Allow partner write on products" ON public.products FOR ALL USING (
