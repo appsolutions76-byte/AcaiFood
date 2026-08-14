@@ -635,6 +635,25 @@ export default function BatedeiraDashboard() {
             </div>
         </div>
 
+        {/* Alerta de Pedidos Ativos da Batedeira (Sempre Visível no Topo) */}
+        {batedeiraActiveOrders.length > 0 && (
+          <div className="bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-400 dark:border-amber-600 p-5 rounded-2xl shadow-lg space-y-4 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center justify-between border-b border-amber-200 dark:border-amber-800 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl animate-bounce">🚨</span>
+                <h3 className="font-extrabold text-base text-amber-900 dark:text-amber-200 uppercase tracking-wider">
+                  Pedidos Ativos em Andamento ({batedeiraActiveOrders.length})
+                </h3>
+              </div>
+              <span className="text-xs bg-amber-200 text-amber-900 font-bold px-2.5 py-1 rounded-full uppercase">Ação Necessária</span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {batedeiraActiveOrders.map(renderOrderCard)}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'geral' && (
           <div className="grid grid-cols-1 gap-4 animate-in fade-in zoom-in-95 duration-300">
           {/* Controles da Loja */}

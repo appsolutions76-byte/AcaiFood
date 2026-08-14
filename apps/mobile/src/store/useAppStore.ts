@@ -1733,7 +1733,7 @@ export const useAppStore = create<AppState>()(
             if (action === 'cancelar_pedido' || action === 'cancelar_cliente' || action === 'recusar_loja' || action === 'recusar_forn' || action === 'recusar_fornecedor' || action === 'cancelar_loja' || action === 'cancelar_fornecedor') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
             if (action === 'confirmar_pagamento' || action === 'pagar') { 
               if (o.status !== 'aguardando_pagamento') return o;
-              newOrder.status = o.type === 'COLETA' ? 'pronto' : 'preparo'; 
+              newOrder.status = o.type === 'COLETA' ? 'pronto' : 'pendente'; 
               newDbStatus = o.type === 'COLETA' ? 'READY' : 'PAID'; 
             }
             if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
