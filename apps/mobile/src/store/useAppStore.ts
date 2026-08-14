@@ -1638,8 +1638,15 @@ export const useAppStore = create<AppState>()(
             pixQrCode: asaasResult?.pixQrCode || null,
             pixCopiaECola: asaasResult?.pixCopiaECola || validPlatformPayload || null,
             invoiceUrl: asaasResult?.invoiceUrl || null,
-            totalValue: totalValue
+            totalValue: totalValue,
+            ...(asaasResult?.paymentId ? { asaasPaymentId: asaasResult.paymentId, paymentId: asaasResult.paymentId } : {})
           };
+
+          if (asaasResult?.paymentId) {
+            supabase.from('orders').update({ asaas_payment_id: asaasResult.paymentId }).eq('id', orderIdToUse).then(({ error }) => {
+              if (error) console.warn("Aviso ao salvar asaas_payment_id no DB:", error);
+            });
+          }
           set({ 
              orders: [finalPedido, ...get().orders], 
              orderCounter: get().orderCounter + 1,
@@ -1859,11 +1866,16 @@ export const useAppStore = create<AppState>()(
 
         if (newDbStatus === 'CANCELLED') {
            try {
+              const targetOrder = state.orders.find(o => o.id === orderId);
+              const paymentIdToUse = (targetOrder as any)?.paymentId || (targetOrder as any)?.asaasPaymentId || (targetOrder as any)?.asaas_payment_id;
               getAuthHeaders().then(authHeaders => {
                 fetch('/api/asaas/refund', {
                   method: 'POST',
                   headers: authHeaders,
-                  body: JSON.stringify({ orderId })
+                  body: JSON.stringify({ 
+                    orderId: orderId,
+                    paymentId: paymentIdToUse 
+                  })
                 }).then(r => r.json()).then(data => {
                   if (data.success) console.log("✅ Estorno Asaas efetuado com sucesso:", data);
                   else console.warn("Aviso no estorno Asaas:", data);

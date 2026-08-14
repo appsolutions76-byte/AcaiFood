@@ -104,7 +104,7 @@ export default function StorefrontPage() {
       const localOrder = (store.orders || []).find(o => o.id === pixModalData.orderId);
       if (localOrder) {
         const s = String(localOrder.status).toLowerCase();
-        if (['pago', 'pendente', 'preparo', 'pronto', 'em_rota', 'entregue', 'paid', 'preparing', 'ready', 'delivering', 'delivered', 'received', 'completed'].includes(s)) {
+        if (['pago', 'preparo', 'pronto', 'em_rota', 'entregue', 'paid', 'preparing', 'ready', 'delivering', 'delivered', 'received', 'completed'].includes(s)) {
           if (isSubscribed) setPixPaid(true);
           return;
         }
