@@ -27,6 +27,14 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
   const acaoPedido = useAppStore((state) => state.acaoPedido);
 
   useEffect(() => {
+    if (!data.open) {
+      setIsPaid(false);
+      return;
+    }
+    setIsPaid(false);
+  }, [data.open, data.orderId]);
+
+  useEffect(() => {
     if (!data.open || !data.orderId || isPaid) return;
 
     const checkStatus = async () => {
