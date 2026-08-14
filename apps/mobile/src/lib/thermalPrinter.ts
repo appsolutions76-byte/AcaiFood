@@ -86,26 +86,36 @@ export function generateSingleTicketHTML(
     || (allUsers && order.criadoPor ? allUsers[order.criadoPor] : undefined);
 
   const buyerRoleLabel = isB2B ? 'BATEDEIRA (COMPRADOR FRUTO)' : isColeta ? 'LOJA (SOLICITANTE CAÇAMBA)' : 'CLIENTE (AÇAÍ BATIDO)';
-  const buyerName = isB2B 
-    ? (buyerUser?.name || order.lojaNome || 'Batedeira Açaí') 
-    : (buyerUser?.name || order.clienteNome || 'Cliente AçaíFood');
+  const buyerName = order.clienteNome 
+    || buyerUser?.name 
+    || (isB2B ? (order.lojaNome || 'Batedeira Açaí') : 'Cliente AçaíFood');
 
-  const buyerPhone = order.clienteTelefone || buyerUser?.telefone || (buyerUser as any)?.phone || buyerUser?.email || 'Contato via App';
+  const buyerPhone = order.clienteTelefone 
+    || buyerUser?.telefone 
+    || (buyerUser as any)?.phone 
+    || buyerUser?.email 
+    || 'Não Informado';
+
   const buyerAddress = order.deliveryAddress 
     || buyerUser?.endereco 
     || (buyerUser?.bairro ? `${buyerUser.bairro}, ${buyerUser.cidade || 'Belém'}` : '') 
-    || 'Retirada no Balcão';
+    || 'Retirada no Balcão / Entrega Local';
+
+  const deliveryRef = order.deliveryReference || (buyerUser as any)?.referencia || '';
 
   const viaTitle = totalVias > 1 
     ? (viaNumber === 1 ? (isB2B ? '*** VIA 1: EXPEDIÇÃO / FORNECEDOR ***' : '*** VIA 1: PREPARO / BATEDEIRA ***') : (isB2B ? '*** VIA 2: TRANSPORTE / CAMINHÃO ***' : '*** VIA 2: ENTREGA / MOTOBOY ***'))
     : (isB2B ? '*** COMANDA DE SAÍDA - AÇAÍ FRUTO ***' : '*** COMANDA DE PREPARO - AÇAÍ BATIDO ***');
+
+  const deliveryFee = order.taxas?.entregaCliente || order.taxas?.entregaTotal || 0;
+  const itemsSubtotal = itemsList.reduce((acc, i) => acc + (i.price * i.quantity), 0);
 
   return `
     <div class="thermal-ticket" style="
       width: ${widthPx};
       font-family: 'Courier New', Courier, monospace;
       font-size: ${fontSize};
-      line-height: 1.2;
+      line-height: 1.25;
       color: #000;
       background: #fff;
       padding: 4px;
@@ -115,7 +125,7 @@ export function generateSingleTicketHTML(
     ">
       <!-- HEADER -->
       <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <h2 style="margin: 0; font-size: ${is58 ? '14px' : '16px'}; font-weight: bold; text-transform: uppercase;">AÇAÍFOOD</h2>
+        <h2 style="margin: 0; font-size: ${is58 ? '14px' : '16px'}; font-weight: bold; text-transform: uppercase;">AÇAÍFOOD DELIVERY</h2>
         <p style="margin: 2px 0 0 0; font-size: ${is58 ? '10px' : '11px'}; font-weight: bold;">${storeName}</p>
         <p style="margin: 4px 0 0 0; font-weight: bold; font-size: ${is58 ? '11px' : '12px'};">${viaTitle}</p>
       </div>
@@ -126,43 +136,39 @@ export function generateSingleTicketHTML(
           <span>PEDIDO: #${orderNum}</span>
           <span>${order.type || 'B2C'}</span>
         </div>
-        <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 2px;">Data/Hora: ${dateStr}</div>
+        <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 2px;">📅 Data/Hora: ${dateStr}</div>
         <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 2px;">
           Status: ${(order.status || '').toUpperCase()}
         </div>
+        ${order.distancia ? `
+          <div style="font-size: ${is58 ? '9px' : '10px'}; margin-top: 2px;">📏 Distância: ${order.distancia.toFixed(1)} km</div>
+        ` : ''}
       </div>
 
-      <!-- CLIENTE / BATEDEIRA & ENTREGA -->
+      <!-- CLIENTE & DADOS DE ENTREGA -->
       <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <div style="font-weight: bold; font-size: ${is58 ? '11px' : '13px'}; text-transform: uppercase;">
-          ${buyerRoleLabel}: ${buyerName}
+        <div style="font-weight: bold; font-size: ${is58 ? '11px' : '12px'}; text-decoration: underline; margin-bottom: 4px; text-transform: uppercase;">
+          --- DADOS DO CLIENTE ---
         </div>
-        <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 2px;">
+        <div style="font-weight: bold; font-size: ${is58 ? '11px' : '13px'}; margin-top: 2px;">
+          👤 NOME: ${buyerName}
+        </div>
+        <div style="font-size: ${is58 ? '11px' : '12px'}; font-weight: bold; margin-top: 3px;">
           📞 TEL: ${buyerPhone}
         </div>
-        <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 2px;">
-          <strong>📍 ENDEREÇO:</strong> ${buyerAddress}
+        <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 3px; font-weight: bold;">
+          📍 ENDEREÇO: ${buyerAddress}
         </div>
-        ${order.deliveryReference ? `
-          <div style="font-size: ${is58 ? '9px' : '10px'}; font-style: italic; margin-top: 2px;">Ref: ${order.deliveryReference}</div>
+        ${deliveryRef ? `
+          <div style="font-size: ${is58 ? '9px' : '10px'}; font-style: italic; margin-top: 2px;">
+            🏢 REF: ${deliveryRef}
+          </div>
         ` : ''}
-
-        <!-- PIN Seguro: Apenas lembrete de solicitar ao cliente na entrega -->
-        <div style="
-          border: 1px dashed #000;
-          padding: 2px 4px;
-          font-weight: bold;
-          font-size: ${is58 ? '10px' : '11px'};
-          text-align: center;
-          margin: 4px 0;
-        ">
-          PIN ENTREGA: Pedir ao Cliente
-        </div>
       </div>
 
       <!-- ITENS / PRODUTOS -->
       <div style="border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <div style="font-weight: bold; text-decoration: underline; margin-bottom: 4px;">ITENS DO PEDIDO:</div>
+        <div style="font-weight: bold; text-decoration: underline; margin-bottom: 4px; font-size: ${is58 ? '10px' : '12px'};">--- ITENS DO PEDIDO ---</div>
         <table style="width: 100%; border-collapse: collapse; font-size: ${is58 ? '10px' : '12px'};">
           <thead>
             <tr style="border-bottom: 1px solid #000; text-align: left;">
@@ -184,13 +190,29 @@ export function generateSingleTicketHTML(
       </div>
 
       <!-- TOTAL & PAGAMENTO -->
-      <div style="text-align: right; font-weight: bold; font-size: ${is58 ? '12px' : '14px'}; margin-bottom: 6px;">
-        TOTAL DO PEDIDO: ${formattedTotal}
+      <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
+        ${deliveryFee > 0 ? `
+          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '11px'};">
+            <span>Subtotal dos Itens:</span>
+            <span>R$ ${itemsSubtotal.toFixed(2)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '11px'};">
+            <span>Taxa de Entrega:</span>
+            <span>R$ ${deliveryFee.toFixed(2)}</span>
+          </div>
+        ` : ''}
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58 ? '12px' : '14px'}; margin-top: 4px;">
+          <span>TOTAL DO PEDIDO:</span>
+          <span>${formattedTotal}</span>
+        </div>
+        <div style="font-size: ${is58 ? '9px' : '10px'}; font-weight: bold; margin-top: 3px; text-align: right;">
+          💳 Pagamento: PIX / App
+        </div>
       </div>
 
       <!-- RODAPÉ -->
-      <div style="text-align: center; font-size: ${is58 ? '9px' : '10px'}; border-top: 1px dashed #000; padding-top: 6px; margin-top: 6px;">
-        <p style="margin: 0;">--- AçaíFood Delivery ---</p>
+      <div style="text-align: center; font-size: ${is58 ? '9px' : '10px'}; padding-top: 4px;">
+        <p style="margin: 0; font-weight: bold;">--- AçaíFood Delivery ---</p>
         <p style="margin: 2px 0 0 0;">Obrigado pela preferência!</p>
         <br />
         <p style="margin: 0; font-size: 8px;">.</p> <!-- Espaço para corte de papel -->

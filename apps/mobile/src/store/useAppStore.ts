@@ -778,6 +778,8 @@ export const useAppStore = create<AppState>()(
                         role: appRole as Role,
                         name: sf?.store_name || dbUser.name,
                         email: dbUser.email,
+                        telefone: dbUser.telefone || dbUser.phone || '',
+                        endereco: dbUser.endereco || dbUser.address || '',
                         cidade: dbUser.cidade,
                         bairro: dbUser.bairro,
                         lat: dbUser.latitude || 0,
@@ -1947,7 +1949,7 @@ export const useAppStore = create<AppState>()(
             applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
             buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
             delivery_pin, accepted_at, ready_at, received_at,
-            buyer:users!orders_buyer_id_fkey(id, name, latitude, longitude, cidade),
+            buyer:users!orders_buyer_id_fkey(id, name, phone, telefone, endereco, address, latitude, longitude, cidade),
             storefront:storefronts!orders_seller_storefront_id_fkey(id, partner_id, store_name, partner:users!storefronts_partner_id_fkey(cidade)),
             driver:users!orders_driver_id_fkey(id, name)
          `);
@@ -1992,7 +1994,7 @@ export const useAppStore = create<AppState>()(
 
             const fetchedUsersMap: Record<string, any> = {};
             if (missingUserIds.size > 0) {
-               const { data: uData } = await supabase.from('users').select('id, name, email, bairro, cidade, role').in('id', Array.from(missingUserIds));
+               const { data: uData } = await supabase.from('users').select('id, name, email, phone, telefone, endereco, address, bairro, cidade, role').in('id', Array.from(missingUserIds));
                if (uData && uData.length > 0) {
                   uData.forEach((u: any) => { fetchedUsersMap[u.id] = u; });
                   set(prev => ({ users: { ...prev.users, ...fetchedUsersMap } }));
@@ -2085,13 +2087,14 @@ export const useAppStore = create<AppState>()(
                    readyAt: dbOrder.ready_at,
                    receivedAt: dbOrder.received_at,
                    deliveryPin: dbOrder.delivery_pin,
-                   deliveryAddress: dbOrder.delivery_address || localOrder?.deliveryAddress,
+                   deliveryAddress: dbOrder.delivery_address || localOrder?.deliveryAddress || dbOrder.buyer?.endereco || dbOrder.buyer?.address || allUsers[dbOrder.buyer_id]?.endereco,
                    deliveryLat: dbOrder.delivery_lat || localOrder?.deliveryLat,
                    deliveryLng: dbOrder.delivery_lng || localOrder?.deliveryLng,
                    deliveryReference: dbOrder.delivery_reference || localOrder?.deliveryReference,
                    payoutSellerDone: !!dbOrder.payout_seller_done || !!localOrder?.payoutSellerDone,
                    payoutDriverDone: !!dbOrder.payout_driver_done || !!localOrder?.payoutDriverDone,
                    clienteNome: dbOrder.buyer?.name || allUsers[dbOrder.buyer_id]?.name || localOrder?.clienteNome,
+                   clienteTelefone: dbOrder.buyer?.phone || dbOrder.buyer?.telefone || allUsers[dbOrder.buyer_id]?.telefone || localOrder?.clienteTelefone,
                    lojaNome: dbOrder.storefront?.store_name || allUsers[dbOrder.storefront?.partner_id]?.name,
                    motoristaNome: dbOrder.driver?.name || allUsers[dbOrder.driver_id]?.name,
                    criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,

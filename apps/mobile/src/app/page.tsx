@@ -412,7 +412,7 @@ export default function StorefrontPage() {
 
         {!currentUser ? (
           <div className="flex justify-center items-center mt-12 mb-12">
-             <img src="/banner.png" alt="AçaíFood Pará" className="w-full max-w-lg rounded-3xl shadow-2xl object-cover border-4 border-white dark:border-zinc-800" />
+             <img src="/banner.png" alt="Bandeira AçaíFood Roxo Açaí" className="w-full max-w-lg rounded-3xl shadow-2xl object-cover border-4 border-white dark:border-zinc-800" />
           </div>
         ) : (
           <>
