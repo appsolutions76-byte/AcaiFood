@@ -30,11 +30,15 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
     if (!data.open || !data.orderId || isPaid) return;
 
     const checkStatus = async () => {
+      if (isPaid) return;
       try {
-        const res = await fetch(`/api/asaas/status?orderId=${data.orderId}`);
+        const query = data.paymentId 
+          ? `paymentId=${data.paymentId}&orderId=${data.orderId}` 
+          : `orderId=${data.orderId}`;
+        const res = await fetch(`/api/asaas/status?${query}`);
         if (res.ok) {
-          const statusData = await res.json();
-          if (statusData.isPaid) {
+          const resData = await res.json();
+          if (resData.isPaid) {
             setIsPaid(true);
             if (data.orderId) {
               await acaoPedido(data.orderId, 'confirmar_pagamento');
@@ -49,11 +53,11 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
       }
     };
 
-    // Checar imediatamente e depois a cada 2.5s
+    // Checar imediatamente e depois a cada 5s
     checkStatus();
-    const interval = setInterval(checkStatus, 2500);
+    const interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
-  }, [data.open, data.orderId, isPaid, acaoPedido, onPaymentConfirmed]);
+  }, [data.open, data.orderId, data.paymentId, isPaid, acaoPedido, onPaymentConfirmed]);
 
   if (!data.open) return null;
 
