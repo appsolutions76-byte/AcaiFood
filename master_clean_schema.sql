@@ -5,6 +5,10 @@
 -- otimizar o esquema do banco de dados para o Asaas.
 -- ==========================================================
 
+-- 0. Extensões Essenciais
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- 1. Remoção de Tabelas Legadas Sem Utilidade (Mercado Pago e Antigas)
 DROP TABLE IF EXISTS public.mp_oauth_states CASCADE;
 DROP TABLE IF EXISTS public.mercadopago_tokens CASCADE;
@@ -19,21 +23,31 @@ DROP TABLE IF EXISTS public.webhooks CASCADE;
 -- 2. Limpeza de Colunas Legadas
 DO $$
 BEGIN
-  -- Remover colunas do antigo Mercado Pago se ainda existirem na tabela users
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='mp_access_token') THEN
-    ALTER TABLE public.users DROP COLUMN mp_access_token;
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='mp_merchant_id') THEN
-    ALTER TABLE public.users DROP COLUMN mp_merchant_id;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='users') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='mp_access_token') THEN
+      ALTER TABLE public.users DROP COLUMN mp_access_token;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='mp_merchant_id') THEN
+      ALTER TABLE public.users DROP COLUMN mp_merchant_id;
+    END IF;
   END IF;
   
-  -- Remover colunas legadas na tabela orders se existirem
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='mp_payment_id') THEN
-    ALTER TABLE public.orders DROP COLUMN mp_payment_id;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='orders') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='mp_payment_id') THEN
+      ALTER TABLE public.orders DROP COLUMN mp_payment_id;
+    END IF;
   END IF;
 END $$;
 
--- 3. Garante a Estrutura Correta das Colunas Principais no Users
+-- 3. Garante a Tabela Users e suas Colunas
+CREATE TABLE IF NOT EXISTS public.users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT,
+  email TEXT UNIQUE,
+  role TEXT DEFAULT 'cliente',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE public.users
 ADD COLUMN IF NOT EXISTS pix_key TEXT,
 ADD COLUMN IF NOT EXISTS cpf_cnpj TEXT,
@@ -42,7 +56,21 @@ ADD COLUMN IF NOT EXISTS asaas_wallet_id TEXT,
 ADD COLUMN IF NOT EXISTS asaas_account_status TEXT DEFAULT 'APPROVED',
 ADD COLUMN IF NOT EXISTS split_enabled BOOLEAN DEFAULT TRUE;
 
--- 4. Garante a Estrutura Correta das Colunas Principais no Orders
+-- 4. Garante a Tabela Orders e suas Colunas
+CREATE TABLE IF NOT EXISTS public.orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  buyer_id UUID REFERENCES public.users(id),
+  seller_storefront_id UUID,
+  driver_id UUID REFERENCES public.users(id),
+  status TEXT DEFAULT 'PENDING',
+  products_subtotal NUMERIC DEFAULT 0,
+  delivery_distance_km NUMERIC DEFAULT 0,
+  applied_platform_fee_percent NUMERIC DEFAULT 0,
+  applied_delivery_fee_per_km NUMERIC DEFAULT 0,
+  applied_delivery_platform_fee_percent NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE public.orders
 ADD COLUMN IF NOT EXISTS delivery_pin VARCHAR(4),
 ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ,
