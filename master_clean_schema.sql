@@ -337,6 +337,33 @@ CREATE POLICY "Allow partner write on products" ON public.products FOR ALL USING
   )
 );
 
+-- 15.1. Garante a Tabela order_messages e RLS Protegido para o Chat do Pedido
+CREATE TABLE IF NOT EXISTS public.order_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES public.users(id),
+  sender_name TEXT NOT NULL,
+  sender_role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.order_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Order Messages Granular Select Insert" ON public.order_messages;
+
+CREATE POLICY "Order Messages Granular Select Insert" ON public.order_messages
+FOR ALL USING (
+  auth.role() = 'authenticated' AND EXISTS (
+    SELECT 1 FROM public.orders o
+    WHERE o.id = order_messages.order_id AND (
+      o.buyer_id = auth.uid() OR
+      o.driver_id = auth.uid() OR
+      EXISTS (SELECT 1 FROM public.storefronts sf WHERE sf.id = o.seller_storefront_id AND sf.partner_id = auth.uid()) OR
+      EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+    )
+  )
+);
+
 -- 16. Notificar a API REST do Supabase para recarregar o schema cache
 NOTIFY pgrst, 'reload schema';
 

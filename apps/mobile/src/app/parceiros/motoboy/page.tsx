@@ -7,6 +7,7 @@ import { useAppStore, getRatesForCity } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
+import { OrderChatModal } from "@/components/OrderChatModal";
 
 const emptySubscribe = () => () => {};
 
@@ -24,6 +25,7 @@ export default function MotoboyDashboard() {
   const [activeTab, setActiveTab] = useState('radar');
   const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
+  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
 
   const mounted = useSyncExternalStore(
     emptySubscribe,
@@ -539,6 +541,20 @@ export default function MotoboyDashboard() {
         destino={mapModal.destino} 
         motorista={mapModal.motorista} 
       />
+
+      {currentUser && (
+        <OrderChatModal
+          isOpen={chatModalData.open}
+          onClose={() => setChatModalData({ open: false, orderId: "" })}
+          orderId={chatModalData.orderId}
+          currentUserId={currentUser.id}
+          currentUserName={currentUser.name}
+          currentUserRole="motoboy"
+          otherParticipantName={chatModalData.otherName}
+          otherParticipantPhone={chatModalData.otherPhone}
+          otherParticipantRole={chatModalData.otherRole}
+        />
+      )}
     </div>
   );
 }

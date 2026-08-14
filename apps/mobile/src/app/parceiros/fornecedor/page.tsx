@@ -8,6 +8,7 @@ import { MapModal, MapPoint } from "@/components/MapModal";
 import { supabase } from "@/lib/supabase";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
+import { OrderChatModal } from "@/components/OrderChatModal";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -31,6 +32,7 @@ export default function FornecedorDashboard() {
     motorista?: MapPoint | null;
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [printerModalOpen, setPrinterModalOpen] = useState(false);
+  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
   const printedOrdersRef = useRef<Set<string>>(new Set());
 
   const mounted = useSyncExternalStore(
@@ -458,6 +460,24 @@ export default function FornecedorDashboard() {
                         >
                           🗺️ Ver Rota de {(o.distancia || 0).toFixed(1)} km
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const compradorUser = (o as any).buyerId ? store.users[(o as any).buyerId] : (o.destinoId ? store.users[o.destinoId] : null);
+                            const caminhoneiroUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                            const targetOther = caminhoneiroUser || compradorUser;
+                            setChatModalData({
+                              open: true,
+                              orderId: o.id,
+                              otherName: targetOther?.name || o.clienteNome || 'Comprador/Caminhoneiro',
+                              otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
+                              otherRole: caminhoneiroUser ? 'Caminhoneiro' : 'Batedeira'
+                            });
+                          }}
+                          className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 px-2 py-1 rounded inline-flex items-center gap-1 transition shadow-sm ml-2"
+                        >
+                          💬 Chat & 📞 Voz
+                        </button>
                     </div>
                     <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
                         <span>🏪 Loja Compradora: {store.users[o.destinoId]?.name || store.users[o.lojaId!]?.name || o.clienteNome || '—'}</span>
@@ -831,6 +851,20 @@ export default function FornecedorDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {currentUser && (
+        <OrderChatModal
+          isOpen={chatModalData.open}
+          onClose={() => setChatModalData({ open: false, orderId: "" })}
+          orderId={chatModalData.orderId}
+          currentUserId={currentUser.id}
+          currentUserName={currentUser.name}
+          currentUserRole="fornecedor"
+          otherParticipantName={chatModalData.otherName}
+          otherParticipantPhone={chatModalData.otherPhone}
+          otherParticipantRole={chatModalData.otherRole}
+        />
       )}
     </div>
   );

@@ -2,13 +2,14 @@
 
 import React, { useEffect, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
-import { ShoppingCart, BookOpen } from "lucide-react";
+import { ShoppingCart, BookOpen, MessageSquare } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm, getRatesForCity } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PixModal } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
+import { OrderChatModal } from "@/components/OrderChatModal";
 import { validateCpfCnpjDigits } from "@/lib/pix";
 
 const emptySubscribe = () => () => {};
@@ -55,6 +56,7 @@ export default function StorefrontPage() {
   const [cpfModalOpen, setCpfModalOpen] = useState(false);
   const [cpfInputValue, setCpfInputValue] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
+  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
   const { cart, addToCart, removeFromCart, updateCartQuantity } = store;
 
   const [addressMode, setAddressMode] = useState<'profile' | 'gps' | 'custom'>('profile');
@@ -667,26 +669,45 @@ export default function StorefrontPage() {
                                </div>
                             )}
                              {!isCanceled && (
-                                <button 
-                                  onClick={() => {
-                                    const origemUser = store.users[o.origemId];
-                                    const destinoUser = store.users[o.destinoId];
-                                    const latOrigem = origemUser?.lat || 0;
-                                    const lngOrigem = origemUser?.lng || 0;
-                                    const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
-                                    const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
-                                    const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
-                                    setMapModal({
-                                      open: true,
-                                      origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
-                                      destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
-                                      motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
-                                    });
-                                  }} 
-                                  className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded inline-flex items-center gap-1"
-                                >
-                                  🗺️ Ver Rota ({(o.distancia || 0).toFixed(1)} km)
-                                </button>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  <button 
+                                    onClick={() => {
+                                      const origemUser = store.users[o.origemId];
+                                      const destinoUser = store.users[o.destinoId];
+                                      const latOrigem = origemUser?.lat || 0;
+                                      const lngOrigem = origemUser?.lng || 0;
+                                      const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                                      const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                                      const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                                      setMapModal({
+                                        open: true,
+                                        origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                                        destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                                        motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
+                                      });
+                                    }} 
+                                    className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1"
+                                  >
+                                    🗺️ Ver Rota ({(o.distancia || 0).toFixed(1)} km)
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                                      const lojaUser = o.origemId ? store.users[o.origemId] : null;
+                                      const targetOther = motoristaUser || lojaUser;
+                                      setChatModalData({
+                                        open: true,
+                                        orderId: o.id,
+                                        otherName: targetOther?.name || o.lojaNome || 'Atendimento',
+                                        otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
+                                        otherRole: motoristaUser ? 'Motoboy' : 'Batedeira'
+                                      });
+                                    }}
+                                    className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-sm"
+                                  >
+                                    💬 Chat & 📞 Voz
+                                  </button>
+                                </div>
                              )}
                         </div>
                         
@@ -1060,6 +1081,20 @@ export default function StorefrontPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {currentUser && (
+        <OrderChatModal
+          isOpen={chatModalData.open}
+          onClose={() => setChatModalData({ open: false, orderId: "" })}
+          orderId={chatModalData.orderId}
+          currentUserId={currentUser.id}
+          currentUserName={currentUser.name}
+          currentUserRole="cliente"
+          otherParticipantName={chatModalData.otherName}
+          otherParticipantPhone={chatModalData.otherPhone}
+          otherParticipantRole={chatModalData.otherRole}
+        />
       )}
     </div>
   );

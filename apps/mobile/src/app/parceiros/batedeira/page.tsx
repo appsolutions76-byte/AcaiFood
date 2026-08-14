@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
+import { OrderChatModal } from "@/components/OrderChatModal";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -32,6 +33,7 @@ export default function BatedeiraDashboard() {
     motorista?: MapPoint | null;
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [pixModalData, setPixModalData] = useState<PixModalData>({ open: false });
+  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
   const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
@@ -501,14 +503,34 @@ export default function BatedeiraDashboard() {
               )}
 
               {!isCanceled && (
-                <button
-                  type="button"
-                  onClick={() => printOrderTicket(o, currentUser?.name || 'Batedeira AçaíFood', printerConfig, store.users)}
-                  className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-3 py-2 rounded-lg border border-purple-300 dark:border-purple-800 transition shadow-sm flex items-center gap-1 shrink-0 mt-2 sm:mt-0"
-                  title="Imprimir comanda térmica deste pedido"
-                >
-                  🖨️ Imprimir Comanda
-                </button>
+                <div className="flex flex-wrap gap-1.5 mt-2 sm:mt-0">
+                  <button
+                    type="button"
+                    onClick={() => printOrderTicket(o, currentUser?.name || 'Batedeira AçaíFood', printerConfig, store.users)}
+                    className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-3 py-2 rounded-lg border border-purple-300 dark:border-purple-800 transition shadow-sm flex items-center gap-1 shrink-0"
+                    title="Imprimir comanda térmica deste pedido"
+                  >
+                    🖨️ Comanda
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const clienteUser = o.buyerId ? store.users[o.buyerId] : null;
+                      const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                      const targetOther = motoristaUser || clienteUser;
+                      setChatModalData({
+                        open: true,
+                        orderId: o.id,
+                        otherName: targetOther?.name || o.clienteNome || 'Atendimento',
+                        otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
+                        otherRole: motoristaUser ? 'Motoboy' : 'Cliente'
+                      });
+                    }}
+                    className="text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-2 rounded-lg transition shadow-sm flex items-center gap-1 shrink-0"
+                  >
+                    💬 Chat & 📞 Voz
+                  </button>
+                </div>
               )}
 
               {!isCanceled && o.type === 'B2B' && o.status === 'em_rota' && (
@@ -1168,6 +1190,20 @@ export default function BatedeiraDashboard() {
         data={pixModalData} 
         onClose={() => setPixModalData({ open: false })} 
       />
+
+      {currentUser && (
+        <OrderChatModal
+          isOpen={chatModalData.open}
+          onClose={() => setChatModalData({ open: false, orderId: "" })}
+          orderId={chatModalData.orderId}
+          currentUserId={currentUser.id}
+          currentUserName={currentUser.name}
+          currentUserRole="loja"
+          otherParticipantName={chatModalData.otherName}
+          otherParticipantPhone={chatModalData.otherPhone}
+          otherParticipantRole={chatModalData.otherRole}
+        />
+      )}
     </div>
   );
 }

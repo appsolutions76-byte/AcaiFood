@@ -7,6 +7,7 @@ import { useAppStore, getRatesForCity } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
+import { OrderChatModal } from "@/components/OrderChatModal";
 
 const emptySubscribe = () => () => {};
 
@@ -24,6 +25,7 @@ export default function CaminhaoDashboard() {
   const [activeTab, setActiveTab] = useState('radar');
   const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
+  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
 
   const mounted = useSyncExternalStore(
     emptySubscribe,
@@ -400,14 +402,34 @@ export default function CaminhaoDashboard() {
                                   : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destAddress)}`;
 
                                 return (
-                                  <a 
-                                    href={mapsUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                  >
-                                    🏁 GPS p/ Destino
-                                  </a>
+                                  <>
+                                    <a 
+                                      href={mapsUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                                    >
+                                      🏁 GPS p/ Destino
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const compradorUser = (o as any).buyerId ? store.users[(o as any).buyerId] : (o.destinoId ? store.users[o.destinoId] : null);
+                                        const vendedorUser = o.origemId ? store.users[o.origemId] : null;
+                                        const targetOther = compradorUser || vendedorUser;
+                                        setChatModalData({
+                                          open: true,
+                                          orderId: o.id,
+                                          otherName: targetOther?.name || o.clienteNome || 'Comprador/Vendedor',
+                                          otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
+                                          otherRole: compradorUser ? 'Comprador' : 'Vendedor'
+                                        });
+                                      }}
+                                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                                    >
+                                      💬 Chat & 📞 Voz
+                                    </button>
+                                  </>
                                 );
                               })()}
                             </div>
@@ -523,6 +545,20 @@ export default function CaminhaoDashboard() {
         destino={mapModal.destino} 
         motorista={mapModal.motorista} 
       />
+
+      {currentUser && (
+        <OrderChatModal
+          isOpen={chatModalData.open}
+          onClose={() => setChatModalData({ open: false, orderId: "" })}
+          orderId={chatModalData.orderId}
+          currentUserId={currentUser.id}
+          currentUserName={currentUser.name}
+          currentUserRole="caminhoneiro"
+          otherParticipantName={chatModalData.otherName}
+          otherParticipantPhone={chatModalData.otherPhone}
+          otherParticipantRole={chatModalData.otherRole}
+        />
+      )}
     </div>
   );
 }
