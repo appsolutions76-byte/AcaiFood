@@ -13,22 +13,22 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon-192x192.png?v=3", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png?v=3", sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
-      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/apple-icon.png?v=3", sizes: "180x180", type: "image/png" },
+      { url: "/icon-192x192.png?v=3", sizes: "192x192", type: "image/png" },
     ],
   },
   openGraph: {
     title: "AçaíFood - O Marketplace Definitivo de Açaí",
-    description: "O açaí perfeito pra você. O frete é calculado por GPS.",
+    description: "O açaí perfeito pra você. O frete é calculated por GPS.",
     url: "https://acai-food-mobile.vercel.app",
     siteName: "AçaíFood",
     images: [
       {
-        url: "/banner.png",
+        url: "https://acai-food-mobile.vercel.app/banner.png?v=3",
         width: 1200,
         height: 630,
         alt: "AçaíFood Roxo Açaí",
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AçaíFood",
+    title: "AçaíFood - O Marketplace Definitivo de Açaí",
     description: "O marketplace definitivo de açaí.",
-    images: ["/banner.png"],
+    images: ["https://acai-food-mobile.vercel.app/banner.png?v=3"],
   },
 };
 
@@ -52,6 +52,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <meta property="og:image" content="https://acai-food-mobile.vercel.app/banner.png?v=3" />
+        <meta property="og:image:secure_url" content="https://acai-food-mobile.vercel.app/banner.png?v=3" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:image" content="https://acai-food-mobile.vercel.app/banner.png?v=3" />
+        <link rel="image_src" href="https://acai-food-mobile.vercel.app/banner.png?v=3" />
+      </head>
       <body className="antialiased font-sans bg-zinc-950 text-zinc-100">
         <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta httpEquiv="Pragma" content="no-cache" />
