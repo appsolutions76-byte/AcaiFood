@@ -2117,6 +2117,8 @@ export const useAppStore = create<AppState>()(
                    clienteId: localOrder?.clienteId || (dbOrder.order_type === 'B2C' ? dbOrder.buyer_id : undefined),
                    lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id)),
                    fornecedorId: localOrder?.fornecedorId || (dbOrder.order_type === 'B2B' ? (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id) : undefined),
+                   seller_storefront_id: dbOrder.seller_storefront_id,
+                   sellerStorefrontId: dbOrder.seller_storefront_id,
                    distancia: dbOrder.delivery_distance_km,
                    valor: dbOrder.products_subtotal,
                    motoristaId: dbOrder.driver_id,

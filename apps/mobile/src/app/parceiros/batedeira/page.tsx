@@ -242,8 +242,8 @@ export default function BatedeiraDashboard() {
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const meusPedidosAll = (store.orders || []).filter(o => {
-    if (o.lojaId !== currentUser.id) return false;
-    if (o.type === 'B2C' && o.status === 'aguardando_pagamento') return false;
+    const isMyStore = o.lojaId === currentUser.id || o.origemId === currentUser.id || (o as any).seller_storefront_id === currentUser.id || (o as any).sellerStorefrontId === currentUser.id;
+    if (!isMyStore) return false;
     return true;
   });
   const vendasHoje = meusPedidosAll.filter(o => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone).reduce((acc, curr) => acc + (curr.taxas?.repasse || 0), 0);
