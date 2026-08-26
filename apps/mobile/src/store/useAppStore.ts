@@ -667,15 +667,16 @@ export const useAppStore = create<AppState>()(
 
           let channel = supabase.channel('schema-db-changes');
 
-          if (currentUser) {
-              channel = channel.on(
-                  'postgres_changes',
-                  { event: '*', schema: 'public', table: 'orders' },
-                  () => {
-                      get().fetchOrders(currentUser.id);
+          channel = channel.on(
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'orders' },
+              () => {
+                  const u = get().currentUser;
+                  if (u) {
+                      get().fetchOrders(u.id, true);
                   }
-              );
-          }
+              }
+          );
 
           supabaseChannel = channel
               .on(
@@ -1916,8 +1917,12 @@ export const useAppStore = create<AppState>()(
 
         for (const id of ids) {
           try {
-            const { data } = await supabase.from('admin_balances').select('*').eq('id', id).maybeSingle();
+            const { data, error } = await supabase.from('admin_balances').select('*').eq('id', id).maybeSingle();
             
+            if (error) {
+              console.warn("Aviso ao buscar admin_balances para " + id + ":", error);
+            }
+
             const currentOrders = Number(data?.total_orders || 0);
             const currentVolume = Number(data?.total_volume || 0);
             const currentAppRev = Number(data?.app_revenue || 0);
@@ -1930,7 +1935,8 @@ export const useAppStore = create<AppState>()(
             const currentCamBruto = Number(data?.caminhoes_bruto || 0);
             const currentCamLiq = Number(data?.caminhoes_liquido || 0);
 
-            await supabase.from('admin_balances').update({
+            const payload = {
+              id,
               total_orders: currentOrders + 1,
               total_volume: currentVolume + volume,
               app_revenue: currentAppRev + appRev,
@@ -1943,7 +1949,13 @@ export const useAppStore = create<AppState>()(
               caminhoes_bruto: currentCamBruto + camBruto,
               caminhoes_liquido: currentCamLiq + camLiq,
               updated_at: new Date().toISOString()
-            }).eq('id', id);
+            };
+
+            if (!data) {
+              await supabase.from('admin_balances').upsert(payload);
+            } else {
+              await supabase.from('admin_balances').update(payload).eq('id', id);
+            }
           } catch (err) {
             console.error("Erro ao incrementar admin_balances para " + id + ":", err);
           }
@@ -2146,7 +2158,7 @@ export const useAppStore = create<AppState>()(
          
          supabase.channel('public:orders')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (_payload) => {
-                get().fetchOrders(userId);
+                get().fetchOrders(userId, true);
             })
             .subscribe();
 
@@ -2154,13 +2166,13 @@ export const useAppStore = create<AppState>()(
          if (currentUser && currentUser.role === 'admin') {
              supabase.channel('public:users')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (_payload) => {
-                    get().fetchAllUsers();
+                    get().fetchAllUsers(true);
                 })
                 .subscribe();
              
              supabase.channel('public:storefronts')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'storefronts' }, (_payload) => {
-                    get().fetchAllUsers();
+                    get().fetchAllUsers(true);
                 })
                 .subscribe();
          }

@@ -9,7 +9,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- 1. Remoção de Tabelas Legadas Sem Utilidade (Mercado Pago e Antigas)
+-- 1. Remoção de Tabelas Legadas Sem Utilidade
 DROP TABLE IF EXISTS public.mp_oauth_states CASCADE;
 DROP TABLE IF EXISTS public.mercadopago_tokens CASCADE;
 DROP TABLE IF EXISTS public.mp_payments CASCADE;
@@ -39,7 +39,7 @@ BEGIN
   END IF;
 END $$;
 
--- 3. Garante a Tabela Users e suas Colunas
+-- 3. Garante a Tabela Users e todas as suas colunas
 CREATE TABLE IF NOT EXISTS public.users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT,
@@ -49,6 +49,16 @@ CREATE TABLE IF NOT EXISTS public.users (
 );
 
 ALTER TABLE public.users
+ADD COLUMN IF NOT EXISTS phone TEXT,
+ADD COLUMN IF NOT EXISTS telefone TEXT,
+ADD COLUMN IF NOT EXISTS endereco TEXT,
+ADD COLUMN IF NOT EXISTS address TEXT,
+ADD COLUMN IF NOT EXISTS cidade TEXT,
+ADD COLUMN IF NOT EXISTS bairro TEXT,
+ADD COLUMN IF NOT EXISTS latitude FLOAT8,
+ADD COLUMN IF NOT EXISTS longitude FLOAT8,
+ADD COLUMN IF NOT EXISTS vehicle_type TEXT,
+ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active',
 ADD COLUMN IF NOT EXISTS pix_key TEXT,
 ADD COLUMN IF NOT EXISTS cpf_cnpj TEXT,
 ADD COLUMN IF NOT EXISTS asaas_account_id TEXT,
@@ -56,7 +66,21 @@ ADD COLUMN IF NOT EXISTS asaas_wallet_id TEXT,
 ADD COLUMN IF NOT EXISTS asaas_account_status TEXT DEFAULT 'APPROVED',
 ADD COLUMN IF NOT EXISTS split_enabled BOOLEAN DEFAULT TRUE;
 
--- 4. Garante a Tabela Orders e suas Colunas
+-- 3.1. Função Auxiliar Helper SECURITY DEFINER para checar Admin sem Recursão em RLS
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid()
+    AND (role = 'ADMIN' OR role = 'admin' OR role = 'PARTNER_ADMIN')
+  );
+$$;
+
+-- 4. Garante a Tabela Orders e todas as suas colunas
 CREATE TABLE IF NOT EXISTS public.orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   buyer_id UUID REFERENCES public.users(id),
@@ -72,6 +96,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
 );
 
 ALTER TABLE public.orders
+ADD COLUMN IF NOT EXISTS order_type TEXT DEFAULT 'B2C',
 ADD COLUMN IF NOT EXISTS delivery_pin VARCHAR(4),
 ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ,
@@ -90,13 +115,24 @@ ADD COLUMN IF NOT EXISTS payout_seller_done BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS payout_driver_done BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
 
--- 4.1. Garante as Colunas de Modalidade de Pagamento na Tabela platform_settings
+-- 4.1. Garante a Tabela platform_settings e todas as suas colunas
 CREATE TABLE IF NOT EXISTS public.platform_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.platform_settings
+ADD COLUMN IF NOT EXISTS b2c_fee_percentage NUMERIC DEFAULT 10,
+ADD COLUMN IF NOT EXISTS motoboy_fee_per_km NUMERIC DEFAULT 2.00,
+ADD COLUMN IF NOT EXISTS motoboy_platform_fee_percentage NUMERIC DEFAULT 10,
+ADD COLUMN IF NOT EXISTS b2b_fee_percentage NUMERIC DEFAULT 10,
+ADD COLUMN IF NOT EXISTS truck_fee_per_km NUMERIC DEFAULT 4.00,
+ADD COLUMN IF NOT EXISTS truck_platform_fee_percentage NUMERIC DEFAULT 10,
+ADD COLUMN IF NOT EXISTS col_fee_percentage NUMERIC DEFAULT 10,
+ADD COLUMN IF NOT EXISTS col_fee_per_km NUMERIC DEFAULT 8.00,
+ADD COLUMN IF NOT EXISTS col_platform_fee_percentage NUMERIC DEFAULT 10,
+ADD COLUMN IF NOT EXISTS col_fixed_price NUMERIC DEFAULT 50.00,
+ADD COLUMN IF NOT EXISTS payout_time TEXT DEFAULT '22:00',
 ADD COLUMN IF NOT EXISTS courier_payment_mode TEXT DEFAULT 'KM',
 ADD COLUMN IF NOT EXISTS courier_fixed_fee NUMERIC DEFAULT 8.00,
 ADD COLUMN IF NOT EXISTS transporter_payment_mode TEXT DEFAULT 'KM',
@@ -104,7 +140,27 @@ ADD COLUMN IF NOT EXISTS transporter_fixed_fee NUMERIC DEFAULT 150.00,
 ADD COLUMN IF NOT EXISTS ecopoint_payment_mode TEXT DEFAULT 'KM',
 ADD COLUMN IF NOT EXISTS ecopoint_fixed_fee NUMERIC DEFAULT 50.00;
 
--- 5. Criação de Índices de Alta Performance (Evita lentidão no carregamento de listas)
+-- 4.2. Garante a Tabela admin_balances para controle financeiro
+CREATE TABLE IF NOT EXISTS public.admin_balances (
+  id TEXT PRIMARY KEY,
+  total_orders INTEGER DEFAULT 0,
+  total_volume NUMERIC DEFAULT 0,
+  app_revenue NUMERIC DEFAULT 0,
+  fornecedores_bruto NUMERIC DEFAULT 0,
+  fornecedores_liquido NUMERIC DEFAULT 0,
+  batedeiras_bruto NUMERIC DEFAULT 0,
+  batedeiras_liquido NUMERIC DEFAULT 0,
+  motoristas_bruto NUMERIC DEFAULT 0,
+  motoristas_liquido NUMERIC DEFAULT 0,
+  caminhoes_bruto NUMERIC DEFAULT 0,
+  caminhoes_liquido NUMERIC DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO public.admin_balances (id) VALUES ('historical'), ('monthly'), ('daily')
+ON CONFLICT (id) DO NOTHING;
+
+-- 5. Criação de Índices de Alta Performance
 CREATE INDEX IF NOT EXISTS idx_orders_buyer_id ON public.orders(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_seller_storefront_id ON public.orders(seller_storefront_id);
 CREATE INDEX IF NOT EXISTS idx_orders_driver_id ON public.orders(driver_id);
@@ -119,11 +175,11 @@ CREATE INDEX IF NOT EXISTS idx_users_pix_key ON public.users(pix_key);
 CREATE INDEX IF NOT EXISTS idx_storefronts_partner_id ON public.storefronts(partner_id);
 CREATE INDEX IF NOT EXISTS idx_products_storefront_id ON public.products(storefront_id);
 
--- 6. Trigger de Segurança Financeira (Impede alteração não autorizada nos valores)
+-- 6. Trigger de Segurança Financeira
 CREATE OR REPLACE FUNCTION public.protect_order_financials()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF auth.role() = 'authenticated' AND NOT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'ADMIN') THEN
+  IF auth.role() = 'authenticated' AND NOT public.is_admin() THEN
     IF (NEW.products_subtotal IS DISTINCT FROM OLD.products_subtotal) OR
        (NEW.delivery_distance_km IS DISTINCT FROM OLD.delivery_distance_km) OR
        (NEW.applied_platform_fee_percent IS DISTINCT FROM OLD.applied_platform_fee_percent) OR
@@ -147,7 +203,7 @@ EXECUTE FUNCTION public.protect_order_financials();
 CREATE OR REPLACE FUNCTION public.validate_delivery_pin_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF auth.role() = 'authenticated' AND NOT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'ADMIN') THEN
+  IF auth.role() = 'authenticated' AND NOT public.is_admin() THEN
     IF NEW.status = 'RECEIVED' AND OLD.status != 'RECEIVED' THEN
       IF NEW.provided_pin IS NULL OR NEW.provided_pin IS DISTINCT FROM OLD.delivery_pin THEN
         RAISE EXCEPTION 'Acesso negado: PIN de segurança incorreto ou ausente.';
@@ -206,7 +262,19 @@ ALTER TABLE public.orders REPLICA IDENTITY FULL;
 ALTER TABLE public.storefronts REPLICA IDENTITY FULL;
 ALTER TABLE public.platform_settings REPLICA IDENTITY FULL;
 
--- 10. Garantir Políticas RLS Granulares e Seguras na Tabela Orders
+-- 10. Garantir RLS em Users sem Recursão
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public select on users" ON public.users;
+DROP POLICY IF EXISTS "Allow self insert on users" ON public.users;
+DROP POLICY IF EXISTS "Allow self update on users" ON public.users;
+
+CREATE POLICY "Allow public select on users" ON public.users FOR SELECT USING (true);
+CREATE POLICY "Allow self insert on users" ON public.users FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow self update on users" ON public.users FOR UPDATE USING (
+  auth.role() = 'authenticated' AND (id = auth.uid() OR public.is_admin())
+);
+
+-- 11. Garantir RLS Granulares e Seguras na Tabela Orders
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all update on orders" ON public.orders;
 DROP POLICY IF EXISTS "Allow all insert on orders" ON public.orders;
@@ -220,9 +288,11 @@ FOR SELECT USING (
   auth.role() = 'authenticated' AND (
     buyer_id = auth.uid() OR 
     driver_id = auth.uid() OR 
+    driver_id IS NULL OR
     seller_storefront_id = auth.uid() OR
     EXISTS (SELECT 1 FROM public.storefronts sf WHERE sf.id = orders.seller_storefront_id AND sf.partner_id = auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+    EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role IN ('ADMIN', 'admin', 'COURIER', 'courier', 'DRIVER', 'driver', 'motoboy', 'caminhao'))) OR
+    public.is_admin()
   )
 );
 
@@ -239,11 +309,12 @@ FOR UPDATE USING (
     driver_id IS NULL OR
     seller_storefront_id = auth.uid() OR
     EXISTS (SELECT 1 FROM public.storefronts sf WHERE sf.id = orders.seller_storefront_id AND sf.partner_id = auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+    EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role IN ('ADMIN', 'admin', 'COURIER', 'courier', 'DRIVER', 'driver', 'motoboy', 'caminhao'))) OR
+    public.is_admin()
   )
 ) WITH CHECK (true);
 
--- 12. Garante a Tabela Cities e Coluna rates com RLS Protegido
+-- 12. Garante a Tabela Cities e RLS Protegido
 CREATE TABLE IF NOT EXISTS public.cities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -263,7 +334,7 @@ DROP POLICY IF EXISTS "Allow admin write on cities" ON public.cities;
 
 CREATE POLICY "Allow public select on cities" ON public.cities FOR SELECT USING (true);
 CREATE POLICY "Allow admin write on cities" ON public.cities FOR ALL USING (
-  auth.role() = 'authenticated' AND EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+  auth.role() = 'authenticated' AND public.is_admin()
 );
 
 -- 13. Garante RLS Protegido na Tabela platform_settings
@@ -276,7 +347,17 @@ DROP POLICY IF EXISTS "Allow admin write on platform_settings" ON public.platfor
 
 CREATE POLICY "Allow public select on platform_settings" ON public.platform_settings FOR SELECT USING (true);
 CREATE POLICY "Allow admin write on platform_settings" ON public.platform_settings FOR ALL USING (
-  auth.role() = 'authenticated' AND EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+  auth.role() = 'authenticated' AND public.is_admin()
+);
+
+-- 14. Garante RLS Protegido na Tabela admin_balances
+ALTER TABLE public.admin_balances ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public select on admin_balances" ON public.admin_balances;
+DROP POLICY IF EXISTS "Allow authenticated write on admin_balances" ON public.admin_balances;
+
+CREATE POLICY "Allow public select on admin_balances" ON public.admin_balances FOR SELECT USING (true);
+CREATE POLICY "Allow authenticated write on admin_balances" ON public.admin_balances FOR ALL USING (
+  auth.role() = 'authenticated'
 );
 
 -- 15. Garante Estrutura e RLS nas Tabelas storefronts e products
@@ -309,8 +390,7 @@ DROP POLICY IF EXISTS "Allow partner write on storefronts" ON public.storefronts
 CREATE POLICY "Allow public select on storefronts" ON public.storefronts FOR SELECT USING (true);
 CREATE POLICY "Allow partner write on storefronts" ON public.storefronts FOR ALL USING (
   auth.role() = 'authenticated' AND (
-    partner_id = auth.uid() OR 
-    EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+    partner_id = auth.uid() OR public.is_admin()
   )
 );
 
@@ -334,7 +414,7 @@ CREATE POLICY "Allow public select on products" ON public.products FOR SELECT US
 CREATE POLICY "Allow partner write on products" ON public.products FOR ALL USING (
   auth.role() = 'authenticated' AND EXISTS (
     SELECT 1 FROM public.storefronts sf WHERE sf.id = products.storefront_id AND (
-      sf.partner_id = auth.uid() OR EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+      sf.partner_id = auth.uid() OR public.is_admin()
     )
   )
 );
@@ -361,11 +441,10 @@ FOR ALL USING (
       o.buyer_id = auth.uid() OR
       o.driver_id = auth.uid() OR
       EXISTS (SELECT 1 FROM public.storefronts sf WHERE sf.id = o.seller_storefront_id AND sf.partner_id = auth.uid()) OR
-      EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role = 'ADMIN' OR u.role = 'admin'))
+      public.is_admin()
     )
   )
 );
 
 -- 16. Notificar a API REST do Supabase para recarregar o schema cache
 NOTIFY pgrst, 'reload schema';
-
