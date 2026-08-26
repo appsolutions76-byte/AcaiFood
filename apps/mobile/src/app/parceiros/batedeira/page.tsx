@@ -244,13 +244,14 @@ export default function BatedeiraDashboard() {
 
   const mySfIds = ((store.users[currentUser.id] as any)?.storefronts || []).map((s: any) => s.id);
   const meusPedidosAll = (store.orders || []).filter(o => {
+    if (!currentUser?.id) return false;
     const targetSfId = (o as any).seller_storefront_id || (o as any).sellerStorefrontId;
     const isMyStore = o.lojaId === currentUser.id || 
                       o.origemId === currentUser.id || 
                       targetSfId === currentUser.id || 
-                      (mySfIds.length > 0 && (mySfIds.includes(o.lojaId) || mySfIds.includes(o.origemId) || mySfIds.includes(targetSfId)));
-    if (!isMyStore) return false;
-    return true;
+                      (mySfIds.length > 0 && (mySfIds.includes(o.lojaId) || mySfIds.includes(o.origemId) || mySfIds.includes(targetSfId))) ||
+                      (o.type === 'B2C' && o.lojaNome && currentUser.name && o.lojaNome.toLowerCase().trim() === currentUser.name.toLowerCase().trim());
+    return isMyStore;
   });
   const vendasHoje = meusPedidosAll.filter(o => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone).reduce((acc, curr) => acc + (curr.taxas?.repasse || 0), 0);
   

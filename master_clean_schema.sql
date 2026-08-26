@@ -84,7 +84,7 @@ $$;
 CREATE TABLE IF NOT EXISTS public.orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   buyer_id UUID REFERENCES public.users(id),
-  seller_storefront_id UUID,
+  seller_storefront_id UUID REFERENCES public.storefronts(id) ON DELETE SET NULL,
   driver_id UUID REFERENCES public.users(id),
   status TEXT DEFAULT 'PENDING',
   products_subtotal NUMERIC DEFAULT 0,
@@ -94,6 +94,19 @@ CREATE TABLE IF NOT EXISTS public.orders (
   applied_delivery_platform_fee_percent NUMERIC DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Garante chave estrangeira orders_seller_storefront_id_fkey se a tabela ja existia
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'orders_seller_storefront_id_fkey' AND table_name = 'orders'
+  ) THEN
+    ALTER TABLE public.orders 
+    ADD CONSTRAINT orders_seller_storefront_id_fkey 
+    FOREIGN KEY (seller_storefront_id) REFERENCES public.storefronts(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 ALTER TABLE public.orders
 ADD COLUMN IF NOT EXISTS order_type TEXT DEFAULT 'B2C',

@@ -1975,17 +1975,15 @@ export const useAppStore = create<AppState>()(
 
          const roleLower = String(currentUser.role || '').toLowerCase();
 
-         let query = supabase.from('orders').select(`
-            id, order_type, status, products_subtotal, delivery_distance_km, 
-            applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
-            buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
-            delivery_pin, accepted_at, ready_at, received_at,
-            buyer:users!orders_buyer_id_fkey(id, name, phone, telefone, endereco, address, latitude, longitude, cidade),
-            storefront:storefronts!orders_seller_storefront_id_fkey(id, partner_id, store_name, partner:users!storefronts_partner_id_fkey(cidade)),
-            driver:users!orders_driver_id_fkey(id, name)
-         `);
+          // Fetch orders using primary query
+          let query = supabase.from('orders').select(`
+             id, order_type, status, products_subtotal, delivery_distance_km, 
+             applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
+             buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
+             delivery_pin, accepted_at, ready_at, received_at, asaas_payment_id
+          `);
 
-         if (roleLower === 'loja' || roleLower === 'partner' || roleLower === 'batedeira' || roleLower === 'partner_admin') {
+          if (roleLower === 'loja' || roleLower === 'partner' || roleLower === 'batedeira' || roleLower === 'partner_admin') {
              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
              const sfIds = (sfList || []).map((s: any) => s.id);
              sfIds.push(currentUser.id);
@@ -1996,11 +1994,11 @@ export const useAppStore = create<AppState>()(
              sfIds.push(currentUser.id);
              query = query.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
           } else if (roleLower === 'motorista' || roleLower === 'courier' || roleLower === 'caminhao' || roleLower === 'motoboy' || roleLower === 'driver') {
-            query = query.or(`driver_id.is.null,driver_id.eq.${currentUser.id},status.in.(READY,PREPARING,DELIVERING,PAID,PENDING,pronto,preparo)`);
+             query = query.or(`driver_id.is.null,driver_id.eq.${currentUser.id},status.in.(READY,PREPARING,DELIVERING,PAID,PENDING,pronto,preparo)`);
           } else if (roleLower === 'cliente' || roleLower === 'client') {
              query = query.eq('buyer_id', currentUser.id);
           } else if (roleLower === 'admin') {
-             // Admin vê todos os pedidos
+             // Admin views all system orders
           } else {
              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
              const sfIds = (sfList || []).map((s: any) => s.id);
@@ -2008,14 +2006,34 @@ export const useAppStore = create<AppState>()(
              query = query.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id},driver_id.eq.${currentUser.id}`);
           }
 
-         if (roleLower !== 'admin') {
-            query = query.eq('is_hidden', false);
-         }
+          if (roleLower !== 'admin') {
+             query = query.eq('is_hidden', false);
+          }
 
-         query = query.order('created_at', { ascending: false }).limit(200);
-         const { data: dbOrders, error } = await query;
+          query = query.order('created_at', { ascending: false }).limit(200);
+          let { data: dbOrders, error } = await query;
+
+          if (error || !dbOrders) {
+             console.warn("Primary fetchOrders query notice (executing safe fallback):", error);
+             let fallbackQuery = supabase.from('orders').select('*');
+             if (roleLower === 'loja' || roleLower === 'partner' || roleLower === 'batedeira' || roleLower === 'partner_admin') {
+                const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
+                const sfIds = (sfList || []).map((s: any) => s.id);
+                sfIds.push(currentUser.id);
+                fallbackQuery = fallbackQuery.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
+             } else if (roleLower === 'motorista' || roleLower === 'courier' || roleLower === 'caminhao' || roleLower === 'motoboy' || roleLower === 'driver') {
+                fallbackQuery = fallbackQuery.or(`driver_id.is.null,driver_id.eq.${currentUser.id}`);
+             } else if (roleLower === 'cliente' || roleLower === 'client') {
+                fallbackQuery = fallbackQuery.eq('buyer_id', currentUser.id);
+             }
+             if (roleLower !== 'admin') {
+                fallbackQuery = fallbackQuery.eq('is_hidden', false);
+             }
+             const fallbackRes = await fallbackQuery.order('created_at', { ascending: false }).limit(200);
+             dbOrders = fallbackRes.data;
+          }
          
-         if (dbOrders && !error) {
+         if (dbOrders) {
             const missingUserIds = new Set<string>();
             dbOrders.forEach((o: any) => {
                if (o.buyer_id && !state.users[o.buyer_id]?.name) missingUserIds.add(o.buyer_id);
