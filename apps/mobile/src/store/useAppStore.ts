@@ -107,6 +107,8 @@ export interface Order {
   deliveryLat?: number;
   deliveryLng?: number;
   deliveryReference?: string;
+  lojaEndereco?: string;
+  lojaTelefone?: string;
   payoutSellerDone?: boolean;
   payoutDriverDone?: boolean;
   clienteNome?: string;
@@ -1388,23 +1390,28 @@ export const useAppStore = create<AppState>()(
         
         // 1. Insert into Supabase Orders table
         try {
-          let sellerStorefrontId = targetId;
-          
-          if (tipo === 'COLETA') {
-             const { data: mySf } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id).limit(1).maybeSingle();
-             if (mySf) {
-                 sellerStorefrontId = mySf.id;
+          let sellerStorefrontId: string | null = null;
+          const storeUserTargetId = tipo === 'COLETA' ? currentUser.id : (targetId || currentUser.id);
+
+          if (storeUserTargetId) {
+             // 1. Check if storeUserTargetId is already a valid storefront ID
+             const { data: sfById } = await supabase.from('storefronts').select('id, partner_id').eq('id', storeUserTargetId).maybeSingle();
+             if (sfById) {
+                sellerStorefrontId = sfById.id;
              } else {
-                 alert("Seu perfil de loja não foi encontrado.");
-                 return;
-             }
-          } else if (targetId) {
-             const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', targetId).limit(1).maybeSingle();
-             if (sf) {
-                 sellerStorefrontId = sf.id;
-             } else {
-                 alert("Esta loja ainda não concluiu o cadastro (Perfil de Vendas ausente). Não é possível pedir no momento.");
-                 return;
+                // 2. Check if storeUserTargetId is a partner user ID
+                const { data: sfByPartner } = await supabase.from('storefronts').select('id, partner_id').eq('partner_id', storeUserTargetId).maybeSingle();
+                if (sfByPartner) {
+                   sellerStorefrontId = sfByPartner.id;
+                } else {
+                   // 3. Auto-create storefront row for partner user if missing
+                   const targetUserName = state.users[storeUserTargetId]?.name || 'Loja AçaíFood';
+                   const { data: newSf } = await supabase.from('storefronts').insert({
+                      partner_id: storeUserTargetId,
+                      store_name: targetUserName
+                   }).select('id').single();
+                   if (newSf) sellerStorefrontId = newSf.id;
+                }
              }
           }
 
@@ -2122,32 +2129,38 @@ export const useAppStore = create<AppState>()(
 
                 const platformTotal = finalPlatVenda + finalPlatEntrega;
 
-                return {
-                   ...(localOrder || {}),
-                   id: dbOrder.id,
-                   type: dbOrder.order_type as 'B2C'|'B2B'|'COLETA',
-                   title: localOrder?.title || `Pedido de ${storeName}`,
-                   status: finalStatus as any,
-                   createdAt: dbOrder.created_at,
-                   pickedUpAt: dbOrder.picked_up_at,
-                   deliveredAt: dbOrder.delivered_at,
-                   acceptedAt: dbOrder.accepted_at,
-                   readyAt: dbOrder.ready_at,
-                   receivedAt: dbOrder.received_at,
-                   deliveryPin: dbOrder.delivery_pin,
-                   deliveryAddress: dbOrder.delivery_address || localOrder?.deliveryAddress || dbOrder.buyer?.endereco || dbOrder.buyer?.address || allUsers[dbOrder.buyer_id]?.endereco,
-                   deliveryLat: dbOrder.delivery_lat || localOrder?.deliveryLat,
-                   deliveryLng: dbOrder.delivery_lng || localOrder?.deliveryLng,
-                   deliveryReference: dbOrder.delivery_reference || localOrder?.deliveryReference,
-                   payoutSellerDone: !!dbOrder.payout_seller_done || !!localOrder?.payoutSellerDone,
-                   payoutDriverDone: !!dbOrder.payout_driver_done || !!localOrder?.payoutDriverDone,
-                   clienteNome: dbOrder.buyer?.name || allUsers[dbOrder.buyer_id]?.name || localOrder?.clienteNome,
-                   clienteTelefone: dbOrder.buyer?.phone || dbOrder.buyer?.telefone || allUsers[dbOrder.buyer_id]?.telefone || localOrder?.clienteTelefone,
-                   lojaNome: dbOrder.storefront?.store_name || allUsers[dbOrder.storefront?.partner_id]?.name,
-                   motoristaNome: dbOrder.driver?.name || allUsers[dbOrder.driver_id]?.name,
-                   criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,
-                   origemId: localOrder?.origemId || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id,
-                   destinoId: localOrder?.destinoId || dbOrder.buyer_id,
+                    const sfUser = allUsers[dbOrder.seller_storefront_id] || allUsers[dbOrder.storefront?.partner_id];
+                    const resolvedStoreName = dbOrder.storefront?.store_name || sfUser?.name || localOrder?.lojaNome || 'Ponto do açaí';
+                    const resolvedStoreAddress = sfUser?.endereco || sfUser?.address || localOrder?.lojaEndereco;
+
+                    return {
+                       ...(localOrder || {}),
+                       id: dbOrder.id,
+                       type: dbOrder.order_type as 'B2C'|'B2B'|'COLETA',
+                       title: localOrder?.title || `Pedido de ${resolvedStoreName}`,
+                       status: finalStatus as any,
+                       createdAt: dbOrder.created_at,
+                       pickedUpAt: dbOrder.picked_up_at,
+                       deliveredAt: dbOrder.delivered_at,
+                       acceptedAt: dbOrder.accepted_at,
+                       readyAt: dbOrder.ready_at,
+                       receivedAt: dbOrder.received_at,
+                       deliveryPin: dbOrder.delivery_pin,
+                       deliveryAddress: dbOrder.delivery_address || localOrder?.deliveryAddress || dbOrder.buyer?.endereco || dbOrder.buyer?.address || allUsers[dbOrder.buyer_id]?.endereco,
+                       deliveryLat: dbOrder.delivery_lat || localOrder?.deliveryLat,
+                       deliveryLng: dbOrder.delivery_lng || localOrder?.deliveryLng,
+                       deliveryReference: dbOrder.delivery_reference || localOrder?.deliveryReference,
+                       payoutSellerDone: !!dbOrder.payout_seller_done || !!localOrder?.payoutSellerDone,
+                       payoutDriverDone: !!dbOrder.payout_driver_done || !!localOrder?.payoutDriverDone,
+                       clienteNome: dbOrder.buyer?.name || allUsers[dbOrder.buyer_id]?.name || localOrder?.clienteNome,
+                       clienteTelefone: dbOrder.buyer?.phone || dbOrder.buyer?.telefone || allUsers[dbOrder.buyer_id]?.telefone || localOrder?.clienteTelefone,
+                       lojaNome: resolvedStoreName,
+                       lojaEndereco: resolvedStoreAddress,
+                       lojaTelefone: sfUser?.phone || sfUser?.telefone || localOrder?.lojaTelefone,
+                       motoristaNome: dbOrder.driver?.name || allUsers[dbOrder.driver_id]?.name,
+                       criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,
+                       origemId: localOrder?.origemId || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id,
+                       destinoId: localOrder?.destinoId || dbOrder.buyer_id,
                    cidadeOrigem: dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || 'Belém',
                    clienteId: localOrder?.clienteId || (dbOrder.order_type === 'B2C' ? dbOrder.buyer_id : undefined),
                    lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id)),
