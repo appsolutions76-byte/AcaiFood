@@ -205,7 +205,8 @@ export default function FornecedorDashboard() {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
   }
 
-  const isFornecedor = currentUser && String(currentUser.role || '').toLowerCase() === 'fornecedor';
+  const roleLowerForn = String(currentUser?.role || '').toLowerCase();
+  const isFornecedor = currentUser && (roleLowerForn === 'fornecedor' || roleLowerForn === 'supplier' || roleLowerForn === 'partner');
 
   if (!isFornecedor) {
     return (
@@ -235,10 +236,17 @@ export default function FornecedorDashboard() {
   const isCompleted = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
   const isPaidOrProcessing = (st?: string) => st === 'pendente' || st === 'preparo' || st === 'pronto' || st === 'em_rota' || st === 'aguardando_cliente' || st === 'PAID' || st === 'PREPARING' || st === 'READY' || st === 'IN_TRANSIT';
 
+  const myFornSfIds = ((store.users[currentUser.id] as any)?.storefronts || []).map((s: any) => s.id);
   const isMyOrder = (o: any) => {
     if (!currentUser) return false;
-    const isSupplier = o.fornecedorId === currentUser.id || (o as any).fornecedor_id === currentUser.id || o.origemId === currentUser.id;
-    return isSupplier && o.status !== 'aguardando_pagamento' && o.status !== 'PENDING';
+    const targetSfId = (o as any).seller_storefront_id || (o as any).sellerStorefrontId;
+    const isSupplier = o.fornecedorId === currentUser.id || 
+                       (o as any).fornecedor_id === currentUser.id || 
+                       o.origemId === currentUser.id || 
+                       targetSfId === currentUser.id ||
+                       (myFornSfIds.length > 0 && myFornSfIds.includes(targetSfId)) ||
+                       (o.type === 'B2B' && o.lojaNome && currentUser.name && o.lojaNome.toLowerCase().trim() === currentUser.name.toLowerCase().trim());
+    return isSupplier;
   };
 
   const meusPedidosAll = (store.orders || []).filter(o => isMyOrder(o));
