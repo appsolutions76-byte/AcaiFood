@@ -242,8 +242,13 @@ export default function BatedeiraDashboard() {
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  const mySfIds = ((store.users[currentUser.id] as any)?.storefronts || []).map((s: any) => s.id);
   const meusPedidosAll = (store.orders || []).filter(o => {
-    const isMyStore = o.lojaId === currentUser.id || o.origemId === currentUser.id || (o as any).seller_storefront_id === currentUser.id || (o as any).sellerStorefrontId === currentUser.id;
+    const targetSfId = (o as any).seller_storefront_id || (o as any).sellerStorefrontId;
+    const isMyStore = o.lojaId === currentUser.id || 
+                      o.origemId === currentUser.id || 
+                      targetSfId === currentUser.id || 
+                      (mySfIds.length > 0 && (mySfIds.includes(o.lojaId) || mySfIds.includes(o.origemId) || mySfIds.includes(targetSfId)));
     if (!isMyStore) return false;
     return true;
   });

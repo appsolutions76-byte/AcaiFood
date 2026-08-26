@@ -1985,23 +1985,28 @@ export const useAppStore = create<AppState>()(
             driver:users!orders_driver_id_fkey(id, name)
          `);
 
-         if (roleLower === 'loja') {
+         if (roleLower === 'loja' || roleLower === 'partner' || roleLower === 'batedeira' || roleLower === 'partner_admin') {
              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
              const sfIds = (sfList || []).map((s: any) => s.id);
              sfIds.push(currentUser.id);
              query = query.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
-          } else if (roleLower === 'fornecedor') {
+          } else if (roleLower === 'fornecedor' || roleLower === 'supplier') {
              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
              const sfIds = (sfList || []).map((s: any) => s.id);
              sfIds.push(currentUser.id);
              query = query.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
-          } else if (roleLower === 'motorista' || roleLower === 'courier' || roleLower === 'caminhao' || roleLower === 'motoboy') {
+          } else if (roleLower === 'motorista' || roleLower === 'courier' || roleLower === 'caminhao' || roleLower === 'motoboy' || roleLower === 'driver') {
             query = query.or(`driver_id.is.null,driver_id.eq.${currentUser.id},status.in.(READY,PREPARING,DELIVERING,PAID,PENDING,pronto,preparo)`);
-         } else if (roleLower === 'cliente') {
-            query = query.eq('buyer_id', currentUser.id);
-         } else if (roleLower === 'admin') {
-            // Admin vê todos os pedidos sem restrição
-         }
+          } else if (roleLower === 'cliente' || roleLower === 'client') {
+             query = query.eq('buyer_id', currentUser.id);
+          } else if (roleLower === 'admin') {
+             // Admin vê todos os pedidos
+          } else {
+             const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
+             const sfIds = (sfList || []).map((s: any) => s.id);
+             sfIds.push(currentUser.id);
+             query = query.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id},driver_id.eq.${currentUser.id}`);
+          }
 
          if (roleLower !== 'admin') {
             query = query.eq('is_hidden', false);
