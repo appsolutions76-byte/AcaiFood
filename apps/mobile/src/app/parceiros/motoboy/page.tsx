@@ -101,11 +101,12 @@ export default function MotoboyDashboard() {
   const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
 
   const corridasDisponiveis = (store.orders || []).filter(o => {
-    const isReady = (o.status === 'pronto' || (o.status as string) === 'READY') && (o.motoristaId === null || !o.motoristaId) && o.type === 'B2C';
+    const isReady = (o.status === 'pronto' || o.status === 'preparo' || o.status === 'pendente' || (o.status as string) === 'PAID' || (o.status as string) === 'READY' || (o.status as string) === 'PREPARING') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
     if (!isReady) return false;
     const originCity = (o as any).cidadeOrigem?.toLowerCase()?.trim() || 'belém';
     const driverCity = currentUser.cidade?.toLowerCase()?.trim() || 'belém';
-    return originCity === driverCity;
+    if (!originCity || !driverCity) return true;
+    return originCity === driverCity || driverCity.includes(originCity) || originCity.includes(driverCity);
   });
   const minhasCorridasAll = (store.orders || []).filter(o => o.motoristaId === currentUser.id);
   const ganhosHoje = minhasCorridasAll.filter(o => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc, curr) => acc + getMotoboyFee(curr), 0);

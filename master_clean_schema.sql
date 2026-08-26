@@ -304,15 +304,7 @@ DROP POLICY IF EXISTS "Orders Granular Update" ON public.orders;
 
 CREATE POLICY "Orders Granular Select" ON public.orders 
 FOR SELECT USING (
-  auth.role() = 'authenticated' AND (
-    buyer_id = auth.uid() OR 
-    driver_id = auth.uid() OR 
-    driver_id IS NULL OR
-    seller_storefront_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.storefronts sf WHERE sf.id = orders.seller_storefront_id AND sf.partner_id = auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role IN ('ADMIN', 'admin', 'COURIER', 'courier', 'DRIVER', 'driver', 'motoboy', 'caminhao'))) OR
-    public.is_admin()
-  )
+  auth.role() = 'authenticated'
 );
 
 CREATE POLICY "Orders Granular Insert" ON public.orders 
@@ -322,15 +314,7 @@ FOR INSERT WITH CHECK (
 
 CREATE POLICY "Orders Granular Update" ON public.orders 
 FOR UPDATE USING (
-  auth.role() = 'authenticated' AND (
-    buyer_id = auth.uid() OR 
-    driver_id = auth.uid() OR 
-    driver_id IS NULL OR
-    seller_storefront_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.storefronts sf WHERE sf.id = orders.seller_storefront_id AND sf.partner_id = auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND (u.role IN ('ADMIN', 'admin', 'COURIER', 'courier', 'DRIVER', 'driver', 'motoboy', 'caminhao'))) OR
-    public.is_admin()
-  )
+  auth.role() = 'authenticated'
 ) WITH CHECK (true);
 
 -- 12. Garante a Tabela Cities e RLS Protegido
