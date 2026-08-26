@@ -2259,6 +2259,7 @@ export const useAppStore = create<AppState>()(
          
          // Atualiza pedidos em segundo plano de forma inteligente a cada 60 segundos
          autoRefreshInterval = setInterval(async () => {
+             if (typeof document !== 'undefined' && document.hidden) return;
              const currentUser = get().currentUser;
              if (currentUser) {
                  try {

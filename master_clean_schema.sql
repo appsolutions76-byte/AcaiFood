@@ -160,12 +160,18 @@ CREATE TABLE IF NOT EXISTS public.admin_balances (
 INSERT INTO public.admin_balances (id) VALUES ('historical'), ('monthly'), ('daily')
 ON CONFLICT (id) DO NOTHING;
 
--- 5. Criação de Índices de Alta Performance
+-- 5. Criação de Índices de Alta Performance & Otimização de Consultas
 CREATE INDEX IF NOT EXISTS idx_orders_buyer_id ON public.orders(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_seller_storefront_id ON public.orders(seller_storefront_id);
 CREATE INDEX IF NOT EXISTS idx_orders_driver_id ON public.orders(driver_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DESC);
+
+-- Índices Compostos de Otimização Multidispositivo e Radar
+CREATE INDEX IF NOT EXISTS idx_orders_sf_status ON public.orders(seller_storefront_id, status);
+CREATE INDEX IF NOT EXISTS idx_orders_driver_status ON public.orders(driver_id, status);
+CREATE INDEX IF NOT EXISTS idx_orders_buyer_status ON public.orders(buyer_id, status);
+CREATE INDEX IF NOT EXISTS idx_orders_type_status ON public.orders(order_type, status);
 
 CREATE INDEX IF NOT EXISTS idx_users_role ON public.users(role);
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);

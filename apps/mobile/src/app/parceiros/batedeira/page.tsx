@@ -78,6 +78,7 @@ export default function BatedeiraDashboard() {
     if (!currentUser?.id) return;
     store.fetchOrders(currentUser.id, true);
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       store.fetchOrders(currentUser.id, false);
     }, 4000);
     return () => clearInterval(interval);
