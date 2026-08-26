@@ -62,6 +62,7 @@ export interface User {
   asaasLinked?: boolean;
   email?: string;
   cpfCnpj?: string;
+  /** Ephemeral field: used only during registration (supabase.auth.signUp). Never persisted to localStorage. */
   password?: string;
   status?: 'active' | 'paused' | 'blocked';
   pixKey?: string;
@@ -1436,15 +1437,20 @@ export const useAppStore = create<AppState>()(
             }).select().single();
 
             if (dbError) {
-              console.warn("Aviso RLS/DB ao salvar pedido (usando fallback seguro):", dbError);
+              console.warn("DB error saving order:", dbError);
             } else {
               dbOrder = data;
             }
           } catch (err) {
-            console.warn("Exceção ao salvar pedido no DB:", err);
+            console.warn("Exception saving order to DB:", err);
           }
 
-          const orderIdToUse = dbOrder?.id || `ord_${Date.now()}`;
+          // Security: block checkout if no real DB UUID was returned
+          if (!dbOrder?.id) {
+            alert('Erro ao registrar pedido no servidor. Tente novamente em alguns segundos.');
+            return null;
+          }
+          const orderIdToUse = dbOrder.id;
 
           // 2. Processar Pagamento e Split via Asaas em Nome da Plataforma AçaíFood
           let sellerPartnerId = targetId || '';
@@ -1762,7 +1768,17 @@ export const useAppStore = create<AppState>()(
               newOrder.status = 'aguardando_cliente';
               newDbStatus = 'DELIVERED';
             }
-            if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
+            if (action === 'conf_recebedor' || action === 'validar_pin') {
+              newOrder.status = 'entregue';
+              newDbStatus = 'RECEIVED';
+            }
+            // forcar_baixa restricted to admin only
+            if (action === 'forcar_baixa') {
+              const isAdminUser = state.currentUser?.role === 'admin';
+              if (!isAdminUser) {
+                console.warn('Security: forcar_baixa rejected — not an admin');
+                return o; // Reject non-admin force close
+              }
               newOrder.status = 'entregue';
               newDbStatus = 'RECEIVED';
             }
@@ -1791,11 +1807,19 @@ export const useAppStore = create<AppState>()(
                   get().fetchOrders(currentUser.id);
                }
             } else if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
-               // Disparar transferências automáticas Pix (Payout) para TODOS os parceiros: Batedeira, Fornecedor, Motoboy, Caminhoneiro
+               // Trigger automatic Pix payouts to all partners: Store, Supplier, Driver
                const currentOrder = get().orders.find(o => o.id === orderId) || state.orders.find(o => o.id === orderId);
                if (currentOrder) {
                  get().incrementAdminBalances(currentOrder);
-                 // 1. Repasse do Vendedor (Loja no B2C ou Fornecedor no B2B)
+
+                 // Re-fetch payout flags to prevent double payment (race condition guard)
+                 const { data: payoutCheck } = await supabase
+                   .from('orders')
+                   .select('payout_seller_done, payout_driver_done')
+                   .eq('id', orderId)
+                   .maybeSingle();
+
+                 // 1. Seller payout (Store in B2C, Supplier in B2B)
                  const sellerId = currentOrder.type === 'B2B' 
                    ? (currentOrder.fornecedorId || currentOrder.origemId)
                    : (currentOrder.lojaId || currentOrder.origemId);
@@ -1808,7 +1832,8 @@ export const useAppStore = create<AppState>()(
                  const sellerPixKey = sellerUser?.pix_key || sellerUser?.pixKey || sellerUser?.asaasWalletId || sellerUser?.cpf_cnpj || sellerUser?.cpfCnpj || sellerUser?.email;
                  const repasseSeller = currentOrder.taxas?.repasse || 0;
 
-                 if (sellerPixKey && repasseSeller > 0) {
+                 // Deduplication guard: only pay if not already paid
+                 if (sellerPixKey && repasseSeller > 0 && !payoutCheck?.payout_seller_done) {
                    getAuthHeaders().then(authHeaders => {
                      fetch('/api/asaas/transfer', {
                        method: 'POST',
@@ -1821,10 +1846,10 @@ export const useAppStore = create<AppState>()(
                        })
                      }).then(r => r.json()).then(async data => {
                        if (data.success || data.transferId) {
-                         console.log("✅ Repasse Pix enviado com sucesso ao Vendedor:", data);
+                         console.log('✅ Seller Pix payout dispatched:', data);
                          await supabase.from('orders').update({ payout_seller_done: true }).eq('id', orderId);
                        }
-                     }).catch(e => console.warn("Aviso no repasse Pix ao Vendedor:", e));
+                     }).catch(e => console.warn('Seller payout warning:', e));
                    });
                  }
 
@@ -1849,7 +1874,8 @@ export const useAppStore = create<AppState>()(
                     repasseDriver = totalFrete * (1 - platPct);
                  }
 
-                 if (driverPixKey && repasseDriver > 0) {
+                 // Deduplication guard: only pay if not already paid
+                 if (driverPixKey && repasseDriver > 0 && !payoutCheck?.payout_driver_done) {
                    getAuthHeaders().then(authHeaders => {
                      fetch('/api/asaas/transfer', {
                        method: 'POST',
@@ -1862,10 +1888,10 @@ export const useAppStore = create<AppState>()(
                        })
                      }).then(r => r.json()).then(async data => {
                        if (data.success || data.transferId) {
-                         console.log("✅ Repasse Pix enviado com sucesso ao Entregador:", data);
+                         console.log('✅ Driver Pix payout dispatched:', data);
                          await supabase.from('orders').update({ payout_driver_done: true }).eq('id', orderId);
                        }
-                     }).catch(e => console.warn("Aviso no repasse Pix ao Entregador:", e));
+                     }).catch(e => console.warn('Driver payout warning:', e));
                    });
                  }
                }
@@ -2357,11 +2383,22 @@ export const useAppStore = create<AppState>()(
       // Exclui campos sensíveis do localStorage (senhas não devem ser persistidas)
       partialize: (state) => {
         const { users, currentUser, ...rest } = state;
+        // Strip all sensitive fields from persisted users
         const safeUsers = Object.fromEntries(
-          Object.entries(users || {}).map(([k, u]) => [k, { ...u, password: undefined }])
+          Object.entries(users || {}).map(([k, u]) => [k, { ...u, password: undefined, cpfCnpj: undefined, pixKey: undefined, asaasWalletId: undefined }])
         ) as typeof users;
         const safeCurrentUser = currentUser ? { ...currentUser, password: undefined } : null;
-        return { ...rest, users: safeUsers, currentUser: safeCurrentUser };
+        // Strip sensitive payment/security data from persisted orders
+        const safeOrders = (rest.orders || []).map((o: any) => ({
+          ...o,
+          deliveryPin: undefined,
+          pixQrCode: undefined,
+          pixCopiaECola: undefined,
+          asaasPaymentId: undefined,
+          paymentId: undefined,
+          invoiceUrl: undefined,
+        }));
+        return { ...rest, orders: safeOrders, users: safeUsers, currentUser: safeCurrentUser };
       },
       onRehydrateStorage: () => (state, error) => {
         if (!error && state) {

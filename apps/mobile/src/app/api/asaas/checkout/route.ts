@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
+import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
+  // All roles can initiate checkout (authenticated users only)
+  const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
+  if (!auth.authorized) return unauthorizedResponse(auth.error);
+
   try {
     const body = await request.json();
     const { orderId, value, split, customerEmail, customerName, customerCpfCnpj } = body;

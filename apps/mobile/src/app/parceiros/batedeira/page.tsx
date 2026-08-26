@@ -76,12 +76,8 @@ export default function BatedeiraDashboard() {
 
   useEffect(() => {
     if (!currentUser?.id) return;
+    // Initial forced fetch on mount. Subsequent updates come via Supabase Realtime channel.
     store.fetchOrders(currentUser.id, true);
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.hidden) return;
-      store.fetchOrders(currentUser.id, false);
-    }, 4000);
-    return () => clearInterval(interval);
   }, [currentUser?.id]);
 
   useEffect(() => {
