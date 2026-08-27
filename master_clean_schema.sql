@@ -291,11 +291,15 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public select on users" ON public.users;
 DROP POLICY IF EXISTS "Allow self insert on users" ON public.users;
 DROP POLICY IF EXISTS "Allow self update on users" ON public.users;
+DROP POLICY IF EXISTS "Allow admin delete on users" ON public.users;
 
 CREATE POLICY "Allow public select on users" ON public.users FOR SELECT USING (true);
 CREATE POLICY "Allow self insert on users" ON public.users FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow self update on users" ON public.users FOR UPDATE USING (
   auth.role() = 'authenticated' AND (id = auth.uid() OR public.is_admin())
+);
+CREATE POLICY "Allow admin delete on users" ON public.users FOR DELETE USING (
+  auth.role() = 'authenticated' AND public.is_admin()
 );
 
 -- 11. Garantir RLS Granulares e Seguras na Tabela Orders
@@ -306,6 +310,7 @@ DROP POLICY IF EXISTS "Allow all select on orders" ON public.orders;
 DROP POLICY IF EXISTS "Orders Granular Select" ON public.orders;
 DROP POLICY IF EXISTS "Orders Granular Insert" ON public.orders;
 DROP POLICY IF EXISTS "Orders Granular Update" ON public.orders;
+DROP POLICY IF EXISTS "Orders Granular Delete" ON public.orders;
 
 CREATE POLICY "Orders Granular Select" ON public.orders
 FOR SELECT USING (
@@ -348,6 +353,11 @@ FOR UPDATE USING (
     OR public.is_admin()
   )
 ) WITH CHECK (true);
+
+CREATE POLICY "Orders Granular Delete" ON public.orders
+FOR DELETE USING (
+  auth.role() = 'authenticated' AND public.is_admin()
+);
 
 -- 12. Garante a Tabela Cities e RLS Protegido
 CREATE TABLE IF NOT EXISTS public.cities (

@@ -122,3 +122,6 @@ supabase/.temp/
 
 # Ignore sensitive TXT files
 asaas.txt
+
+.vercel
+.env*

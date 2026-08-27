@@ -1112,12 +1112,6 @@ export const useAppStore = create<AppState>()(
         }
 
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            alert("Sessão expirada. Faça login novamente.");
-            return;
-          }
-
           try {
             const subHeaders = await getAuthHeaders();
             await fetch(`/api/asaas/subaccount?userId=${userId}`, { 
@@ -1128,20 +1122,20 @@ export const useAppStore = create<AppState>()(
             console.warn("Aviso ao tentar excluir subconta Asaas via API local:", _e);
           }
 
-          const { data: responseData, error: functionError } = await supabase.functions.invoke('remove-account', {
-            body: { targetUserId: userId }
-          });
+          // 1. Tentar deletar diretamente da tabela users
+          const { error: dbDeleteErr } = await supabase.from('users').delete().eq('id', userId);
 
-          if (functionError) {
-             console.error("Erro na deleção (função):", functionError);
-             alert(`Falha de conexão: ${functionError.message || 'CORS ou erro de rede'}`);
-             return;
-          }
+          if (dbDeleteErr) {
+             console.warn("Deleção direta RLS falhou, tentando Edge Function:", dbDeleteErr);
+             const { data: responseData, error: functionError } = await supabase.functions.invoke('remove-account', {
+               body: { targetUserId: userId }
+             });
 
-          if (responseData && responseData.error) {
-             console.error("Erro na deleção (retorno):", responseData.error);
-             alert(`Falha ao excluir usuário: ${responseData.error}`);
-             return;
+             if (functionError || (responseData && responseData.error)) {
+               console.error("Erro na deleção (função):", functionError || responseData?.error);
+               alert(`Erro ao excluir usuário: ${functionError?.message || responseData?.error || dbDeleteErr.message}`);
+               return;
+             }
           }
 
           set((state) => {
@@ -1150,7 +1144,8 @@ export const useAppStore = create<AppState>()(
             return { users: newUsers };
           });
           
-          alert("Usuário excluído com sucesso!");
+          alert("Usuário excluído do banco de dados com sucesso!");
+          await get().fetchAllUsers(true);
         } catch (error) {
            console.error("Exceção ao excluir usuário:", error);
            alert("Erro de conexão ao tentar excluir usuário.");
@@ -2327,26 +2322,20 @@ export const useAppStore = create<AppState>()(
 
       clearData: async () => {
          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-               // Admin deletando via RLS. O Supabase JS requer pelo menos um filtro, então filtramos onde ID não é nulo.
-               const { error } = await supabase.from('orders').delete().not('id', 'is', null);
-               
-               if (error) {
-                  console.error("Error clearing orders from DB:", error);
-                  alert("Erro ao limpar pedidos no banco de dados.");
-                  return;
-               }
-               alert("Todos os pedidos foram excluídos do banco de dados com sucesso!");
+            const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            
+            if (error) {
+               console.error("Error clearing orders from DB:", error);
+               alert("Erro ao limpar pedidos no banco de dados: " + error.message);
+               return;
             }
+            alert("Todos os pedidos foram excluídos do banco de dados com sucesso!");
          } catch(e) {
             console.error("Exception clearing orders:", e);
          }
 
-         set((state) => {
-            const newUsers = state.currentUser ? { [state.currentUser.id]: state.currentUser } : {};
-            return { orders: [], orderCounter: 1, rates: DB_DEFAULTS.rates, users: newUsers };
-         });
+         set(() => ({ orders: [], orderCounter: 1 }));
+         await get().fetchOrders(get().currentUser?.id || '', true);
       },
 
       setClearPassword: (pwd) => set({ clearPassword: pwd }),
