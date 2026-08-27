@@ -750,8 +750,10 @@ export default function StorefrontPage() {
                             {!isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'em_rota' && o.status !== 'aguardando_cliente' && (
                               <button 
                                 onClick={() => {
-                                  if (confirm('Deseja realmente cancelar este pedido?')) {
-                                    store.acaoPedido(o.id, 'cancelar_cliente');
+                                  const reason = prompt("Informe o motivo do cancelamento para registro e solicitação de estorno Pix Asaas:", "Desistência do pedido");
+                                  if (reason !== null && reason.trim() !== "") {
+                                    store.acaoPedido(o.id, 'cancelar_cliente', undefined, reason.trim());
+                                    alert("❌ Pedido cancelado com sucesso. Caso o Pix tenha sido pago, o estorno foi acionado no Asaas.");
                                   }
                                 }} 
                                 className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3.5 py-2 rounded-xl transition w-full sm:w-auto mt-2 sm:mt-0 shadow-sm flex items-center justify-center gap-1 active:scale-95"

@@ -42,9 +42,9 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'Pedido informado não encontrado.' }, { status: 404 });
         }
 
-        const validStatuses = ['RECEIVED', 'DELIVERED', 'COMPLETED'];
+        const validStatuses = ['RECEIVED', 'COMPLETED'];
         if (!validStatuses.includes(dbOrder.status)) {
-          return NextResponse.json({ error: 'Transferência não permitida: O pedido ainda não foi concluído com PIN.' }, { status: 400 });
+          return NextResponse.json({ error: 'Transferência não permitida: O pedido ainda não foi concluído com PIN de 4 dígitos.' }, { status: 400 });
         }
       }
     }

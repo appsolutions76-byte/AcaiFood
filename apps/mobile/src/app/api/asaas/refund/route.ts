@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   if (!auth.authorized) return unauthorizedResponse(auth.error);
   try {
     const body = await request.json();
-    const { orderId, paymentId, description } = body;
+    const { orderId, paymentId, description, reason } = body;
 
     if (!orderId && !paymentId) {
       return NextResponse.json(
@@ -71,41 +71,69 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!asaasPaymentId) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Cobrança no Asaas não encontrada ou ainda não paga (nada a estornar).' 
+    const cancelReasonText = reason || description || 'Cancelamento solicitado pelo usuário antes da entrega/PIN';
+
+    let refundId: string | null = null;
+    let refundStatus = 'REFUND_REQUESTED';
+    let refundMessage = '';
+
+    if (asaasPaymentId) {
+      console.log(`Solicitando estorno no Asaas para a cobrança ${asaasPaymentId}...`);
+
+      const refundRes = await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}/refund`, {
+        method: 'POST',
+        headers: {
+          'access_token': ASAAS_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          description: cancelReasonText
+        })
       });
+
+      const refundData = await refundRes.json();
+
+      if (refundRes.ok && !refundData.errors) {
+        refundId = refundData.id || null;
+        refundStatus = refundData.status || 'REFUNDED';
+      } else {
+        const msg = refundData.errors
+          ? refundData.errors.map((e: any) => e.description).join(', ')
+          : (refundData.message || JSON.stringify(refundData));
+        console.warn("Aviso ao estornar cobrança no Asaas (assumindo simulação/cancelado):", msg);
+        refundMessage = msg;
+        refundStatus = 'REFUND_SIMULATED_OR_MANUAL';
+      }
+    } else {
+      refundStatus = 'NO_PAYMENT_FOUND_CANCELLED';
     }
 
-    console.log(`Solicitando estorno no Asaas para a cobrança ${asaasPaymentId}...`);
+    // Persistir estado de cancelamento e estorno no Supabase DB
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-    const refundRes = await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}/refund`, {
-      method: 'POST',
-      headers: {
-        'access_token': ASAAS_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        description: description || `Estorno AçaíFood pedido #${String(orderId || '').substring(0, 8)}`
-      })
-    });
-
-    const refundData = await refundRes.json();
-
-    if (!refundRes.ok || refundData.errors) {
-      const msg = refundData.errors
-        ? refundData.errors.map((e: any) => e.description).join(', ')
-        : (refundData.message || JSON.stringify(refundData));
-      console.warn("Aviso ao estornar cobrança no Asaas (assumindo simulação/cancelado):", msg);
-      return NextResponse.json({ success: true, message: `Estorno Asaas registrado: ${msg}` });
+    if (orderId && supabaseUrl && supabaseServiceKey) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        await supabase.from('orders').update({
+          status: 'CANCELLED',
+          cancellation_reason: cancelReasonText,
+          asaas_refund_id: refundId,
+          asaas_refund_status: refundStatus,
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: auth.user?.id || auth.profile?.id || null
+        }).eq('id', orderId);
+      } catch (dbErr) {
+        console.warn("Erro ao registrar cancelamento/estorno no DB Supabase:", dbErr);
+      }
     }
 
     return NextResponse.json({
       success: true,
-      refundId: refundData.id,
-      status: refundData.status,
-      value: refundData.value
+      refundId: refundId,
+      status: refundStatus,
+      message: refundMessage || 'Estorno processado e cancelamento registrado com sucesso.'
     });
 
   } catch (error: any) {

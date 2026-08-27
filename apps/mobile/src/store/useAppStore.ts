@@ -32,6 +32,17 @@ export function isValidAsaasWalletId(id?: string): boolean {
   return isUuid || isAsaasId;
 }
 
+export function extractStorefront(sfData: any): any {
+  if (!sfData) return null;
+  if (Array.isArray(sfData)) {
+    return sfData.length > 0 ? sfData[sfData.length - 1] : null;
+  }
+  if (typeof sfData === 'object') {
+    return sfData;
+  }
+  return null;
+}
+
 export type Role = 'admin' | 'loja' | 'cliente' | 'motorista' | 'fornecedor' | 'ecoponto';
 
 let lastSweepDate: string = '';
@@ -192,7 +203,7 @@ interface AppState {
   fetchRates: (force?: boolean) => Promise<void>;
   saveRates: (newRates: Partial<AppState['rates']>) => Promise<void>;
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => Promise<any>;
-  acaoPedido: (orderId: string, action: string, pinStr?: string) => Promise<void>;
+  acaoPedido: (orderId: string, action: string, pinStr?: string, reasonStr?: string) => Promise<void>;
   incrementAdminBalances: (order: Order) => Promise<void>;
   setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => Promise<void>;
@@ -308,7 +319,7 @@ export const useAppStore = create<AppState>()(
                           userProfile.role === 'COURIER' ? 'motorista' :
                           userProfile.role === 'ADMIN' ? 'admin' : 'cliente';
           
-          const sf = (userProfile.storefronts && userProfile.storefronts.length > 0) ? userProfile.storefronts[0] : null;
+          const sf = extractStorefront(userProfile.storefronts);
 
           // Map DB user to AppUser
           const loggedUser: User = {
@@ -741,7 +752,7 @@ export const useAppStore = create<AppState>()(
                     if (newUsers[id].role === 'loja') delete newUsers[id];
                 });
                 dbLojas.forEach(dbUser => {
-                    const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[dbUser.storefronts.length - 1] : null;
+                    const sf = extractStorefront(dbUser.storefronts);
                     newUsers[dbUser.id] = {
                         id: dbUser.id,
                         role: 'loja',
@@ -792,7 +803,7 @@ export const useAppStore = create<AppState>()(
             set(() => {
                 const newUsers: Record<string, any> = {};
                 dbUsers.forEach(dbUser => {
-                    const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[dbUser.storefronts.length - 1] : null;
+                    const sf = extractStorefront(dbUser.storefronts);
                     const appRole = dbUser.role === 'PARTNER' ? 'loja' :
                                     dbUser.role === 'SUPPLIER' ? 'fornecedor' :
                                     dbUser.role === 'COURIER' ? 'motorista' :
@@ -1188,10 +1199,10 @@ export const useAppStore = create<AppState>()(
 
       updateUserPrice: async (userId, b2cPrices, b2bPrice) => {
         set((state) => {
-          const user = state.users[userId];
+          const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user) return state;
           const updatedUser = { ...user };
-          if (b2cPrices) updatedUser.priceB2C = b2cPrices;
+          if (b2cPrices) updatedUser.priceB2C = { ...(user.priceB2C || {}), ...b2cPrices };
           if (b2bPrice !== undefined) updatedUser.priceB2B = b2bPrice;
           const isCurrent = state.currentUser?.id === userId;
           return { 
@@ -1209,18 +1220,22 @@ export const useAppStore = create<AppState>()(
         if (b2bPrice !== undefined) updates.price_b2b = b2bPrice;
 
         if (Object.keys(updates).length > 0) {
-            const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', userId).limit(1).maybeSingle();
-            if (sf) {
-                const { error } = await supabase.from('storefronts').update(updates).eq('id', sf.id);
-                if (error) console.error("Error updating prices in DB:", error);
-            } else {
-                const user = get().users[userId];
-                const { error } = await supabase.from('storefronts').insert({
-                    partner_id: userId,
-                    store_name: user?.name || 'Loja',
-                    ...updates
-                });
-                if (error) console.error("Error inserting prices in DB:", error);
+            try {
+              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', userId);
+              if (sfList && sfList.length > 0) {
+                  const { error } = await supabase.from('storefronts').update(updates).eq('partner_id', userId);
+                  if (error) console.error("Erro ao atualizar preços no Supabase:", error);
+              } else {
+                  const user = get().users[userId] || get().currentUser;
+                  const { error } = await supabase.from('storefronts').insert({
+                      partner_id: userId,
+                      store_name: user?.name || 'Loja',
+                      ...updates
+                  });
+                  if (error) console.error("Erro ao criar vitrine/preços no Supabase:", error);
+              }
+            } catch (dbErr) {
+              console.error("Exceção ao persistir preços no banco:", dbErr);
             }
             await get().fetchAllUsers(true);
             await get().fetchLojas(true);
@@ -1229,7 +1244,7 @@ export const useAppStore = create<AppState>()(
 
       addProduct: async (userId, product) => {
         set((state) => {
-          const user = state.users[userId];
+          const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user) return state;
           const currentProducts = user.products || [];
           const updatedUser = { ...user, products: [...currentProducts, product] };
@@ -1240,21 +1255,41 @@ export const useAppStore = create<AppState>()(
           };
         });
 
-        // Sync with DB
-        const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', userId).single();
-        if (sf) {
-           await supabase.from('products').insert({
-              id: product.id,
-              storefront_id: sf.id,
-              name: product.name,
-              price: product.price
-           });
+        // Sync with DB: Buscar ou Criar vitrine
+        try {
+          let sfId = '';
+          const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', userId);
+          if (sfList && sfList.length > 0) {
+             sfId = sfList[0].id;
+          } else {
+             const user = get().users[userId] || get().currentUser;
+             const { data: newSf, error: sfErr } = await supabase.from('storefronts').insert({
+                 partner_id: userId,
+                 store_name: user?.name || 'Loja'
+             }).select('id').maybeSingle();
+             if (newSf) sfId = newSf.id;
+             else if (sfErr) console.error("Erro ao criar vitrine para produto:", sfErr);
+          }
+
+          if (sfId) {
+             const { error: prodErr } = await supabase.from('products').insert({
+                id: product.id,
+                storefront_id: sfId,
+                name: product.name,
+                price: product.price
+             });
+             if (prodErr) console.error("Erro ao inserir produto no Supabase:", prodErr);
+          }
+        } catch (dbErr) {
+          console.error("Exceção ao cadastrar produto no banco:", dbErr);
         }
+        await get().fetchAllUsers(true);
+        await get().fetchLojas(true);
       },
 
       removeProduct: async (userId, productId) => {
         set((state) => {
-          const user = state.users[userId];
+          const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user || !user.products) return state;
           const updatedUser = { ...user, products: user.products.filter(p => p.id !== productId) };
           const isCurrent = state.currentUser?.id === userId;
@@ -1265,7 +1300,14 @@ export const useAppStore = create<AppState>()(
         });
 
         // Sync with DB
-        await supabase.from('products').delete().eq('id', productId);
+        try {
+          const { error } = await supabase.from('products').delete().eq('id', productId);
+          if (error) console.error("Erro ao remover produto do Supabase:", error);
+        } catch (dbErr) {
+          console.error("Exceção ao remover produto no banco:", dbErr);
+        }
+        await get().fetchAllUsers(true);
+        await get().fetchLojas(true);
       },
 
       criarPedido: async (tipo, targetId, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => {
@@ -1279,6 +1321,44 @@ export const useAppStore = create<AppState>()(
 
         if (tipo === 'B2C' || tipo === 'B2B') { originId = targetId || ''; destId = currentUser.id; }
         if (tipo === 'COLETA') { destId = 'ecoponto'; }
+
+        // REVALIDAÇÃO PRÉ-CHECKOUT DIRETA NO SUPABASE (Regras 11 e 12)
+        if (tipo === 'B2C' && targetId && state.cart.items.length > 0) {
+          try {
+            const { data: sfData } = await supabase
+              .from('storefronts')
+              .select('id, partner_id, price_b2c_popular, price_b2c_medio, price_b2c_grosso, frete_subsidy_pct, products(id, name, price)')
+              .or(`id.eq.${targetId},partner_id.eq.${targetId}`)
+              .maybeSingle();
+
+            if (sfData) {
+              let mismatchFound = false;
+              const validatedItems = state.cart.items.map(item => {
+                let currentDbPrice = item.price;
+                if (item.id === 'popular') currentDbPrice = sfData.price_b2c_popular ?? item.price;
+                else if (item.id === 'medio') currentDbPrice = sfData.price_b2c_medio ?? item.price;
+                else if (item.id === 'grosso') currentDbPrice = sfData.price_b2c_grosso ?? item.price;
+                else {
+                  const dbProd = (sfData.products || []).find((p: any) => p.id === item.id);
+                  if (dbProd) currentDbPrice = dbProd.price;
+                }
+
+                if (currentDbPrice !== item.price) {
+                  mismatchFound = true;
+                }
+                return { ...item, price: currentDbPrice };
+              });
+
+              if (mismatchFound) {
+                set({ cart: { storeId: targetId, items: validatedItems } });
+                alert("⚠️ Atenção: Os preços ou condições de alguns produtos no seu carrinho foram atualizados pela Loja/Batedeira. Atualizamos seu carrinho com os novos valores mais recentes. Por favor, confira o valor total e clique em Finalizar Pedido novamente.");
+                return { error: 'Preços atualizados pela loja. Confira seu carrinho antes de pagar.' };
+              }
+            }
+          } catch (valErr) {
+            console.warn("Aviso na revalidação pré-checkout:", valErr);
+          }
+        }
 
         const p1 = state.users[originId];
         const p2 = state.users[destId];
@@ -1717,7 +1797,7 @@ export const useAppStore = create<AppState>()(
 
       },
 
-      acaoPedido: async (orderId, action, pinStr?: string) => {
+      acaoPedido: async (orderId, action, pinStr?: string, reasonStr?: string) => {
         const state = get();
         const currentUser = state.currentUser;
         if (!currentUser) return;
@@ -1814,6 +1894,12 @@ export const useAppStore = create<AppState>()(
         if (action === 'retirar_pedido') updates.picked_up_at = new Date().toISOString();
         if (action === 'conf_motorista') updates.delivered_at = new Date().toISOString();
         if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') updates.received_at = new Date().toISOString();
+
+        if (newDbStatus === 'CANCELLED') {
+          updates.cancellation_reason = reasonStr || 'Cancelamento solicitado pelo usuário antes da validação por PIN';
+          updates.cancelled_at = new Date().toISOString();
+          updates.cancelled_by = currentUser.id;
+        }
 
          if (Object.keys(updates).length > 0) {
             if (action === 'validar_pin') updates.provided_pin = pinStr;
@@ -1927,7 +2013,8 @@ export const useAppStore = create<AppState>()(
                   headers: authHeaders,
                   body: JSON.stringify({ 
                     orderId: orderId,
-                    paymentId: paymentIdToUse 
+                    paymentId: paymentIdToUse,
+                    reason: reasonStr || 'Cancelamento solicitado pelo usuário antes do PIN'
                   })
                 }).then(r => r.json()).then(data => {
                   if (data.success) console.log("✅ Estorno Asaas efetuado com sucesso:", data);

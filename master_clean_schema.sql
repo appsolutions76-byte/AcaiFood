@@ -119,6 +119,11 @@ ADD COLUMN IF NOT EXISTS received_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS provided_pin TEXT,
 ADD COLUMN IF NOT EXISTS asaas_payment_id TEXT,
 ADD COLUMN IF NOT EXISTS asaas_charge_status TEXT,
+ADD COLUMN IF NOT EXISTS cancellation_reason TEXT,
+ADD COLUMN IF NOT EXISTS asaas_refund_id TEXT,
+ADD COLUMN IF NOT EXISTS asaas_refund_status TEXT,
+ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS cancelled_by UUID REFERENCES public.users(id),
 ADD COLUMN IF NOT EXISTS operation_type TEXT DEFAULT 'B2C_ORDER',
 ADD COLUMN IF NOT EXISTS delivery_address TEXT,
 ADD COLUMN IF NOT EXISTS delivery_lat FLOAT8,
@@ -302,19 +307,46 @@ DROP POLICY IF EXISTS "Orders Granular Select" ON public.orders;
 DROP POLICY IF EXISTS "Orders Granular Insert" ON public.orders;
 DROP POLICY IF EXISTS "Orders Granular Update" ON public.orders;
 
-CREATE POLICY "Orders Granular Select" ON public.orders 
+CREATE POLICY "Orders Granular Select" ON public.orders
 FOR SELECT USING (
-  auth.role() = 'authenticated'
+  auth.role() = 'authenticated' AND (
+    buyer_id = auth.uid()
+    OR driver_id = auth.uid()
+    OR (
+      driver_id IS NULL 
+      AND status IN ('PAID', 'PREPARING', 'READY', 'pendente', 'preparo', 'pronto')
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.storefronts sf
+      WHERE sf.id = orders.seller_storefront_id
+        AND sf.partner_id = auth.uid()
+    )
+    OR public.is_admin()
+  )
 );
 
-CREATE POLICY "Orders Granular Insert" ON public.orders 
+CREATE POLICY "Orders Granular Insert" ON public.orders
 FOR INSERT WITH CHECK (
   auth.role() = 'authenticated'
+  AND buyer_id = auth.uid()
 );
 
-CREATE POLICY "Orders Granular Update" ON public.orders 
+CREATE POLICY "Orders Granular Update" ON public.orders
 FOR UPDATE USING (
-  auth.role() = 'authenticated'
+  auth.role() = 'authenticated' AND (
+    buyer_id = auth.uid()
+    OR driver_id = auth.uid()
+    OR (
+      driver_id IS NULL 
+      AND status IN ('PAID', 'PREPARING', 'READY', 'pendente', 'preparo', 'pronto')
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.storefronts sf
+      WHERE sf.id = orders.seller_storefront_id
+        AND sf.partner_id = auth.uid()
+    )
+    OR public.is_admin()
+  )
 ) WITH CHECK (true);
 
 -- 12. Garante a Tabela Cities e RLS Protegido

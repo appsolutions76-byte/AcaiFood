@@ -2,6 +2,8 @@
 
 Aplicação web e PWA para o ecossistema AçaíFood no Pará. (Versão Produção Asaas - 100% Ativa)
 
+**Link Oficial de Produção:** [https://www.acaifood.app.br/](https://www.acaifood.app.br/)
+
 ## 🚀 Como Executar
 
 ### Desenvolvimento
