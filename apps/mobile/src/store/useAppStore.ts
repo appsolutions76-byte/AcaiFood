@@ -1122,20 +1122,21 @@ export const useAppStore = create<AppState>()(
             console.warn("Aviso ao tentar excluir subconta Asaas via API local:", _e);
           }
 
-          // 1. Tentar deletar diretamente da tabela users
-          const { error: dbDeleteErr } = await supabase.from('users').delete().eq('id', userId);
+          // 1. Chamar rota API de servidor com Service Role Key
+          const headers = await getAuthHeaders();
+          const apiRes = await fetch('/api/admin/delete-user', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ userId })
+          });
 
-          if (dbDeleteErr) {
-             console.warn("Deleção direta RLS falhou, tentando Edge Function:", dbDeleteErr);
-             const { data: responseData, error: functionError } = await supabase.functions.invoke('remove-account', {
-               body: { targetUserId: userId }
-             });
-
-             if (functionError || (responseData && responseData.error)) {
-               console.error("Erro na deleção (função):", functionError || responseData?.error);
-               alert(`Erro ao excluir usuário: ${functionError?.message || responseData?.error || dbDeleteErr.message}`);
-               return;
-             }
+          if (!apiRes.ok) {
+            // Fallback direto via Supabase JS
+            const { error: dbDeleteErr } = await supabase.from('users').delete().eq('id', userId);
+            if (dbDeleteErr) {
+              alert("Erro ao apagar usuário: " + dbDeleteErr.message);
+              return;
+            }
           }
 
           set((state) => {
@@ -2322,16 +2323,24 @@ export const useAppStore = create<AppState>()(
 
       clearData: async () => {
          try {
-            const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-            
-            if (error) {
-               console.error("Error clearing orders from DB:", error);
-               alert("Erro ao limpar pedidos no banco de dados: " + error.message);
-               return;
+            const headers = await getAuthHeaders();
+            const res = await fetch('/api/admin/clear-data', {
+               method: 'POST',
+               headers
+            });
+
+            if (!res.ok) {
+               const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+               if (error) {
+                  console.error("Error clearing orders from DB:", error);
+                  alert("Erro ao limpar pedidos no banco de dados: " + error.message);
+                  return;
+               }
             }
             alert("Todos os pedidos foram excluídos do banco de dados com sucesso!");
-         } catch(e) {
+         } catch(e: any) {
             console.error("Exception clearing orders:", e);
+            alert("Erro ao limpar pedidos no banco de dados.");
          }
 
          set(() => ({ orders: [], orderCounter: 1 }));
