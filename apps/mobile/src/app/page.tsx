@@ -488,7 +488,7 @@ export default function StorefrontPage() {
                         <div className="bg-gray-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
                           <div>
                             <p className="font-bold text-zinc-800 dark:text-white text-sm">Açaí Popular (1L)</p>
-                            <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">{formatMoney(selLoja.priceB2C?.popular || 18)}</p>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">{formatMoney(selLoja.priceB2C?.popular ?? 20)}</p>
                           </div>
                           <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: 'popular', quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow">
                             + Adicionar
@@ -498,7 +498,7 @@ export default function StorefrontPage() {
                         <div className="bg-gray-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
                           <div>
                             <p className="font-bold text-zinc-800 dark:text-white text-sm">Açaí Médio (1L)</p>
-                            <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">{formatMoney(selLoja.priceB2C?.medio || 25)}</p>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">{formatMoney(selLoja.priceB2C?.medio ?? 26)}</p>
                           </div>
                           <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: 'medio', quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow">
                             + Adicionar
@@ -508,7 +508,7 @@ export default function StorefrontPage() {
                         <div className="bg-gray-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
                           <div>
                             <p className="font-bold text-zinc-800 dark:text-white text-sm">Açaí Grosso Especial (1L)</p>
-                            <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">{formatMoney(selLoja.priceB2C?.grosso || 33)}</p>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">{formatMoney(selLoja.priceB2C?.grosso ?? 35)}</p>
                           </div>
                           <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: 'grosso', quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow">
                             + Adicionar
@@ -798,9 +798,9 @@ export default function StorefrontPage() {
                   <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Escolha seu Produto:</label>
                   {(() => {
                       const loja = store.users?.[productSelectModal.lojaId];
-                      const pricePopular = loja?.priceB2C?.popular ?? 18;
-                      const priceMedio = loja?.priceB2C?.medio ?? 25;
-                      const priceGrosso = loja?.priceB2C?.grosso ?? 33;
+                      const pricePopular = loja?.priceB2C?.popular ?? 20;
+                      const priceMedio = loja?.priceB2C?.medio ?? 26;
+                      const priceGrosso = loja?.priceB2C?.grosso ?? 35;
 
                       return (
                           <select 

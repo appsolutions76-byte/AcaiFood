@@ -290,8 +290,6 @@ export const useAppStore = create<AppState>()(
       },
 
       loginWithCredentials: async (email, pass) => {
-        await supabase.auth.signOut(); // Wipe stale sessions
-
         const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error || !authData.user) {
           console.error("Login Error:", error);
@@ -728,7 +726,7 @@ export const useAppStore = create<AppState>()(
         const { data: dbLojas, error } = await supabase
             .from('users')
             .select('*, storefronts(*, products(*))')
-            .eq('role', 'PARTNER');
+            .or('role.eq.PARTNER,role.eq.loja');
             
         if (error) {
             console.error("Erro ao buscar lojas reais:", error);
@@ -743,7 +741,7 @@ export const useAppStore = create<AppState>()(
                     if (newUsers[id].role === 'loja') delete newUsers[id];
                 });
                 dbLojas.forEach(dbUser => {
-                    const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[0] : null;
+                    const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[dbUser.storefronts.length - 1] : null;
                     newUsers[dbUser.id] = {
                         id: dbUser.id,
                         role: 'loja',
@@ -794,7 +792,7 @@ export const useAppStore = create<AppState>()(
             set(() => {
                 const newUsers: Record<string, any> = {};
                 dbUsers.forEach(dbUser => {
-                    const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[0] : null;
+                    const sf = (dbUser.storefronts && dbUser.storefronts.length > 0) ? dbUser.storefronts[dbUser.storefronts.length - 1] : null;
                     const appRole = dbUser.role === 'PARTNER' ? 'loja' :
                                     dbUser.role === 'SUPPLIER' ? 'fornecedor' :
                                     dbUser.role === 'COURIER' ? 'motorista' :
@@ -1224,7 +1222,8 @@ export const useAppStore = create<AppState>()(
                 });
                 if (error) console.error("Error inserting prices in DB:", error);
             }
-            await get().fetchAllUsers();
+            await get().fetchAllUsers(true);
+            await get().fetchLojas(true);
         }
       },
 
