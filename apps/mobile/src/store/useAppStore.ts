@@ -186,7 +186,7 @@ interface AppState {
   login: (userId: string) => void;
   loginWithCredentials: (email: string, pass: string) => Promise<boolean>;
   registerUser: (data: Omit<User, 'id'>) => Promise<User | null>;
-  fetchLojas: () => Promise<void>;
+  fetchLojas: (force?: boolean) => Promise<void>;
   logout: () => void;
   linkAsaasAccount: (userId: string, walletId: string) => Promise<void>;
   fetchRates: (force?: boolean) => Promise<void>;
@@ -658,7 +658,8 @@ export const useAppStore = create<AppState>()(
           const currentUser = get().currentUser;
           
           get().fetchRates();
-          get().fetchAllUsers();
+          get().fetchLojas(true);
+          get().fetchAllUsers(true);
           if (currentUser) {
               get().fetchOrders(currentUser.id);
           }
@@ -670,22 +671,38 @@ export const useAppStore = create<AppState>()(
 
           let channel = supabase.channel('schema-db-changes');
 
-          channel = channel.on(
-              'postgres_changes',
-              { event: '*', schema: 'public', table: 'orders' },
-              () => {
-                  const u = get().currentUser;
-                  if (u) {
-                      get().fetchOrders(u.id, true);
+          channel = channel
+              .on(
+                  'postgres_changes',
+                  { event: '*', schema: 'public', table: 'orders' },
+                  () => {
+                      const u = get().currentUser;
+                      if (u) {
+                          get().fetchOrders(u.id, true);
+                      }
                   }
-              }
-          );
-
-          supabaseChannel = channel
+              )
               .on(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'storefronts' },
                   () => {
+                      get().fetchLojas(true);
+                      get().fetchAllUsers(true);
+                  }
+              )
+              .on(
+                  'postgres_changes',
+                  { event: '*', schema: 'public', table: 'products' },
+                  () => {
+                      get().fetchLojas(true);
+                      get().fetchAllUsers(true);
+                  }
+              )
+              .on(
+                  'postgres_changes',
+                  { event: '*', schema: 'public', table: 'users' },
+                  () => {
+                      get().fetchLojas(true);
                       get().fetchAllUsers(true);
                   }
               )
@@ -697,6 +714,8 @@ export const useAppStore = create<AppState>()(
                   }
               )
               .subscribe();
+
+          supabaseChannel = channel;
       },
 
       fetchLojas: async (force?: boolean) => {
@@ -736,6 +755,7 @@ export const useAppStore = create<AppState>()(
                         lng: dbUser.longitude || 0,
                         icon: '🏪',
                         status: dbUser.status as 'active',
+                        priceB2B: sf?.price_b2b ?? 140,
                         priceB2C: {
                             popular: sf?.price_b2c_popular ?? 20,
                             medio: sf?.price_b2c_medio ?? 26,
@@ -2216,28 +2236,7 @@ export const useAppStore = create<AppState>()(
       },
 
       setupRealtime: (userId) => {
-         supabase.removeAllChannels();
-         
-         supabase.channel('public:orders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (_payload) => {
-                get().fetchOrders(userId, true);
-            })
-            .subscribe();
-
-         const currentUser = get().users[userId];
-         if (currentUser && currentUser.role === 'admin') {
-             supabase.channel('public:users')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (_payload) => {
-                    get().fetchAllUsers(true);
-                })
-                .subscribe();
-             
-             supabase.channel('public:storefronts')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'storefronts' }, (_payload) => {
-                    get().fetchAllUsers(true);
-                })
-                .subscribe();
-         }
+          get().startRealtime();
       },
 
       clearData: async () => {

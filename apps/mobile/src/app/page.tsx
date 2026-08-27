@@ -156,8 +156,9 @@ export default function StorefrontPage() {
   );
 
   useEffect(() => {
-    store.fetchLojas();
-    store.fetchRates();
+    store.fetchLojas(true);
+    store.fetchRates(true);
+    store.startRealtime();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
