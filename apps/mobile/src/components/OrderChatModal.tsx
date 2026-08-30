@@ -24,6 +24,12 @@ interface OrderChatModalProps {
   otherParticipantName?: string;
   otherParticipantPhone?: string;
   otherParticipantRole?: string;
+  clientName?: string;
+  clientPhone?: string;
+  storeName?: string;
+  storePhone?: string;
+  driverName?: string;
+  driverPhone?: string;
 }
 
 export function OrderChatModal({
@@ -35,7 +41,13 @@ export function OrderChatModal({
   currentUserRole,
   otherParticipantName,
   otherParticipantPhone,
-  otherParticipantRole
+  otherParticipantRole,
+  clientName,
+  clientPhone,
+  storeName,
+  storePhone,
+  driverName,
+  driverPhone
 }: OrderChatModalProps) {
   const [messages, setMessages] = useState<OrderMessage[]>([]);
   const [inputText, setInputText] = useState("");
@@ -43,6 +55,9 @@ export function OrderChatModal({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const cleanPhone = (otherParticipantPhone || "").replace(/\D/g, "");
+  const cleanClientPhone = (clientPhone || "").replace(/\D/g, "");
+  const cleanStorePhone = (storePhone || "").replace(/\D/g, "");
+  const cleanDriverPhone = (driverPhone || "").replace(/\D/g, "");
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -138,6 +153,20 @@ export function OrderChatModal({
     }
   };
 
+  const getRoleBadge = (role: string) => {
+    const r = (role || "").toLowerCase();
+    if (r === "motoboy" || r === "motorista") {
+      return { label: "🏍️ Motoboy", class: "bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800" };
+    }
+    if (r === "loja" || r === "batedeira") {
+      return { label: "🏪 Loja/Batedeira", class: "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800" };
+    }
+    if (r === "admin") {
+      return { label: "🛡️ Admin", class: "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800" };
+    }
+    return { label: "👤 Cliente", class: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800" };
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -155,7 +184,7 @@ export function OrderChatModal({
                 Chat do Pedido #{orderId.slice(-5)}
               </h3>
               <p className="text-xs text-purple-200">
-                {otherParticipantName ? `${otherParticipantRole ? `[${otherParticipantRole}] ` : ''}${otherParticipantName}` : 'Atendimento do Pedido'}
+                {otherParticipantName ? `${otherParticipantRole ? `[${otherParticipantRole}] ` : ''}${otherParticipantName}` : 'Canal Integrado (Cliente • Loja • Motoboy)'}
               </p>
             </div>
           </div>
@@ -168,32 +197,65 @@ export function OrderChatModal({
           </button>
         </div>
 
-        {/* Action Bar - Voice Call & WhatsApp */}
-        <div className="bg-zinc-100 dark:bg-zinc-800/80 p-3 px-4 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 shrink-0">
-          <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 dark:text-zinc-300">
+        {/* Action Bar - Voice Call & WhatsApp with Multi-participant support */}
+        <div className="bg-zinc-100 dark:bg-zinc-800/80 p-2.5 px-4 flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800 shrink-0 text-xs">
+          <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 font-bold">
             <Shield size={14} className="text-emerald-500" />
-            <span>Comunicação Protegida</span>
+            <span>Comunicação Direta:</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {cleanPhone ? (
               <>
                 <a
                   href={`tel:${cleanPhone}`}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm transition active:scale-95"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition active:scale-95"
                   title="Fazer ligação de voz convencional"
                 >
-                  <Phone size={13} /> Voz
+                  <Phone size={12} /> Voz
                 </a>
                 <a
                   href={`https://wa.me/55${cleanPhone}?text=Ol%C3%A1%2C%20estou%20entrando%20em%20contato%20sobre%20o%20pedido%20%23${orderId.slice(-5)}%20no%20A%C3%A7a%C3%ADFood`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm transition active:scale-95"
-                  title="Abrir chamada no WhatsApp"
+                  className="bg-green-500 hover:bg-green-600 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition active:scale-95"
+                  title="Abrir WhatsApp"
                 >
-                  <PhoneCall size={13} /> WhatsApp
+                  <PhoneCall size={12} /> WhatsApp
                 </a>
+              </>
+            ) : cleanClientPhone || cleanStorePhone || cleanDriverPhone ? (
+              <>
+                {cleanClientPhone && (
+                  <a
+                    href={`https://wa.me/55${cleanClientPhone}?text=Ol%C3%A1%2C%20estou%20entrando%20em%20contato%20sobre%20o%20pedido%20%23${orderId.slice(-5)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm transition"
+                  >
+                    👤 Cliente
+                  </a>
+                )}
+                {cleanStorePhone && (
+                  <a
+                    href={`https://wa.me/55${cleanStorePhone}?text=Ol%C3%A1%2C%20estou%20entrando%20em%20contato%20sobre%20o%20pedido%20%23${orderId.slice(-5)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm transition"
+                  >
+                    🏪 Loja
+                  </a>
+                )}
+                {cleanDriverPhone && (
+                  <a
+                    href={`https://wa.me/55${cleanDriverPhone}?text=Ol%C3%A1%2C%20estou%20entrando%20em%20contato%20sobre%20o%20pedido%20%23${orderId.slice(-5)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm transition"
+                  >
+                    🏍️ Motoboy
+                  </a>
+                )}
               </>
             ) : (
               <span className="text-[11px] text-zinc-400 italic">Telefone indisponível</span>
@@ -207,7 +269,7 @@ export function OrderChatModal({
             <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 text-zinc-400">
               <MessageSquare size={32} className="text-purple-400 opacity-60" />
               <p className="text-xs font-medium">Nenhuma mensagem ainda neste pedido.</p>
-              <p className="text-[11px]">Envie uma mensagem abaixo ou inicie uma chamada de voz com o entregador ou estabelecimento.</p>
+              <p className="text-[11px]">Envie uma mensagem abaixo para conversar em tempo real com o cliente, a loja ou o motoboy.</p>
             </div>
           ) : (
             messages.map((msg) => {
@@ -216,6 +278,7 @@ export function OrderChatModal({
                 hour: "2-digit",
                 minute: "2-digit"
               });
+              const badge = getRoleBadge(msg.sender_role);
 
               return (
                 <div
@@ -224,8 +287,8 @@ export function OrderChatModal({
                 >
                   <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1 px-1">
                     <span>{msg.sender_name}</span>
-                    <span className="bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1.5 py-0.5 rounded text-[9px]">
-                      {msg.sender_role}
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${badge.class}`}>
+                      {badge.label}
                     </span>
                   </div>
 

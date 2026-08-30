@@ -424,6 +424,27 @@ export default function MotoboyDashboard() {
                                  );
                                })()}
                             </div>
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const clienteId = o.clienteId || (o as any).buyerId || o.destinoId;
+                                  const clienteUser = clienteId ? store.users[clienteId] : null;
+                                  const lojaId = o.lojaId || (o as any).sellerStorefrontId || o.origemId;
+                                  const lojaUser = lojaId ? store.users[lojaId] : null;
+                                  setChatModalData({
+                                    open: true,
+                                    orderId: o.id,
+                                    otherName: clienteUser?.name || o.clienteNome || 'Cliente',
+                                    otherPhone: (clienteUser as any)?.phone || clienteUser?.telefone || o.clienteTelefone || '',
+                                    otherRole: 'Cliente'
+                                  });
+                                }}
+                                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                              >
+                                💬 Chat do Pedido
+                              </button>
+                            </div>
                         </div>
                         <div className="flex flex-wrap gap-2 mb-3">
                            {o.createdAt && <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
