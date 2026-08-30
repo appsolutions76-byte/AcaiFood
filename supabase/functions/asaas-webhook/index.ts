@@ -7,7 +7,6 @@ serve(async (req) => {
     const expectedToken = Deno.env.get('ASAAS_WEBHOOK_TOKEN');
 
     // Segurança: se o token estiver configurado nos Secrets, ele é OBRIGATÓRIO.
-    // Rejeita se o token esperado existe mas o header está ausente ou diferente.
     if (expectedToken && webhookTokenHeader !== expectedToken) {
       console.error("Token do webhook Asaas inválido ou ausente!");
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -38,20 +37,56 @@ serve(async (req) => {
       );
 
       if (orderId) {
-        // Atualiza o pedido para PAGO
-        const { error } = await supabaseClient
+        // 1. Buscar status atual do pedido para garantir idempotência
+        const { data: existingOrder } = await supabaseClient
           .from('orders')
-          .update({ 
-            status: 'PAID', 
-            asaas_payment_id: paymentId,
-            asaas_charge_status: payment.status || 'RECEIVED'
-          })
-          .eq('id', orderId);
+          .select('id, status, pin_hash')
+          .eq('id', orderId)
+          .maybeSingle();
 
-        if (error) {
-          console.error(`Erro ao atualizar pedido ${orderId} no Supabase:`, error);
-        } else {
-          console.log(`Pedido ${orderId} marcado com sucesso como PAID pelo Asaas!`);
+        if (existingOrder) {
+          // Idempotência: não reprocessar se já estiver pago ou em etapas posteriores
+          const alreadyPaidStatuses = ['PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'RECEIVED', 'COMPLETED'];
+          if (!alreadyPaidStatuses.includes(existingOrder.status)) {
+            // Atualiza o pedido para PAGO
+            const { error: updateError } = await supabaseClient
+              .from('orders')
+              .update({ 
+                status: 'PAID', 
+                asaas_payment_id: paymentId,
+                asaas_charge_status: payment.status || 'RECEIVED',
+                paid_at: new Date().toISOString()
+              })
+              .eq('id', orderId);
+
+            if (updateError) {
+              console.error(`Erro ao atualizar pedido ${orderId} no Supabase:`, updateError);
+            } else {
+              console.log(`Pedido ${orderId} marcado com sucesso como PAID pelo Asaas!`);
+              
+              // 2. Gerar PIN seguro via backend se ainda não possuir hash
+              try {
+                await supabaseClient.rpc('generate_delivery_pin', { p_order_id: orderId });
+              } catch (pinErr) {
+                console.warn("Aviso ao gerar PIN seguro via RPC:", pinErr);
+              }
+
+              // 3. Registrar auditoria em order_status_history
+              try {
+                await supabaseClient.from('order_status_history').insert({
+                  order_id: orderId,
+                  from_status: existingOrder.status,
+                  to_status: 'PAID',
+                  actor_role: 'SYSTEM_ASAAS_WEBHOOK',
+                  reason: `Pagamento Pix confirmado no Asaas (${event})`
+                });
+              } catch (histErr) {
+                console.warn("Aviso ao registrar histórico:", histErr);
+              }
+            }
+          } else {
+            console.log(`Webhook idempotente: Pedido ${orderId} já se encontra em status ${existingOrder.status}.`);
+          }
         }
       }
     }

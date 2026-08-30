@@ -1798,11 +1798,47 @@ export const useAppStore = create<AppState>()(
         const currentUser = state.currentUser;
         if (!currentUser) return;
 
+        // 1. Validação Segura de PIN via RPC Supabase (Regras Parte B Item 1 & 10)
         if (action === 'validar_pin') {
-            const order = state.orders.find(o => o.id === orderId);
-            if (order && order.deliveryPin !== pinStr) {
-                alert("PIN Inválido!");
+            try {
+              const { data: pinRes, error: pinErr } = await supabase.rpc('check_delivery_pin', {
+                p_order_id: orderId,
+                p_pin: pinStr || '',
+                p_operator_id: currentUser.id,
+                p_device_info: typeof navigator !== 'undefined' ? navigator.userAgent : 'App Client'
+              });
+
+              if (pinErr || !pinRes?.success) {
+                const errMsg = pinRes?.error || pinErr?.message || 'PIN de segurança inválido.';
+                alert(`❌ ${errMsg}`);
+                await get().fetchOrders(currentUser.id, true);
                 return;
+              }
+            } catch (err: any) {
+              console.error("Erro ao validar PIN no servidor:", err);
+              alert("Erro de conexão ao validar o PIN de segurança.");
+              return;
+            }
+        }
+
+        // 2. Aceitação Atômica Condicional de Corrida pelo Operador (Regras Parte B Item 2)
+        if (action === 'aceitar_motorista') {
+            try {
+              const { data: acceptRes, error: acceptErr } = await supabase.rpc('accept_order_atomic', {
+                p_order_id: orderId,
+                p_operator_id: currentUser.id
+              });
+
+              if (acceptErr || !acceptRes?.success) {
+                const errMsg = acceptRes?.error || acceptErr?.message || 'Este pedido já foi aceito por outro operador.';
+                alert(`⚠️ ${errMsg}`);
+                await get().fetchOrders(currentUser.id, true);
+                return;
+              }
+            } catch (err: any) {
+              console.error("Erro ao aceitar corrida via escrita atômica:", err);
+              alert("Erro de conexão ao aceitar a corrida.");
+              return;
             }
         }
 
@@ -1881,6 +1917,23 @@ export const useAppStore = create<AppState>()(
           });
           return { orders: newOrders };
         });
+
+        // Impressão Automática em transições de status para a Loja/Batedeira (se configurado como 'auto')
+        if (action === 'aceitar_loja' || action === 'chamar_moto') {
+          try {
+            const { getPrinterConfig, printOrderTicket } = await import('@/lib/thermalPrinter');
+            const pConfig = getPrinterConfig();
+            if (pConfig.enabled && pConfig.printMode === 'auto') {
+              const targetOrder = get().orders.find(o => o.id === orderId);
+              if (targetOrder && targetOrder.type === 'B2C') {
+                const pType = action === 'aceitar_loja' ? 'PREPARO' : 'ENTREGA';
+                printOrderTicket(targetOrder, targetOrder.lojaNome || 'Loja/Batedeira', pConfig, get().users, null, pType, 'SYSTEM');
+              }
+            }
+          } catch (pErr) {
+            console.warn("Aviso ao disparar impressão automática:", pErr);
+          }
+        }
 
         const updates: any = {};
         if (newDbStatus) updates.status = newDbStatus;

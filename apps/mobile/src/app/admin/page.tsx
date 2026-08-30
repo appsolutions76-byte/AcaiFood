@@ -751,6 +751,26 @@ function AdminDashboardContent() {
                                     <button onClick={() => { if(confirm('Forçar baixa manual do pedido? (Use apenas se o cliente perdeu o PIN)')) if(typeof store.acaoPedido === 'function') store.acaoPedido(o.id, 'forcar_baixa'); }} className="bg-zinc-800 hover:bg-black text-white px-2 py-1.5 rounded text-[9px] font-bold w-full transition">Forçar Baixa</button>
                                   </div>
                                 )}
+                                {((o as any).status === 'PIN_LOCKED' || (o as any).status === 'bloqueado_pin') && (
+                                  <div className="flex flex-col gap-1 items-start">
+                                    <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">PIN Bloqueado</span>
+                                    <button onClick={async () => {
+                                      if (confirm('Deseja resetar o PIN deste pedido e gerar um novo código?')) {
+                                        try {
+                                          const { data: newPin, error } = await supabase.rpc('generate_delivery_pin', { p_order_id: o.id });
+                                          if (!error) {
+                                            alert(`✅ Novo PIN de 4 dígitos gerado com sucesso: ${newPin}`);
+                                            store.fetchOrders(store.currentUser?.id || 'admin', true);
+                                          } else {
+                                            alert(`Erro ao resetar PIN: ${error.message}`);
+                                          }
+                                        } catch (e: any) {
+                                          alert(`Exceção: ${e.message}`);
+                                        }
+                                      }
+                                    }} className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1.5 rounded text-[9px] font-bold w-full transition">Resetar PIN</button>
+                                  </div>
+                                )}
                                 {(o.status === 'entregue' || o.status === 'arquivado') && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>}
                                 {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
                             </td>

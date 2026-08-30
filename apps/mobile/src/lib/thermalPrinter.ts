@@ -1,15 +1,19 @@
 import { Order, User } from '@/store/useAppStore';
+import { supabase } from '@/lib/supabase';
+
+export type PrintType = 'PREPARO' | 'ENTREGA' | 'ENTREGA_ATUALIZADO';
+export type PrintTrigger = 'SYSTEM' | 'MANUAL';
 
 export interface PrinterConfig {
   paperWidth: '58mm' | '80mm';
-  printMode: 'manual' | 'auto'; // 'manual' = manual print button, 'auto' = auto print when order confirmed
+  printMode: 'manual' | 'auto'; // 'manual' = botão sob demanda, 'auto' = impressão automática em transições de status
   copies: 1 | 2;
   enabled: boolean;
 }
 
 export const DEFAULT_PRINTER_CONFIG: PrinterConfig = {
   paperWidth: '80mm',
-  printMode: 'manual',
+  printMode: 'auto',
   copies: 1,
   enabled: true,
 };
@@ -36,14 +40,32 @@ export function savePrinterConfig(config: PrinterConfig): void {
   }
 }
 
+/**
+ * Registra o log de impressão no Supabase para fins de auditoria
+ */
+export async function logPrintAudit(orderId: string, printType: PrintType, triggeredBy: PrintTrigger, success: boolean = true) {
+  try {
+    if (!orderId || orderId.startsWith('TEST-') || orderId.startsWith('PED-')) return;
+    await supabase.rpc('log_order_print', {
+      p_order_id: orderId,
+      p_print_type: printType,
+      p_triggered_by: triggeredBy,
+      p_success: success
+    });
+  } catch (err) {
+    console.warn("Aviso ao registrar log de impressão:", err);
+  }
+}
+
 export function generateSingleTicketHTML(
   order: Order,
-  storeName: string = 'Batedeira AçaíFood',
+  storeName: string = 'Loja/Batedeira AçaíFood',
   paperWidth: '58mm' | '80mm' = '80mm',
   viaNumber: number = 1,
   totalVias: number = 1,
   allUsers?: Record<string, User> | null,
-  clientUser?: User | null
+  clientUser?: User | null,
+  printType: PrintType = 'PREPARO'
 ): string {
   const is58 = paperWidth === '58mm';
   const widthPx = is58 ? '48mm' : '72mm';
@@ -77,7 +99,7 @@ export function generateSingleTicketHTML(
   const isB2B = order.type === 'B2B';
   const isColeta = order.type === 'COLETA';
 
-  // Resolução inteligente do comprador (Batedeira no B2B, Cliente no B2C)
+  // Resolução do comprador (Loja/Batedeira no B2B, Cliente no B2C)
   const buyerUser = clientUser 
     || (allUsers && (order as any).buyerId ? allUsers[(order as any).buyerId] : undefined)
     || (allUsers && isB2B && order.lojaId ? allUsers[order.lojaId] : undefined)
@@ -85,10 +107,9 @@ export function generateSingleTicketHTML(
     || (allUsers && order.destinoId ? allUsers[order.destinoId] : undefined) 
     || (allUsers && order.criadoPor ? allUsers[order.criadoPor] : undefined);
 
-  const buyerRoleLabel = isB2B ? 'BATEDEIRA (COMPRADOR FRUTO)' : isColeta ? 'LOJA (SOLICITANTE CAÇAMBA)' : 'CLIENTE (AÇAÍ BATIDO)';
   const buyerName = order.clienteNome 
     || buyerUser?.name 
-    || (isB2B ? (order.lojaNome || 'Batedeira Açaí') : 'Cliente AçaíFood');
+    || (isB2B ? (order.lojaNome || 'Loja/Batedeira Açaí') : 'Cliente AçaíFood');
 
   const buyerPhone = order.clienteTelefone 
     || buyerUser?.telefone 
@@ -103,9 +124,31 @@ export function generateSingleTicketHTML(
 
   const deliveryRef = order.deliveryReference || (buyerUser as any)?.referencia || '';
 
-  const viaTitle = totalVias > 1 
-    ? (viaNumber === 1 ? (isB2B ? '*** VIA 1: EXPEDIÇÃO / FORNECEDOR ***' : '*** VIA 1: PREPARO / BATEDEIRA ***') : (isB2B ? '*** VIA 2: TRANSPORTE / CAMINHÃO ***' : '*** VIA 2: ENTREGA / MOTOBOY ***'))
-    : (isB2B ? '*** COMANDA DE SAÍDA - AÇAÍ FRUTO ***' : '*** COMANDA DE PREPARO - AÇAÍ BATIDO ***');
+  // Resolução do Motoboy / Condutor
+  const driverUser = order.motoristaId && allUsers ? allUsers[order.motoristaId] : null;
+  const driverName = order.motoristaNome || driverUser?.name || (order.motoristaId ? `Entregador #${order.motoristaId.substring(0, 5)}` : null);
+  const driverPhone = driverUser?.telefone || (driverUser as any)?.phone || 'Disponível no App';
+
+  let motoboyStatusLabel = 'Aguardando aceite';
+  if (printType === 'ENTREGA' && !driverName) {
+    motoboyStatusLabel = 'Aguardando motoboy';
+  } else if (driverName) {
+    motoboyStatusLabel = `${driverName} (${driverPhone})`;
+  }
+
+  // Título da Via conforme o Tipo de Cupom (Regras Parte A e B)
+  let ticketHeaderTitle = '*** CUPOM DE PREPARO ***';
+  if (printType === 'ENTREGA') {
+    ticketHeaderTitle = '*** CUPOM DE ENTREGA ***';
+  } else if (printType === 'ENTREGA_ATUALIZADO') {
+    ticketHeaderTitle = '*** CUPOM DE ENTREGA (MOTOBOY ATRIBUÍDO) ***';
+  }
+
+  if (totalVias > 1) {
+    ticketHeaderTitle = viaNumber === 1 
+      ? `*** VIA 1: PREPARO / COZINHA (${ticketHeaderTitle.replace(/\*/g, '').trim()}) ***`
+      : `*** VIA 2: ENTREGA / MOTOBOY (${ticketHeaderTitle.replace(/\*/g, '').trim()}) ***`;
+  }
 
   const deliveryFee = order.taxas?.entregaCliente || order.taxas?.entregaTotal || 0;
   const itemsSubtotal = itemsList.reduce((acc, i) => acc + (i.price * i.quantity), 0);
@@ -123,11 +166,11 @@ export function generateSingleTicketHTML(
       text-align: left;
       box-sizing: border-box;
     ">
-      <!-- HEADER -->
+      <!-- CABEÇALHO -->
       <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
         <h2 style="margin: 0; font-size: ${is58 ? '14px' : '16px'}; font-weight: bold; text-transform: uppercase;">AÇAÍFOOD DELIVERY</h2>
         <p style="margin: 2px 0 0 0; font-size: ${is58 ? '10px' : '11px'}; font-weight: bold;">${storeName}</p>
-        <p style="margin: 4px 0 0 0; font-weight: bold; font-size: ${is58 ? '11px' : '12px'};">${viaTitle}</p>
+        <p style="margin: 4px 0 0 0; font-weight: bold; font-size: ${is58 ? '11px' : '12px'};">${ticketHeaderTitle}</p>
       </div>
 
       <!-- DETALHES DO PEDIDO -->
@@ -140,8 +183,11 @@ export function generateSingleTicketHTML(
         <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 2px;">
           Status: ${(order.status || '').toUpperCase()}
         </div>
+        <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 2px; font-weight: bold; color: #111;">
+          🛵 Motoboy: ${motoboyStatusLabel}
+        </div>
         ${order.distancia ? `
-          <div style="font-size: ${is58 ? '9px' : '10px'}; margin-top: 2px;">📏 Distância: ${order.distancia.toFixed(1)} km</div>
+          <div style="font-size: ${is58 ? '9px' : '10px'}; margin-top: 2px;">📏 Distância Estimada: ${order.distancia.toFixed(1)} km</div>
         ` : ''}
       </div>
 
@@ -205,17 +251,17 @@ export function generateSingleTicketHTML(
           <span>TOTAL DO PEDIDO:</span>
           <span>${formattedTotal}</span>
         </div>
-        <div style="font-size: ${is58 ? '9px' : '10px'}; font-weight: bold; margin-top: 3px; text-align: right;">
-          💳 Pagamento: PIX / App
+        <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 3px; text-align: right; color: #000;">
+          💳 Forma de Pagamento: PIX (Já Confirmado)
         </div>
       </div>
 
       <!-- RODAPÉ -->
       <div style="text-align: center; font-size: ${is58 ? '9px' : '10px'}; padding-top: 4px;">
-        <p style="margin: 0; font-weight: bold;">--- AçaíFood Delivery ---</p>
-        <p style="margin: 2px 0 0 0;">Obrigado pela preferência!</p>
+        <p style="margin: 0; font-weight: bold;">--- AçaíFood Delivery Oficial ---</p>
+        <p style="margin: 2px 0 0 0;">www.acaifood.app.br</p>
         <br />
-        <p style="margin: 0; font-size: 8px;">.</p> <!-- Espaço para corte de papel -->
+        <p style="margin: 0; font-size: 8px;">.</p>
       </div>
     </div>
   `;
@@ -223,14 +269,18 @@ export function generateSingleTicketHTML(
 
 export function printOrderTicket(
   order: Order,
-  storeName: string = 'Batedeira AçaíFood',
+  storeName: string = 'Loja/Batedeira AçaíFood',
   customConfig?: PrinterConfig,
   allUsers?: Record<string, User> | null,
-  clientUser?: User | null
+  clientUser?: User | null,
+  printType: PrintType = 'PREPARO',
+  triggeredBy: PrintTrigger = 'MANUAL'
 ): void {
   if (typeof window === 'undefined') return;
 
   const config = customConfig || getPrinterConfig();
+  if (!config.enabled) return;
+
   const copies = Math.max(1, Math.min(2, config.copies || 1));
 
   let container = document.getElementById('thermal-print-container');
@@ -242,7 +292,7 @@ export function printOrderTicket(
 
   let fullHTML = '';
   for (let via = 1; via <= copies; via++) {
-    fullHTML += generateSingleTicketHTML(order, storeName, config.paperWidth, via, copies, allUsers, clientUser);
+    fullHTML += generateSingleTicketHTML(order, storeName, config.paperWidth, via, copies, allUsers, clientUser, printType);
     if (via < copies) {
       fullHTML += `<div style="page-break-after: always; height: 15px; border-bottom: 2px dashed #000; margin: 15px 0;"></div>`;
     }
@@ -250,18 +300,21 @@ export function printOrderTicket(
 
   container.innerHTML = fullHTML;
 
-  // Small timeout to allow browser DOM rendering before triggering system print dialog
+  // Registrar auditoria no Supabase sem bloquear a impressão
+  logPrintAudit(order.id, printType, triggeredBy, true);
+
   setTimeout(() => {
     try {
       window.print();
     } catch (e) {
       console.error('Erro ao disparar impressão:', e);
+      logPrintAudit(order.id, printType, triggeredBy, false);
     }
   }, 150);
 }
 
 export function printTestTicket(
-  storeName: string = 'Batedeira AçaíFood',
+  storeName: string = 'Loja/Batedeira AçaíFood',
   config?: PrinterConfig
 ): void {
   const testOrder: Order = {
@@ -274,10 +327,10 @@ export function printTestTicket(
       { id: '2', name: 'Adicional: Leite em Pó', quantity: 2, price: 3.00 },
       { id: '3', name: 'Adicional: Bananas fatiadas', quantity: 1, price: 2.00 }
     ],
-    status: 'preparo',
-    criadoPor: 'cliente_gabriel',
-    origemId: 'loja_123',
-    destinoId: 'cliente_gabriel',
+    status: 'PREPARING' as any,
+    criadoPor: 'cliente_teste',
+    origemId: 'loja_teste',
+    destinoId: 'cliente_teste',
     distancia: 2.5,
     confirmacao: { entregador: false, recebedor: false },
     motoristaId: null,
@@ -296,12 +349,11 @@ export function printTestTicket(
     createdAt: new Date().toISOString(),
     deliveryPin: '4829',
     deliveryAddress: 'Av. Nazaré, 1050 - Apt 302, Belém/PA',
-    deliveryReference: 'Próximo ao Basílica de Nazaré',
+    deliveryReference: 'Próximo à Basílica de Nazaré',
     clienteNome: 'Gabriel (Teste Impressora)',
     clienteTelefone: '(91) 98877-6655',
     lojaNome: storeName
   };
 
-  printOrderTicket(testOrder, storeName, config);
+  printOrderTicket(testOrder, storeName, config, null, null, 'PREPARO', 'MANUAL');
 }
-

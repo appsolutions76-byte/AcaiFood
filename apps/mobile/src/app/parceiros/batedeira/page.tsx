@@ -83,16 +83,26 @@ export default function BatedeiraDashboard() {
   useEffect(() => {
     if (!mounted || !printerConfig.enabled || printerConfig.printMode !== 'auto' || !currentUser) return;
 
-    const autoOrders = store.orders.filter(o =>
-      o.lojaId === currentUser.id &&
-      o.type === 'B2C' &&
-      o.status === 'preparo' &&
-      !printedOrdersRef.current.has(o.id)
-    );
+    for (const order of store.orders) {
+      if (order.lojaId !== currentUser.id || order.type !== 'B2C') continue;
 
-    for (const order of autoOrders) {
-      printedOrdersRef.current.add(order.id);
-      printOrderTicket(order, currentUser.name, printerConfig, store.users);
+      // 1. Cupom de Preparo (ao aceitar o pedido para preparar)
+      if (order.status === 'preparo' && !printedOrdersRef.current.has(`${order.id}-PREPARO`)) {
+        printedOrdersRef.current.add(`${order.id}-PREPARO`);
+        printOrderTicket(order, currentUser.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, 'PREPARO', 'SYSTEM');
+      }
+
+      // 2. Cupom de Entrega (ao clicar em Chamar Moto)
+      if (order.status === 'pronto' && !printedOrdersRef.current.has(`${order.id}-ENTREGA`)) {
+        printedOrdersRef.current.add(`${order.id}-ENTREGA`);
+        printOrderTicket(order, currentUser.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, 'ENTREGA', 'SYSTEM');
+      }
+
+      // 3. Cupom de Entrega Atualizado (reimpresso automaticamente assim que o motoboy aceitar a corrida)
+      if (order.status === 'em_rota' && order.motoristaId && !printedOrdersRef.current.has(`${order.id}-ENTREGA_ATUALIZADO`)) {
+        printedOrdersRef.current.add(`${order.id}-ENTREGA_ATUALIZADO`);
+        printOrderTicket(order, currentUser.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, 'ENTREGA_ATUALIZADO', 'SYSTEM');
+      }
     }
 
   }, [store.orders, currentUser?.id, currentUser?.name, printerConfig, mounted, store.users]);
@@ -536,11 +546,14 @@ export default function BatedeiraDashboard() {
                 <div className="flex flex-wrap gap-1.5 mt-2 sm:mt-0">
                   <button
                     type="button"
-                    onClick={() => printOrderTicket(o, currentUser?.name || 'Batedeira AçaíFood', printerConfig, store.users)}
-                    className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-3 py-2 rounded-lg border border-purple-300 dark:border-purple-800 transition shadow-sm flex items-center gap-1 shrink-0"
-                    title="Imprimir comanda térmica deste pedido"
+                    onClick={() => {
+                      const pType = (o.status === 'em_rota' || o.status === 'entregue' || o.status === 'aguardando_cliente') ? 'ENTREGA_ATUALIZADO' : (o.status === 'pronto' ? 'ENTREGA' : 'PREPARO');
+                      printOrderTicket(o, currentUser?.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, pType, 'MANUAL');
+                    }}
+                    className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-3 py-2 rounded-lg border border-purple-300 dark:border-purple-800 transition shadow-sm flex items-center gap-1 shrink-0 active:scale-95"
+                    title="Imprimir cupom térmico deste pedido"
                   >
-                    🖨️ Comanda
+                    🖨️ Imprimir Cupom
                   </button>
                   <button
                     type="button"
