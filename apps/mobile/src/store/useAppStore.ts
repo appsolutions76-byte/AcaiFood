@@ -1800,10 +1800,16 @@ export const useAppStore = create<AppState>()(
 
         // 1. Validação Segura de PIN via RPC Supabase (Regras Parte B Item 1 & 10)
         if (action === 'validar_pin') {
+            const cleanPin = (pinStr || '').trim();
+            if (!cleanPin || cleanPin.length !== 4) {
+              alert("⚠️ Por favor, digite o PIN de 4 dígitos informado pelo cliente.");
+              return;
+            }
+
             try {
               const { data: pinRes, error: pinErr } = await supabase.rpc('check_delivery_pin', {
                 p_order_id: orderId,
-                p_pin: pinStr || '',
+                p_pin: cleanPin,
                 p_operator_id: currentUser.id,
                 p_device_info: typeof navigator !== 'undefined' ? navigator.userAgent : 'App Client'
               });

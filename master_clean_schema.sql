@@ -1,5 +1,5 @@
 -- ==========================================================
--- MASTER CLEAN SCHEMA & PERFORMANCE OPTIMIZATION - AÇAÍFOOD
+-- COMPLETE AUDIT, SECURITY CORE & SCHEMA MASTER — AÇAÍFOOD
 -- Regras de Negócio (Parte A) e Regras Técnicas (Parte B)
 -- Execute este script no SQL Editor do Supabase para atualizar o banco.
 -- ==========================================================
@@ -8,7 +8,11 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- 1. Remoção de Tabelas Legadas Sem Utilidade
+-- 1. Remoção de Tabelas Legadas e Triggers Conflitantes
+DROP TRIGGER IF EXISTS check_delivery_pin ON public.orders CASCADE;
+DROP TRIGGER IF EXISTS validate_delivery_pin_trigger ON public.orders CASCADE;
+DROP FUNCTION IF EXISTS public.validate_delivery_pin_trigger() CASCADE;
+
 DROP TABLE IF EXISTS public.mp_oauth_states CASCADE;
 DROP TABLE IF EXISTS public.mercadopago_tokens CASCADE;
 DROP TABLE IF EXISTS public.mp_payments CASCADE;
@@ -133,7 +137,7 @@ ADD COLUMN IF NOT EXISTS payment_attempt_count INT DEFAULT 0,
 ADD COLUMN IF NOT EXISTS asaas_transfer_status TEXT DEFAULT 'PENDING',
 ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
 
--- 5. Tabelas de Auditoria, Itens, Splits, PIN e Impressão
+-- 5. Tabelas de Auditoria, Itens, Splits, PIN, Logs e Disputas
 CREATE TABLE IF NOT EXISTS public.order_status_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
@@ -276,7 +280,11 @@ ALTER TABLE public.orders ADD CONSTRAINT orders_status_check
     'REFUND_REQUESTED', 'REFUNDED', 'DELIVERY_FAILED', 'COMPLETED', 'PENDING'
   ));
 
--- 6. Funções RPC Seguras
+-- ============================================================
+-- 6. Funções RPC Seguras (SECURITY DEFINER)
+-- ============================================================
+
+-- 6.1. Gerador Seguro de PIN (Preserva o PIN de checkout e gera hash)
 CREATE OR REPLACE FUNCTION public.generate_delivery_pin(p_order_id UUID)
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -285,10 +293,19 @@ SET search_path = public
 AS $$
 DECLARE
   v_raw_pin TEXT;
+  v_existing_pin TEXT;
   v_salt TEXT;
   v_hash TEXT;
 BEGIN
-  v_raw_pin := (floor(random() * 9000 + 1000))::TEXT;
+  -- Se o pedido já possui delivery_pin válido cadastrado, preserva-o
+  SELECT delivery_pin INTO v_existing_pin FROM public.orders WHERE id = p_order_id;
+  
+  IF v_existing_pin IS NOT NULL AND length(trim(v_existing_pin)) = 4 THEN
+    v_raw_pin := trim(v_existing_pin);
+  ELSE
+    v_raw_pin := (floor(random() * 9000 + 1000))::TEXT;
+  END IF;
+
   v_salt := gen_salt('bf', 8);
   v_hash := crypt(v_raw_pin, v_salt);
 
@@ -303,6 +320,7 @@ BEGIN
 END;
 $$;
 
+-- 6.2. Validação Rigorosa e Resiliente de PIN
 CREATE OR REPLACE FUNCTION public.check_delivery_pin(
   p_order_id UUID,
   p_pin TEXT,
@@ -316,46 +334,61 @@ SET search_path = public
 AS $$
 DECLARE
   v_order RECORD;
+  v_pin TEXT;
   v_is_valid BOOLEAN := FALSE;
   v_now TIMESTAMPTZ := NOW();
 BEGIN
+  v_pin := trim(COALESCE(p_pin, ''));
+
+  IF length(v_pin) = 0 THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Informe o PIN de 4 dígitos');
+  END IF;
+
+  -- 1. Buscar o pedido
   SELECT * INTO v_order FROM public.orders WHERE id = p_order_id;
   IF NOT FOUND THEN
     RETURN jsonb_build_object('success', false, 'error', 'Pedido não encontrado');
   END IF;
 
+  -- 2. Verificar se já foi concluído
   IF v_order.status = 'RECEIVED' OR v_order.status = 'COMPLETED' THEN
     RETURN jsonb_build_object('success', true, 'message', 'Pedido já confirmado anteriormente');
   END IF;
 
+  -- 3. Verificar se está bloqueado
   IF v_order.status = 'PIN_LOCKED' OR v_order.pin_attempts >= 5 THEN
     UPDATE public.orders SET status = 'PIN_LOCKED' WHERE id = p_order_id;
     RETURN jsonb_build_object('success', false, 'error', 'PIN bloqueado por excesso de tentativas. Contate o Administrador.');
   END IF;
 
+  -- 4. Rate limit: 1 tentativa a cada 5 segundos
   IF v_order.last_pin_attempt_at IS NOT NULL AND (v_now - v_order.last_pin_attempt_at) < interval '5 seconds' THEN
     RETURN jsonb_build_object('success', false, 'error', 'Muitas tentativas rápidas. Aguarde 5 segundos.');
   END IF;
 
-  IF v_order.pin_hash IS NOT NULL THEN
-    v_is_valid := (crypt(p_pin, v_order.pin_hash) = v_order.pin_hash);
-  ELSIF v_order.delivery_pin IS NOT NULL THEN
-    v_is_valid := (v_order.delivery_pin = p_pin);
+  -- 5. Comparação Resiliente: hash bcrypt ou texto plano
+  IF v_order.pin_hash IS NOT NULL AND crypt(v_pin, v_order.pin_hash) = v_order.pin_hash THEN
+    v_is_valid := TRUE;
+  ELSIF v_order.delivery_pin IS NOT NULL AND trim(v_order.delivery_pin) = v_pin THEN
+    v_is_valid := TRUE;
   END IF;
 
+  -- 6. Gravar auditoria em pin_attempt_log
   INSERT INTO public.pin_attempt_log (order_id, actor_id, success, ip_device, created_at)
   VALUES (p_order_id, COALESCE(p_operator_id, auth.uid()), v_is_valid, p_device_info, v_now);
 
+  -- 7. Tratamento do resultado
   IF v_is_valid THEN
     UPDATE public.orders
     SET status = 'RECEIVED',
         received_at = v_now,
         last_pin_attempt_at = v_now,
+        pin_attempts = 0,
         asaas_transfer_status = 'READY_TO_RELEASE'
     WHERE id = p_order_id;
 
     INSERT INTO public.order_status_history (order_id, from_status, to_status, actor_id, actor_role, reason)
-    VALUES (p_order_id, v_order.status, 'RECEIVED', COALESCE(p_operator_id, auth.uid()), 'OPERATOR', 'PIN validado com sucesso');
+    VALUES (p_order_id, v_order.status, 'RECEIVED', COALESCE(p_operator_id, auth.uid()), 'OPERATOR', 'PIN validado com sucesso na entrega');
 
     UPDATE public.splits
     SET status = 'RELEASED', released_at = v_now
@@ -386,6 +419,7 @@ BEGIN
 END;
 $$;
 
+-- 6.3. Aceitação Atômica Condicional
 CREATE OR REPLACE FUNCTION public.accept_order_atomic(
   p_order_id UUID,
   p_operator_id UUID
@@ -418,6 +452,7 @@ BEGIN
 END;
 $$;
 
+-- 6.4. Transição Segura de Status
 CREATE OR REPLACE FUNCTION public.transition_order_status(
   p_order_id UUID,
   p_to_status TEXT,
@@ -461,6 +496,7 @@ BEGIN
 END;
 $$;
 
+-- 6.5. Auditoria de Impressão Térmica
 CREATE OR REPLACE FUNCTION public.log_order_print(
   p_order_id UUID,
   p_print_type TEXT,
