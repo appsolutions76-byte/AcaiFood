@@ -253,7 +253,12 @@ export default function FornecedorDashboard() {
   const vendasHoje = meusPedidosAll.filter(o => isCompleted(o.status) && !o.payoutSellerDone).reduce((acc, curr) => acc + getSupplierRepasse(curr), 0);
   const emProcessamento = meusPedidosAll.filter(o => isPaidOrProcessing(o.status)).reduce((acc, curr) => acc + getSupplierRepasse(curr), 0);
 
-  const fornActiveOrders = meusPedidosAll.filter(o => !isCompleted(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
+  const fornActiveOrders = meusPedidosAll.filter(o => 
+    o.status !== 'aguardando_pagamento' && 
+    !isCompleted(o.status) && 
+    o.status !== 'cancelado' && 
+    o.status !== 'arquivado'
+  );
   const fornHistoryOrders = meusPedidosAll.filter(o => isCompleted(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
   const meusPedidos = [...fornActiveOrders, ...fornHistoryOrders];
 

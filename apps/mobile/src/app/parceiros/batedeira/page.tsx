@@ -261,7 +261,12 @@ export default function BatedeiraDashboard() {
   });
   const vendasHoje = meusPedidosAll.filter(o => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone).reduce((acc, curr) => acc + (curr.taxas?.repasse || 0), 0);
   
-  const batedeiraActiveOrders = meusPedidosAll.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
+  const batedeiraActiveOrders = meusPedidosAll.filter(o => 
+    o.status !== 'aguardando_pagamento' && 
+    o.status !== 'entregue' && 
+    o.status !== 'cancelado' && 
+    o.status !== 'arquivado'
+  );
   const batedeiraHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   const meusPedidos = [...batedeiraActiveOrders, ...batedeiraHistoryOrders];
   const fornecedores = Object.values(store.users || {})

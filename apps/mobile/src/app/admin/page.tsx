@@ -444,22 +444,22 @@ function AdminDashboardContent() {
 
   const localStats = getFilteredLocalStats(selectedPeriod);
 
-  const currentOrdersCount = adminBalances?.[selectedPeriod]?.total_orders ?? localStats.ordersCount;
-  const currentConcluidosCount = adminBalances?.[selectedPeriod]?.total_orders ?? localStats.concluidosCount;
-  const currentAppRevenue = adminBalances?.[selectedPeriod]?.app_revenue ?? localStats.appRev;
-  const currentVolumeTotal = adminBalances?.[selectedPeriod]?.total_volume ?? localStats.volume;
+  const currentOrdersCount = (adminBalances?.[selectedPeriod]?.total_orders && adminBalances[selectedPeriod].total_orders > 0) ? adminBalances[selectedPeriod].total_orders : localStats.ordersCount;
+  const currentConcluidosCount = (adminBalances?.[selectedPeriod]?.total_orders && adminBalances[selectedPeriod].total_orders > 0) ? adminBalances[selectedPeriod].total_orders : localStats.concluidosCount;
+  const currentAppRevenue = (adminBalances?.[selectedPeriod]?.app_revenue && adminBalances[selectedPeriod].app_revenue > 0) ? adminBalances[selectedPeriod].app_revenue : localStats.appRev;
+  const currentVolumeTotal = (adminBalances?.[selectedPeriod]?.total_volume && adminBalances[selectedPeriod].total_volume > 0) ? adminBalances[selectedPeriod].total_volume : localStats.volume;
   
-  const currentFornBruto = adminBalances?.[selectedPeriod]?.fornecedores_bruto ?? localStats.fornBruto;
-  const currentFornLiq = adminBalances?.[selectedPeriod]?.fornecedores_liquido ?? localStats.fornLiq;
+  const currentFornBruto = (adminBalances?.[selectedPeriod]?.fornecedores_bruto && adminBalances[selectedPeriod].fornecedores_bruto > 0) ? adminBalances[selectedPeriod].fornecedores_bruto : localStats.fornBruto;
+  const currentFornLiq = (adminBalances?.[selectedPeriod]?.fornecedores_liquido && adminBalances[selectedPeriod].fornecedores_liquido > 0) ? adminBalances[selectedPeriod].fornecedores_liquido : localStats.fornLiq;
   
-  const currentBatBruto = adminBalances?.[selectedPeriod]?.batedeiras_bruto ?? localStats.batBruto;
-  const currentBatLiq = adminBalances?.[selectedPeriod]?.batedeiras_liquido ?? localStats.batLiq;
+  const currentBatBruto = (adminBalances?.[selectedPeriod]?.batedeiras_bruto && adminBalances[selectedPeriod].batedeiras_bruto > 0) ? adminBalances[selectedPeriod].batedeiras_bruto : localStats.batBruto;
+  const currentBatLiq = (adminBalances?.[selectedPeriod]?.batedeiras_liquido && adminBalances[selectedPeriod].batedeiras_liquido > 0) ? adminBalances[selectedPeriod].batedeiras_liquido : localStats.batLiq;
   
-  const currentMotBruto = adminBalances?.[selectedPeriod]?.motoristas_bruto ?? localStats.motBruto;
-  const currentMotLiq = adminBalances?.[selectedPeriod]?.motoristas_liquido ?? localStats.motLiq;
+  const currentMotBruto = (adminBalances?.[selectedPeriod]?.motoristas_bruto && adminBalances[selectedPeriod].motoristas_bruto > 0) ? adminBalances[selectedPeriod].motoristas_bruto : localStats.motBruto;
+  const currentMotLiq = (adminBalances?.[selectedPeriod]?.motoristas_liquido && adminBalances[selectedPeriod].motoristas_liquido > 0) ? adminBalances[selectedPeriod].motoristas_liquido : localStats.motLiq;
   
-  const currentCamBruto = adminBalances?.[selectedPeriod]?.caminhoes_bruto ?? localStats.camBruto;
-  const currentCamLiq = adminBalances?.[selectedPeriod]?.caminhoes_liquido ?? localStats.camLiq;
+  const currentCamBruto = (adminBalances?.[selectedPeriod]?.caminhoes_bruto && adminBalances[selectedPeriod].caminhoes_bruto > 0) ? adminBalances[selectedPeriod].caminhoes_bruto : localStats.camBruto;
+  const currentCamLiq = (adminBalances?.[selectedPeriod]?.caminhoes_liquido && adminBalances[selectedPeriod].caminhoes_liquido > 0) ? adminBalances[selectedPeriod].caminhoes_liquido : localStats.camLiq;
 
   const totais = {
       pedidos: currentOrdersCount,
