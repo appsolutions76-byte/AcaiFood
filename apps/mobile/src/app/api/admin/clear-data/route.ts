@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
+  const auth = await authorizeRequest(request, ['admin']);
+  if (!auth.authorized) return unauthorizedResponse(auth.error);
+
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

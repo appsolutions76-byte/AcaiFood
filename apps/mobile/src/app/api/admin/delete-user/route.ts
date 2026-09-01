@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
+  const auth = await authorizeRequest(request, ['admin']);
+  if (!auth.authorized) return unauthorizedResponse(auth.error);
+
   try {
     const body = await request.json();
     const { userId } = body;

@@ -1535,6 +1535,45 @@ export const useAppStore = create<AppState>()(
               console.warn("DB error saving order:", dbError);
             } else {
               dbOrder = data;
+              // Gravar snapshot imutável de itens do pedido em order_items
+              if (novoPedido.items && novoPedido.items.length > 0) {
+                const itemsPayload = novoPedido.items.map(it => ({
+                  order_id: dbOrder.id,
+                  product_id: it.id || null,
+                  product_name: it.name || 'Açaí',
+                  quantity: it.quantity || 1,
+                  unit_price_cents: Math.round((it.price || 0) * 100),
+                  total_price_cents: Math.round((it.price || 0) * (it.quantity || 1) * 100)
+                }));
+                supabase.from('order_items').insert(itemsPayload).then(({ error: itErr }) => {
+                  if (itErr) console.warn("Aviso ao salvar order_items:", itErr);
+                });
+              }
+
+              // Gravar registros de split em centavos na tabela splits
+              const splitsPayload: any[] = [];
+              if (novoPedido.taxas.repasse > 0 && sellerStorefrontId) {
+                splitsPayload.push({
+                  order_id: dbOrder.id,
+                  recipient_type: tipo === 'B2B' ? 'SUPPLIER' : 'STORE',
+                  recipient_id: storeUserTargetId || null,
+                  amount_cents: Math.round(novoPedido.taxas.repasse * 100),
+                  status: 'PENDING'
+                });
+              }
+              if (novoPedido.taxas.plataformaTotal > 0) {
+                splitsPayload.push({
+                  order_id: dbOrder.id,
+                  recipient_type: 'PLATFORM',
+                  amount_cents: Math.round(novoPedido.taxas.plataformaTotal * 100),
+                  status: 'PENDING'
+                });
+              }
+              if (splitsPayload.length > 0) {
+                supabase.from('splits').insert(splitsPayload).then(({ error: spErr }) => {
+                  if (spErr) console.warn("Aviso ao salvar splits:", spErr);
+                });
+              }
             }
           } catch (err) {
             console.warn("Exception saving order to DB:", err);
@@ -1958,102 +1997,31 @@ export const useAppStore = create<AppState>()(
 
          if (Object.keys(updates).length > 0) {
             if (action === 'validar_pin') updates.provided_pin = pinStr;
-            const { error } = await supabase.from('orders').update(updates).eq('id', orderId);
-            if (error) {
-               console.error("Error updating order in DB:", error);
-               if (error.message && error.message.includes('PIN de segurança')) {
-                  alert("Erro de Segurança: " + error.message);
-                  // Reverter update otimista se necessário, forçando um fetchOrders
-                  get().fetchOrders(currentUser.id);
-               }
-            } else if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
-               // Trigger automatic Pix payouts to all partners: Store, Supplier, Driver
+            
+            // Transição segura via RPC transition_order_status
+            if (newDbStatus && action !== 'validar_pin' && action !== 'aceitar_motorista') {
+              supabase.rpc('transition_order_status', {
+                p_order_id: orderId,
+                p_to_status: newDbStatus,
+                p_actor_id: currentUser.id,
+                p_actor_role: currentUser.role ? String(currentUser.role).toUpperCase() : 'USER',
+                p_reason: reasonStr || 'Transição efetuada pelo app'
+              }).then(({ data: trData, error: trErr }) => {
+                if (trErr || (trData && !trData.success)) {
+                  console.warn("RPC transition notice:", trErr || trData?.error);
+                  // Fallback direto com RLS se a RPC apresentar aviso
+                  supabase.from('orders').update(updates).eq('id', orderId);
+                }
+              });
+            } else {
+              supabase.from('orders').update(updates).eq('id', orderId);
+            }
+
+            if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
                const currentOrder = get().orders.find(o => o.id === orderId) || state.orders.find(o => o.id === orderId);
                if (currentOrder) {
                  get().incrementAdminBalances(currentOrder);
-
-                 // Re-fetch payout flags to prevent double payment (race condition guard)
-                 const { data: payoutCheck } = await supabase
-                   .from('orders')
-                   .select('payout_seller_done, payout_driver_done')
-                   .eq('id', orderId)
-                   .maybeSingle();
-
-                 // 1. Seller payout (Store in B2C, Supplier in B2B)
-                 const sellerId = currentOrder.type === 'B2B' 
-                   ? (currentOrder.fornecedorId || currentOrder.origemId)
-                   : (currentOrder.lojaId || currentOrder.origemId);
-
-                 let sellerUser: any = sellerId ? state.users[sellerId] : null;
-                 if (!sellerUser && sellerId) {
-                   const { data: uSeller } = await supabase.from('users').select('pix_key, cpf_cnpj, email, asaas_wallet_id').eq('id', sellerId).maybeSingle();
-                   sellerUser = uSeller;
-                 }
-                 const sellerPixKey = sellerUser?.pix_key || sellerUser?.pixKey || sellerUser?.asaasWalletId || sellerUser?.cpf_cnpj || sellerUser?.cpfCnpj || sellerUser?.email;
-                 const repasseSeller = currentOrder.taxas?.repasse || 0;
-
-                 // Deduplication guard: only pay if not already paid
-                 if (sellerPixKey && repasseSeller > 0 && !payoutCheck?.payout_seller_done) {
-                   getAuthHeaders().then(authHeaders => {
-                     fetch('/api/asaas/transfer', {
-                       method: 'POST',
-                       headers: authHeaders,
-                       body: JSON.stringify({
-                         pixKey: sellerPixKey,
-                         value: repasseSeller,
-                         description: `Repasse Venda AçaíFood #${String(orderId).substring(0, 8)}`,
-                         orderId
-                       })
-                     }).then(r => r.json()).then(async data => {
-                       if (data.success || data.transferId) {
-                         console.log('✅ Seller Pix payout dispatched:', data);
-                         await supabase.from('orders').update({ payout_seller_done: true }).eq('id', orderId);
-                       }
-                     }).catch(e => console.warn('Seller payout warning:', e));
-                   });
-                 }
-
-                 // 2. Repasse do Entregador (Motoboy no B2C ou Caminhoneiro no B2B/Coleta)
-                 const driverId = currentOrder.motoristaId || state.currentUser?.id;
-                 let driverUser: any = driverId ? state.users[driverId] : null;
-                 if (!driverUser && driverId) {
-                   const { data: uDriver } = await supabase.from('users').select('pix_key, cpf_cnpj, email, asaas_wallet_id, cidade').eq('id', driverId).maybeSingle();
-                   driverUser = uDriver;
-                 }
-                 const driverPixKey = driverUser?.pix_key || driverUser?.pixKey || driverUser?.asaasWalletId || driverUser?.cpf_cnpj || driverUser?.cpfCnpj || driverUser?.email;
-                 let repasseDriver = currentOrder.taxas?.entregaMotorista || 0;
-                 if (!repasseDriver || repasseDriver <= 0) {
-                    const cityRates = getRatesForCity(driverUser?.cidade || currentUser.cidade, state.rates, state.cities) || state.rates;
-                    const dist = currentOrder.distancia || 1.0;
-                    const totalFrete = currentOrder.type === 'COLETA'
-                      ? (cityRates.ecopoint_payment_mode === 'FIXED' ? (cityRates.ecopoint_fixed_fee ?? 50.00) : dist * (cityRates.col_km || 8.00))
-                      : (currentOrder.type === 'B2B' 
-                        ? (cityRates.transporter_payment_mode === 'FIXED' ? (cityRates.transporter_fixed_fee ?? 150.00) : dist * (cityRates.b2b_km || 4.00))
-                        : (cityRates.courier_payment_mode === 'FIXED' ? (cityRates.courier_fixed_fee ?? 8.00) : dist * (cityRates.b2c_km || 2.00)));
-                    const platPct = ((currentOrder.type === 'COLETA' ? cityRates.col_mot_plat : (currentOrder.type === 'B2B' ? cityRates.b2b_mot_plat : cityRates.b2c_mot_plat)) ?? 10) / 100;
-                    repasseDriver = totalFrete * (1 - platPct);
-                 }
-
-                 // Deduplication guard: only pay if not already paid
-                 if (driverPixKey && repasseDriver > 0 && !payoutCheck?.payout_driver_done) {
-                   getAuthHeaders().then(authHeaders => {
-                     fetch('/api/asaas/transfer', {
-                       method: 'POST',
-                       headers: authHeaders,
-                       body: JSON.stringify({
-                         pixKey: driverPixKey,
-                         value: repasseDriver,
-                         description: `Repasse Frete AçaíFood #${String(orderId).substring(0, 8)}`,
-                         orderId
-                       })
-                     }).then(r => r.json()).then(async data => {
-                       if (data.success || data.transferId) {
-                         console.log('✅ Driver Pix payout dispatched:', data);
-                         await supabase.from('orders').update({ payout_driver_done: true }).eq('id', orderId);
-                       }
-                     }).catch(e => console.warn('Driver payout warning:', e));
-                   });
-                 }
+                 // Repasses são efetuados de forma atômica e segura pelo backend (Edge Function payout-sweep)
                }
             }
          }

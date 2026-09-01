@@ -116,14 +116,32 @@ export async function POST(request: Request) {
       try {
         const { createClient } = await import('@supabase/supabase-js');
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        const targetDbStatus = refundStatus === 'REFUNDED' ? 'REFUNDED' : (asaasPaymentId ? 'REFUND_REQUESTED' : 'CANCELED');
+        
         await supabase.from('orders').update({
-          status: 'CANCELLED',
+          status: targetDbStatus,
           cancellation_reason: cancelReasonText,
           asaas_refund_id: refundId,
           asaas_refund_status: refundStatus,
           cancelled_at: new Date().toISOString(),
           cancelled_by: auth.user?.id || auth.profile?.id || null
         }).eq('id', orderId);
+
+        // Se estornado, reverte splits pendentes
+        if (targetDbStatus === 'REFUNDED') {
+          await supabase.from('splits').update({ status: 'REVERSED' }).eq('order_id', orderId);
+        }
+
+        // Registrar histórico de status
+        await supabase.from('order_status_history').insert({
+          order_id: orderId,
+          from_status: 'PAID',
+          to_status: targetDbStatus,
+          actor_id: auth.user?.id || auth.profile?.id || null,
+          actor_role: auth.profile?.role || 'USER',
+          reason: cancelReasonText
+        });
       } catch (dbErr) {
         console.warn("Erro ao registrar cancelamento/estorno no DB Supabase:", dbErr);
       }

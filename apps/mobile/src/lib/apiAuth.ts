@@ -7,12 +7,13 @@ export function isAuthorizedRequest(request: Request): boolean {
   const headerToken = request.headers.get('x-internal-secret');
   if (headerToken && internalSecret && headerToken === internalSecret) return true;
 
+  const asaasHeaderToken = request.headers.get('asaas-access-token');
+  if (asaasHeaderToken && webhookSecret && asaasHeaderToken === webhookSecret) return true;
+
   try {
     const url = new URL(request.url);
     const whToken = url.searchParams.get('wh_token');
     if (webhookSecret && whToken === webhookSecret) return true;
-    // Permite webhook do Asaas na rota de status se for POST para a API do Asaas
-    if (request.method === 'POST' && url.pathname.includes('/api/asaas/status')) return true;
   } catch (_e) {}
 
   return false;
