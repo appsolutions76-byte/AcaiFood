@@ -1998,7 +1998,6 @@ export const useAppStore = create<AppState>()(
          if (Object.keys(updates).length > 0) {
             if (action === 'validar_pin') updates.provided_pin = pinStr;
             
-            // Transição segura via RPC transition_order_status
             if (newDbStatus && action !== 'validar_pin' && action !== 'aceitar_motorista') {
               supabase.rpc('transition_order_status', {
                 p_order_id: orderId,
@@ -2006,15 +2005,17 @@ export const useAppStore = create<AppState>()(
                 p_actor_id: currentUser.id,
                 p_actor_role: currentUser.role ? String(currentUser.role).toUpperCase() : 'USER',
                 p_reason: reasonStr || 'Transição efetuada pelo app'
-              }).then(({ data: trData, error: trErr }) => {
+              }).then(async ({ data: trData, error: trErr }) => {
                 if (trErr || (trData && !trData.success)) {
                   console.warn("RPC transition notice:", trErr || trData?.error);
-                  // Fallback direto com RLS se a RPC apresentar aviso
-                  supabase.from('orders').update(updates).eq('id', orderId);
+                  await supabase.from('orders').update(updates).eq('id', orderId);
                 }
+                get().fetchOrders(currentUser.id, true);
               });
             } else {
-              supabase.from('orders').update(updates).eq('id', orderId);
+              supabase.from('orders').update(updates).eq('id', orderId).then(() => {
+                get().fetchOrders(currentUser.id, true);
+              });
             }
 
             if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
@@ -2202,7 +2203,7 @@ export const useAppStore = create<AppState>()(
                if (o.driver_id && !state.users[o.driver_id]?.name) missingUserIds.add(o.driver_id);
             });
 
-            const fetchedUsersMap: Record<string, any> = {};
+                const fetchedUsersMap: Record<string, any> = {};
             if (missingUserIds.size > 0) {
                const { data: uData } = await supabase.from('users').select('id, name, email, phone, telefone, endereco, address, bairro, cidade, role').in('id', Array.from(missingUserIds));
                if (uData && uData.length > 0) {
@@ -2213,16 +2214,16 @@ export const useAppStore = create<AppState>()(
             const allUsers = { ...state.users, ...fetchedUsersMap };
 
              const mappedOrders = dbOrders.map((dbOrder: any) => {
-                let appStatus: Order['status'] = 'aguardando_pagamento';
-                if (dbOrder.status === 'PENDING') appStatus = 'aguardando_pagamento';
-                if (dbOrder.status === 'PAID') appStatus = 'pendente';
-                if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
-                if (dbOrder.status === 'READY') appStatus = 'pronto';
-                if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
-                if (dbOrder.status === 'DELIVERED') appStatus = 'aguardando_cliente';
-                if (dbOrder.status === 'RECEIVED') appStatus = 'entregue';
-                if (dbOrder.status === 'COMPLETED') appStatus = 'arquivado';
-                if (dbOrder.status === 'CANCELLED') appStatus = 'cancelado';
+                 let appStatus: Order['status'] = 'aguardando_pagamento';
+                 if (dbOrder.status === 'PENDING' || dbOrder.status === 'CREATED') appStatus = 'aguardando_pagamento';
+                 if (dbOrder.status === 'PAID') appStatus = 'pendente';
+                 if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
+                 if (dbOrder.status === 'READY' || dbOrder.status === 'SEARCHING_OPERATOR') appStatus = 'pronto';
+                 if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
+                 if (dbOrder.status === 'DELIVERED') appStatus = 'aguardando_cliente';
+                 if (dbOrder.status === 'RECEIVED') appStatus = 'entregue';
+                 if (dbOrder.status === 'COMPLETED') appStatus = 'arquivado';
+                 if (dbOrder.status === 'CANCELLED' || dbOrder.status === 'CANCELED' || dbOrder.status === 'REFUND_REQUESTED' || dbOrder.status === 'REFUNDED') appStatus = 'cancelado';
 
                 const storeName = dbOrder.storefront?.store_name || 'Loja';
                 const localOrder = state.orders.find(o => o.id === dbOrder.id);
@@ -2429,14 +2430,13 @@ export const useAppStore = create<AppState>()(
       startAutoRefresh: () => {
          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
          
-         // Atualiza pedidos em segundo plano de forma inteligente a cada 60 segundos
+         // Atualiza pedidos em segundo plano a cada 4 segundos com sincronização ativa
          autoRefreshInterval = setInterval(async () => {
              if (typeof document !== 'undefined' && document.hidden) return;
              const currentUser = get().currentUser;
              if (currentUser) {
                  try {
-                     // Atualiza pedidos (sem force, respeitando o cache local se não houver mudanças)
-                     await get().fetchOrders(currentUser.id, false);
+                     await get().fetchOrders(currentUser.id, true);
                      
                      const pendingOrders = (get().orders || []).filter(o => o.status === 'aguardando_pagamento');
                      if (pendingOrders.length > 0) {
