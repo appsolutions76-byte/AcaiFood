@@ -28,7 +28,48 @@ export async function GET(request: Request) {
       return null;
     };
 
-    // 1. Se forneceu paymentId, consulta diretamente no Asaas pelo ID da cobrança
+    // 1. Consulta prioritária no banco de dados Supabase (onde o Webhook Asaas e a Edge Function atualizam)
+    if (orderId && supabaseUrl && supabaseKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { data: order } = await supabase
+          .from('orders')
+          .select('id, status, asaas_payment_id, asaas_charge_status')
+          .eq('id', orderId)
+          .maybeSingle();
+
+        if (order) {
+          const isPaid = order.status === 'PAID' || 
+                         order.status === 'PREPARING' || 
+                         order.status === 'READY' || 
+                         order.status === 'DELIVERING' || 
+                         order.status === 'DELIVERED' || 
+                         order.status === 'RECEIVED' || 
+                         order.status === 'COMPLETED' || 
+                         order.status === 'pendente' ||
+                         order.status === 'preparo' ||
+                         order.status === 'pronto' ||
+                         order.status === 'em_rota' ||
+                         order.status === 'aguardando_cliente' ||
+                         order.status === 'entregue' ||
+                         order.asaas_charge_status === 'RECEIVED' || 
+                         order.asaas_charge_status === 'CONFIRMED';
+
+          if (isPaid) {
+            return NextResponse.json({
+              paymentId: order.asaas_payment_id || paymentId,
+              orderId: order.id,
+              status: order.asaas_charge_status || order.status,
+              isPaid: true
+            });
+          }
+        }
+      } catch (dbErr) {
+        console.warn("Aviso ao buscar pedido no Supabase:", dbErr);
+      }
+    }
+
+    // 2. Se forneceu paymentId e chave Asaas existe no ambiente, consulta diretamente no Asaas
     if (paymentId && ASAAS_API_KEY) {
       const data = await fetchAsaasPayment(`/payments/${paymentId}`);
       if (data && data.id) {
@@ -62,7 +103,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // 2. Se forneceu orderId e chave Asaas existe, consulta no Asaas por externalReference (ID do pedido)
+    // 3. Se forneceu orderId e chave Asaas existe, consulta no Asaas por externalReference
     if (orderId && ASAAS_API_KEY) {
       const listData = await fetchAsaasPayment(`/payments?externalReference=${encodeURIComponent(orderId)}`);
       if (listData && listData.data && listData.data.length > 0) {
@@ -94,26 +135,6 @@ export async function GET(request: Request) {
           status: paidPayment.status,
           isPaid,
           value: paidPayment.value
-        });
-      }
-    }
-
-    // 3. Consulta no banco de dados Supabase como fallback
-    if (orderId && supabaseUrl && supabaseKey) {
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      const { data: order } = await supabase
-        .from('orders')
-        .select('id, status, asaas_payment_id, asaas_charge_status')
-        .eq('id', orderId)
-        .maybeSingle();
-
-      if (order) {
-        const isPaid = order.status === 'PAID' || order.status === 'PREPARING' || order.status === 'READY' || order.status === 'DELIVERING' || order.status === 'DELIVERED' || order.status === 'RECEIVED' || order.status === 'COMPLETED' || order.asaas_charge_status === 'RECEIVED' || order.asaas_charge_status === 'CONFIRMED';
-        return NextResponse.json({
-          paymentId: order.asaas_payment_id || paymentId,
-          orderId: order.id,
-          status: order.asaas_charge_status || order.status,
-          isPaid
         });
       }
     }
