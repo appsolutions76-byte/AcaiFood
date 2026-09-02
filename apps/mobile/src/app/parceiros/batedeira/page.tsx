@@ -564,15 +564,22 @@ export default function BatedeiraDashboard() {
                   <button
                     type="button"
                     onClick={() => {
+                      const isB2B = o.type === 'B2B';
                       const clienteUser = o.buyerId ? store.users[o.buyerId] : null;
+                      const fornecedorUser = o.fornecedorId ? store.users[o.fornecedorId] : (o.origemId ? store.users[o.origemId] : null);
                       const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
-                      const targetOther = motoristaUser || clienteUser;
+
+                      const targetOther = motoristaUser || (isB2B ? fornecedorUser : clienteUser);
+                      const targetRole = motoristaUser 
+                        ? (isB2B ? 'Transporte' : 'Motoboy') 
+                        : (isB2B ? 'Fornecedor' : 'Cliente');
+
                       setChatModalData({
                         open: true,
                         orderId: o.id,
-                        otherName: targetOther?.name || o.clienteNome || 'Atendimento',
-                        otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
-                        otherRole: motoristaUser ? 'Motoboy' : 'Cliente'
+                        otherName: targetOther?.name || (isB2B ? (o.lojaNome || 'Fornecedor') : (o.clienteNome || 'Cliente')),
+                        otherPhone: (targetOther as any)?.phone || targetOther?.telefone || (isB2B ? o.lojaTelefone : o.clienteTelefone) || '',
+                        otherRole: targetRole
                       });
                     }}
                     className="text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-2 rounded-lg transition shadow-sm flex items-center gap-1 shrink-0"

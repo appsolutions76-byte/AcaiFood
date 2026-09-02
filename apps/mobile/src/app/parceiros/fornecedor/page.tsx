@@ -497,9 +497,9 @@ export default function FornecedorDashboard() {
                             setChatModalData({
                               open: true,
                               orderId: o.id,
-                              otherName: targetOther?.name || o.clienteNome || 'Comprador/Caminhoneiro',
-                              otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
-                              otherRole: caminhoneiroUser ? 'Caminhoneiro' : 'Batedeira'
+                              otherName: targetOther?.name || o.clienteNome || 'Loja Batedeira',
+                              otherPhone: (targetOther as any)?.phone || targetOther?.telefone || o.clienteTelefone || '',
+                              otherRole: caminhoneiroUser ? 'Transporte' : 'Loja Compradora'
                             });
                           }}
                           className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 px-2 py-1 rounded inline-flex items-center gap-1 transition shadow-sm ml-2"

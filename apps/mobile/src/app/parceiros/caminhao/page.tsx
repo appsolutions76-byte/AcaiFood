@@ -421,7 +421,7 @@ export default function CaminhaoDashboard() {
                                           orderId: o.id,
                                           otherName: targetOther?.name || o.clienteNome || 'Comprador/Vendedor',
                                           otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
-                                          otherRole: compradorUser ? 'Comprador' : 'Vendedor'
+                                          otherRole: compradorUser ? 'Loja Compradora' : 'Fornecedor'
                                         });
                                       }}
                                       className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"

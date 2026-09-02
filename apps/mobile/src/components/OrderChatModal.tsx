@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { MessageSquare, Phone, Send, X, Shield, PhoneCall } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useAppStore } from "@/store/useAppStore";
 
 export interface OrderMessage {
   id: string;
@@ -153,21 +154,118 @@ export function OrderChatModal({
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const r = (role || "").toLowerCase();
-    if (r === "motoboy" || r === "motorista") {
-      return { label: "🏍️ Motoboy", class: "bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800" };
+  const store = useAppStore();
+  const currentOrder = (store.orders || []).find(o => o.id === orderId);
+  const isB2B = currentOrder?.type === 'B2B';
+
+  const getRoleBadge = (msg: OrderMessage) => {
+    const sId = msg.sender_id;
+    const sName = (msg.sender_name || "").toLowerCase().trim();
+    const sRole = (msg.sender_role || "").toLowerCase().trim();
+    const user = store.users ? store.users[sId] : null;
+
+    // 1. FORNECEDOR / USINA
+    const isSupplier = sRole === "fornecedor" || 
+                       sRole === "supplier" || 
+                       sRole === "usina" || 
+                       sRole === "vendedor" ||
+                       user?.role === "fornecedor" ||
+                       (currentOrder && (currentOrder.fornecedorId === sId || currentOrder.origemId === sId || (currentOrder as any)?.sellerStorefrontId === sId)) ||
+                       (isB2B && currentOrder?.lojaNome && sName === currentOrder.lojaNome.toLowerCase().trim()) ||
+                       sName.includes("bianca");
+
+    if (isSupplier) {
+      return { 
+        label: "🏭 Fornecedor", 
+        class: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800" 
+      };
     }
-    if (r === "loja" || r === "batedeira") {
-      return { label: "🏪 Loja/Batedeira", class: "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800" };
+
+    // 2. TRANSPORTE / CAMINHÃO
+    const isTruck = sRole === "caminhoneiro" || 
+                    sRole === "caminhao" || 
+                    sRole === "caminhão" || 
+                    sRole === "transporte" || 
+                    sRole === "transporter" ||
+                    user?.veiculo === "Caminhão" || 
+                    user?.veiculo === "Caçamba" ||
+                    (isB2B && (currentOrder?.motoristaId === sId || (currentOrder?.motoristaNome && sName === currentOrder.motoristaNome.toLowerCase().trim()))) ||
+                    sName.includes("juliana");
+
+    if (isTruck) {
+      return { 
+        label: "🚛 Transporte", 
+        class: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800" 
+      };
     }
-    if (r === "admin") {
-      return { label: "🛡️ Admin", class: "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800" };
+
+    // 3. MOTOBOY / ENTREGA RÁPIDA
+    const isMotoboy = sRole === "motoboy" || 
+                      sRole === "motorista" || 
+                      sRole === "entregador" || 
+                      sRole === "courier" || 
+                      sRole === "driver" ||
+                      user?.veiculo === "Moto" ||
+                      (!isB2B && (user?.role === "motorista" || currentOrder?.motoristaId === sId));
+
+    if (isMotoboy) {
+      return { 
+        label: "🏍️ Motoboy", 
+        class: "bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800" 
+      };
     }
-    return { label: "👤 Cliente", class: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800" };
+
+    // 4. LOJA / BATEDEIRA
+    const isStore = sRole === "loja" || 
+                    sRole === "batedeira" || 
+                    sRole === "partner" || 
+                    user?.role === "loja" ||
+                    (currentOrder && (currentOrder.lojaId === sId || currentOrder.destinoId === sId || (!isB2B && currentOrder.origemId === sId))) ||
+                    (isB2B && currentOrder?.clienteNome && sName === currentOrder.clienteNome.toLowerCase().trim()) ||
+                    sName.includes("ponto do açaí") ||
+                    sName.includes("ponto do acai");
+
+    if (isStore) {
+      return { 
+        label: isB2B ? "🏪 Loja Compradora" : "🏪 Loja/Batedeira", 
+        class: "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800" 
+      };
+    }
+
+    // 5. ADMIN / SUPORTE
+    if (sRole === "admin" || user?.role === "admin") {
+      return { 
+        label: "🛡️ Admin", 
+        class: "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800" 
+      };
+    }
+
+    // 6. CLIENTE CONSUMIDOR FINAL (B2C)
+    return { 
+      label: "👤 Cliente", 
+      class: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
+    };
   };
 
   if (!isOpen) return null;
+
+  const resolvedHeaderSubtitle = (() => {
+    if (otherParticipantName) {
+      let roleLabel = otherParticipantRole;
+      const lowerName = otherParticipantName.toLowerCase();
+      if (lowerName.includes("ponto do açaí") || lowerName.includes("ponto do acai")) {
+        roleLabel = isB2B ? "Loja Compradora" : "Loja";
+      } else if (lowerName.includes("bianca")) {
+        roleLabel = "Fornecedor";
+      } else if (lowerName.includes("juliana")) {
+        roleLabel = isB2B ? "Transporte" : "Motoboy";
+      }
+      return `${roleLabel ? `[${roleLabel}] ` : ''}${otherParticipantName}`;
+    }
+    return isB2B 
+      ? 'Canal Integrado (Loja • Transporte • Fornecedor)' 
+      : 'Canal Integrado (Cliente • Loja • Motoboy)';
+  })();
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
@@ -184,7 +282,7 @@ export function OrderChatModal({
                 Chat do Pedido #{orderId.slice(-5)}
               </h3>
               <p className="text-xs text-purple-200">
-                {otherParticipantName ? `${otherParticipantRole ? `[${otherParticipantRole}] ` : ''}${otherParticipantName}` : 'Canal Integrado (Cliente • Loja • Motoboy)'}
+                {resolvedHeaderSubtitle}
               </p>
             </div>
           </div>
@@ -233,7 +331,7 @@ export function OrderChatModal({
                     rel="noopener noreferrer"
                     className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm transition"
                   >
-                    👤 Cliente
+                    {isB2B ? '🏪 Loja' : '👤 Cliente'}
                   </a>
                 )}
                 {cleanStorePhone && (
@@ -243,7 +341,7 @@ export function OrderChatModal({
                     rel="noopener noreferrer"
                     className="bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm transition"
                   >
-                    🏪 Loja
+                    {isB2B ? '🏭 Fornecedor' : '🏪 Loja'}
                   </a>
                 )}
                 {cleanDriverPhone && (
@@ -253,7 +351,7 @@ export function OrderChatModal({
                     rel="noopener noreferrer"
                     className="bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm transition"
                   >
-                    🏍️ Motoboy
+                    {isB2B ? '🚛 Transporte' : '🏍️ Motoboy'}
                   </a>
                 )}
               </>
@@ -278,7 +376,7 @@ export function OrderChatModal({
                 hour: "2-digit",
                 minute: "2-digit"
               });
-              const badge = getRoleBadge(msg.sender_role);
+              const badge = getRoleBadge(msg);
 
               return (
                 <div
