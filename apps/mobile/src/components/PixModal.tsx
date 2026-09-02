@@ -37,8 +37,10 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
   useEffect(() => {
     if (!data.open || !data.orderId || isPaid) return;
 
+    let isSubscribed = true;
+
     const checkStatus = async () => {
-      if (isPaid) return;
+      if (isPaid || !isSubscribed) return;
       try {
         const query = data.paymentId 
           ? `paymentId=${data.paymentId}&orderId=${data.orderId}` 
@@ -46,7 +48,7 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
         const res = await fetch(`/api/asaas/status?${query}`);
         if (res.ok) {
           const resData = await res.json();
-          if (resData.isPaid) {
+          if (resData.isPaid && isSubscribed) {
             setIsPaid(true);
             if (data.orderId) {
               await acaoPedido(data.orderId, 'confirmar_pagamento');
@@ -61,10 +63,41 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
       }
     };
 
-    // Checar imediatamente e depois a cada 5s
+    // 1. Checagem periódica ativa a cada 2.5s
     checkStatus();
-    const interval = setInterval(checkStatus, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(checkStatus, 2500);
+
+    // 2. Escuta via Supabase Realtime do pedido específico
+    let channel: any = null;
+    import('@/lib/supabase').then(({ supabase }) => {
+      if (!isSubscribed) return;
+      channel = supabase.channel(`pix-modal-${data.orderId}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${data.orderId}` },
+          async (payload: any) => {
+            const st = payload.new?.status;
+            if (['PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'RECEIVED', 'pendente', 'preparo', 'pronto'].includes(st)) {
+              if (isSubscribed) {
+                setIsPaid(true);
+                if (data.orderId) {
+                  await acaoPedido(data.orderId, 'confirmar_pagamento');
+                }
+                if (onPaymentConfirmed) {
+                  onPaymentConfirmed();
+                }
+              }
+            }
+          }
+        )
+        .subscribe();
+    });
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+      if (channel) channel.unsubscribe();
+    };
   }, [data.open, data.orderId, data.paymentId, isPaid, acaoPedido, onPaymentConfirmed]);
 
   if (!data.open) return null;

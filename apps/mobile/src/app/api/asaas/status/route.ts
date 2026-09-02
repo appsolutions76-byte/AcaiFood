@@ -139,6 +139,30 @@ export async function GET(request: Request) {
       }
     }
 
+    // 4. Se a chave não estiver no ambiente da Vercel, consultar via Supabase Edge Function (onde a ASAAS_API_KEY está nos Secrets)
+    if (supabaseUrl && supabaseKey && (orderId || paymentId)) {
+      try {
+        const edgeRes = await fetch(`${supabaseUrl}/functions/v1/asaas-status`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`
+          },
+          body: JSON.stringify({ orderId, paymentId })
+        });
+
+        if (edgeRes.ok) {
+          const edgeData = await edgeRes.json();
+          if (edgeData && edgeData.isPaid) {
+            return NextResponse.json(edgeData);
+          }
+        }
+      } catch (edgeErr) {
+        console.warn("Aviso ao consultar Edge Function asaas-status:", edgeErr);
+      }
+    }
+
     return NextResponse.json({ isPaid: false, status: 'PENDING' });
 
   } catch (error: any) {
