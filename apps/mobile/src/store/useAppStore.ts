@@ -838,7 +838,9 @@ export const useAppStore = create<AppState>()(
                         asaasWalletId: isValidAsaasWalletId(dbUser.asaas_wallet_id) ? dbUser.asaas_wallet_id : (isValidAsaasWalletId(dbUser.pix_key) ? dbUser.pix_key : undefined),
                         pixKey: dbUser.pix_key,
                         products: sf?.products || [],
-                        cpfCnpj: dbUser.cpf_cnpj
+                        cpfCnpj: dbUser.cpf_cnpj,
+                        storefrontId: sf?.id,
+                        storefronts: sf ? [sf] : []
                     };
                 });
                 return { users: newUsers };
@@ -2290,7 +2292,10 @@ export const useAppStore = create<AppState>()(
 
                 const platformTotal = finalPlatVenda + finalPlatEntrega;
 
-                    const sfUser = allUsers[dbOrder.seller_storefront_id] || allUsers[dbOrder.storefront?.partner_id];
+                    const sfUser = allUsers[dbOrder.seller_storefront_id] || 
+                                   allUsers[dbOrder.storefront?.partner_id] ||
+                                   Object.values(allUsers).find((u: any) => u.storefrontId === dbOrder.seller_storefront_id || (u.storefronts && u.storefronts.some((s: any) => s.id === dbOrder.seller_storefront_id)));
+                    const resolvedPartnerId = sfUser?.id || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id;
                     const resolvedStoreName = dbOrder.storefront?.store_name || sfUser?.name || localOrder?.lojaNome || 'Ponto do açaí';
                     const resolvedStoreAddress = sfUser?.endereco || sfUser?.address || localOrder?.lojaEndereco;
                     
@@ -2320,12 +2325,12 @@ export const useAppStore = create<AppState>()(
                        lojaTelefone: sfUser?.phone || sfUser?.telefone || localOrder?.lojaTelefone,
                        motoristaNome: dbOrder.driver?.name || allUsers[dbOrder.driver_id]?.name,
                        criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,
-                       origemId: localOrder?.origemId || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id,
+                       origemId: localOrder?.origemId || (dbOrder.order_type === 'B2B' ? resolvedPartnerId : (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id)),
                        destinoId: localOrder?.destinoId || dbOrder.buyer_id,
-                   cidadeOrigem: dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || 'Belém',
+                   cidadeOrigem: dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || sfUser?.cidade || 'Belém',
                    clienteId: localOrder?.clienteId || (dbOrder.order_type === 'B2C' ? dbOrder.buyer_id : undefined),
-                   lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id)),
-                   fornecedorId: localOrder?.fornecedorId || (dbOrder.order_type === 'B2B' ? (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id) : undefined),
+                   lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : resolvedPartnerId),
+                   fornecedorId: localOrder?.fornecedorId || (dbOrder.order_type === 'B2B' ? resolvedPartnerId : undefined),
                    seller_storefront_id: dbOrder.seller_storefront_id,
                    sellerStorefrontId: dbOrder.seller_storefront_id,
                    distancia: dbOrder.delivery_distance_km,

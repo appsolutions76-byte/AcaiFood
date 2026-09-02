@@ -81,6 +81,15 @@ export default function FornecedorDashboard() {
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
+  const [myStorefrontId, setMyStorefrontId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      supabase.from('storefronts').select('id').eq('partner_id', currentUser.id).maybeSingle().then(({ data }) => {
+        if (data?.id) setMyStorefrontId(data.id);
+      });
+    }
+  }, [currentUser?.id]);
 
   const isPaused = currentUser?.status === 'paused';
   const handleToggleStatus = () => {
@@ -236,7 +245,12 @@ export default function FornecedorDashboard() {
   const isCompleted = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
   const isPaidOrProcessing = (st?: string) => st === 'pendente' || st === 'preparo' || st === 'pronto' || st === 'em_rota' || st === 'aguardando_cliente' || st === 'PAID' || st === 'PREPARING' || st === 'READY' || st === 'IN_TRANSIT';
 
-  const myFornSfIds = ((store.users[currentUser.id] as any)?.storefronts || []).map((s: any) => s.id);
+  const myFornSfIds = [
+    myStorefrontId,
+    (store.users[currentUser.id] as any)?.storefrontId,
+    ...(((store.users[currentUser.id] as any)?.storefronts || []).map((s: any) => s.id))
+  ].filter(Boolean) as string[];
+
   const isMyOrder = (o: any) => {
     if (!currentUser) return false;
     const targetSfId = (o as any).seller_storefront_id || (o as any).sellerStorefrontId;
@@ -245,6 +259,7 @@ export default function FornecedorDashboard() {
                        o.origemId === currentUser.id || 
                        targetSfId === currentUser.id ||
                        (myFornSfIds.length > 0 && myFornSfIds.includes(targetSfId)) ||
+                       (myFornSfIds.length > 0 && (myFornSfIds.includes(o.fornecedorId) || myFornSfIds.includes(o.origemId))) ||
                        (o.type === 'B2B' && o.lojaNome && currentUser.name && o.lojaNome.toLowerCase().trim() === currentUser.name.toLowerCase().trim());
     return isSupplier;
   };

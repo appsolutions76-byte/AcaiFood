@@ -101,7 +101,8 @@ export default function CaminhaoDashboard() {
   const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
 
   const corridasDisponiveis = (store.orders || []).filter(o => {
-    const isReady = (o.status === 'pronto' || o.status === 'preparo' || o.status === 'pendente' || (o.status as string) === 'PAID' || (o.status as string) === 'READY' || (o.status as string) === 'PREPARING' || (o.status as string) === 'SEARCHING_OPERATOR') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2B' || o.type === 'COLETA');
+    // Caminhão só vê a corrida B2B ou Coleta após a parte chamá-lo (status pronto / READY / SEARCHING_OPERATOR)
+    const isReady = (o.status === 'pronto' || (o.status as string) === 'READY' || (o.status as string) === 'SEARCHING_OPERATOR') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2B' || o.type === 'COLETA');
     if (!isReady) return false;
     return true;
   });
