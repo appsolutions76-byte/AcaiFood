@@ -46,7 +46,7 @@ export default function LoginPage() {
       </div>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center mb-4">
-          <img src="/banner.png" alt="Marca Oficial AçaíFood" className="w-44 h-44 rounded-2xl shadow-xl border-2 border-purple-500 object-cover" />
+          <img src="/banner.png?v=4" alt="Marca Oficial AçaíFood" className="w-40 h-40 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
         </div>
         <h2 className="text-center text-3xl font-extrabold text-zinc-900 dark:text-white">
           Entrar no AçaíFood

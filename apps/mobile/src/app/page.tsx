@@ -417,8 +417,8 @@ export default function StorefrontPage() {
         </div>
 
         {!currentUser ? (
-          <div className="flex justify-center items-center mt-12 mb-12">
-             <img src="/banner.png" alt="Bandeira AçaíFood Roxo Açaí" className="w-full max-w-lg rounded-3xl shadow-2xl object-cover border-4 border-white dark:border-zinc-800" />
+          <div className="flex justify-center items-center mt-8 mb-8">
+             <img src="/banner.png?v=4" alt="Marca Oficial AçaíFood" className="w-full max-w-xs sm:max-w-sm rounded-3xl shadow-2xl object-contain border-4 border-purple-900/40 dark:border-purple-800/50" />
           </div>
         ) : (
           <>
