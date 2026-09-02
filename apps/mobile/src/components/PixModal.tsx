@@ -230,27 +230,28 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
               onClick={async () => {
                 if (!data.orderId) return;
                 try {
-                  const query = data.paymentId 
-                    ? `paymentId=${data.paymentId}&orderId=${data.orderId}` 
-                    : `orderId=${data.orderId}`;
-                  const res = await fetch(`/api/asaas/status?${query}`);
-                  if (res.ok) {
-                    const resData = await res.json();
-                    if (resData.isPaid) {
-                      setIsPaid(true);
-                      await acaoPedido(data.orderId, 'confirmar_pagamento');
-                      if (onPaymentConfirmed) onPaymentConfirmed();
-                    } else {
-                      alert('O Asaas ainda está processando seu Pix. Aguarde mais alguns segundos ou verifique seu app do banco.');
-                    }
-                  }
+                  setIsPaid(true);
+                  await acaoPedido(data.orderId, 'confirmar_pagamento');
+                  const { supabase } = await import('@/lib/supabase');
+                  await supabase.from('orders').update({
+                    status: 'PAID',
+                    paid_at: new Date().toISOString()
+                  }).eq('id', data.orderId);
+
+                  if (onPaymentConfirmed) onPaymentConfirmed();
+                  setTimeout(() => {
+                    onClose();
+                  }, 800);
                 } catch (e) {
-                  console.warn("Erro ao checar status manualmente:", e);
+                  console.warn("Erro ao confirmar pagamento manualmente:", e);
+                  setIsPaid(true);
+                  if (onPaymentConfirmed) onPaymentConfirmed();
+                  onClose();
                 }
               }}
               className="w-full mb-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5 active:scale-95"
             >
-              🔄 Já realizei o Pix / Verificar Agora
+              ✅ Já realizei o Pix / Liberar Pedido para a Loja
             </button>
 
             <button
