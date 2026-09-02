@@ -159,13 +159,90 @@ function AdminDashboardContent() {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
+  // Função auxiliar centralizada para calcular pedidos pendentes e saldo devido de qualquer usuário parceiro
+  const getPendingOrdersAndOwedForUser = (u: any) => {
+    if (!u || !['motorista', 'loja', 'fornecedor'].includes(u.role)) {
+      return { pendingOrders: [] as Order[], amountOwed: 0 };
+    }
+
+    const pendingOrders = orders.filter(o => {
+      if (!o) return false;
+      const isConcluido = o.status === 'entregue' || o.status === 'arquivado';
+      if (!isConcluido) return false;
+
+      if (u.role === 'motorista') {
+        const isThisDriver = o.motoristaId === u.id || (o as any).driver_id === u.id;
+        const isPaid = !!o.payoutDriverDone || !!(o as any).payout_driver_done;
+        return isThisDriver && !isPaid;
+      } else if (u.role === 'loja') {
+        const isThisStore = o.lojaId === u.id || 
+                            (o as any).sellerStorefrontId === u.id || 
+                            (o as any).seller_storefront_id === u.id || 
+                            o.origemId === u.id ||
+                            (u.storefronts && u.storefronts.some((sf: any) => sf.id === (o as any).sellerStorefrontId || sf.id === (o as any).seller_storefront_id || sf.id === o.origemId));
+        const isPaid = !!o.payoutSellerDone || !!(o as any).payout_seller_done;
+        return isThisStore && !isPaid;
+      } else {
+        // fornecedor
+        const isThisSupplier = o.fornecedorId === u.id || 
+                               (o as any).sellerStorefrontId === u.id || 
+                               (o as any).seller_storefront_id === u.id || 
+                               o.origemId === u.id ||
+                               (u.storefronts && u.storefronts.some((sf: any) => sf.id === (o as any).sellerStorefrontId || sf.id === (o as any).seller_storefront_id || sf.id === o.origemId));
+        const isPaid = !!o.payoutSellerDone || !!(o as any).payout_seller_done;
+        return isThisSupplier && !isPaid;
+      }
+    });
+
+    const amountOwed = pendingOrders.reduce((acc, o) => {
+      if (u.role === 'motorista') {
+        return acc + (o.taxas?.entregaMotorista || (o as any).driver_amount || getDynamicTaxes(o).repasseMoto || 0);
+      } else if (u.role === 'loja') {
+        return acc + (o.taxas?.repasse || (o as any).seller_amount || getDynamicTaxes(o).repasseLoja || 0);
+      } else {
+        return acc + (o.taxas?.repasse || (o as any).seller_amount || getDynamicTaxes(o).repasseForn || 0);
+      }
+    }, 0);
+
+    return { pendingOrders, amountOwed };
+  };
+
+  // Função para editar Chave Pix do parceiro diretamente no painel
+  const handleEditUserPix = async (u: any) => {
+    const currentPix = u.pixKey || (u as any).pix_key || '';
+    const newPix = prompt(`Editar Chave Pix de ${u.name}:\n\n(CPF, CNPJ, Telefone com DDD, E-mail ou Chave Aleatória EVP)`, currentPix);
+    if (newPix === null) return;
+    const cleanPix = newPix.trim();
+    try {
+      const { error } = await supabase.from('users').update({ pix_key: cleanPix }).eq('id', u.id);
+      if (error) throw error;
+      useAppStore.setState(prev => ({
+        users: {
+          ...prev.users,
+          [u.id]: {
+            ...prev.users[u.id],
+            pixKey: cleanPix,
+            pix_key: cleanPix
+          }
+        }
+      }));
+      showToast(`✅ Chave Pix de ${u.name} atualizada com sucesso!`);
+    } catch (err: any) {
+      alert(`Erro ao salvar chave Pix: ${err.message}`);
+    }
+  };
+
   // Função de pagamento individual de parceiro via Pix
   const pagarParceiro = async (u: any, pendingOrders: Order[], amountOwed: number) => {
-    let pixKey = u.pixKey || u.cpfCnpj || u.email;
+    let pixKey = (u.pixKey || (u as any).pix_key || u.chavePix || (u as any).chave_pix || u.cpfCnpj || (u as any).cpf_cnpj || u.email || '').trim();
     if (!pixKey) {
       const inputPix = prompt(`Informe a Chave Pix externa de ${u.name} (CPF, Celular, E-mail ou Aleatória):`);
       if (inputPix && inputPix.trim()) {
         pixKey = inputPix.trim();
+        try {
+          await supabase.from('users').update({ pix_key: pixKey }).eq('id', u.id);
+          u.pixKey = pixKey;
+        } catch (_e) {}
       } else {
         showToast(`❌ Operação cancelada: ${u.name} não possui Chave Pix cadastrada.`);
         return;
@@ -197,10 +274,22 @@ function AdminDashboardContent() {
       const data = await res.json();
       if (data.success || data.transferId) {
         const field = u.role === 'motorista' ? 'payout_driver_done' : 'payout_seller_done';
-        for (const order of pendingOrders) {
-          await supabase.from('orders').update({ [field]: true }).eq('id', order.id);
+        const orderIds = pendingOrders.map(o => o.id);
+
+        for (const orderId of orderIds) {
+          await supabase.from('orders').update({ [field]: true }).eq('id', orderId);
         }
-        showToast(`✅ Pix de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} enviado para ${u.name}! (ID: ${data.transferId})`);
+
+        // Atualização atômica imediata da Store Zustand para zerar na tela sem atrasos
+        useAppStore.setState(prev => ({
+          orders: prev.orders.map(ord => 
+            orderIds.includes(ord.id) 
+              ? { ...ord, [u.role === 'motorista' ? 'payoutDriverDone' : 'payoutSellerDone']: true, [field]: true } 
+              : ord
+          )
+        }));
+
+        showToast(`✅ Pix de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} enviado para ${u.name}! (ID Asaas: ${data.transferId})`);
         if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
         fetchAdminBalances();
       } else {
@@ -253,13 +342,13 @@ function AdminDashboardContent() {
     for (let i = 0; i < partnersWithOwed.length; i++) {
       const p = partnersWithOwed[i];
       const u = p.user;
-      const pixKey = u.pixKey || u.cpfCnpj || u.email;
+      const pixKey = (u.pixKey || (u as any).pix_key || u.chavePix || (u as any).chave_pix || u.cpfCnpj || (u as any).cpf_cnpj || u.email || '').trim();
 
       setPayAllProgress({ current: i + 1, total: partnersWithOwed.length, name: u.name });
 
       if (!pixKey) {
         failCount++;
-        failureDetails.push(`${u.name}: Sem Chave Pix`);
+        failureDetails.push(`${u.name}: Sem Chave Pix cadastrada`);
         continue;
       }
 
@@ -276,13 +365,21 @@ function AdminDashboardContent() {
         const data = await res.json();
         if (data.success || data.transferId) {
           const field = u.role === 'motorista' ? 'payout_driver_done' : 'payout_seller_done';
-          for (const order of p.pendingOrders) {
-            await supabase.from('orders').update({ [field]: true }).eq('id', order.id);
+          const orderIds = p.pendingOrders.map(o => o.id);
+          for (const orderId of orderIds) {
+            await supabase.from('orders').update({ [field]: true }).eq('id', orderId);
           }
+          useAppStore.setState(prev => ({
+            orders: prev.orders.map(ord => 
+              orderIds.includes(ord.id) 
+                ? { ...ord, [u.role === 'motorista' ? 'payoutDriverDone' : 'payoutSellerDone']: true, [field]: true } 
+                : ord
+            )
+          }));
           successCount++;
         } else {
           failCount++;
-          failureDetails.push(`${u.name}: ${data.error || 'Recusado'}`);
+          failureDetails.push(`${u.name}: ${data.error || 'Recusado pelo Asaas'}`);
         }
       } catch (_err: any) {
         failCount++;
@@ -569,26 +666,15 @@ function AdminDashboardContent() {
   const partnersWithPendingPayouts = useMemo(() => {
     const list: Array<{ user: any; pendingOrders: Order[]; amountOwed: number }> = [];
     Object.values(users).forEach(u => {
-      if (u.role === 'motorista' || u.role === 'loja' || u.role === 'fornecedor') {
-        let pendingOrders: Order[] = [];
-        let amountOwed = 0;
-        if (u.role === 'motorista') {
-          pendingOrders = orders.filter(o => o && o.motoristaId === u.id && o.status === 'entregue' && !(o as any).payout_driver_done);
-          amountOwed = pendingOrders.reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || getDynamicTaxes(curr).repasseMoto || 0), 0);
-        } else if (u.role === 'loja') {
-          pendingOrders = orders.filter(o => o && o.lojaId === u.id && o.status === 'entregue' && !(o as any).payout_seller_done);
-          amountOwed = pendingOrders.reduce((acc, curr) => acc + (curr.taxas?.repasse || getDynamicTaxes(curr).repasseLoja || 0), 0);
-        } else {
-          pendingOrders = orders.filter(o => o && o.fornecedorId === u.id && o.status === 'entregue' && !(o as any).payout_seller_done);
-          amountOwed = pendingOrders.reduce((acc, curr) => acc + (curr.taxas?.repasse || getDynamicTaxes(curr).repasseForn || 0), 0);
-        }
+      if (u && (u.role === 'motorista' || u.role === 'loja' || u.role === 'fornecedor')) {
+        const { pendingOrders, amountOwed } = getPendingOrdersAndOwedForUser(u);
         if (amountOwed > 0) {
           list.push({ user: u, pendingOrders, amountOwed });
         }
       }
     });
     return list;
-  }, [users, orders]);
+  }, [users, orders, rates, cities]);
 
   const totalOwedAllPartners = useMemo(() => {
     return partnersWithPendingPayouts.reduce((acc, curr) => acc + curr.amountOwed, 0);
@@ -1052,42 +1138,9 @@ function AdminDashboardContent() {
                                       </div>
                                   </div>
                                   {(u.role === 'motorista' || u.role === 'loja' || u.role === 'fornecedor') && (() => {
-                                    // Calcular saldo pendente por tipo de parceiro
-                                    let pendingOrders: Order[];
-                                    let amountOwed: number;
-
-                                    if (u.role === 'motorista') {
-                                      pendingOrders = orders.filter(o =>
-                                        o && o.motoristaId === u.id &&
-                                        o.status === 'entregue' &&
-                                        !(o as any).payout_driver_done
-                                      );
-                                      amountOwed = pendingOrders.reduce((acc, curr) =>
-                                        acc + (curr.taxas?.entregaMotorista || getDynamicTaxes(curr).repasseMoto || 0), 0
-                                      );
-                                    } else if (u.role === 'loja') {
-                                      pendingOrders = orders.filter(o =>
-                                        o && o.lojaId === u.id &&
-                                        o.status === 'entregue' &&
-                                        !(o as any).payout_seller_done
-                                      );
-                                      amountOwed = pendingOrders.reduce((acc, curr) =>
-                                        acc + (curr.taxas?.repasse || getDynamicTaxes(curr).repasseLoja || 0), 0
-                                      );
-                                    } else {
-                                      // fornecedor
-                                      pendingOrders = orders.filter(o =>
-                                        o && o.fornecedorId === u.id &&
-                                        o.status === 'entregue' &&
-                                        !(o as any).payout_seller_done
-                                      );
-                                      amountOwed = pendingOrders.reduce((acc, curr) =>
-                                        acc + (curr.taxas?.repasse || getDynamicTaxes(curr).repasseForn || 0), 0
-                                      );
-                                    }
-
+                                    const { pendingOrders, amountOwed } = getPendingOrdersAndOwedForUser(u);
                                     const isPaying = payingPartnerId === u.id;
-                                    const pixKey = u.pixKey || u.cpfCnpj || u.email;
+                                    const pixKey = (u.pixKey || (u as any).pix_key || (u as any).chavePix || (u as any).chave_pix || u.cpfCnpj || (u as any).cpf_cnpj || u.email || '').trim();
 
                                     return (
                                       <div className={`mt-2 border p-2 rounded-lg flex items-center justify-between flex-wrap gap-2 ${
@@ -1099,13 +1152,15 @@ function AdminDashboardContent() {
                                           <span className={`text-xs font-bold ${
                                             amountOwed > 0 ? 'text-green-700 dark:text-green-400' : 'text-zinc-400 dark:text-zinc-500'
                                           }`}>
-                                            {amountOwed > 0 ? `A Pagar: ${formatMoney(amountOwed)}` : 'Repasse: R$ 0,00'}
+                                            {amountOwed > 0 ? `A Pagar: ${formatMoney(amountOwed)} (${pendingOrders.length} ped.)` : 'Repasse: R$ 0,00'}
                                           </span>
-                                          {pixKey && (
-                                            <span className="text-[10px] text-zinc-500 bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded font-mono">
-                                              PIX: {pixKey}
-                                            </span>
-                                          )}
+                                          <button
+                                            onClick={() => handleEditUserPix(u)}
+                                            title="Clique para cadastrar ou editar a Chave Pix"
+                                            className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/60 dark:hover:bg-purple-900 border border-purple-300 dark:border-purple-700 px-2 py-0.5 rounded font-mono flex items-center gap-1 transition"
+                                          >
+                                            🔑 PIX: {pixKey || 'Cadastrar'} ✏️
+                                          </button>
                                         </div>
                                         {amountOwed > 0 && (
                                           <button

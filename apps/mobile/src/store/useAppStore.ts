@@ -2171,7 +2171,8 @@ export const useAppStore = create<AppState>()(
              id, order_type, status, products_subtotal, delivery_distance_km, 
              applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
              buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
-             delivery_pin, accepted_at, ready_at, received_at, asaas_payment_id
+             delivery_pin, accepted_at, ready_at, received_at, asaas_payment_id,
+             payout_seller_done, payout_driver_done, seller_amount, driver_amount, total_delivery_fee
           `);
 
           if (roleLower === 'loja' || roleLower === 'partner' || roleLower === 'batedeira' || roleLower === 'partner_admin') {
