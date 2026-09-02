@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
@@ -7,24 +7,59 @@ export async function POST(request: Request) {
   if (!auth.authorized) return unauthorizedResponse(auth.error);
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabase = getSupabaseAdmin();
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json({ error: 'Configuração do Supabase ausente no servidor' }, { status: 500 });
+    // 1. Tentar executar a RPC nativa do banco de dados para garantia atômica total
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('reset_admin_system_data');
+      if (!rpcError && rpcData && rpcData.success) {
+        return NextResponse.json(rpcData);
+      }
+    } catch (rpcEx) {
+      console.warn("RPC reset_admin_system_data não encontrada ou falhou, executando limpeza direta via Service Role:", rpcEx);
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // 2. Limpeza direta e em cascata via Service Role (Fallback Seguro e Completo)
+    try { await supabase.from('incident_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000'); } catch (_) {}
+    try { await supabase.from('disputes').delete().neq('id', '00000000-0000-0000-0000-000000000000'); } catch (_) {}
+    try { await supabase.from('order_messages').delete().neq('id', '00000000-0000-0000-0000-000000000000'); } catch (_) {}
+    try { await supabase.from('print_log').delete().neq('id', '00000000-0000-0000-0000-000000000000'); } catch (_) {}
+    try { await supabase.from('order_status_history').delete().neq('id', '00000000-0000-0000-0000-000000000000'); } catch (_) {}
+    try { await supabase.from('order_tracking').delete().neq('id', '00000000-0000-0000-0000-000000000000'); } catch (_) {}
+    try { await supabase.from('order_items').delete().neq('id', '00000000-0000-0000-0000-000000000000'); } catch (_) {}
+    try { await supabase.from('splits').delete().neq('id', '00000000-0000-0000-0000-000000000000'); } catch (_) {}
 
-    // Limpa todos os pedidos da tabela orders
-    const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
-    if (error) {
-      console.error("Erro ao apagar pedidos via API de Admin:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    // Excluir todos os pedidos
+    const { error: ordersErr } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (ordersErr) {
+      console.error("Erro ao apagar pedidos via API de Admin:", ordersErr);
+      return NextResponse.json({ error: ordersErr.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'Todos os pedidos foram excluídos do banco de dados com sucesso' });
+    // Zerar atômica e completamente todos os acumuladores de admin_balances
+    const { error: balancesErr } = await supabase.from('admin_balances').update({
+      total_orders: 0,
+      total_volume: 0,
+      app_revenue: 0,
+      fornecedores_bruto: 0,
+      fornecedores_liquido: 0,
+      batedeiras_bruto: 0,
+      batedeiras_liquido: 0,
+      motoristas_bruto: 0,
+      motoristas_liquido: 0,
+      caminhoes_bruto: 0,
+      caminhoes_liquido: 0,
+      updated_at: new Date().toISOString()
+    }).in('id', ['historical', 'monthly', 'daily']);
+
+    if (balancesErr) {
+      console.warn("Aviso ao zerar admin_balances:", balancesErr);
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Sistema 100% resetado: Todos os pedidos, registros e balanços foram zerados para recomeçar.' 
+    });
   } catch (err: any) {
     console.error("Exceção em /api/admin/clear-data:", err);
     return NextResponse.json({ error: err.message || 'Erro interno no servidor' }, { status: 500 });

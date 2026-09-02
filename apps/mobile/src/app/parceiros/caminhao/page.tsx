@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Truck, BookOpen } from "lucide-react";
-import { useAppStore, getRatesForCity } from "@/store/useAppStore";
+import { useAppStore, getRatesForCity, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
@@ -143,7 +143,13 @@ export default function CaminhaoDashboard() {
       return;
     }
 
-    if (confirm(`Deseja transferir R$ ${ganhosHoje.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?`)) {
+    const saquesHoje = getDailyWithdrawalCount(currentUser.id);
+    if (saquesHoje >= 2) {
+      alert("⚠️ Limite diário atingido:\n\nVocê já realizou 2 saques hoje (limite máximo permitido). Novos valores acumulados serão liquidados automaticamente no encerramento diário pelo administrador ou estarão disponíveis para novo saque amanhã.");
+      return;
+    }
+
+    if (confirm(`Deseja transferir R$ ${ganhosHoje.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
       try {
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
@@ -156,6 +162,7 @@ export default function CaminhaoDashboard() {
         });
         const data = await res.json();
         if (res.ok && (data.success || data.transferId)) {
+          incrementDailyWithdrawalCount(currentUser.id);
           alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${ganhosHoje.toFixed(2)} já está a caminho do seu banco (${targetKey}).`);
         } else {
           const msg = data.error || '';

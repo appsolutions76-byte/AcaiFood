@@ -245,6 +245,7 @@ interface AppState {
 // Para manter referência ao channel e evitar duplicatas
 let autoRefreshInterval: any = null;
 let supabaseChannel: any = null;
+let ordersDebounceTimer: any = null;
 let lastFetchAllUsersTime = 0;
 let lastFetchLojasTime = 0;
 let lastFetchRatesTime = 0;
@@ -261,18 +262,34 @@ async function getAuthHeaders() {
   return headers;
 }
 
+// Controle de Limite de Saques Diários (Máximo 2 por dia por parceiro)
+export function getDailyWithdrawalCount(userId: string): number {
+  if (typeof window === 'undefined' || !userId) return 0;
+  const today = new Date().toISOString().split('T')[0];
+  const stored = localStorage.getItem(`acaifood_withdrawals_${userId}_${today}`);
+  return stored ? parseInt(stored, 10) || 0 : 0;
+}
+
+export function incrementDailyWithdrawalCount(userId: string): number {
+  if (typeof window === 'undefined' || !userId) return 1;
+  const today = new Date().toISOString().split('T')[0];
+  const count = getDailyWithdrawalCount(userId) + 1;
+  localStorage.setItem(`acaifood_withdrawals_${userId}_${today}`, String(count));
+  return count;
+}
+
 const DB_DEFAULTS = {
   rates: {
-    b2c_plat: 10, b2c_km: 2.00, b2c_mot_plat: 10,
-    b2b_plat: 10, b2b_km: 4.00, b2b_mot_plat: 10,
-    col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00,
+    b2c_plat: 0, b2c_km: 0, b2c_mot_plat: 0,
+    b2b_plat: 0, b2b_km: 0, b2b_mot_plat: 0,
+    col_plat: 0, col_km: 0, col_mot_plat: 0, col_valor: 0,
     payout_time: '22:00',
     courier_payment_mode: 'KM' as const,
-    courier_fixed_fee: 8.00,
+    courier_fixed_fee: 0,
     transporter_payment_mode: 'KM' as const,
-    transporter_fixed_fee: 150.00,
+    transporter_fixed_fee: 0,
     ecopoint_payment_mode: 'KM' as const,
-    ecopoint_fixed_fee: 50.00
+    ecopoint_fixed_fee: 0
   },
   cities: [] as City[],
   users: {} // Remover usuários fixos para prevenir vazamento de credenciais
@@ -685,10 +702,13 @@ export const useAppStore = create<AppState>()(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'orders' },
                   () => {
-                      const u = get().currentUser;
-                      if (u) {
-                          get().fetchOrders(u.id, true);
-                      }
+                      if (ordersDebounceTimer) clearTimeout(ordersDebounceTimer);
+                      ordersDebounceTimer = setTimeout(() => {
+                          const u = get().currentUser;
+                          if (u) {
+                              get().fetchOrders(u.id, true);
+                          }
+                      }, 400);
                   }
               )
               .on(
@@ -959,11 +979,11 @@ export const useAppStore = create<AppState>()(
                    col_valor: data.col_fixed_price ?? state.rates.col_valor,
                    payout_time: data.payout_time || state.rates.payout_time || '22:00',
                    courier_payment_mode: data.courier_payment_mode || state.rates.courier_payment_mode || 'KM',
-                   courier_fixed_fee: data.courier_fixed_fee ?? state.rates.courier_fixed_fee ?? 8.00,
+                   courier_fixed_fee: data.courier_fixed_fee ?? state.rates.courier_fixed_fee ?? 0,
                    transporter_payment_mode: data.transporter_payment_mode || state.rates.transporter_payment_mode || 'KM',
-                   transporter_fixed_fee: data.transporter_fixed_fee ?? state.rates.transporter_fixed_fee ?? 150.00,
+                   transporter_fixed_fee: data.transporter_fixed_fee ?? state.rates.transporter_fixed_fee ?? 0,
                    ecopoint_payment_mode: data.ecopoint_payment_mode || state.rates.ecopoint_payment_mode || 'KM',
-                   ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? state.rates.ecopoint_fixed_fee ?? 50.00,
+                   ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? state.rates.ecopoint_fixed_fee ?? 0,
                    asaas_api_key: data.asaas_api_key || (state.rates as any).asaas_api_key || ''
                } }));
            }
@@ -2369,20 +2389,32 @@ export const useAppStore = create<AppState>()(
             });
 
             if (!res.ok) {
+               await supabase.from('order_messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+               await supabase.from('order_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+               await supabase.from('splits').delete().neq('id', '00000000-0000-0000-0000-000000000000');
                const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+               await supabase.from('admin_balances').update({
+                  total_orders: 0, total_volume: 0, app_revenue: 0,
+                  fornecedores_bruto: 0, fornecedores_liquido: 0,
+                  batedeiras_bruto: 0, batedeiras_liquido: 0,
+                  motoristas_bruto: 0, motoristas_liquido: 0,
+                  caminhoes_bruto: 0, caminhoes_liquido: 0,
+                  updated_at: new Date().toISOString()
+               }).in('id', ['historical', 'monthly', 'daily']);
+
                if (error) {
                   console.error("Error clearing orders from DB:", error);
                   alert("Erro ao limpar pedidos no banco de dados: " + error.message);
                   return;
                }
             }
-            alert("Todos os pedidos foram excluídos do banco de dados com sucesso!");
+            alert("✅ Sistema 100% resetado com sucesso! Todos os pedidos, balanços e registros foram zerados para recomeçar.");
          } catch(e: any) {
             console.error("Exception clearing orders:", e);
-            alert("Erro ao limpar pedidos no banco de dados.");
+            alert("Erro ao limpar dados no banco de dados.");
          }
 
-         set(() => ({ orders: [], orderCounter: 1 }));
+         set(() => ({ orders: [], orderCounter: 1, cart: { storeId: null, items: [] } }));
          await get().fetchOrders(get().currentUser?.id || '', true);
       },
 
@@ -2441,7 +2473,7 @@ export const useAppStore = create<AppState>()(
       startAutoRefresh: () => {
          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
          
-         // Atualiza pedidos em segundo plano a cada 4 segundos com sincronização ativa
+         // Polling inteligente de fallback a cada 15 segundos (Realtime via WebSocket já atualiza instantaneamente)
          autoRefreshInterval = setInterval(async () => {
              if (typeof document !== 'undefined' && document.hidden) return;
              const currentUser = get().currentUser;
@@ -2489,8 +2521,8 @@ export const useAppStore = create<AppState>()(
                    console.warn("Erro na checagem de horário da varredura:", eSweep);
                  }
              }
-         }, 60000); // 60s em vez de 20s para economizar banda
-      },
+          }, 15000); // 15s de fallback seguro e econômico (Realtime atualiza instantâneo)
+       },
       
       stopAutoRefresh: () => {
          if (autoRefreshInterval) {

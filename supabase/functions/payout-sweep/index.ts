@@ -99,13 +99,17 @@ serve(async (req) => {
         try {
           // Resolver partner_id via seller_storefront_id → storefronts
           let sellerPartnerId: string | null = null
+          let freteSubsidyPct = 0
           if (order.seller_storefront_id) {
             const { data: sf } = await supabase
               .from('storefronts')
-              .select('partner_id')
+              .select('partner_id, frete_subsidy_pct')
               .eq('id', order.seller_storefront_id)
               .maybeSingle()
-            if (sf?.partner_id) sellerPartnerId = sf.partner_id
+            if (sf?.partner_id) {
+              sellerPartnerId = sf.partner_id
+              freteSubsidyPct = Number(sf.frete_subsidy_pct || 0)
+            }
           }
 
           if (sellerPartnerId) {
@@ -123,10 +127,22 @@ serve(async (req) => {
               uSeller?.email ||
               uSeller?.asaas_wallet_id
 
-            // Calcular repasse usando a taxa salva no pedido no momento da criação
+            // Calcular frete total para deduzir o subsídio de frete concedido pela loja
+            const distKm = Number(order.delivery_distance_km || 3)
+            const feePerKm = Number(order.applied_delivery_fee_per_km || 2)
+            let deliveryTotal = 0
+            if (orderType === 'B2C') {
+              deliveryTotal = courierMode === 'FIXED' ? courierFixed : distKm * feePerKm
+            } else if (orderType === 'B2B') {
+              deliveryTotal = transporterMode === 'FIXED' ? transporterFixed : distKm * feePerKm
+            }
+            const freteLoja = deliveryTotal * (freteSubsidyPct / 100)
+
+            // Calcular repasse líquido do vendedor deduzindo a comissão e o subsídio da loja
             const productSubtotal = Number(order.products_subtotal || 0)
             const platformFee     = Number(order.applied_platform_fee_percent ?? 10)
-            const sellerValue     = Number((productSubtotal * (1 - platformFee / 100)).toFixed(2))
+            const rawSellerValue  = productSubtotal * (1 - platformFee / 100) - freteLoja
+            const sellerValue     = Number(Math.max(0, rawSellerValue).toFixed(2))
 
             if (sellerPixKey && sellerValue > 0) {
               const transferBody = buildTransferBody(

@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useSyncExternalStore } from "react";
+import React, { useState, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Trash2, Search, BookOpen } from "lucide-react";
+import { Settings, Trash2, Search, BookOpen, Zap, ShieldAlert } from "lucide-react";
 import { useAppStore, Order, City, getRatesForCity } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminManualModal } from "@/components/AdminManualModal";
+import { IncidentReportSection } from "@/components/IncidentReportSection";
 
 const emptySubscribe = () => () => {};
 
@@ -58,16 +59,16 @@ function AdminDashboardContent() {
   const users = store.users || {};
   const cities = store.cities || [];
   const rates = store.rates || {
-    b2c_plat: 10, b2c_km: 2.00, b2c_mot_plat: 10,
-    b2b_plat: 10, b2b_km: 4.00, b2b_mot_plat: 10,
-    col_plat: 10, col_km: 8.00, col_mot_plat: 10, col_valor: 50.00,
+    b2c_plat: 0, b2c_km: 0, b2c_mot_plat: 0,
+    b2b_plat: 0, b2b_km: 0, b2b_mot_plat: 0,
+    col_plat: 0, col_km: 0, col_mot_plat: 0, col_valor: 0,
     payout_time: '22:00',
     courier_payment_mode: 'KM',
-    courier_fixed_fee: 8.00,
+    courier_fixed_fee: 0,
     transporter_payment_mode: 'KM',
-    transporter_fixed_fee: 150.00,
+    transporter_fixed_fee: 0,
     ecopoint_payment_mode: 'KM',
-    ecopoint_fixed_fee: 50.00
+    ecopoint_fixed_fee: 0
   };
 
   const [mapModal, setMapModal] = useState<{
@@ -78,7 +79,10 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias'>('dashboard');
+  const [isPayingAll, setIsPayingAll] = useState(false);
+  const [payAllProgress, setPayAllProgress] = useState<{ current: number; total: number; name: string } | null>(null);
+  const [selectedCityToPay, setSelectedCityToPay] = useState<string>('ALL');
   const [newCityName, setNewCityName] = useState('');
   const [citySearchText, setCitySearchText] = useState<string>('');
   const [userFilterRole, setUserFilterRole] = useState<string>('all');
@@ -192,6 +196,76 @@ function AdminDashboardContent() {
     } finally {
       setPayingPartnerId(null);
     }
+  };
+
+  // Função de Liquidação em Lote para Todos os Parceiros (Geral ou por Cidade)
+  const pagarTodosParceiros = async (
+    partnersWithOwed: Array<{ user: any; pendingOrders: Order[]; amountOwed: number }>,
+    cidadeNome?: string
+  ) => {
+    if (partnersWithOwed.length === 0) {
+      alert(`Não há parceiros com pagamentos pendentes ${cidadeNome ? `em ${cidadeNome}` : 'no momento'}.`);
+      return;
+    }
+
+    const totalOwedAll = partnersWithOwed.reduce((acc, p) => acc + p.amountOwed, 0);
+    const escopoDesc = cidadeNome ? `da cidade de ${cidadeNome}` : 'de TODAS as cidades (Geral)';
+    const confirmMsg = `⚡ CONFIRMAR LIQUIDAÇÃO EM LOTE?\n\n` +
+      `Escopo: ${escopoDesc}\n` +
+      `Total a Liquidar: ${formatMoney(totalOwedAll)}\n` +
+      `Quantidade de Parceiros: ${partnersWithOwed.length}\n\n` +
+      `O sistema enviará os pagamentos Pix via Asaas para cada parceiro e quitará todos os pedidos correspondentes. Deseja prosseguir?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    setIsPayingAll(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const authHeaders: any = { 'Content-Type': 'application/json' };
+    if (session?.access_token) {
+      authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < partnersWithOwed.length; i++) {
+      const p = partnersWithOwed[i];
+      const u = p.user;
+      const pixKey = u.pixKey || u.cpfCnpj || u.email;
+
+      setPayAllProgress({ current: i + 1, total: partnersWithOwed.length, name: u.name });
+
+      if (!pixKey) {
+        failCount++;
+        continue;
+      }
+
+      try {
+        const res = await fetch('/api/asaas/transfer', {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({ pixKey, value: p.amountOwed, description: `Liquidação AçaíFood (${cidadeNome || 'Geral'}) – ${u.name}` })
+        });
+        const data = await res.json();
+        if (data.success || data.transferId) {
+          const field = u.role === 'motorista' ? 'payout_driver_done' : 'payout_seller_done';
+          for (const order of p.pendingOrders) {
+            await supabase.from('orders').update({ [field]: true }).eq('id', order.id);
+          }
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (_err) {
+        failCount++;
+      }
+    }
+
+    setIsPayingAll(false);
+    setPayAllProgress(null);
+    showToast(`✅ Liquidação concluída (${cidadeNome || 'Geral'}): ${successCount} parceiro(s) pago(s) com sucesso! ${failCount > 0 ? `(${failCount} falha/sem pix)` : ''}`);
+    if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
+    fetchAdminBalances();
   };
 
   const mounted = useSyncExternalStore(
@@ -471,6 +545,59 @@ function AdminDashboardContent() {
       receitaFretes: 0
   };
 
+  const partnersWithPendingPayouts = useMemo(() => {
+    const list: Array<{ user: any; pendingOrders: Order[]; amountOwed: number }> = [];
+    Object.values(users).forEach(u => {
+      if (u.role === 'motorista' || u.role === 'loja' || u.role === 'fornecedor') {
+        let pendingOrders: Order[] = [];
+        let amountOwed = 0;
+        if (u.role === 'motorista') {
+          pendingOrders = orders.filter(o => o && o.motoristaId === u.id && o.status === 'entregue' && !(o as any).payout_driver_done);
+          amountOwed = pendingOrders.reduce((acc, curr) => acc + (curr.taxas?.entregaMotorista || getDynamicTaxes(curr).repasseMoto || 0), 0);
+        } else if (u.role === 'loja') {
+          pendingOrders = orders.filter(o => o && o.lojaId === u.id && o.status === 'entregue' && !(o as any).payout_seller_done);
+          amountOwed = pendingOrders.reduce((acc, curr) => acc + (curr.taxas?.repasse || getDynamicTaxes(curr).repasseLoja || 0), 0);
+        } else {
+          pendingOrders = orders.filter(o => o && o.fornecedorId === u.id && o.status === 'entregue' && !(o as any).payout_seller_done);
+          amountOwed = pendingOrders.reduce((acc, curr) => acc + (curr.taxas?.repasse || getDynamicTaxes(curr).repasseForn || 0), 0);
+        }
+        if (amountOwed > 0) {
+          list.push({ user: u, pendingOrders, amountOwed });
+        }
+      }
+    });
+    return list;
+  }, [users, orders]);
+
+  const totalOwedAllPartners = useMemo(() => {
+    return partnersWithPendingPayouts.reduce((acc, curr) => acc + curr.amountOwed, 0);
+  }, [partnersWithPendingPayouts]);
+
+  const pendingPayoutsByCity = useMemo(() => {
+    const map: Record<string, { cityName: string; partners: typeof partnersWithPendingPayouts; totalOwed: number }> = {};
+    partnersWithPendingPayouts.forEach(item => {
+      const rawCity = (item.user.cidade || (item.pendingOrders[0] as any)?.cidade || 'Belém').trim();
+      const city = rawCity || 'Belém';
+      if (!map[city]) {
+        map[city] = { cityName: city, partners: [], totalOwed: 0 };
+      }
+      map[city].partners.push(item);
+      map[city].totalOwed += item.amountOwed;
+    });
+    return map;
+  }, [partnersWithPendingPayouts]);
+
+  const currentActivePartners = useMemo(() => {
+    if (selectedCityToPay === 'ALL') {
+      return partnersWithPendingPayouts;
+    }
+    return pendingPayoutsByCity[selectedCityToPay]?.partners || [];
+  }, [selectedCityToPay, partnersWithPendingPayouts, pendingPayoutsByCity]);
+
+  const currentActiveOwedTotal = useMemo(() => {
+    return currentActivePartners.reduce((acc, curr) => acc + curr.amountOwed, 0);
+  }, [currentActivePartners]);
+
   const handleSaveRates = async () => {
     if (isSavingRates) return;
     setIsSavingRates(true);
@@ -542,9 +669,19 @@ function AdminDashboardContent() {
        }
        setPwdModalOpen(false);
        setPwdInputText('');
-       if (confirm("🚨 ATENÇÃO: Tem certeza que deseja apagar DEFINITIVAMENTE todos os pedidos do banco de dados?")) {
-          if (typeof store.clearData === 'function') store.clearData();
-       }
+        if (confirm("🚨 ATENÇÃO: Tem certeza que deseja apagar DEFINITIVAMENTE todos os pedidos, mensagens, balanços e registros do banco de dados para recomeçar o sistema do zero?")) {
+           if (typeof store.clearData === 'function') {
+             store.clearData().then(() => {
+               setAdminBalances({
+                 historical: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 },
+                 monthly: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 },
+                 daily: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 }
+               });
+               showToast("✅ Sistema 100% resetado: Todos os pedidos e acumuladores foram zerados!");
+               fetchAdminBalances();
+             });
+           }
+        }
     }
   };
 
@@ -584,10 +721,11 @@ function AdminDashboardContent() {
         </div>
       </header>
 
-      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
+      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6 flex overflow-x-auto">
           <button onClick={() => setActiveTab('dashboard')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'dashboard' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
           <button onClick={() => setActiveTab('usuarios')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'usuarios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>👥 Usuários</button>
           <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
+          <button onClick={() => setActiveTab('ocorrencias')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📋 Ocorrências & Auditoria</button>
           <button onClick={() => setActiveTab('cidades')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'cidades' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🌍 Cidades / Expansão</button>
       </div>
 
@@ -789,6 +927,67 @@ function AdminDashboardContent() {
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
             <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">👥 Gestão de Usuários e Parceiros</h3>
             
+            {/* Card de Liquidação Geral em Lote & Por Cidade */}
+            <div className="bg-gradient-to-r from-purple-900/10 via-indigo-900/10 to-purple-900/5 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-zinc-900 border border-purple-200 dark:border-purple-800/60 p-4 sm:p-5 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 shadow-sm">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-950/60 px-2 py-0.5 rounded-md">
+                    ⚡ Fechamento Financeiro & Liquidação
+                  </span>
+                  {selectedCityToPay !== 'ALL' && (
+                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md">
+                      🏙️ Praça: {selectedCityToPay}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white">
+                    {formatMoney(currentActiveOwedTotal)}
+                  </span>
+                  <span className="text-xs text-zinc-500 font-medium">
+                    pendente de repasse ({currentActivePartners.length} parceiro(s){selectedCityToPay !== 'ALL' ? ` em ${selectedCityToPay}` : ' no total'})
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-zinc-500">
+                  Liquide todos os pendentes de <strong>uma cidade específica</strong> ou de <strong>todas as cidades de uma só vez</strong>.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+                {/* Seletor de Cidades com Saldos Pendentes */}
+                <select
+                  value={selectedCityToPay}
+                  onChange={(e) => setSelectedCityToPay(e.target.value)}
+                  className="bg-white dark:bg-zinc-900 border border-purple-300 dark:border-purple-700 text-xs font-bold text-zinc-800 dark:text-zinc-200 rounded-xl px-3 py-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                >
+                  <option value="ALL">🌐 Todas as Cidades ({formatMoney(totalOwedAllPartners)})</option>
+                  {Object.values(pendingPayoutsByCity).map(c => (
+                    <option key={c.cityName} value={c.cityName}>
+                      🏙️ {c.cityName} ({formatMoney(c.totalOwed)} • {c.partners.length} parc.)
+                    </option>
+                  ))}
+                </select>
+
+                {/* Botão de Disparo */}
+                {currentActivePartners.length > 0 && (
+                  <button
+                    disabled={isPayingAll}
+                    onClick={() => pagarTodosParceiros(currentActivePartners, selectedCityToPay === 'ALL' ? undefined : selectedCityToPay)}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-400 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap active:scale-95"
+                  >
+                    <Zap size={16} className={isPayingAll ? 'animate-spin' : ''} />
+                    {isPayingAll 
+                      ? (payAllProgress ? `⏳ Pagando ${payAllProgress.current}/${payAllProgress.total} (${payAllProgress.name})...` : 'Processando...')
+                      : (selectedCityToPay === 'ALL' 
+                          ? '⚡ Pagar Todos (Geral)' 
+                          : `⚡ Pagar Todos de ${selectedCityToPay}`)}
+                  </button>
+                )}
+              </div>
+            </div>
+            
             <div className="flex flex-col sm:flex-row gap-3 mt-4">
             <input type="text" placeholder="Buscar por Nome, E-mail ou Bairro..." value={userFilterText} onChange={e => setUserFilterText(e.target.value)} className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500" />
             <select value={userFilterRole} onChange={e => setUserFilterRole(e.target.value)} className="w-full sm:w-auto border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500">
@@ -925,6 +1124,10 @@ function AdminDashboardContent() {
           </div>
         )}
 
+        {activeTab === 'ocorrencias' && (
+          <IncidentReportSection orders={orders} users={users} showToast={showToast} />
+        )}
+
         {activeTab === 'cidades' && (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
             <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">🌍 Gestão de Cidades e Expansão</h3>
@@ -958,14 +1161,35 @@ function AdminDashboardContent() {
             <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-x-auto mt-4 mb-10">
                 <table className="w-full text-left text-sm min-w-max">
                     <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
-                        <tr><th className="p-4">Nome da Cidade</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
+                        <tr><th className="p-4">Nome da Cidade</th><th className="p-4">Status</th><th className="p-4">Repasses Pendentes</th><th className="p-4 text-right">Ações</th></tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        {filteredCities.map(c => (
+                        {filteredCities.map(c => {
+                            const cityPending = pendingPayoutsByCity[c.name];
+                            return (
                             <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                                 <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">{c.name}</td>
                                 <td className="p-4">
                                     {c.status === 'active' ? <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Ativa</span> : <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pausada</span>}
+                                </td>
+                                <td className="p-4">
+                                    {cityPending && cityPending.totalOwed > 0 ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-xs text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 px-2.5 py-1 rounded-lg">
+                                                {formatMoney(cityPending.totalOwed)} ({cityPending.partners.length} parc.)
+                                            </span>
+                                            <button
+                                                disabled={isPayingAll}
+                                                onClick={() => pagarTodosParceiros(cityPending.partners, c.name)}
+                                                className="bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-400 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm transition flex items-center gap-1 active:scale-95"
+                                                title={`Liquidar todos os parceiros pendentes de ${c.name}`}
+                                            >
+                                                <Zap size={11} /> Liquidar
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <span className="text-zinc-400 text-xs italic">Sem pendências</span>
+                                    )}
                                 </td>
                                 <td className="p-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
@@ -988,9 +1212,10 @@ function AdminDashboardContent() {
                                     </div>
                                 </td>
                             </tr>
-                        ))}
+                            );
+                        })}
                         {filteredCities.length === 0 && (
-                            <tr><td colSpan={3} className="text-center p-6 text-zinc-500">Nenhuma cidade encontrada com este nome.</td></tr>
+                            <tr><td colSpan={4} className="text-center p-6 text-zinc-500">Nenhuma cidade encontrada com este nome.</td></tr>
                         )}
                     </tbody>
                 </table>

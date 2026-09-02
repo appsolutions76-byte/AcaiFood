@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { PackageOpen, Printer, BookOpen } from "lucide-react";
-import { useAppStore, getRatesForCity, generateUUID } from "@/store/useAppStore";
+import { useAppStore, getRatesForCity, generateUUID, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { supabase } from "@/lib/supabase";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -146,7 +146,13 @@ export default function FornecedorDashboard() {
       return;
     }
 
-    if (confirm(`Deseja transferir R$ ${valorSaque.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?`)) {
+    const saquesHoje = getDailyWithdrawalCount(currentUser.id);
+    if (saquesHoje >= 2) {
+      alert("⚠️ Limite diário atingido:\n\nVocê já realizou 2 saques hoje (limite máximo permitido). Novos valores acumulados serão liquidados automaticamente no encerramento diário pelo administrador ou estarão disponíveis para novo saque amanhã.");
+      return;
+    }
+
+    if (confirm(`Deseja transferir R$ ${valorSaque.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const authHeaders: any = { 'Content-Type': 'application/json' };
@@ -165,6 +171,7 @@ export default function FornecedorDashboard() {
         });
         const data = await res.json();
         if (res.ok && (data.success || data.transferId)) {
+          incrementDailyWithdrawalCount(currentUser.id);
           alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${valorSaque.toFixed(2)} já está a caminho do seu banco (${targetKey}).`);
         } else {
           const msg = data.error || '';

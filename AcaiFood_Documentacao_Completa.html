@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Documentação Completa & Manuais de Uso - AçaíFood</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 15mm 18mm 15mm;
+  }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #1f2937;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background: #ffffff;
+    font-size: 13px;
+  }
+  .header {
+    text-align: center;
+    border-bottom: 3px solid #7c3aed;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+  }
+  .header h1 {
+    color: #581c87;
+    margin: 0 0 5px 0;
+    font-size: 24px;
+    font-weight: 800;
+  }
+  .header p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 13px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    background: #f3e8ff;
+    color: #6b21a8;
+    margin-top: 8px;
+  }
+  h2 {
+    color: #4c1d95;
+    border-bottom: 1.5px solid #e5e7eb;
+    padding-bottom: 6px;
+    margin-top: 25px;
+    margin-bottom: 12px;
+    font-size: 16px;
+    page-break-after: avoid;
+  }
+  h3 {
+    color: #1e1b4b;
+    margin-top: 15px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    page-break-after: avoid;
+  }
+  p, li {
+    color: #374151;
+    font-size: 12.5px;
+  }
+  ul, ol {
+    margin-top: 5px;
+    margin-bottom: 12px;
+    padding-left: 20px;
+  }
+  li {
+    margin-bottom: 4px;
+  }
+  .card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 12px;
+    page-break-inside: avoid;
+  }
+  .card-purple {
+    background: #faf5ff;
+    border: 1px solid #d8b4fe;
+  }
+  .card-blue {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+  }
+  .card-green {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+  }
+  .card-amber {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    font-size: 12px;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid #e5e7eb;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  th {
+    background: #f3f4f6;
+    color: #111827;
+    font-weight: bold;
+  }
+  tr:nth-child(even) {
+    background: #fafafa;
+  }
+  .status-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+  }
+  .st-yellow { background: #fef08a; color: #854d0e; }
+  .st-blue { background: #bfdbfe; color: #1e40af; }
+  .st-purple { background: #e9d5ff; color: #6b21a8; }
+  .st-teal { background: #99f6e4; color: #115e59; }
+  .st-green { background: #bbf7d0; color: #166534; }
+  .st-red { background: #fecaca; color: #991b1b; }
+  .footer {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 10px;
+    border-top: 1px solid #e5e7eb;
+    color: #9ca3af;
+    font-size: 11px;
+  }
+  .page-break {
+    page-break-before: always;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🥑 AÇAÍFOOD — DOCUMENTAÇÃO OFICIAL & MANUAIS DE USO</h1>
+  <p>Guia Operacional Completo para Todos os Usuários, Regras de Negócio e Arquitetura</p>
+  <span class="badge">Ambiente Oficial de Produção: https://www.acaifood.app.br/</span>
+</div>
+
+<h2>1. VISÃO GERAL DO ECOSSISTEMA</h2>
+<p>O <strong>AçaíFood</strong> é a primeira plataforma multisserviço (<em>multi-sided marketplace</em>) progressiva (PWA) desenvolvida especificamente para conectar, padronizar e digitalizar de ponta a ponta a cadeia produtiva, logística e comercial do açaí no Brasil, atuando em 3 pilares:</p>
+
+<div class="card card-purple">
+  <strong>🛒 1. Varejo B2C (Consumo Urbano):</strong> Consumidores pedem açaí fresco direto das batedeiras locais com frete rápido via Motoboys e segurança de PIN de 4 dígitos.
+</div>
+<div class="card card-green">
+  <strong>🏭 2. Atacado B2B (Abastecimento de Frutos):</strong> Batedeiras compram paneiros, latas e sacas de frutos diretamente dos fornecedores com logística pesada via Caminhões.
+</div>
+<div class="card card-amber">
+  <strong>🚛 3. Logística Reversa ESG (Sustentabilidade):</strong> Batedeiras solicitam caçambas para descarte sustentável de caroços e resíduos, transportados até Ecopontos credenciados.
+</div>
+
+<div class="page-break"></div>
+
+<h2>2. MANUAIS DE USO DETALHADOS POR PERFIL DE USUÁRIO</h2>
+
+<!-- MANUAL 1: CLIENTE -->
+<div class="card card-purple">
+  <h3>🛒 MANUAL DO CLIENTE (CONSUMIDOR FINAL)</h3>
+  <p>Como comprar açaí de forma rápida, segura e com rastreamento em tempo real:</p>
+  
+  <ol>
+    <li><strong>Acesso e Localização:</strong> Acesse o app oficial e confirme sua cidade no topo. O catálogo listará todas as batedeiras abertas na sua região.</li>
+    <li><strong>Escolha do Açaí e Adicionais:</strong>
+      <ul>
+        <li>Selecione a consistência: <em>Popular</em> (mais fino), <em>Médio</em> ou <em>Grosso</em> (mais encorpado).</li>
+        <li>Defina a quantidade de litros e adicione acompanhamentos (farinha d'água, farinha de tapioca, frutas, leite condensado, etc.).</li>
+      </ul>
+    </li>
+    <li><strong>Escolha do Tipo de Entrega (3 Opções):</strong>
+      <ul>
+        <li>🏠 <em>Endereço do Perfil</em>: Entrega no endereço residencial cadastrado.</li>
+        <li>🛰️ <em>GPS ao Vivo</em>: Captura sua posição geográfica exata em tempo real (ideal para locais abertos).</li>
+        <li>📍 <em>Ponto de Encontro com Referência</em>: Permite digitar referências específicas para praças, feiras, trapiches e portos.</li>
+      </ul>
+    </li>
+    <li><strong>Pagamento Instantâneo Pix:</strong>
+      <ul>
+        <li>O app gera o <strong>QR Code Pix</strong> e a chave <strong>Pix Copia e Cola</strong> dinâmica do Asaas.</li>
+        <li>Cole no app do seu banco e confirme. O sistema aprova automaticamente em segundos via WebSocket (não é necessário enviar comprovante!).</li>
+      </ul>
+    </li>
+    <li><strong>Rastreamento da Rota no Mapa:</strong> Acompanhe no mapa as linhas coloridas calculadas pelas ruas reais (OSRM) e veja o motoboy em deslocamento ao vivo.</li>
+    <li><strong>Chat Integrado:</strong> Fale diretamente com a batedeira ou com o motoboy, com botão rápido para ligação ou WhatsApp.</li>
+    <li><strong>🔐 REGRA DE OURO DO PIN (4 DÍGITOS):</strong>
+      <p style="background: #fef08a; color: #854d0e; padding: 6px 10px; border-radius: 6px; font-weight: bold; margin-top: 4px;">
+        O código PIN de 4 dígitos aparece no card do seu pedido. Somente dite o PIN para o motoboy após estar com a sacola e os produtos em mãos!
+      </p>
+    </li>
+    <li><strong>Garantia de Estorno Pix (Refund):</strong> Caso precise cancelar antes de a loja iniciar o preparo, o cancelamento aciona o estorno automático de 100% do valor Pix de volta para sua conta bancária.</li>
+  </ol>
+</div>
+
+<!-- MANUAL 2: BATEDEIRA -->
+<div class="card">
+  <h3>🏪 MANUAL DA BATEDEIRA / LOJA DE AÇAÍ (loja)</h3>
+  <p>Gestão diária de pedidos, impressão térmica, chamada de motoboy e abastecimento:</p>
+
+  <ol>
+    <li><strong>Chegada de Pedidos:</strong> Pedidos com pagamento Pix aprovado entram com status <code>pendente</code> e emitem alerta sonoro.</li>
+    <li><strong>Aceitar e Preparar:</strong> Clique em <em>"Aceitar e Preparar"</em> para mover o pedido para <code>preparo</code> e imprimir as comandas.</li>
+    <li><strong>🖨️ Impressão Térmica de Comandas:</strong>
+      <ul>
+        <li>Suporte a impressoras 58mm e 80mm com impressão automática ou manual.</li>
+        <li><em>VIA 1 (Cozinha/Preparo)</em>: Itens, consistência, adicionais e observações.</li>
+        <li><em>VIA 2 (Entrega/Motoboy)</em>: Nome do cliente, telefone com DDD, endereço completo e ponto de referência.</li>
+      </ul>
+    </li>
+    <li><strong>🏍️ NOVO — Chamada do Motoboy sob Demanda ("Chamar Moto"):</strong>
+      <p style="background: #f3e8ff; color: #6b21a8; padding: 6px 10px; border-radius: 6px; font-weight: bold; margin-top: 4px;">
+        Após o açaí estar batido, embalado e pronto, clique no botão <strong>"Chamar Moto"</strong>. Somente a partir deste clique o pedido é despachado para o radar dos motoboys, garantindo que o motoboy não espere na porta da loja!
+      </p>
+    </li>
+    <li><strong>Acompanhamento da Entrega:</strong> Visualize a aproximação do motoboy no mapa e utilize o chat com o cliente se necessário.</li>
+    <li><strong>Abastecimento B2B & Coleta ESG:</strong>
+      <ul>
+        <li>Na aba <em>Abastecimento B2B</em>, compre paneiros e lotes de frutos de fornecedores pagando com Pix.</li>
+        <li>Solicite caçambas para descarte sustentável de caroços e resíduos até os Ecopontos credenciados.</li>
+      </ul>
+    </li>
+    <li><strong>Financeiro & Repasses:</strong> Cadastre sua chave Pix ou Carteira Asaas. O valor líquido das vendas (subtotal menos comissão da plataforma e subsídio de frete) é transferido via Pix pelo Admin ou pela varredura programada às 22:00.</li>
+  </ol>
+</div>
+
+<div class="page-break"></div>
+
+<!-- MANUAL 3: FORNECEDOR -->
+<div class="card card-green">
+  <h3>🏭 MANUAL DO FORNECEDOR ATACADISTA (fornecedor)</h3>
+  <p>Operação de vendas atacadistas B2B, despacho de caminhões pesados e recebimento:</p>
+
+  <ol>
+    <li><strong>Cadastro de Lotes:</strong> Cadastre suas ofertas de açaí em grande escala (paneiros, latas de 14kg/28kg ou sacas) e produtos complementares.</li>
+    <li><strong>Recebimento de Pedido B2B:</strong> A batedeira compra o lote e paga via Pix dinâmico. O fornecedor recebe o aviso de pagamento confirmado.</li>
+    <li><strong>Separação no Armazém/Porto:</strong> Separe e prepare a carga no armazém ou porto de desembarque.</li>
+    <li><strong>🚛 NOVO — Despacho de Cargas ("Chamar Caminhão"):</strong>
+      <p style="background: #f0fdf4; color: #166534; padding: 6px 10px; border-radius: 6px; font-weight: bold; margin-top: 4px;">
+        Quando o lote estiver pronto para transporte, clique em <strong>"Chamar Caminhão"</strong>. A ordem é disponibilizada no radar dos caminhoneiros cadastrados para aceitarem o frete.
+      </p>
+    </li>
+    <li><strong>Comanda de Saída B2B:</strong> Imprima o romaneio de expedição com dados da loja compradora, endereço de descarga e quantidade de frutos.</li>
+    <li><strong>Entrega com PIN de Segurança:</strong> Ao descarregar na batedeira, o caminhoneiro digita o PIN informado pelo lojista, liberando o repasse financeiro.</li>
+    <li><strong>Repasse Líquido Asaas:</strong> Receba o pagamento líquido das vendas atacadistas diretamente em sua chave Pix ou conta Asaas vinculada.</li>
+  </ol>
+</div>
+
+<!-- MANUAL 4: MOTOBOY -->
+<div class="card">
+  <h3>🛵 MANUAL DO MOTOBOY URBANO (motorista / motoboy)</h3>
+  <p>Operação do radar sob demanda, rotas por GPS e validação com PIN de segurança:</p>
+
+  <ol>
+    <li><strong>Ficar Online:</strong> Marque o status <em>Online</em> no topo do painel para ativar a transmissão de GPS em tempo real.</li>
+    <li><strong>Radar de Corridas Prontas:</strong> Você recebe chamados de pedidos que as batedeiras já prepararam e liberaram com <em>"Chamar Moto"</em>.</li>
+    <li><strong>Análise Prévia da Corrida:</strong> Antes de aceitar, consulte o valor líquido a receber, distância em km e traçado da rota pelas ruas.</li>
+    <li><strong>Aceite e Navegação com GPS Nativo (Google Maps):</strong>
+      <ul>
+        <li>Toque em <em>"GPS p/ Loja"</em>: Abre o Google Maps com rota curva-a-curva até a batedeira.</li>
+        <li>Ao chegar na loja, clique em <em>"Confirmar Chegada na Loja"</em> (botão estável na tela).</li>
+        <li>Retire a encomenda e toque em <em>"GPS p/ Cliente"</em> para navegar até o destino final.</li>
+        <li>Ao chegar no cliente, clique em <em>"Confirmar Chegada no Cliente"</em>.</li>
+      </ul>
+    </li>
+    <li><strong>Chat do Pedido:</strong> Comunique-se com o cliente ou batedeira diretamente pelo chat se tiver dúvidas sobre o endereço.</li>
+    <li><strong>🔐 VALIDAÇÃO OBRIGATÓRIA DO PIN (4 DÍGITOS):</strong>
+      <p style="background: #fef08a; color: #854d0e; padding: 6px 10px; border-radius: 6px; font-weight: bold; margin-top: 4px;">
+        Solicite o PIN de 4 dígitos ao cliente, digite no campo da tela e confirme. Sem o PIN correto, o sistema não finaliza a corrida e o valor do frete não é creditado!
+      </p>
+    </li>
+    <li><strong>Saque Instantâneo:</strong> Acompanhe seus ganhos no painel e utilize o botão <em>"💸 Saque Instantâneo Pix"</em> para transferir para seu banco.</li>
+  </ol>
+</div>
+
+<div class="page-break"></div>
+
+<!-- MANUAL 5: CAMINHONEIRO -->
+<div class="card card-blue">
+  <h3>🚛 MANUAL DO CAMINHONEIRO (motorista / caminhao)</h3>
+  <p>Fretes pesados atacadistas (B2B) e transporte ecológico de resíduos (Caçamba ESG):</p>
+
+  <ol>
+    <li><strong>Ficar Online:</strong> Ative seu GPS para receber notificações de fretes pesados na sua cidade ou rota intermunicipal.</li>
+    <li><strong>2 Tipos de Frete no Radar:</strong>
+      <ul>
+        <li><strong>Frete Atacado B2B:</strong> Transporte de sacas, latas e paneiros do porto/fornecedor para a batedeira compradora.</li>
+        <li><strong>Coleta de Caroço (Caçamba):</strong> Transporte de resíduos da batedeira até os Ecopontos credenciados para reciclagem.</li>
+      </ul>
+    </li>
+    <li><strong>Navegação e Rotas de Carga:</strong> Visualize pontos de carga e descarga pelas vias principais com cálculo por KM rodado ou Tarifa Fixa.</li>
+    <li><strong>Navegação GPS:</strong> Botões rápidos para navegação via Google Maps até o ponto de retirada e até o destino de descarregamento.</li>
+    <li><strong>PIN de Entrega:</strong> Solicite o PIN de 4 dígitos ao encarregado no destino para finalizar o frete e liberar o pagamento líquido no Pix.</li>
+  </ol>
+</div>
+
+<!-- MANUAL 6: ADMINISTRADOR -->
+<div class="card card-purple">
+  <h3>👑 MANUAL DO ADMINISTRADOR GERAL (admin)</h3>
+  <p>Controle mestre da plataforma, liquidação Pix aos parceiros e gestão territorial:</p>
+
+  <ol>
+    <li><strong>Visão Geral & Balanços:</strong> Acompanhe KPIs em tempo real: volume total transacionado, comissões retidas da plataforma e relatórios diários/mensais.</li>
+    <li><strong>Liquidação Manual ("💸 Pagar e Zerar"):</strong>
+      <ul>
+        <li>Na aba <strong>👥 Usuários</strong>, o sistema calcula o saldo acumulado <em>"A Pagar"</em> de cada parceiro com entregas concluídas.</li>
+        <li>Clique em <strong>"💸 Pagar e Zerar"</strong> para disparar a transferência Pix instantânea via API Asaas (<code>/api/asaas/transfer</code>) e liquidar os pedidos.</li>
+      </ul>
+    </li>
+    <li><strong>Varredura Automática (Payout Sweep):</strong> Varredura programada diária no horário configurado (ex: 22:00) para liquidação em lote.</li>
+    <li><strong>Gestão de Taxas e Expansão por Cidade:</strong>
+      <ul>
+        <li>Defina a comissão da plataforma sobre produtos (%) e sobre o frete (%).</li>
+        <li>Escolha o modelo de frete: por KM (distância) ou Fixo (tarifa única).</li>
+        <li>Cadastre novas cidades em <em>Cidades / Expansão</em> com tarifas regionais independentes que sobrepõem as taxas globais.</li>
+      </ul>
+    </li>
+    <li><strong>Gestão de Usuários:</strong> Ativar, pausar temporariamente, bloquear ou excluir contas com encerramento automático de subcontas Asaas.</li>
+    <li><strong>Contingência com "Forçar Baixa":</strong> No histórico de pedidos, o admin conta com o botão de contingência para liberar pedidos em casos raros onde o cliente perdeu o PIN, com auditoria completa.</li>
+  </ol>
+</div>
+
+<div class="page-break"></div>
+
+<h2>3. CICLO DE VIDA DO PEDIDO & ESTADOS NO BANCO DE DADOS</h2>
+<p>Cada alteração de status é auditada com timestamps precisos no PostgreSQL do Supabase:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Status da Tela</th>
+      <th>Status no Banco</th>
+      <th>Timestamp Gravado</th>
+      <th>Ação Operacional Correspondente</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="status-tag st-yellow">aguardando_pagamento</span></td>
+      <td><code>PENDING / CREATED</code></td>
+      <td><code>createdAt</code></td>
+      <td>Cliente finalizou o carrinho; cobrança Pix ativa no Asaas.</td>
+    </tr>
+    <tr>
+      <td><span class="status-tag st-blue">pendente</span></td>
+      <td><code>PAID</code></td>
+      <td><code>paid_at</code></td>
+      <td>Webhook Asaas confirmou o Pix; PIN de 4 dígitos gerado com hash.</td>
+    </tr>
+    <tr>
+      <td><span class="status-tag st-blue">preparo</span></td>
+      <td><code>PREPARING</code></td>
+      <td><code>acceptedAt</code></td>
+      <td>Loja ou Fornecedor clicou em "Aceitar e Preparar" e iniciou a produção.</td>
+    </tr>
+    <tr>
+      <td><span class="status-tag st-purple">pronto</span></td>
+      <td><code>READY</code></td>
+      <td><code>readyAt</code></td>
+      <td>Loja clicou em "Chamar Moto" ou Fornecedor clicou em "Chamar Caminhão"; ordem no Radar.</td>
+    </tr>
+    <tr>
+      <td><span class="status-tag st-purple">em_rota</span> (Retirada)</td>
+      <td><code>DELIVERING</code></td>
+      <td><code>pickedUpAt</code></td>
+      <td>Entregador aceitou o chamado e confirmou a retirada do produto.</td>
+    </tr>
+    <tr>
+      <td><span class="status-tag st-teal">aguardando_cliente</span></td>
+      <td><code>DELIVERED</code></td>
+      <td><code>deliveredAt</code></td>
+      <td>Entregador chegou no endereço do cliente aguardando o PIN.</td>
+    </tr>
+    <tr>
+      <td><span class="status-tag st-green">entregue</span></td>
+      <td><code>RECEIVED</code></td>
+      <td><code>receivedAt</code></td>
+      <td>PIN de 4 dígitos validado com sucesso; repasses financeiros liberados.</td>
+    </tr>
+    <tr>
+      <td><span class="status-tag st-green">arquivado</span></td>
+      <td><code>COMPLETED</code></td>
+      <td>—</td>
+      <td>Pedido finalizado arquivado para histórico e contabilidade.</td>
+    </tr>
+    <tr>
+      <td><span class="status-tag st-red">cancelado</span></td>
+      <td><code>CANCELED</code></td>
+      <td><code>cancelledAt</code></td>
+      <td>Cancelamento com estorno (refund) automático via Pix se antes do preparo.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>4. SEGURANÇA, PRIVACIDADE & POLÍTICAS RLS</h2>
+<ul>
+  <li><strong>Row Level Security (RLS Granular):</strong> Clientes só leem seus próprios pedidos; motoboys só acessam corridas aceitas ou disponíveis no radar; lojas só acessam suas próprias vendas.</li>
+  <li><strong>Função Administrativa Otimizada (<code>is_admin STABLE</code>):</strong> Cache de validação de privilégios para rápida resposta das páginas e baixo uso de CPU.</li>
+  <li><strong>Proteção Antifraude Financeira (Trigger DB):</strong> Impede qualquer alteração de preços, taxas ou valores após o pedido ser pago.</li>
+  <li><strong>Soft Delete Auditável:</strong> Ocultação do pedido na tela do usuário sem apagar os dados financeiros contábeis do banco.</li>
+</ul>
+
+<div class="footer">
+  AçaíFood © 2026 • Documentação Mestre & Manuais de Operação • Link Oficial: https://www.acaifood.app.br/
+</div>
+
+</body>
+</html>

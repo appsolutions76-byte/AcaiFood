@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAuthorizedRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey } from '@/lib/asaasConfig';
 
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     // 1. Consulta prioritária no banco de dados Supabase (onde o Webhook Asaas e a Edge Function atualizam)
     if (orderId && supabaseUrl && supabaseKey) {
       try {
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        const supabase = getSupabaseAdmin();
         const { data: order } = await supabase
           .from('orders')
           .select('id, status, asaas_payment_id, asaas_charge_status')
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
           const targetOrderId = data.externalReference || orderId;
           if (targetOrderId) {
             try {
-              const supabase = createClient(supabaseUrl, supabaseKey);
+              const supabase = getSupabaseAdmin();
               await supabase.from('orders').update({
                 status: 'PAID',
                 paid_at: new Date().toISOString(),
@@ -121,7 +121,7 @@ export async function GET(request: Request) {
         const isPaid = paidPayment.status === 'RECEIVED' || paidPayment.status === 'CONFIRMED' || paidPayment.status === 'RECEIVED_IN_CASH' || paidPayment.status === 'DUNNING_RECEIVED' || paidPayment.status === 'PAYMENT_RECEIVED' || paidPayment.status === 'PAYMENT_CONFIRMED';
 
         if (isPaid && supabaseUrl && supabaseKey) {
-          const supabase = createClient(supabaseUrl, supabaseKey);
+          const supabase = getSupabaseAdmin();
           await supabase.from('orders').update({
             status: 'PAID',
             paid_at: new Date().toISOString(),
@@ -198,7 +198,7 @@ export async function POST(request: Request) {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
       const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
       if (supabaseUrl && supabaseKey) {
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        const supabase = getSupabaseAdmin();
         
         let query = supabase.from('orders').update({
           status: 'PAID',
