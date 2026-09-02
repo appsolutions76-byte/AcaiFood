@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const { getAsaasApiKey } = await import('@/lib/asaasConfig');
+    const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
     const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
       return NextResponse.json(
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const ASAAS_URL = 'https://www.asaas.com/api/v3';
+    const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
 
     // 1. Criar ou Buscar Cliente no Asaas
     let customerId = '';

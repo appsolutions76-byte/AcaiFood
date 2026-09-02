@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
-import { getAsaasApiKey } from '@/lib/asaasConfig';
+import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin', 'loja', 'cliente', 'fornecedor', 'motorista']);
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const ASAAS_URL = 'https://www.asaas.com/api/v3';
+    const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
 
     let asaasPaymentId = paymentId || '';
 

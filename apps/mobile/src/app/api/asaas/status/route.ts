@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAuthorizedRequest, unauthorizedResponse } from '@/lib/apiAuth';
-import { getAsaasApiKey } from '@/lib/asaasConfig';
+import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 
 export async function GET(request: Request) {
   try {
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const orderId = searchParams.get('orderId');
 
     const ASAAS_API_KEY = await getAsaasApiKey();
-    const ASAAS_URL = 'https://www.asaas.com/api/v3';
+    const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';

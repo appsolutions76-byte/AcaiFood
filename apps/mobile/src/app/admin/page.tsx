@@ -359,20 +359,7 @@ function AdminDashboardContent() {
     return c.name.toLowerCase().includes(citySearchText.toLowerCase().trim());
   });
 
-  // 5. Retornos condicionais ocorrem APENAS APÓS TODOS os Hooks declarados
-  if (!mounted) {
-    return <div className="min-h-screen flex items-center justify-center p-6"><p>Carregando...</p></div>;
-  }
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-        <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
-        <p className="text-zinc-500 mb-6">Você precisa estar logado como Administrador para acessar esta página.</p>
-        <button onClick={() => router.push('/login')} className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold">Ir para Login</button>
-      </div>
-    );
-  }
 
   // 6. Cálculos de Dashboard
   const concluidos = orders.filter(o => o && (o.status === 'entregue' || o.status === 'arquivado'));
@@ -719,6 +706,20 @@ function AdminDashboardContent() {
     }
   };
 
+  // Retornos condicionais ocorrem ESTRITAMENTE após TODOS os Hooks (useState, useEffect, useMemo) declarados
+  if (!mounted) {
+    return <div className="min-h-screen flex items-center justify-center p-6"><p>Carregando...</p></div>;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+        <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
+        <p className="text-zinc-500 mb-6">Você precisa estar logado como Administrador para acessar esta página.</p>
+        <button onClick={() => router.push('/login')} className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold">Ir para Login</button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
