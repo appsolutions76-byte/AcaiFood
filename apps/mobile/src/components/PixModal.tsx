@@ -185,28 +185,19 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
               </a>
             )}
 
-            <div className="flex items-center justify-center gap-2 text-xs text-purple-700 dark:text-purple-300 font-medium py-2.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl mb-3 animate-pulse">
-              <span>⌛</span> Aguardando confirmação do pagamento...
+            <div className="flex flex-col items-center justify-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 font-medium py-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl mb-3 animate-pulse">
+              <div className="flex items-center gap-2">
+                <span>⚡</span>
+                <span className="font-bold">Aguardando confirmação do Asaas...</span>
+              </div>
+              <span className="text-[11px] text-zinc-500 dark:text-zinc-400">O pedido será liberado automaticamente para a loja assim que o Pix for recebido.</span>
             </div>
-
-            <button
-              onClick={async () => {
-                if (data.orderId) {
-                  await acaoPedido(data.orderId, 'confirmar_pagamento');
-                  setIsPaid(true);
-                  if (onPaymentConfirmed) onPaymentConfirmed();
-                }
-              }}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2 mb-2"
-            >
-              <CheckCircle size={18} /> ✅ Já Paguei / Confirmar Pagamento
-            </button>
 
             <button
               onClick={onClose}
               className="w-full bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold py-2.5 rounded-xl text-xs transition"
             >
-              Fechar
+              Fechar Janela
             </button>
           </div>
         )}
