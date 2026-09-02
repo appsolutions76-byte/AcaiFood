@@ -227,34 +227,6 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
             </div>
 
             <button
-              onClick={async () => {
-                if (!data.orderId) return;
-                try {
-                  setIsPaid(true);
-                  await acaoPedido(data.orderId, 'confirmar_pagamento');
-                  const { supabase } = await import('@/lib/supabase');
-                  await supabase.from('orders').update({
-                    status: 'PAID',
-                    paid_at: new Date().toISOString()
-                  }).eq('id', data.orderId);
-
-                  if (onPaymentConfirmed) onPaymentConfirmed();
-                  setTimeout(() => {
-                    onClose();
-                  }, 800);
-                } catch (e) {
-                  console.warn("Erro ao confirmar pagamento manualmente:", e);
-                  setIsPaid(true);
-                  if (onPaymentConfirmed) onPaymentConfirmed();
-                  onClose();
-                }
-              }}
-              className="w-full mb-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              ✅ Já realizei o Pix / Liberar Pedido para a Loja
-            </button>
-
-            <button
               onClick={onClose}
               className="w-full bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold py-2.5 rounded-xl text-xs transition"
             >
