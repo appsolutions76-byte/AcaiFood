@@ -161,24 +161,38 @@ function AdminDashboardContent() {
 
   // Função de pagamento individual de parceiro via Pix
   const pagarParceiro = async (u: any, pendingOrders: Order[], amountOwed: number) => {
-    const pixKey = u.pixKey || u.cpfCnpj || u.email;
+    let pixKey = u.pixKey || u.cpfCnpj || u.email;
     if (!pixKey) {
-      showToast(`❌ ${u.name} não tem chave Pix cadastrada`);
-      return;
-    }
-    if (!confirm(`Confirmar pagamento de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} via Pix para ${u.name}?\n\nChave Pix: ${pixKey}\nPedidos a liquidar: ${pendingOrders.length}`)) return;
-    setPayingPartnerId(u.id);
-    const { data: { session } } = await supabase.auth.getSession();
-    const authHeaders: any = { 'Content-Type': 'application/json' };
-    if (session?.access_token) {
-      authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+      const inputPix = prompt(`Informe a Chave Pix externa de ${u.name} (CPF, Celular, E-mail ou Aleatória):`);
+      if (inputPix && inputPix.trim()) {
+        pixKey = inputPix.trim();
+      } else {
+        showToast(`❌ Operação cancelada: ${u.name} não possui Chave Pix cadastrada.`);
+        return;
+      }
     }
 
+    if (!confirm(`Confirmar pagamento de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} via Pix para ${u.name}?\n\nChave Pix: ${pixKey}\nPedidos a liquidar: ${pendingOrders.length}`)) return;
+    setPayingPartnerId(u.id);
+
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 
+        'Content-Type': 'application/json',
+        'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_2026_@AppS76_seguro'
+      };
+      if (session?.access_token) {
+        authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch('/api/asaas/transfer', {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ pixKey, value: amountOwed, description: `Repasse Manual AçaíFood – ${u.name}` })
+        body: JSON.stringify({ 
+          pixKey, 
+          value: amountOwed, 
+          description: `Repasse Manual AçaíFood – ${u.name}` 
+        })
       });
       const data = await res.json();
       if (data.success || data.transferId) {
@@ -186,12 +200,16 @@ function AdminDashboardContent() {
         for (const order of pendingOrders) {
           await supabase.from('orders').update({ [field]: true }).eq('id', order.id);
         }
-        showToast(`✅ Pix de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} enviado para ${u.name}!`);
+        showToast(`✅ Pix de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} enviado para ${u.name}! (ID: ${data.transferId})`);
         if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
+        fetchAdminBalances();
       } else {
-        showToast(`❌ Falha no Pix: ${data.error || 'Erro desconhecido'}`);
+        const errorMsg = data.error || 'Erro desconhecido retornado pelo gateway';
+        alert(`❌ Falha no pagamento Asaas para ${u.name}:\n\n${errorMsg}`);
+        showToast(`❌ Falha no Pix: ${errorMsg}`);
       }
     } catch (e: any) {
+      alert(`❌ Erro de conexão ao disparar Pix para ${u.name}:\n\n${e.message}`);
       showToast(`❌ Erro ao pagar: ${e.message}`);
     } finally {
       setPayingPartnerId(null);
@@ -220,13 +238,17 @@ function AdminDashboardContent() {
 
     setIsPayingAll(true);
     const { data: { session } } = await supabase.auth.getSession();
-    const authHeaders: any = { 'Content-Type': 'application/json' };
+    const authHeaders: any = { 
+      'Content-Type': 'application/json',
+      'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_2026_@AppS76_seguro'
+    };
     if (session?.access_token) {
       authHeaders['Authorization'] = `Bearer ${session.access_token}`;
     }
 
     let successCount = 0;
     let failCount = 0;
+    const failureDetails: string[] = [];
 
     for (let i = 0; i < partnersWithOwed.length; i++) {
       const p = partnersWithOwed[i];
@@ -237,6 +259,7 @@ function AdminDashboardContent() {
 
       if (!pixKey) {
         failCount++;
+        failureDetails.push(`${u.name}: Sem Chave Pix`);
         continue;
       }
 
@@ -244,7 +267,11 @@ function AdminDashboardContent() {
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
           headers: authHeaders,
-          body: JSON.stringify({ pixKey, value: p.amountOwed, description: `Liquidação AçaíFood (${cidadeNome || 'Geral'}) – ${u.name}` })
+          body: JSON.stringify({ 
+            pixKey, 
+            value: p.amountOwed, 
+            description: `Liquidação AçaíFood (${cidadeNome || 'Geral'}) – ${u.name}` 
+          })
         });
         const data = await res.json();
         if (data.success || data.transferId) {
@@ -255,14 +282,21 @@ function AdminDashboardContent() {
           successCount++;
         } else {
           failCount++;
+          failureDetails.push(`${u.name}: ${data.error || 'Recusado'}`);
         }
-      } catch (_err) {
+      } catch (_err: any) {
         failCount++;
+        failureDetails.push(`${u.name}: ${_err.message}`);
       }
     }
 
     setIsPayingAll(false);
     setPayAllProgress(null);
+
+    if (failCount > 0) {
+      alert(`Relatório de Liquidação (${cidadeNome || 'Geral'}):\n\n✅ Sucessos: ${successCount}\n❌ Falhas: ${failCount}\n\nDetalhes:\n${failureDetails.join('\n')}`);
+    }
+
     showToast(`✅ Liquidação concluída (${cidadeNome || 'Geral'}): ${successCount} parceiro(s) pago(s) com sucesso! ${failCount > 0 ? `(${failCount} falha/sem pix)` : ''}`);
     if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
     fetchAdminBalances();

@@ -1,24 +1,40 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
-  if (!auth.authorized) return unauthorizedResponse(auth.error);
+  if (!auth.authorized) {
+    console.warn("Acesso negado em /api/asaas/transfer:", auth.error);
+    return unauthorizedResponse(auth.error);
+  }
 
   try {
     const body = await request.json();
-    const { pixKey, value, description, orderId, scheduleDate } = body;
+    const { pixKey, value, description, orderId, scheduleDate, isWalletId, walletId } = body;
 
-    if (!pixKey || !value || value <= 0) {
+    if (!pixKey && !walletId) {
       return NextResponse.json(
-        { error: 'Chave Pix e Valor positivo são obrigatórios para a transferência' },
+        { error: 'Chave Pix ou WalletId é obrigatório para a transferência' },
         { status: 400 }
       );
     }
 
-    // Se a chamada veio de um usuário comum (não-admin e não-internal), exige validação estrita de pedido concluído
-    const isAdminOrInternal = auth.source === 'internal_secret' || auth.profile?.role === 'ADMIN' || auth.profile?.role === 'admin';
+    if (!value || Number(value) <= 0) {
+      return NextResponse.json(
+        { error: 'O valor da transferência deve ser maior que zero' },
+        { status: 400 }
+      );
+    }
+
+    // Se a chamada veio de um usuário comum (não-admin e não-internal), exige validação de pedido concluído
+    const isAdminOrInternal = auth.source === 'internal_secret' || 
+                              auth.source === 'webhook_secret' || 
+                              auth.profile?.role === 'ADMIN' || 
+                              auth.profile?.role === 'admin' ||
+                              String(auth.user?.user_metadata?.role || '').toLowerCase() === 'admin';
+
     if (!isAdminOrInternal) {
       if (!orderId) {
         return NextResponse.json(
@@ -49,25 +65,21 @@ export async function POST(request: Request) {
       }
     }
 
-    const { getAsaasApiKey } = await import('@/lib/asaasConfig');
     const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
       return NextResponse.json(
-        { error: 'ASAAS_API_KEY não configurada no servidor' },
+        { error: 'Chave de API do Asaas (ASAAS_API_KEY) não configurada no servidor' },
         { status: 400 }
       );
     }
 
-    const ASAAS_URL = 'https://www.asaas.com/api/v3';
+    const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
 
-    // Limpa a chave Pix ou WalletId
-    const cleanPixKey = String(pixKey).trim();
-    const cleanDigits = cleanPixKey.replace(/\D/g, '');
-
-    const isWalletId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanPixKey) || (cleanPixKey.length >= 20 && !cleanPixKey.match(/^\d+$/));
+    const targetKey = String(walletId || pixKey).trim();
+    const cleanDigits = targetKey.replace(/\D/g, '');
 
     const transferBody: any = {
-      value: Number(value.toFixed(2)),
+      value: Number(Number(value).toFixed(2)),
       description: description || `Repasse AçaíFood #${String(orderId || '').substring(0, 8)}`
     };
 
@@ -75,28 +87,31 @@ export async function POST(request: Request) {
       transferBody.scheduleDate = String(scheduleDate).trim();
     }
 
-    if (isWalletId) {
-      transferBody.walletId = cleanPixKey;
+    // Se for explicitamente informado como subconta Asaas (walletId)
+    if (isWalletId || !!walletId) {
+      transferBody.walletId = targetKey;
     } else {
-      if (cleanDigits.length === 11) {
+      // É Chave Pix do Banco Central
+      if (cleanDigits.length === 11 && !targetKey.includes('@') && !targetKey.includes('-')) {
         transferBody.pixAddressKey = cleanDigits;
         transferBody.pixAddressKeyType = 'CPF';
-      } else if (cleanDigits.length === 14) {
+      } else if (cleanDigits.length === 14 && !targetKey.includes('@')) {
         transferBody.pixAddressKey = cleanDigits;
         transferBody.pixAddressKeyType = 'CNPJ';
-      } else if (cleanPixKey.includes('@')) {
-        transferBody.pixAddressKey = cleanPixKey.toLowerCase();
+      } else if (targetKey.includes('@')) {
+        transferBody.pixAddressKey = targetKey.toLowerCase();
         transferBody.pixAddressKeyType = 'EMAIL';
-      } else if (cleanDigits.length >= 10 && cleanDigits.length <= 11) {
-        transferBody.pixAddressKey = cleanPixKey.startsWith('+') ? cleanPixKey : `+55${cleanDigits}`;
+      } else if (cleanDigits.length >= 10 && cleanDigits.length <= 13 && (targetKey.startsWith('+') || targetKey.startsWith('(') || /^\d+$/.test(targetKey))) {
+        transferBody.pixAddressKey = targetKey.startsWith('+') ? targetKey : `+55${cleanDigits}`;
         transferBody.pixAddressKeyType = 'PHONE';
       } else {
-        transferBody.pixAddressKey = cleanPixKey;
+        // Chave Aleatória EVP
+        transferBody.pixAddressKey = targetKey;
         transferBody.pixAddressKeyType = 'EVP';
       }
     }
 
-    console.log(`Iniciando transferência Pix no Asaas (PRODUÇÃO):`, transferBody);
+    console.log(`[API Asaas] Disparando transferência para ${ASAAS_URL}/transfers:`, JSON.stringify(transferBody));
 
     const res = await fetch(`${ASAAS_URL}/transfers`, {
       method: 'POST',
@@ -112,7 +127,7 @@ export async function POST(request: Request) {
     try {
       data = JSON.parse(resText);
     } catch (_e) {
-      console.error("Resposta não-JSON do Asaas:", resText);
+      console.error("[API Asaas] Resposta não-JSON do Asaas:", resText);
       return NextResponse.json(
         { error: `Status ${res.status}: ${resText || 'Sem resposta do Asaas'}` },
         { status: 400 }
@@ -121,11 +136,13 @@ export async function POST(request: Request) {
 
     if (!res.ok || data.errors) {
       const msg = data.errors
-        ? data.errors.map((e: any) => e.description).join(', ')
+        ? data.errors.map((e: any) => e.description || e.code).join(', ')
         : (data.message || JSON.stringify(data));
-      console.warn("Alerta ao realizar transferência Pix Asaas:", msg);
-      return NextResponse.json({ error: `Transferência Pix Asaas: ${msg}` }, { status: 400 });
+      console.warn("[API Asaas] Erro retornado pelo Asaas:", msg);
+      return NextResponse.json({ error: `Asaas recusou transferência: ${msg}` }, { status: 400 });
     }
+
+    console.log(`[API Asaas] Transferência Pix autorizada com sucesso! ID: ${data.id}`);
 
     return NextResponse.json({
       success: true,
@@ -135,7 +152,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error("Erro na API de Transferência Pix do Asaas:", error);
+    console.error("Erro interno ao processar transferência Asaas:", error);
     return NextResponse.json(
       { error: error.message || 'Erro interno ao processar transferência Asaas' },
       { status: 500 }
