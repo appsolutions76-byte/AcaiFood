@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { getAsaasApiKey } from '@/lib/asaasConfig';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin', 'loja', 'cliente']);
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+    const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
       return NextResponse.json(
         { error: 'ASAAS_API_KEY não configurada no servidor' },

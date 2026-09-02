@@ -30,7 +30,8 @@ export async function POST(request: Request) {
 
     const userState = String(estado || uf || 'PA').trim().toUpperCase();
 
-    const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+    const { getAsaasApiKey } = await import('@/lib/asaasConfig');
+    const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
       return NextResponse.json(
         { error: 'ASAAS_API_KEY não configurada no ambiente' },
@@ -149,7 +150,8 @@ export async function DELETE(request: Request) {
     const userId = searchParams.get('userId');
     const accountIdParam = searchParams.get('accountId');
 
-    const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+    const { getAsaasApiKey } = await import('@/lib/asaasConfig');
+    const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
       return NextResponse.json({ error: 'ASAAS_API_KEY não configurada no ambiente' }, { status: 400 });
     }

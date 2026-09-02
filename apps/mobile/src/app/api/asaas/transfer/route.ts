@@ -49,7 +49,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+    const { getAsaasApiKey } = await import('@/lib/asaasConfig');
+    const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
       return NextResponse.json(
         { error: 'ASAAS_API_KEY não configurada no servidor' },
