@@ -9,28 +9,21 @@ export async function GET(request: Request) {
     const orderId = searchParams.get('orderId');
 
     const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
-    const isSandbox = (process.env.ASAAS_ENVIRONMENT === 'sandbox') || (ASAAS_API_KEY && (ASAAS_API_KEY.includes('hmlg') || ASAAS_API_KEY.includes('sandbox')));
-    const primaryAsaasUrl = isSandbox ? 'https://sandbox.asaas.com/api/v3' : 'https://www.asaas.com/api/v3';
-    const fallbackAsaasUrl = isSandbox ? 'https://www.asaas.com/api/v3' : 'https://sandbox.asaas.com/api/v3';
+    const ASAAS_URL = 'https://www.asaas.com/api/v3';
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-    // Função auxiliar para consultar o Asaas com fallback de ambiente
+    // Função auxiliar para consultar a API de Produção do Asaas
     const fetchAsaasPayment = async (urlPath: string) => {
       if (!ASAAS_API_KEY) return null;
       try {
-        let res = await fetch(`${primaryAsaasUrl}${urlPath}`, {
+        const res = await fetch(`${ASAAS_URL}${urlPath}`, {
           headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
         });
-        if (!res.ok && (res.status === 401 || res.status === 404)) {
-          res = await fetch(`${fallbackAsaasUrl}${urlPath}`, {
-            headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
-          });
-        }
         if (res.ok) return await res.json();
       } catch (err) {
-        console.warn("Aviso ao consultar Asaas API:", err);
+        console.warn("Aviso ao consultar Asaas API Produção:", err);
       }
       return null;
     };

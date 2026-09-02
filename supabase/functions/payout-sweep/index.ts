@@ -43,11 +43,7 @@ serve(async (req) => {
     const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')
     if (!ASAAS_API_KEY) throw new Error('ASAAS_API_KEY não configurada nos Supabase Secrets')
 
-    const ASAAS_ENV = Deno.env.get('ASAAS_ENVIRONMENT') || 'production'
-    const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg')
-    const ASAAS_URL = isSandbox
-      ? 'https://sandbox.asaas.com/api/v3'
-      : 'https://www.asaas.com/api/v3'
+    const ASAAS_URL = 'https://www.asaas.com/api/v3'
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

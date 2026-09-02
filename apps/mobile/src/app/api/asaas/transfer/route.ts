@@ -57,11 +57,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const ASAAS_ENV = process.env.ASAAS_ENVIRONMENT || 'production';
-    const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg');
-    const ASAAS_URL = isSandbox
-      ? 'https://sandbox.asaas.com/api/v3'
-      : 'https://www.asaas.com/api/v3';
+    const ASAAS_URL = 'https://www.asaas.com/api/v3';
 
     // Limpa a chave Pix ou WalletId
     const cleanPixKey = String(pixKey).trim();
@@ -99,7 +95,7 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log(`Iniciando transferência Pix no Asaas (${isSandbox ? 'SANDBOX' : 'PRODUÇÃO'}):`, transferBody);
+    console.log(`Iniciando transferência Pix no Asaas (PRODUÇÃO):`, transferBody);
 
     const res = await fetch(`${ASAAS_URL}/transfers`, {
       method: 'POST',

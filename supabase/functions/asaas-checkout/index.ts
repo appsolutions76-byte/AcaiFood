@@ -19,13 +19,8 @@ serve(async (req) => {
       throw new Error('ASAAS_API_KEY não configurada nas variáveis de ambiente do Supabase Secrets');
     }
 
-    const ASAAS_ENV = Deno.env.get('ASAAS_ENVIRONMENT') || 'production';
-    const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg');
-    const ASAAS_URL = isSandbox 
-      ? 'https://sandbox.asaas.com/api/v3' 
-      : 'https://www.asaas.com/api/v3';
-
-    console.log(`Iniciando checkout no Asaas (${isSandbox ? 'SANDBOX' : 'PRODUÇÃO'}):`, { orderId, value });
+    const ASAAS_URL = 'https://www.asaas.com/api/v3';
+    console.log(`Iniciando checkout no Asaas (PRODUÇÃO):`, { orderId, value });
 
     // 1. Criar ou buscar cliente no Asaas
     let customerId = '';

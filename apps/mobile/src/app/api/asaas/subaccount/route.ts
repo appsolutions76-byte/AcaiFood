@@ -38,11 +38,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const ASAAS_ENV = process.env.ASAAS_ENVIRONMENT || 'production';
-    const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg');
-    const ASAAS_URL = isSandbox
-      ? 'https://sandbox.asaas.com/api/v3'
-      : 'https://www.asaas.com/api/v3';
+    const ASAAS_URL = 'https://www.asaas.com/api/v3';
 
     // Limpar e formatar dados
     const cleanCpfCnpj = String(cpfCnpj).replace(/\D/g, '');
@@ -132,7 +128,7 @@ export async function POST(request: Request) {
       success: true,
       walletId,
       accountId,
-      isSandbox
+      isSandbox: false
     });
 
   } catch (error: any) {
@@ -158,11 +154,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'ASAAS_API_KEY não configurada no ambiente' }, { status: 400 });
     }
 
-    const ASAAS_ENV = process.env.ASAAS_ENVIRONMENT || 'production';
-    const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg');
-    const ASAAS_URL = isSandbox
-      ? 'https://sandbox.asaas.com/api/v3'
-      : 'https://www.asaas.com/api/v3';
+    const ASAAS_URL = 'https://www.asaas.com/api/v3';
 
     let accountId = accountIdParam || '';
 

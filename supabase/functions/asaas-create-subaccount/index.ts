@@ -36,13 +36,8 @@ serve(async (req) => {
       throw new Error('ASAAS_API_KEY não configurada nos Supabase Secrets')
     }
 
-    const ASAAS_ENV = Deno.env.get('ASAAS_ENVIRONMENT') || 'production'
-    const isSandbox = ASAAS_ENV === 'sandbox' || ASAAS_API_KEY.includes('hmlg')
-    const ASAAS_URL = isSandbox
-      ? 'https://sandbox.asaas.com/api/v3'
-      : 'https://www.asaas.com/api/v3'
-
-    console.log(`Criando sub-conta Asaas (${isSandbox ? 'SANDBOX' : 'PRODUÇÃO'}) para: ${name} (${role})`)
+    const ASAAS_URL = 'https://www.asaas.com/api/v3'
+    console.log(`Criando sub-conta Asaas (PRODUÇÃO) para: ${name} (${role})`)
 
     // Limpa e prepara dados
     const cleanCpfCnpj = String(cpfCnpj).replace(/\D/g, '')
