@@ -3,11 +3,11 @@ import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey } from '@/lib/asaasConfig';
 
 export async function POST(request: Request) {
-  const auth = await authorizeRequest(request, ['admin', 'loja', 'cliente']);
+  const auth = await authorizeRequest(request, ['admin', 'loja', 'cliente', 'fornecedor', 'motorista']);
   if (!auth.authorized) return unauthorizedResponse(auth.error);
   try {
     const body = await request.json();
-    const { orderId, paymentId, description, reason } = body;
+    const { orderId, paymentId, description, reason, value } = body;
 
     if (!orderId && !paymentId) {
       return NextResponse.json(
@@ -77,15 +77,16 @@ export async function POST(request: Request) {
     if (asaasPaymentId) {
       console.log(`Solicitando estorno no Asaas para a cobrança ${asaasPaymentId}...`);
 
+      const refundBodyPayload: any = { description: cancelReasonText };
+      if (value && Number(value) > 0) refundBodyPayload.value = Number(value);
+
       const refundRes = await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}/refund`, {
         method: 'POST',
         headers: {
           'access_token': ASAAS_API_KEY,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          description: cancelReasonText
-        })
+        body: JSON.stringify(refundBodyPayload)
       });
 
       const refundData = await refundRes.json();

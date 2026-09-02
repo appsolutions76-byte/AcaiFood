@@ -2045,6 +2045,7 @@ export const useAppStore = create<AppState>()(
                   body: JSON.stringify({ 
                     orderId: orderId,
                     paymentId: paymentIdToUse,
+                    value: targetOrder?.valor || (targetOrder as any)?.totalValue,
                     reason: reasonStr || 'Cancelamento solicitado pelo usuário antes do PIN'
                   })
                 }).then(r => r.json()).then(data => {
