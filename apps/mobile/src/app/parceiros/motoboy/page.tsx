@@ -101,7 +101,8 @@ export default function MotoboyDashboard() {
   const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
 
   const corridasDisponiveis = (store.orders || []).filter(o => {
-    const isReady = (o.status === 'pronto' || o.status === 'preparo' || o.status === 'pendente' || (o.status as string) === 'PAID' || (o.status as string) === 'READY' || (o.status as string) === 'PREPARING' || (o.status as string) === 'SEARCHING_OPERATOR') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
+    // Motoboy só vê a corrida após a loja preparar e clicar em "Chamar Moto" (status pronto / READY / SEARCHING_OPERATOR)
+    const isReady = (o.status === 'pronto' || (o.status as string) === 'READY' || (o.status as string) === 'SEARCHING_OPERATOR') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
     if (!isReady) return false;
     return true;
   });

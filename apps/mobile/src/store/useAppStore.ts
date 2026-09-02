@@ -1999,25 +1999,29 @@ export const useAppStore = create<AppState>()(
          if (Object.keys(updates).length > 0) {
             if (action === 'validar_pin') updates.provided_pin = pinStr;
             
-            if (newDbStatus && action !== 'validar_pin' && action !== 'aceitar_motorista') {
-              supabase.rpc('transition_order_status', {
-                p_order_id: orderId,
-                p_to_status: newDbStatus,
-                p_actor_id: currentUser.id,
-                p_actor_role: currentUser.role ? String(currentUser.role).toUpperCase() : 'USER',
-                p_reason: reasonStr || 'Transição efetuada pelo app'
-              }).then(async ({ data: trData, error: trErr }) => {
-                if (trErr || (trData && !trData.success)) {
-                  console.warn("RPC transition notice:", trErr || trData?.error);
-                  await supabase.from('orders').update(updates).eq('id', orderId);
-                }
-                get().fetchOrders(currentUser.id, true);
-              });
-            } else {
-              supabase.from('orders').update(updates).eq('id', orderId).then(() => {
-                get().fetchOrders(currentUser.id, true);
-              });
+            // 1. Sempre persiste os campos específicos (como picked_up_at, delivered_at, ready_at) no Supabase
+            try {
+              await supabase.from('orders').update(updates).eq('id', orderId);
+            } catch (upErr) {
+              console.warn("Aviso ao atualizar pedido no Supabase:", upErr);
             }
+
+            // 2. Se houver transição de status na máquina de estados, executa a RPC
+            if (newDbStatus && action !== 'validar_pin' && action !== 'aceitar_motorista') {
+              try {
+                await supabase.rpc('transition_order_status', {
+                  p_order_id: orderId,
+                  p_to_status: newDbStatus,
+                  p_actor_id: currentUser.id,
+                  p_actor_role: currentUser.role ? String(currentUser.role).toUpperCase() : 'USER',
+                  p_reason: reasonStr || 'Transição efetuada pelo app'
+                });
+              } catch (rpcErr) {
+                console.warn("RPC transition notice:", rpcErr);
+              }
+            }
+
+            await get().fetchOrders(currentUser.id, true);
 
             if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
                const currentOrder = get().orders.find(o => o.id === orderId) || state.orders.find(o => o.id === orderId);
@@ -2289,7 +2293,7 @@ export const useAppStore = create<AppState>()(
                     const sfUser = allUsers[dbOrder.seller_storefront_id] || allUsers[dbOrder.storefront?.partner_id];
                     const resolvedStoreName = dbOrder.storefront?.store_name || sfUser?.name || localOrder?.lojaNome || 'Ponto do açaí';
                     const resolvedStoreAddress = sfUser?.endereco || sfUser?.address || localOrder?.lojaEndereco;
-
+                    
                     return {
                        ...(localOrder || {}),
                        id: dbOrder.id,
@@ -2297,11 +2301,11 @@ export const useAppStore = create<AppState>()(
                        title: localOrder?.title || `Pedido de ${resolvedStoreName}`,
                        status: finalStatus as any,
                        createdAt: dbOrder.created_at,
-                       pickedUpAt: dbOrder.picked_up_at,
-                       deliveredAt: dbOrder.delivered_at,
-                       acceptedAt: dbOrder.accepted_at,
-                       readyAt: dbOrder.ready_at,
-                       receivedAt: dbOrder.received_at,
+                       pickedUpAt: dbOrder.picked_up_at || localOrder?.pickedUpAt,
+                       deliveredAt: dbOrder.delivered_at || localOrder?.deliveredAt,
+                       acceptedAt: dbOrder.accepted_at || localOrder?.acceptedAt,
+                       readyAt: dbOrder.ready_at || localOrder?.readyAt,
+                       receivedAt: dbOrder.received_at || localOrder?.receivedAt,
                        deliveryPin: dbOrder.delivery_pin,
                        deliveryAddress: dbOrder.delivery_address || localOrder?.deliveryAddress || dbOrder.buyer?.endereco || dbOrder.buyer?.address || allUsers[dbOrder.buyer_id]?.endereco,
                        deliveryLat: dbOrder.delivery_lat || localOrder?.deliveryLat,
