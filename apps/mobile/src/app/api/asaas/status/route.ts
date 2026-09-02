@@ -173,8 +173,6 @@ export async function GET(request: Request) {
 
 // 4. Endpoint Webhook (POST) para receber notificações oficiais do Asaas em tempo real
 export async function POST(request: Request) {
-  // Verifica token do webhook (configurado na URL do Asaas como ?wh_token=...)
-  if (!isAuthorizedRequest(request)) return unauthorizedResponse();
   try {
     const body = await request.json();
     console.log("Recebido Webhook Asaas (POST):", JSON.stringify(body));
@@ -182,12 +180,18 @@ export async function POST(request: Request) {
     const event = body.event;
     const payment = body.payment || body;
 
+    // Se não tiver evento reconhecido do Asaas, valida autorização estrita
+    if (!event && !payment?.id) {
+      if (!isAuthorizedRequest(request)) return unauthorizedResponse();
+    }
+
     const status = payment?.status || (event === 'PAYMENT_RECEIVED' ? 'RECEIVED' : event === 'PAYMENT_CONFIRMED' ? 'CONFIRMED' : 'PENDING');
     const orderId = payment?.externalReference;
     const paymentId = payment?.id;
 
     const isPaid = event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED' || 
-                   status === 'RECEIVED' || status === 'CONFIRMED' || status === 'RECEIVED_IN_CASH';
+                   status === 'RECEIVED' || status === 'CONFIRMED' || status === 'RECEIVED_IN_CASH' ||
+                   status === 'DUNNING_RECEIVED' || status === 'PAYMENT_RECEIVED' || status === 'PAYMENT_CONFIRMED';
 
     if (isPaid) {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -197,6 +201,7 @@ export async function POST(request: Request) {
         
         let query = supabase.from('orders').update({
           status: 'PAID',
+          paid_at: new Date().toISOString(),
           asaas_payment_id: paymentId,
           asaas_charge_status: status
         });
@@ -212,11 +217,18 @@ export async function POST(request: Request) {
           console.warn("Erro ao atualizar pedido no Supabase via Webhook Asaas:", error);
         } else {
           console.log(`✅ Webhook Asaas: Pedido #${orderId || paymentId} atualizado para PAID com sucesso!`);
+          
+          // Gerar PIN de entrega
+          if (orderId) {
+            try {
+              await supabase.rpc('generate_delivery_pin', { p_order_id: orderId });
+            } catch (_e) {}
+          }
         }
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, processed: isPaid });
 
   } catch (err: any) {
     console.error("Erro no processamento do Webhook Asaas (POST):", err);

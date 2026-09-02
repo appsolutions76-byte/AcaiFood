@@ -218,13 +218,40 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
               </a>
             )}
 
-            <div className="flex flex-col items-center justify-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 font-medium py-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl mb-3 animate-pulse">
+            <div className="flex flex-col items-center justify-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 font-medium py-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl mb-3">
               <div className="flex items-center gap-2">
-                <span>⚡</span>
+                <span className="animate-spin text-purple-600">⚡</span>
                 <span className="font-bold">Aguardando confirmação do Asaas...</span>
               </div>
               <span className="text-[11px] text-zinc-500 dark:text-zinc-400">O pedido será liberado automaticamente para a loja assim que o Pix for recebido.</span>
             </div>
+
+            <button
+              onClick={async () => {
+                if (!data.orderId) return;
+                try {
+                  const query = data.paymentId 
+                    ? `paymentId=${data.paymentId}&orderId=${data.orderId}` 
+                    : `orderId=${data.orderId}`;
+                  const res = await fetch(`/api/asaas/status?${query}`);
+                  if (res.ok) {
+                    const resData = await res.json();
+                    if (resData.isPaid) {
+                      setIsPaid(true);
+                      await acaoPedido(data.orderId, 'confirmar_pagamento');
+                      if (onPaymentConfirmed) onPaymentConfirmed();
+                    } else {
+                      alert('O Asaas ainda está processando seu Pix. Aguarde mais alguns segundos ou verifique seu app do banco.');
+                    }
+                  }
+                } catch (e) {
+                  console.warn("Erro ao checar status manualmente:", e);
+                }
+              }}
+              className="w-full mb-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5 active:scale-95"
+            >
+              🔄 Já realizei o Pix / Verificar Agora
+            </button>
 
             <button
               onClick={onClose}
