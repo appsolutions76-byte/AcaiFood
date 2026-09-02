@@ -1131,6 +1131,20 @@ function AdminDashboardContent() {
                       </div>
                   </div>
               </div>
+
+              <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>🔑</span> Chave de API Asaas (Produção)</h4>
+                  <p className="text-xs text-zinc-500 mb-3">Chave de Produção oficial ($aact_prod_...). Usada para confirmação instantânea de Pix no Asaas e Estorno automático.</p>
+                  <div className="grid grid-cols-1 gap-2">
+                      <input 
+                        type="password" 
+                        placeholder="$aact_prod_..." 
+                        value={(localRates as any)?.asaas_api_key || ''} 
+                        onChange={e => setLocalRates({...localRates, asaas_api_key: e.target.value} as any)} 
+                        className="w-full border border-purple-300 dark:border-zinc-700 bg-purple-50/50 dark:bg-zinc-900 rounded-lg p-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                  </div>
+              </div>
             </div>
 
             <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">

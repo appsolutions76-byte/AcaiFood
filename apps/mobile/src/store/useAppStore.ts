@@ -961,7 +961,8 @@ export const useAppStore = create<AppState>()(
                    transporter_payment_mode: data.transporter_payment_mode || state.rates.transporter_payment_mode || 'KM',
                    transporter_fixed_fee: data.transporter_fixed_fee ?? state.rates.transporter_fixed_fee ?? 150.00,
                    ecopoint_payment_mode: data.ecopoint_payment_mode || state.rates.ecopoint_payment_mode || 'KM',
-                   ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? state.rates.ecopoint_fixed_fee ?? 50.00
+                   ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? state.rates.ecopoint_fixed_fee ?? 50.00,
+                   asaas_api_key: data.asaas_api_key || (state.rates as any).asaas_api_key || ''
                } }));
            }
          } catch (error) {
@@ -1003,7 +1004,8 @@ export const useAppStore = create<AppState>()(
              transporter_payment_mode: mergedRates.transporter_payment_mode,
              transporter_fixed_fee: mergedRates.transporter_fixed_fee,
              ecopoint_payment_mode: mergedRates.ecopoint_payment_mode,
-             ecopoint_fixed_fee: mergedRates.ecopoint_fixed_fee
+             ecopoint_fixed_fee: mergedRates.ecopoint_fixed_fee,
+             asaas_api_key: (mergedRates as any).asaas_api_key
          };
          
          // Remove undefined values
