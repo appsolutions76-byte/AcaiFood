@@ -1,4 +1,4 @@
-﻿import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 let cachedAsaasKey: string | null = null;
 
@@ -20,6 +20,17 @@ export async function getAsaasApiKey(): Promise<string> {
   if (supabaseUrl && serviceKey) {
     try {
       const supabase = createClient(supabaseUrl, serviceKey);
+      
+      // 3.1 Tentar ler via RPC segura
+      try {
+        const { data: rpcKey } = await supabase.rpc('get_platform_asaas_key');
+        if (rpcKey) {
+          cachedAsaasKey = rpcKey;
+          return rpcKey;
+        }
+      } catch (_rpcErr) {}
+
+      // 3.2 Tentar ler via platform_settings
       const { data } = await supabase
         .from('platform_settings')
         .select('asaas_api_key')
