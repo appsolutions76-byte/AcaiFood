@@ -9,25 +9,36 @@ export async function GET(request: Request) {
     const orderId = searchParams.get('orderId');
 
     const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
-    const ASAAS_ENV = process.env.ASAAS_ENVIRONMENT || 'production';
-    const isSandbox = ASAAS_ENV === 'sandbox' || (ASAAS_API_KEY && ASAAS_API_KEY.includes('hmlg'));
-    const ASAAS_URL = isSandbox
-      ? 'https://sandbox.asaas.com/api/v3'
-      : 'https://www.asaas.com/api/v3';
+    const isSandbox = (process.env.ASAAS_ENVIRONMENT === 'sandbox') || (ASAAS_API_KEY && (ASAAS_API_KEY.includes('hmlg') || ASAAS_API_KEY.includes('sandbox')));
+    const primaryAsaasUrl = isSandbox ? 'https://sandbox.asaas.com/api/v3' : 'https://www.asaas.com/api/v3';
+    const fallbackAsaasUrl = isSandbox ? 'https://www.asaas.com/api/v3' : 'https://sandbox.asaas.com/api/v3';
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
+    // Função auxiliar para consultar o Asaas com fallback de ambiente
+    const fetchAsaasPayment = async (urlPath: string) => {
+      if (!ASAAS_API_KEY) return null;
+      try {
+        let res = await fetch(`${primaryAsaasUrl}${urlPath}`, {
+          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+        });
+        if (!res.ok && (res.status === 401 || res.status === 404)) {
+          res = await fetch(`${fallbackAsaasUrl}${urlPath}`, {
+            headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+          });
+        }
+        if (res.ok) return await res.json();
+      } catch (err) {
+        console.warn("Aviso ao consultar Asaas API:", err);
+      }
+      return null;
+    };
+
     // 1. Se forneceu paymentId, consulta diretamente no Asaas pelo ID da cobrança
     if (paymentId && ASAAS_API_KEY) {
-      const res = await fetch(`${ASAAS_URL}/payments/${paymentId}`, {
-        headers: {
-          'access_token': ASAAS_API_KEY,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await fetchAsaasPayment(`/payments/${paymentId}`);
+      if (data && data.id) {
         const status = data.status;
         const isPaid = status === 'RECEIVED' || status === 'CONFIRMED' || status === 'RECEIVED_IN_CASH' || status === 'DUNNING_RECEIVED' || status === 'PAYMENT_RECEIVED' || status === 'PAYMENT_CONFIRMED';
 
@@ -38,6 +49,7 @@ export async function GET(request: Request) {
               const supabase = createClient(supabaseUrl, supabaseKey);
               await supabase.from('orders').update({
                 status: 'PAID',
+                paid_at: new Date().toISOString(),
                 asaas_payment_id: data.id,
                 asaas_charge_status: status
               }).eq('id', targetOrderId);
@@ -59,47 +71,37 @@ export async function GET(request: Request) {
 
     // 2. Se forneceu orderId e chave Asaas existe, consulta no Asaas por externalReference (ID do pedido)
     if (orderId && ASAAS_API_KEY) {
-      try {
-        const resList = await fetch(`${ASAAS_URL}/payments?externalReference=${encodeURIComponent(orderId)}`, {
-          headers: {
-            'access_token': ASAAS_API_KEY,
-            'Content-Type': 'application/json'
-          }
-        });
+      const listData = await fetchAsaasPayment(`/payments?externalReference=${encodeURIComponent(orderId)}`);
+      if (listData && listData.data && listData.data.length > 0) {
+        const payments = listData.data;
+        const paidPayment = payments.find((p: any) => 
+          p.status === 'RECEIVED' || 
+          p.status === 'CONFIRMED' || 
+          p.status === 'RECEIVED_IN_CASH' || 
+          p.status === 'DUNNING_RECEIVED' || 
+          p.status === 'PAYMENT_RECEIVED' || 
+          p.status === 'PAYMENT_CONFIRMED'
+        ) || payments[0];
 
-        if (resList.ok) {
-          const listData = await resList.json();
-          const payments = listData.data || [];
-          const paidPayment = payments.find((p: any) => 
-            p.status === 'RECEIVED' || 
-            p.status === 'CONFIRMED' || 
-            p.status === 'RECEIVED_IN_CASH' || 
-            p.status === 'DUNNING_RECEIVED' || 
-            p.status === 'PAYMENT_RECEIVED' || 
-            p.status === 'PAYMENT_CONFIRMED'
-          );
+        const isPaid = paidPayment.status === 'RECEIVED' || paidPayment.status === 'CONFIRMED' || paidPayment.status === 'RECEIVED_IN_CASH' || paidPayment.status === 'DUNNING_RECEIVED' || paidPayment.status === 'PAYMENT_RECEIVED' || paidPayment.status === 'PAYMENT_CONFIRMED';
 
-          if (paidPayment) {
-            if (supabaseUrl && supabaseKey) {
-              const supabase = createClient(supabaseUrl, supabaseKey);
-              await supabase.from('orders').update({
-                status: 'PAID',
-                asaas_payment_id: paidPayment.id,
-                asaas_charge_status: paidPayment.status
-              }).eq('id', orderId);
-            }
-
-            return NextResponse.json({
-              paymentId: paidPayment.id,
-              orderId: orderId,
-              status: paidPayment.status,
-              isPaid: true,
-              value: paidPayment.value
-            });
-          }
+        if (isPaid && supabaseUrl && supabaseKey) {
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          await supabase.from('orders').update({
+            status: 'PAID',
+            paid_at: new Date().toISOString(),
+            asaas_payment_id: paidPayment.id,
+            asaas_charge_status: paidPayment.status
+          }).eq('id', orderId);
         }
-      } catch (errAsaas) {
-        console.warn("Erro ao buscar cobrança por externalReference no Asaas:", errAsaas);
+
+        return NextResponse.json({
+          paymentId: paidPayment.id,
+          orderId: orderId,
+          status: paidPayment.status,
+          isPaid,
+          value: paidPayment.value
+        });
       }
     }
 

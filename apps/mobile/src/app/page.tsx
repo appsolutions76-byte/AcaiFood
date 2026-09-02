@@ -327,6 +327,7 @@ export default function StorefrontPage() {
             copiaECola: res.pixCopiaECola,
             invoiceUrl: res.invoiceUrl,
             orderId: res.orderId,
+            paymentId: res.paymentId,
             isSandbox: res.isSandbox,
             totalValue: res.totalValue || finalCartTotal
          });

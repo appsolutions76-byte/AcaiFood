@@ -393,6 +393,7 @@ export default function BatedeiraDashboard() {
                           copiaECola: o.pixCopiaECola,
                           invoiceUrl: o.invoiceUrl,
                           orderId: o.id,
+                          paymentId: (o as any).asaasPaymentId || (o as any).paymentId || (o as any).asaas_payment_id,
                           totalValue: totalToPay
                         });
                       }}
@@ -801,6 +802,7 @@ export default function BatedeiraDashboard() {
                                           copiaECola: res.pixCopiaECola,
                                           invoiceUrl: res.invoiceUrl,
                                           orderId: res.orderId,
+                                          paymentId: res.paymentId,
                                           isSandbox: res.isSandbox,
                                           totalValue: res.totalValue || freteColeta
                                        });
@@ -1076,6 +1078,7 @@ export default function BatedeiraDashboard() {
                                               copiaECola: res.pixCopiaECola,
                                               invoiceUrl: res.invoiceUrl,
                                               orderId: res.orderId,
+                                              paymentId: res.paymentId,
                                               isSandbox: res.isSandbox,
                                               totalValue: res.totalValue || totalToPay
                                            });
