@@ -28,20 +28,31 @@ export async function POST(request: Request) {
       );
     }
 
-    // Se houver orderId, valida a existência do pedido e status de conclusão
+    // Se houver orderId, valida a existência do pedido, status de conclusão e se já foi pago (Anti-Duplicidade)
     if (orderId) {
       try {
         const supabase = getSupabaseAdmin();
         const { data: dbOrder } = await supabase
           .from('orders')
-          .select('id, status, buyer_id, driver_id, seller_storefront_id')
+          .select('id, status, buyer_id, driver_id, seller_storefront_id, payout_seller_done, payout_driver_done')
           .eq('id', orderId)
           .maybeSingle();
 
         if (dbOrder) {
-          const validStatuses = ['RECEIVED', 'COMPLETED', 'entregue', 'DELIVERED', 'DELIVERING', 'pronto', 'preparo'];
-          if (!validStatuses.includes(dbOrder.status)) {
-            console.warn(`[API Asaas] Aviso: Pedido ${orderId} está com status ${dbOrder.status}`);
+          const role = auth.profile?.role || auth.user?.user_metadata?.role;
+          const isDriverRole = role === 'motorista' || role === 'courier' || role === 'motoboy' || role === 'caminhao' || role === 'driver';
+
+          if (isDriverRole && dbOrder.payout_driver_done) {
+            return NextResponse.json(
+              { error: 'Este frete já foi liquidado e transferido via PIX anteriormente.' },
+              { status: 400 }
+            );
+          }
+          if (!isDriverRole && dbOrder.payout_seller_done) {
+            return NextResponse.json(
+              { error: 'Este repasse de venda já foi liquidado e transferido via PIX anteriormente.' },
+              { status: 400 }
+            );
           }
         }
       } catch (ordErr) {

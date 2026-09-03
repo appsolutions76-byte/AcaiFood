@@ -80,6 +80,8 @@ export default function FornecedorDashboard() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
   const [myStorefrontId, setMyStorefrontId] = useState<string | null>(null);
 
@@ -152,7 +154,10 @@ export default function FornecedorDashboard() {
       return;
     }
 
+    if (isWithdrawing) return;
+
     if (confirm(`Deseja transferir R$ ${valorSaque.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
+      setIsWithdrawing(true);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const authHeaders: any = { 
@@ -193,6 +198,8 @@ export default function FornecedorDashboard() {
         }
       } catch (_err) {
         alert("Erro de conexão ao solicitar transferência PIX.");
+      } finally {
+        setIsWithdrawing(false);
       }
     }
   };
@@ -408,9 +415,10 @@ export default function FornecedorDashboard() {
                 {(vendasHoje > 0 || emProcessamento > 0) && (
                   <button 
                     onClick={handleResgatarPix}
-                    className="mt-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1"
+                    disabled={isWithdrawing}
+                    className={`mt-2 text-xs ${isWithdrawing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1`}
                   >
-                    💸 Saque Instantâneo Pix ({formatMoney(vendasHoje > 0 ? vendasHoje : emProcessamento)})
+                    {isWithdrawing ? '⏳ Transferindo...' : `💸 Saque Instantâneo Pix (${formatMoney(vendasHoje > 0 ? vendasHoje : emProcessamento)})`}
                   </button>
                 )}
             </div>
@@ -663,6 +671,8 @@ export default function FornecedorDashboard() {
                                 alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber o repasse.");
                                 return;
                               }
+                              if (payingOrderId === o.id) return;
+                              setPayingOrderId(o.id);
                               try {
                                 const res = await fetch('/api/asaas/transfer', {
                                   method: 'POST',
@@ -685,11 +695,14 @@ export default function FornecedorDashboard() {
                                 }
                               } catch(_err) {
                                 alert("Erro ao solicitar repasse Pix.");
+                              } finally {
+                                setPayingOrderId(null);
                               }
                             }}
-                            className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded transition shadow-sm"
+                            disabled={payingOrderId === o.id}
+                            className={`text-[10px] ${payingOrderId === o.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-2 py-1 rounded transition shadow-sm`}
                           >
-                            💸 Resgatar Repasse (R$ {(o.taxas?.repasse || getSupplierRepasse(o)).toFixed(2)})
+                            {payingOrderId === o.id ? '⏳ Transferindo...' : `💸 Resgatar Repasse (R$ ${(o.taxas?.repasse || getSupplierRepasse(o)).toFixed(2)})`}
                           </button>
                         )}
                       </div>

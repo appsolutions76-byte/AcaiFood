@@ -299,21 +299,11 @@ function AdminDashboardContent() {
       });
       const data = await res.json();
       if (data.success || data.transferId) {
-        const field = u.role === 'motorista' ? 'payout_driver_done' : 'payout_seller_done';
+        const isDriver = u.role === 'motorista' || u.role === 'courier' || u.role === 'motoboy' || u.role === 'caminhao' || u.role === 'driver';
+        const roleType = isDriver ? 'driver' : 'seller';
         const orderIds = pendingOrders.map(o => o.id);
 
-        for (const orderId of orderIds) {
-          await supabase.from('orders').update({ [field]: true }).eq('id', orderId);
-        }
-
-        // Atualização atômica imediata da Store Zustand para zerar na tela sem atrasos
-        useAppStore.setState(prev => ({
-          orders: prev.orders.map(ord => 
-            orderIds.includes(ord.id) 
-              ? { ...ord, [u.role === 'motorista' ? 'payoutDriverDone' : 'payoutSellerDone']: true, [field]: true } 
-              : ord
-          )
-        }));
+        await store.markPayoutDone(orderIds, roleType);
 
         showToast(`✅ Pix de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} enviado para ${u.name}! (ID Asaas: ${data.transferId})`);
         if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
@@ -390,18 +380,11 @@ function AdminDashboardContent() {
         });
         const data = await res.json();
         if (data.success || data.transferId) {
-          const field = u.role === 'motorista' ? 'payout_driver_done' : 'payout_seller_done';
+          const isDriver = u.role === 'motorista' || u.role === 'courier' || u.role === 'motoboy' || u.role === 'caminhao' || u.role === 'driver';
+          const roleType = isDriver ? 'driver' : 'seller';
           const orderIds = p.pendingOrders.map(o => o.id);
-          for (const orderId of orderIds) {
-            await supabase.from('orders').update({ [field]: true }).eq('id', orderId);
-          }
-          useAppStore.setState(prev => ({
-            orders: prev.orders.map(ord => 
-              orderIds.includes(ord.id) 
-                ? { ...ord, [u.role === 'motorista' ? 'payoutDriverDone' : 'payoutSellerDone']: true, [field]: true } 
-                : ord
-            )
-          }));
+
+          await store.markPayoutDone(orderIds, roleType);
           successCount++;
         } else {
           failCount++;

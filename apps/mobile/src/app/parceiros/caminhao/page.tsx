@@ -25,6 +25,8 @@ export default function CaminhaoDashboard() {
   const [activeTab, setActiveTab] = useState('radar');
   const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
 
   const mounted = useSyncExternalStore(
@@ -149,7 +151,10 @@ export default function CaminhaoDashboard() {
       return;
     }
 
+    if (isWithdrawing) return;
+
     if (confirm(`Deseja transferir R$ ${ganhosHoje.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
+      setIsWithdrawing(true);
       try {
         const pendingOrders = minhasCorridas.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone);
         const pendingOrderIds = pendingOrders.map((o: any) => o.id);
@@ -181,6 +186,8 @@ export default function CaminhaoDashboard() {
         }
       } catch (_err) {
         alert("Erro de conexão ao solicitar transferência PIX.");
+      } finally {
+        setIsWithdrawing(false);
       }
     }
   };
@@ -273,9 +280,10 @@ export default function CaminhaoDashboard() {
                 {ganhosHoje > 0 && (
                   <button 
                     onClick={handleResgatarPix}
-                    className="mt-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1"
+                    disabled={isWithdrawing}
+                    className={`mt-2 text-xs ${isWithdrawing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1`}
                   >
-                    💸 Saque Instantâneo Pix
+                    {isWithdrawing ? '⏳ Transferindo...' : '💸 Saque Instantâneo Pix'}
                   </button>
                 )}
                 <button onClick={handleToggleStatus} className={`mt-2 px-3 py-1 rounded-lg text-xs font-bold transition border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
@@ -534,6 +542,8 @@ export default function CaminhaoDashboard() {
                                         alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber o frete.");
                                         return;
                                       }
+                                      if (payingOrderId === o.id) return;
+                                      setPayingOrderId(o.id);
                                       try {
                                         const res = await fetch('/api/asaas/transfer', {
                                           method: 'POST',
@@ -556,11 +566,14 @@ export default function CaminhaoDashboard() {
                                         }
                                       } catch(err) {
                                         alert("Erro ao solicitar repasse Pix.");
+                                      } finally {
+                                        setPayingOrderId(null);
                                       }
                                     }}
-                                    className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded transition shadow-sm"
+                                    disabled={payingOrderId === o.id}
+                                    className={`text-[10px] ${payingOrderId === o.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-2 py-1 rounded transition shadow-sm`}
                                   >
-                                    💸 Resgatar Repasse (R$ {getDriverFee(o).toFixed(2)})
+                                    {payingOrderId === o.id ? '⏳ Transferindo...' : `💸 Resgatar Repasse (R$ ${getDriverFee(o).toFixed(2)})`}
                                   </button>
                                 )}
                             </div>
