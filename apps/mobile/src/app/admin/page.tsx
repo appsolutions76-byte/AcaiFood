@@ -126,29 +126,55 @@ function AdminDashboardContent() {
 
   const handleResetBalance = async (balanceId: 'historical' | 'monthly' | 'daily') => {
     const label = balanceId === 'historical' ? 'Acumulado Histórico' : balanceId === 'monthly' ? 'Balanço Mensal' : 'Balanço Diário';
-    if (!confirm(`Tem certeza de que deseja ZERAR o ${label} financeiro?\n\n(Esta ação não afetará os pedidos concluídos, apenas redefinirá os totalizadores na tela)`)) return;
+    if (!confirm(`Tem certeza de que deseja ZERAR o ${label} financeiro?\n\n(Esta ação redefinirá os totalizadores na tela e no banco de dados para R$ 0,00)`)) return;
 
     try {
-      const { error } = await supabase.from('admin_balances').update({
-        total_orders: 0,
-        total_volume: 0,
-        app_revenue: 0,
-        fornecedores_bruto: 0,
-        fornecedores_liquido: 0,
-        batedeiras_bruto: 0,
-        batedeiras_liquido: 0,
-        motoristas_bruto: 0,
-        motoristas_liquido: 0,
-        caminhoes_bruto: 0,
-        caminhoes_liquido: 0
-      }).eq('id', balanceId);
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 
+        'Content-Type': 'application/json',
+        'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_2026_@AppS76_seguro'
+      };
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
 
-      if (error) {
-        alert("Erro ao zerar acumulador no banco de dados: " + error.message);
-      } else {
-        showToast(`✅ ${label} zerado com sucesso!`);
-        fetchAdminBalances();
+      const res = await fetch('/api/admin/reset-balances', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ period: balanceId })
+      });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        alert("Erro ao zerar acumulador no banco de dados: " + (data.error || 'Falha de comunicação'));
+        return;
       }
+
+      setAdminBalances(prev => {
+        const base = prev || {
+          historical: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 },
+          monthly: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 },
+          daily: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 }
+        };
+        return {
+          ...base,
+          [balanceId]: {
+            total_orders: 0,
+            total_volume: 0,
+            app_revenue: 0,
+            fornecedores_bruto: 0,
+            fornecedores_liquido: 0,
+            batedeiras_bruto: 0,
+            batedeiras_liquido: 0,
+            motoristas_bruto: 0,
+            motoristas_liquido: 0,
+            caminhoes_bruto: 0,
+            caminhoes_liquido: 0,
+            updated_at: new Date().toISOString()
+          }
+        };
+      });
+
+      showToast(`✅ ${label} zerado com sucesso!`);
+      await fetchAdminBalances();
     } catch (err: any) {
       alert("Erro ao atualizar: " + err.message);
     }
@@ -635,30 +661,32 @@ function AdminDashboardContent() {
   };
 
   const localStats = getFilteredLocalStats(selectedPeriod);
+  const b = adminBalances?.[selectedPeriod];
+  const hasDbBalances = !!b && (b.updated_at !== undefined || b.total_orders !== undefined);
 
-  const currentOrdersCount = (adminBalances?.[selectedPeriod]?.total_orders && adminBalances[selectedPeriod].total_orders > 0) ? adminBalances[selectedPeriod].total_orders : localStats.ordersCount;
-  const currentConcluidosCount = (adminBalances?.[selectedPeriod]?.total_orders && adminBalances[selectedPeriod].total_orders > 0) ? adminBalances[selectedPeriod].total_orders : localStats.concluidosCount;
-  const currentAppRevenue = (adminBalances?.[selectedPeriod]?.app_revenue && adminBalances[selectedPeriod].app_revenue > 0) ? adminBalances[selectedPeriod].app_revenue : localStats.appRev;
-  const currentVolumeTotal = (adminBalances?.[selectedPeriod]?.total_volume && adminBalances[selectedPeriod].total_volume > 0) ? adminBalances[selectedPeriod].total_volume : localStats.volume;
+  const currentOrdersCount = hasDbBalances ? (b.total_orders ?? 0) : localStats.ordersCount;
+  const currentConcluidosCount = hasDbBalances ? (b.total_orders ?? 0) : localStats.concluidosCount;
+  const currentAppRevenue = hasDbBalances ? (b.app_revenue ?? 0) : localStats.appRev;
+  const currentVolumeTotal = hasDbBalances ? (b.total_volume ?? 0) : localStats.volume;
   
-  const currentFornBruto = (adminBalances?.[selectedPeriod]?.fornecedores_bruto && adminBalances[selectedPeriod].fornecedores_bruto > 0) ? adminBalances[selectedPeriod].fornecedores_bruto : localStats.fornBruto;
-  const currentFornLiq = (adminBalances?.[selectedPeriod]?.fornecedores_liquido && adminBalances[selectedPeriod].fornecedores_liquido > 0) ? adminBalances[selectedPeriod].fornecedores_liquido : localStats.fornLiq;
+  const currentFornBruto = hasDbBalances ? (b.fornecedores_bruto ?? 0) : localStats.fornBruto;
+  const currentFornLiq = hasDbBalances ? (b.fornecedores_liquido ?? 0) : localStats.fornLiq;
   
-  const currentBatBruto = (adminBalances?.[selectedPeriod]?.batedeiras_bruto && adminBalances[selectedPeriod].batedeiras_bruto > 0) ? adminBalances[selectedPeriod].batedeiras_bruto : localStats.batBruto;
-  const currentBatLiq = (adminBalances?.[selectedPeriod]?.batedeiras_liquido && adminBalances[selectedPeriod].batedeiras_liquido > 0) ? adminBalances[selectedPeriod].batedeiras_liquido : localStats.batLiq;
+  const currentBatBruto = hasDbBalances ? (b.batedeiras_bruto ?? 0) : localStats.batBruto;
+  const currentBatLiq = hasDbBalances ? (b.batedeiras_liquido ?? 0) : localStats.batLiq;
   
-  const currentMotBruto = (adminBalances?.[selectedPeriod]?.motoristas_bruto && adminBalances[selectedPeriod].motoristas_bruto > 0) ? adminBalances[selectedPeriod].motoristas_bruto : localStats.motBruto;
-  const currentMotLiq = (adminBalances?.[selectedPeriod]?.motoristas_liquido && adminBalances[selectedPeriod].motoristas_liquido > 0) ? adminBalances[selectedPeriod].motoristas_liquido : localStats.motLiq;
+  const currentMotBruto = hasDbBalances ? (b.motoristas_bruto ?? 0) : localStats.motBruto;
+  const currentMotLiq = hasDbBalances ? (b.motoristas_liquido ?? 0) : localStats.motLiq;
   
-  const currentCamBruto = (adminBalances?.[selectedPeriod]?.caminhoes_bruto && adminBalances[selectedPeriod].caminhoes_bruto > 0) ? adminBalances[selectedPeriod].caminhoes_bruto : localStats.camBruto;
-  const currentCamLiq = (adminBalances?.[selectedPeriod]?.caminhoes_liquido && adminBalances[selectedPeriod].caminhoes_liquido > 0) ? adminBalances[selectedPeriod].caminhoes_liquido : localStats.camLiq;
+  const currentCamBruto = hasDbBalances ? (b.caminhoes_bruto ?? 0) : localStats.camBruto;
+  const currentCamLiq = hasDbBalances ? (b.caminhoes_liquido ?? 0) : localStats.camLiq;
 
   const totais = {
       pedidos: currentOrdersCount,
-      aceitos: selectedPeriod === 'historical' ? orders.filter(o => o && ['preparo', 'em_rota', 'entregue'].includes(o.status)).length : localStats.aceitos,
-      cancelados: selectedPeriod === 'historical' ? orders.filter(o => o && o.status === 'cancelado').length : localStats.cancelados,
+      aceitos: hasDbBalances && b.total_orders === 0 ? 0 : (selectedPeriod === 'historical' ? orders.filter(o => o && ['preparo', 'em_rota', 'entregue'].includes(o.status)).length : localStats.aceitos),
+      cancelados: hasDbBalances && b.total_orders === 0 ? 0 : (selectedPeriod === 'historical' ? orders.filter(o => o && o.status === 'cancelado').length : localStats.cancelados),
       concluidos: currentConcluidosCount,
-      emRota: orders.filter(o => o && o.status === 'em_rota').length,
+      emRota: hasDbBalances && b.total_orders === 0 ? 0 : orders.filter(o => o && o.status === 'em_rota').length,
       receitaVendas: currentAppRevenue,
       receitaFretes: 0
   };
