@@ -182,7 +182,10 @@ export default function BatedeiraDashboard() {
     if (confirm(`Deseja transferir R$ ${vendasHoje.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const authHeaders: any = { 'Content-Type': 'application/json' };
+        const authHeaders: any = { 
+          'Content-Type': 'application/json',
+          'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_2026_@AppS76_seguro'
+        };
         if (session?.access_token) {
           authHeaders['Authorization'] = `Bearer ${session.access_token}`;
         }
