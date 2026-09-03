@@ -254,7 +254,8 @@ const lastFetchOrdersTime: Record<string, number> = {};
 async function getAuthHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_2026_@AppS76_seguro'
   };
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -2388,35 +2389,21 @@ export const useAppStore = create<AppState>()(
                method: 'POST',
                headers
             });
+            const data = await res.json();
 
-            if (!res.ok) {
-               await supabase.from('order_messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-               await supabase.from('order_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-               await supabase.from('splits').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-               const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-               await supabase.from('admin_balances').update({
-                  total_orders: 0, total_volume: 0, app_revenue: 0,
-                  fornecedores_bruto: 0, fornecedores_liquido: 0,
-                  batedeiras_bruto: 0, batedeiras_liquido: 0,
-                  motoristas_bruto: 0, motoristas_liquido: 0,
-                  caminhoes_bruto: 0, caminhoes_liquido: 0,
-                  updated_at: new Date().toISOString()
-               }).in('id', ['historical', 'monthly', 'daily']);
-
-               if (error) {
-                  console.error("Error clearing orders from DB:", error);
-                  alert("Erro ao limpar pedidos no banco de dados: " + error.message);
-                  return;
-               }
+            if (!res.ok || data.error) {
+               throw new Error(data.error || 'Falha ao executar limpeza no servidor');
             }
-            alert("✅ Sistema 100% resetado com sucesso! Todos os pedidos, balanços e registros foram zerados para recomeçar.");
          } catch(e: any) {
             console.error("Exception clearing orders:", e);
-            alert("Erro ao limpar dados no banco de dados.");
+            throw e;
          }
 
-         set(() => ({ orders: [], orderCounter: 1, cart: { storeId: null, items: [] } }));
-         await get().fetchOrders(get().currentUser?.id || '', true);
+         set(() => ({ 
+           orders: [], 
+           orderCounter: 1, 
+           cart: { storeId: null, items: [] } 
+         }));
       },
 
       setClearPassword: (pwd) => set({ clearPassword: pwd }),
