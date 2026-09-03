@@ -155,6 +155,9 @@ export default function MotoboyDashboard() {
 
     if (confirm(`Deseja transferir R$ ${ganhosHoje.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
       try {
+        const pendingOrders = minhasCorridasAll.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone);
+        const pendingOrderIds = pendingOrders.map((o: any) => o.id);
+
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
@@ -167,7 +170,11 @@ export default function MotoboyDashboard() {
         const data = await res.json();
         if (res.ok && (data.success || data.transferId)) {
           incrementDailyWithdrawalCount(currentUser.id);
+          if (pendingOrderIds.length > 0) {
+            await store.markPayoutDone(pendingOrderIds, 'driver');
+          }
           alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${ganhosHoje.toFixed(2)} já está a caminho do seu banco (${targetKey}).`);
+          store.fetchOrders(currentUser.id, true);
         } else {
           const msg = data.error || '';
           if (msg.includes('Saldo insuficiente')) {
@@ -551,11 +558,9 @@ export default function MotoboyDashboard() {
                                           })
                                         });
                                         const data = await res.json();
-                                        if (data.success) {
+                                        if (data.success || data.transferId) {
                                           alert(`✅ Repasse Pix de R$ ${valorEntrega.toFixed(2)} enviado para sua conta!`);
-                                          o.payoutDriverDone = true;
-                                          const { supabase } = await import('@/lib/supabase');
-                                          await supabase.from('orders').update({ payout_driver_done: true }).eq('id', o.id);
+                                          await store.markPayoutDone([o.id], 'driver');
                                           store.fetchOrders(currentUser.id, true);
                                         } else {
                                           const msg = data.error || '';

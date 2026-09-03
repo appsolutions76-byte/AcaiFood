@@ -218,8 +218,8 @@ interface AppState {
   fetchAllUsers: (force?: boolean) => Promise<void>;
   setupRealtime: (userId: string) => void;
   clearData: () => Promise<void>;
-  setClearPassword: (pwd: string) => void;
   updateUserPixKey: (userId: string, pixKey: string) => Promise<void>;
+  markPayoutDone: (orderIds: string[], role: 'seller' | 'driver') => Promise<void>;
 
   // Cidades
   fetchCities: () => Promise<void>;
@@ -2417,7 +2417,7 @@ export const useAppStore = create<AppState>()(
          }));
       },
 
-      setClearPassword: (pwd) => set({ clearPassword: pwd }),
+      setClearPassword: (pwd: string) => set({ clearPassword: pwd }),
 
       updateUserPixKey: async (userId: string, pixKey: string) => {
          const cleanPix = pixKey.trim();
@@ -2438,6 +2438,29 @@ export const useAppStore = create<AppState>()(
          } catch (e: any) {
             console.error("Erro ao atualizar Chave Pix:", e);
             throw e;
+         }
+      },
+
+      markPayoutDone: async (orderIds: string[], role: 'seller' | 'driver') => {
+         if (!orderIds || orderIds.length === 0) return;
+         set((state) => ({
+            orders: state.orders.map((o) => {
+               if (orderIds.includes(o.id)) {
+                  return {
+                     ...o,
+                     payoutSellerDone: role === 'seller' ? true : o.payoutSellerDone,
+                     payoutDriverDone: role === 'driver' ? true : o.payoutDriverDone
+                  };
+               }
+               return o;
+            })
+         }));
+
+         try {
+            const updatePayload: any = role === 'seller' ? { payout_seller_done: true } : { payout_driver_done: true };
+            await supabase.from('orders').update(updatePayload).in('id', orderIds);
+         } catch (e) {
+            console.warn("Aviso ao atualizar payout_done no Supabase:", e);
          }
       },
 

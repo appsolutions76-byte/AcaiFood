@@ -163,6 +163,9 @@ export default function FornecedorDashboard() {
           authHeaders['Authorization'] = `Bearer ${session.access_token}`;
         }
 
+        const pendingOrders = meusPedidos.filter(o => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2B' && !o.payoutSellerDone);
+        const pendingOrderIds = pendingOrders.map(o => o.id);
+
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
           headers: authHeaders,
@@ -175,7 +178,11 @@ export default function FornecedorDashboard() {
         const data = await res.json();
         if (res.ok && (data.success || data.transferId)) {
           incrementDailyWithdrawalCount(currentUser.id);
+          if (pendingOrderIds.length > 0) {
+            await store.markPayoutDone(pendingOrderIds, 'seller');
+          }
           alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${valorSaque.toFixed(2)} já está a caminho do seu banco (${targetKey}).`);
+          store.fetchOrders(currentUser.id, true);
         } else {
           const msg = data.error || '';
           if (msg.includes('Saldo insuficiente')) {
@@ -668,11 +675,9 @@ export default function FornecedorDashboard() {
                                   })
                                 });
                                 const data = await res.json();
-                                if (data.success) {
+                                if (data.success || data.transferId) {
                                   alert(`✅ Repasse Pix de R$ ${valorRepasse.toFixed(2)} transferido com sucesso!`);
-                                  o.payoutSellerDone = true;
-                                  const { supabase } = await import('@/lib/supabase');
-                                  await supabase.from('orders').update({ payout_seller_done: true }).eq('id', o.id);
+                                  await store.markPayoutDone([o.id], 'seller');
                                   store.fetchOrders(currentUser.id, true);
                                 } else {
                                   const msg = data.error || '';
