@@ -91,21 +91,41 @@ export async function POST(request: Request) {
     if (isWalletId || !!walletId) {
       transferBody.walletId = targetKey;
     } else {
-      // É Chave Pix do Banco Central
-      if (cleanDigits.length === 11 && !targetKey.includes('@') && !targetKey.includes('-')) {
-        transferBody.pixAddressKey = cleanDigits;
-        transferBody.pixAddressKeyType = 'CPF';
-      } else if (cleanDigits.length === 14 && !targetKey.includes('@')) {
-        transferBody.pixAddressKey = cleanDigits;
-        transferBody.pixAddressKeyType = 'CNPJ';
-      } else if (targetKey.includes('@')) {
+      // É Chave Pix do Banco Central (CPF, CNPJ, EMAIL, PHONE, EVP)
+      // 1. E-mail (contém @)
+      if (targetKey.includes('@')) {
         transferBody.pixAddressKey = targetKey.toLowerCase();
         transferBody.pixAddressKeyType = 'EMAIL';
-      } else if (cleanDigits.length >= 10 && cleanDigits.length <= 13 && (targetKey.startsWith('+') || targetKey.startsWith('(') || /^\d+$/.test(targetKey))) {
-        transferBody.pixAddressKey = targetKey.startsWith('+') ? targetKey : `+55${cleanDigits}`;
+      }
+      // 2. Chave Aleatória EVP (formato UUID xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+      else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetKey)) {
+        transferBody.pixAddressKey = targetKey.toLowerCase();
+        transferBody.pixAddressKeyType = 'EVP';
+      }
+      // 3. CNPJ (14 dígitos numéricos)
+      else if (cleanDigits.length === 14) {
+        transferBody.pixAddressKey = cleanDigits;
+        transferBody.pixAddressKeyType = 'CNPJ';
+      }
+      // 4. Celular / Telefone formatado com código internacional (+55...) ou parênteses de DDD
+      else if (targetKey.startsWith('+') || /^\(\d{2}\)/.test(targetKey) || (cleanDigits.length >= 10 && cleanDigits.length <= 11 && (targetKey.includes('(') || targetKey.includes('-') || targetKey.includes(' ')))) {
+        const phoneFormatted = cleanDigits.startsWith('55') && cleanDigits.length >= 12 ? `+${cleanDigits}` : `+55${cleanDigits}`;
+        transferBody.pixAddressKey = phoneFormatted;
         transferBody.pixAddressKeyType = 'PHONE';
-      } else {
-        // Chave Aleatória EVP
+      }
+      // 5. CPF (11 dígitos numéricos)
+      else if (cleanDigits.length === 11) {
+        transferBody.pixAddressKey = cleanDigits;
+        transferBody.pixAddressKeyType = 'CPF';
+      }
+      // 6. Telefone celular puro com 10 ou 12-13 dígitos
+      else if (cleanDigits.length === 10 || cleanDigits.length === 12 || cleanDigits.length === 13) {
+        const phoneFormatted = cleanDigits.startsWith('55') ? `+${cleanDigits}` : `+55${cleanDigits}`;
+        transferBody.pixAddressKey = phoneFormatted;
+        transferBody.pixAddressKeyType = 'PHONE';
+      }
+      // 7. Chave Aleatória EVP genérica
+      else {
         transferBody.pixAddressKey = targetKey;
         transferBody.pixAddressKeyType = 'EVP';
       }
