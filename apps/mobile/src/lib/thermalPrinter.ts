@@ -105,21 +105,42 @@ export function generateSingleTicketHTML(
     itemsSubtotal = Number(order.valor);
   }
 
-  // 2. Taxa de Entrega / Frete
-  const deliveryFee = Number(
-    order.taxas?.entregaCliente ?? 
-    (order as any).total_delivery_fee ?? 
+  // 2. Taxa de Entrega / Frete & Subsídio da Loja
+  const totalDeliveryFee = Number(
     order.taxas?.entregaTotal ?? 
-    (order.taxas as any)?.frete ?? 
+    (order as any).total_delivery_fee ?? 
+    order.taxas?.entregaCliente ?? 
     0
   );
 
-  // 3. Soma Total do Pedido: Produtos + Frete
-  const totalCalculado = itemsSubtotal + deliveryFee;
-  const totalFinal = (order as any).total_amount ? Number((order as any).total_amount) : totalCalculado;
+  let clientDeliveryFee = order.taxas?.entregaCliente !== undefined
+    ? Number(order.taxas.entregaCliente)
+    : totalDeliveryFee;
+
+  let storeDeliveryFee = order.taxas?.entregaLoja !== undefined
+    ? Number(order.taxas.entregaLoja)
+    : 0;
+
+  // Se o total_amount for fornecido e demonstrar que o cliente pagou menos que (items + frete total), calcula o subsidio
+  if ((order as any).total_amount && Number((order as any).total_amount) > 0) {
+    const diff = Number((order as any).total_amount) - itemsSubtotal;
+    if (diff >= 0 && diff <= totalDeliveryFee) {
+      clientDeliveryFee = diff;
+      storeDeliveryFee = Number((totalDeliveryFee - clientDeliveryFee).toFixed(2));
+    }
+  } else if (storeDeliveryFee === 0 && totalDeliveryFee > clientDeliveryFee) {
+    storeDeliveryFee = Number((totalDeliveryFee - clientDeliveryFee).toFixed(2));
+  }
+
+  // 3. Soma Total do Pedido cobrada do Comprador
+  const totalFinal = (order as any).total_amount 
+    ? Number((order as any).total_amount) 
+    : (itemsSubtotal + clientDeliveryFee);
 
   const formattedItemsSubtotal = itemsSubtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const formattedDeliveryFee = deliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formattedTotalDelivery = totalDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formattedStoreDelivery = storeDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formattedClientDelivery = clientDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formattedTotal = totalFinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   // Resolução do comprador (Loja/Batedeira no B2B, Cliente no B2C)
   const buyerUser = clientUser 
@@ -260,10 +281,25 @@ export function generateSingleTicketHTML(
           <span>Subtotal Produtos:</span>
           <span style="font-weight: bold;">${formattedItemsSubtotal}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '12px'}; margin-bottom: 2px;">
-          <span>Frete / Entrega:</span>
-          <span style="font-weight: bold;">${deliveryFee > 0 ? formattedDeliveryFee : 'R$ 0,00 (Grátis)'}</span>
-        </div>
+        ${storeDeliveryFee > 0 ? `
+          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '11px'}; color: #222; margin-bottom: 1px;">
+            <span>Frete Total da Entrega:</span>
+            <span>${formattedTotalDelivery}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '11px'}; color: #000; font-weight: bold; margin-bottom: 2px;">
+            <span>Desc. Loja / Pago p/ Loja:</span>
+            <span>- ${formattedStoreDelivery}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '12px'}; margin-bottom: 2px;">
+            <span>Frete Pago p/ Cliente:</span>
+            <span style="font-weight: bold;">${clientDeliveryFee > 0 ? formattedClientDelivery : 'R$ 0,00 (Grátis)'}</span>
+          </div>
+        ` : `
+          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '12px'}; margin-bottom: 2px;">
+            <span>Frete / Entrega:</span>
+            <span style="font-weight: bold;">${clientDeliveryFee > 0 ? formattedClientDelivery : 'R$ 0,00 (Grátis)'}</span>
+          </div>
+        `}
         <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58 ? '12px' : '14px'}; border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px;">
           <span>TOTAL DO PEDIDO:</span>
           <span>${formattedTotal}</span>

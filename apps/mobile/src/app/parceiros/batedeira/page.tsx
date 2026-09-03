@@ -81,31 +81,42 @@ export default function BatedeiraDashboard() {
   }, [currentUser?.id]);
 
   useEffect(() => {
-    if (!mounted || !printerConfig.enabled || printerConfig.printMode !== 'auto' || !currentUser) return;
+    const activeConfig = getPrinterConfig();
+    if (!mounted || !activeConfig.enabled || activeConfig.printMode !== 'auto' || !currentUser) return;
+
+    const mySfIds = ((currentUser as any)?.storefronts || []).map((s: any) => s.id);
 
     for (const order of store.orders) {
-      if (order.lojaId !== currentUser.id || order.type !== 'B2C') continue;
+      if (order.type !== 'B2C') continue;
+      const isMyStore = order.lojaId === currentUser.id || 
+                        order.origemId === currentUser.id || 
+                        (order as any).seller_storefront_id === currentUser.id || 
+                        (order as any).sellerStorefrontId === currentUser.id || 
+                        (mySfIds.length > 0 && (mySfIds.includes(order.lojaId) || mySfIds.includes(order.origemId) || mySfIds.includes((order as any).seller_storefront_id))) ||
+                        ((order.lojaNome || '').toLowerCase().trim() === (currentUser.name || '').toLowerCase().trim());
+
+      if (!isMyStore) continue;
 
       // 1. Cupom de Preparo (ao aceitar o pedido para preparar)
       if (order.status === 'preparo' && !printedOrdersRef.current.has(`${order.id}-PREPARO`)) {
         printedOrdersRef.current.add(`${order.id}-PREPARO`);
-        printOrderTicket(order, currentUser.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, 'PREPARO', 'SYSTEM');
+        printOrderTicket(order, currentUser.name || order.lojaNome || 'Loja/Batedeira AçaíFood', activeConfig, store.users, null, 'PREPARO', 'SYSTEM');
       }
 
       // 2. Cupom de Entrega (ao clicar em Chamar Moto)
       if (order.status === 'pronto' && !printedOrdersRef.current.has(`${order.id}-ENTREGA`)) {
         printedOrdersRef.current.add(`${order.id}-ENTREGA`);
-        printOrderTicket(order, currentUser.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, 'ENTREGA', 'SYSTEM');
+        printOrderTicket(order, currentUser.name || order.lojaNome || 'Loja/Batedeira AçaíFood', activeConfig, store.users, null, 'ENTREGA', 'SYSTEM');
       }
 
       // 3. Cupom de Entrega Atualizado (reimpresso automaticamente assim que o motoboy aceitar a corrida)
       if (order.status === 'em_rota' && order.motoristaId && !printedOrdersRef.current.has(`${order.id}-ENTREGA_ATUALIZADO`)) {
         printedOrdersRef.current.add(`${order.id}-ENTREGA_ATUALIZADO`);
-        printOrderTicket(order, currentUser.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, 'ENTREGA_ATUALIZADO', 'SYSTEM');
+        printOrderTicket(order, currentUser.name || order.lojaNome || 'Loja/Batedeira AçaíFood', activeConfig, store.users, null, 'ENTREGA_ATUALIZADO', 'SYSTEM');
       }
     }
 
-  }, [store.orders, currentUser?.id, currentUser?.name, printerConfig, mounted, store.users]);
+  }, [store.orders, currentUser, printerConfig, mounted, store.users]);
 
 
   const isPaused = currentUser?.status === 'paused';
@@ -530,8 +541,9 @@ export default function BatedeiraDashboard() {
                     }} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
                     <button onClick={() => {
                       store.acaoPedido(o.id, 'aceitar_loja');
-                      if (printerConfig.enabled && printerConfig.printMode === 'auto') {
-                        printOrderTicket(o, currentUser?.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, 'PREPARO', 'SYSTEM');
+                      const pConfig = getPrinterConfig();
+                      if (pConfig.enabled && pConfig.printMode === 'auto') {
+                        printOrderTicket(o, currentUser?.name || o.lojaNome || 'Loja/Batedeira AçaíFood', pConfig, store.users, null, 'PREPARO', 'SYSTEM');
                       }
                     }} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
                 </div>

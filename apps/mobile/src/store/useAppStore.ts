@@ -2362,17 +2362,26 @@ export const useAppStore = create<AppState>()(
                    valor: dbOrder.products_subtotal,
                    motoristaId: dbOrder.driver_id,
                    confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
-                   taxas: localOrder?.taxas || {
-                      entregaTotal: finalEntregaTotal,
-                      entregaMotorista: finalEntregaMotorista,
-                      entregaCliente: deliveryTotal, // Need to provide this since it is required by the TS type
-                      entregaLoja: 0,
-                      entregaFornecedor: 0,
-                      plataformaVenda: finalPlatVenda,
-                      plataformaEntrega: finalPlatEntrega,
-                      plataformaTotal: platformTotal,
-                      repasse: finalRepasse
-                   }
+                   taxas: localOrder?.taxas || (() => {
+                      const lojaSubsidy = sfUser?.subsidy ?? (allUsers[resolvedPartnerId]?.subsidy ?? 0);
+                      let calculatedEntregaLoja = 0;
+                      let calculatedEntregaCliente = deliveryTotal;
+                      if (dbOrder.order_type === 'B2C' && lojaSubsidy > 0) {
+                        calculatedEntregaLoja = Number((deliveryTotal * (lojaSubsidy / 100)).toFixed(2));
+                        calculatedEntregaCliente = Number((deliveryTotal - calculatedEntregaLoja).toFixed(2));
+                      }
+                      return {
+                         entregaTotal: finalEntregaTotal,
+                         entregaMotorista: finalEntregaMotorista,
+                         entregaCliente: calculatedEntregaCliente,
+                         entregaLoja: calculatedEntregaLoja,
+                         entregaFornecedor: 0,
+                         plataformaVenda: finalPlatVenda,
+                         plataformaEntrega: finalPlatEntrega,
+                         plataformaTotal: platformTotal,
+                         repasse: finalRepasse
+                      };
+                   })()
                 };
              });
 

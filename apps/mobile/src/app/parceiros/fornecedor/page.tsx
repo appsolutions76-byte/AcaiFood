@@ -727,8 +727,9 @@ export default function FornecedorDashboard() {
                           }} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
                           <button onClick={() => {
                             store.acaoPedido(o.id, 'aceitar_forn');
-                            if (printerConfig.enabled && printerConfig.printMode === 'auto') {
-                              printOrderTicket(o, currentUser?.name || 'Fornecedor AçaíFood', printerConfig, store.users, null, 'PREPARO', 'SYSTEM');
+                            const pConfig = getPrinterConfig();
+                            if (pConfig.enabled && pConfig.printMode === 'auto') {
+                              printOrderTicket(o, currentUser?.name || o.lojaNome || 'Fornecedor AçaíFood', pConfig, store.users, null, 'PREPARO', 'SYSTEM');
                             }
                           }} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Separar</button>
                       </div>
