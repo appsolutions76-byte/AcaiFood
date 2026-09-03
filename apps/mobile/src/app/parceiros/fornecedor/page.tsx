@@ -117,6 +117,21 @@ export default function FornecedorDashboard() {
       setNewProductPrice('');
   };
 
+  const handleEditProduct = (p: any) => {
+    if (!currentUser) return;
+    const newName = prompt("Editar nome do produto extra B2B:", p.name);
+    if (newName === null) return;
+    const newPriceStr = prompt("Editar preço do produto extra (R$):", p.price.toString());
+    if (newPriceStr === null) return;
+    const newPrice = parseFloat(newPriceStr.replace(',', '.'));
+    if (isNaN(newPrice) || newPrice < 0) {
+      alert("Preço inválido.");
+      return;
+    }
+    const cleanName = newName.trim() || p.name;
+    store.updateProduct(currentUser.id, p.id, { name: cleanName, price: newPrice });
+  };
+
   const linkAsaasAccount = store.linkAsaasAccount;
 
   const handleLinkAsaas = async () => {
@@ -489,7 +504,10 @@ export default function FornecedorDashboard() {
                               <p className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">{p.name}</p>
                               <p className="text-emerald-600 text-xs font-bold">R$ {p.price.toFixed(2)}</p>
                           </div>
-                          <button onClick={() => store.removeProduct(currentUser.id, p.id)} className="text-red-500 hover:text-red-700 p-2 bg-red-50 rounded-lg transition">🗑️</button>
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => handleEditProduct(p)} className="text-emerald-600 hover:text-emerald-800 p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg transition" title="Editar produto extra">✏️</button>
+                            <button onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} className="text-red-500 hover:text-red-700 p-2 bg-red-50 dark:bg-red-900/30 rounded-lg transition" title="Excluir produto extra">🗑️</button>
+                          </div>
                       </li>
                   ))}
                   {(!currentUser?.products || currentUser.products.length === 0) && (

@@ -213,6 +213,7 @@ interface AppState {
   updateCpfCnpj: (cpfCnpj: string) => Promise<void>;
   updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => Promise<void>;
   addProduct: (userId: string, product: Product) => Promise<void>;
+  updateProduct: (userId: string, productId: string, updatedData: { name: string; price: number }) => Promise<void>;
   removeProduct: (userId: string, productId: string) => Promise<void>;
   fetchOrders: (userId: string, force?: boolean) => Promise<void>;
   fetchAllUsers: (force?: boolean) => Promise<void>;
@@ -1327,6 +1328,33 @@ export const useAppStore = create<AppState>()(
           if (error) console.error("Erro ao remover produto do Supabase:", error);
         } catch (dbErr) {
           console.error("Exceção ao remover produto no banco:", dbErr);
+        }
+        await get().fetchAllUsers(true);
+        await get().fetchLojas(true);
+      },
+
+      updateProduct: async (userId, productId, updatedData) => {
+        set((state) => {
+          const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
+          if (!user || !user.products) return state;
+          const updatedProducts = user.products.map(p => p.id === productId ? { ...p, ...updatedData } : p);
+          const updatedUser = { ...user, products: updatedProducts };
+          const isCurrent = state.currentUser?.id === userId;
+          return { 
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
+
+        // Sync with DB
+        try {
+          const { error: prodErr } = await supabase.from('products').update({
+            name: updatedData.name,
+            price: updatedData.price
+          }).eq('id', productId);
+          if (prodErr) console.error("Erro ao atualizar produto no Supabase:", prodErr);
+        } catch (dbErr) {
+          console.error("Exceção ao atualizar produto no banco:", dbErr);
         }
         await get().fetchAllUsers(true);
         await get().fetchLojas(true);
