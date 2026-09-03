@@ -86,19 +86,41 @@ export function generateSingleTicketHTML(
         minute: '2-digit',
       });
 
-  const formattedTotal = order.valor
-    ? order.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-    : 'R$ 0,00';
-
-  const itemsList = order.items && order.items.length > 0
-    ? order.items
-    : order.title
-    ? [{ id: '1', name: `${order.title} (x${order.quantity || 1})`, quantity: order.quantity || 1, price: order.valor }]
-    : [{ id: '1', name: 'Pedido Açaí', quantity: 1, price: order.valor }];
-
   const isB2B = order.type === 'B2B';
   const isColeta = order.type === 'COLETA';
 
+  // Itens e Cálculo do Subtotal dos Produtos
+  const itemsList = order.items && order.items.length > 0
+    ? order.items
+    : order.title
+    ? [{ id: '1', name: `${order.title} (x${order.quantity || 1})`, quantity: order.quantity || 1, price: (order as any).products_subtotal ? (Number((order as any).products_subtotal) / (order.quantity || 1)) : (order.valor || 0) }]
+    : [{ id: '1', name: 'Pedido Açaí', quantity: 1, price: (order as any).products_subtotal || order.valor || 0 }];
+
+  // 1. Subtotal exato dos itens
+  let itemsSubtotal = itemsList.reduce((acc, i) => acc + (Number(i.price || 0) * Number(i.quantity || 1)), 0);
+  if (itemsSubtotal === 0 && (order as any).products_subtotal) {
+    itemsSubtotal = Number((order as any).products_subtotal);
+  }
+  if (itemsSubtotal === 0 && order.valor) {
+    itemsSubtotal = Number(order.valor);
+  }
+
+  // 2. Taxa de Entrega / Frete
+  const deliveryFee = Number(
+    order.taxas?.entregaCliente ?? 
+    (order as any).total_delivery_fee ?? 
+    order.taxas?.entregaTotal ?? 
+    (order.taxas as any)?.frete ?? 
+    0
+  );
+
+  // 3. Soma Total do Pedido: Produtos + Frete
+  const totalCalculado = itemsSubtotal + deliveryFee;
+  const totalFinal = (order as any).total_amount ? Number((order as any).total_amount) : totalCalculado;
+
+  const formattedItemsSubtotal = itemsSubtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formattedDeliveryFee = deliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formattedTotal = totalFinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   // Resolução do comprador (Loja/Batedeira no B2B, Cliente no B2C)
   const buyerUser = clientUser 
     || (allUsers && (order as any).buyerId ? allUsers[(order as any).buyerId] : undefined)
@@ -149,9 +171,6 @@ export function generateSingleTicketHTML(
       ? `*** VIA 1: PREPARO / COZINHA (${ticketHeaderTitle.replace(/\*/g, '').trim()}) ***`
       : `*** VIA 2: ENTREGA / MOTOBOY (${ticketHeaderTitle.replace(/\*/g, '').trim()}) ***`;
   }
-
-  const deliveryFee = order.taxas?.entregaCliente || order.taxas?.entregaTotal || 0;
-  const itemsSubtotal = itemsList.reduce((acc, i) => acc + (i.price * i.quantity), 0);
 
   return `
     <div class="thermal-ticket" style="
@@ -237,22 +256,20 @@ export function generateSingleTicketHTML(
 
       <!-- TOTAL & PAGAMENTO -->
       <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        ${deliveryFee > 0 ? `
-          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '11px'};">
-            <span>Subtotal dos Itens:</span>
-            <span>R$ ${itemsSubtotal.toFixed(2)}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '11px'};">
-            <span>Taxa de Entrega:</span>
-            <span>R$ ${deliveryFee.toFixed(2)}</span>
-          </div>
-        ` : ''}
-        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58 ? '12px' : '14px'}; margin-top: 4px;">
+        <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '12px'}; margin-bottom: 2px;">
+          <span>Subtotal Produtos:</span>
+          <span style="font-weight: bold;">${formattedItemsSubtotal}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '12px'}; margin-bottom: 2px;">
+          <span>Frete / Entrega:</span>
+          <span style="font-weight: bold;">${deliveryFee > 0 ? formattedDeliveryFee : 'R$ 0,00 (Grátis)'}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58 ? '12px' : '14px'}; border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px;">
           <span>TOTAL DO PEDIDO:</span>
           <span>${formattedTotal}</span>
         </div>
-        <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 3px; text-align: right; color: #000;">
-          💳 Forma de Pagamento: PIX (Já Confirmado)
+        <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 4px; text-align: right; color: #000;">
+          💳 Pagamento: PIX (Confirmado ✅)
         </div>
       </div>
 
