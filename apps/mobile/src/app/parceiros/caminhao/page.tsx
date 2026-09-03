@@ -110,6 +110,7 @@ export default function CaminhaoDashboard() {
   });
   const minhasCorridas = (store.orders || []).filter(o => o.motoristaId === currentUser.id);
   const ganhosHoje = minhasCorridas.filter(o => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc, curr) => acc + getDriverFee(curr), 0);
+  const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
 
   const isPaused = currentUser.status === 'paused';
   const handleToggleStatus = () => {
@@ -277,14 +278,19 @@ export default function CaminhaoDashboard() {
                 <p className="text-sm text-blue-300">Cofre Virtual (A Receber)</p>
                 <p className="text-2xl font-bold text-green-400">{formatMoney(ganhosHoje)}</p>
                 <p className="text-[10px] text-blue-300 mt-1">🗓️ Pix Automático: às {rates.payout_time || '22:00'}</p>
-                {ganhosHoje > 0 && (
+                {ganhosHoje > 0 && saquesHoje < 2 && (
                   <button 
                     onClick={handleResgatarPix}
                     disabled={isWithdrawing}
                     className={`mt-2 text-xs ${isWithdrawing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1`}
                   >
-                    {isWithdrawing ? '⏳ Transferindo...' : '💸 Saque Instantâneo Pix'}
+                    {isWithdrawing ? '⏳ Transferindo...' : `💸 Saque Instantâneo Pix (${saquesHoje + 1}/2)`}
                   </button>
+                )}
+                {saquesHoje >= 2 && ganhosHoje > 0 && (
+                  <p className="text-[10px] text-amber-300 mt-1.5 font-bold bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/60">
+                    ⚠️ Limite diário de 2 saques atingido (retorna amanhã)
+                  </p>
                 )}
                 <button onClick={handleToggleStatus} className={`mt-2 px-3 py-1 rounded-lg text-xs font-bold transition border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
                     {isPaused ? 'Offline 🚫' : 'Online ✅'}
@@ -526,55 +532,12 @@ export default function CaminhaoDashboard() {
                                 <p>✅ Frete Concluído</p>
                                 {o.payoutDriverDone ? (
                                   <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800/60 shadow-sm flex items-center gap-1">
-                                    ✅ Repasse Efetuado (R$ {getDriverFee(o).toFixed(2)})
+                                    ✅ Repasse Liquidado (R$ {getDriverFee(o).toFixed(2)})
                                   </span>
                                 ) : (
-                                  <button 
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-                                      const targetPixKey = (currentUser?.pixKey && !isRealUuid(currentUser.pixKey))
-                                         ? currentUser.pixKey
-                                         : (isRealUuid(currentUser?.asaasWalletId) ? currentUser.asaasWalletId : (currentUser?.cpfCnpj || currentUser?.asaasWalletId));
-                                      const valorEntrega = getDriverFee(o);
-                                      if (!targetPixKey) {
-                                        alert("Cadastre seu CPF, CNPJ ou Chave Pix em seu perfil para receber o frete.");
-                                        return;
-                                      }
-                                      if (payingOrderId === o.id) return;
-                                      setPayingOrderId(o.id);
-                                      try {
-                                        const res = await fetch('/api/asaas/transfer', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
-                                          body: JSON.stringify({
-                                            pixKey: targetPixKey,
-                                            value: valorEntrega,
-                                            description: `Repasse Frete B2B AçaíFood #${o.id.substring(0, 8)}`,
-                                            orderId: o.id
-                                          })
-                                        });
-                                        const data = await res.json();
-                                        if (data.success || data.transferId) {
-                                          alert(`✅ Repasse Pix de R$ ${valorEntrega.toFixed(2)} enviado para sua conta!`);
-                                          await store.markPayoutDone([o.id], 'driver');
-                                          store.fetchOrders(currentUser.id, true);
-                                        } else {
-                                          const msg = data.error || '';
-                                          alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
-                                        }
-                                      } catch(err) {
-                                        alert("Erro ao solicitar repasse Pix.");
-                                      } finally {
-                                        setPayingOrderId(null);
-                                      }
-                                    }}
-                                    disabled={payingOrderId === o.id}
-                                    className={`text-[10px] ${payingOrderId === o.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-2 py-1 rounded transition shadow-sm`}
-                                  >
-                                    {payingOrderId === o.id ? '⏳ Transferindo...' : `💸 Resgatar Repasse (R$ ${getDriverFee(o).toFixed(2)})`}
-                                  </button>
+                                  <span className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-bold px-2 py-1 rounded border border-blue-200 dark:border-blue-800/60 shadow-sm flex items-center gap-1">
+                                    ⏳ No Cofre Virtual (R$ {getDriverFee(o).toFixed(2)})
+                                  </span>
                                 )}
                             </div>
                         ) : null}

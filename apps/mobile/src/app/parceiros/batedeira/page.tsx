@@ -295,6 +295,7 @@ export default function BatedeiraDashboard() {
     return isMyStore;
   });
   const vendasHoje = meusPedidosAll.filter(o => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone).reduce((acc, curr) => acc + (curr.taxas?.repasse || 0), 0);
+  const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
   
   const batedeiraActiveOrders = meusPedidosAll.filter(o => 
     o.status !== 'aguardando_pagamento' && 
@@ -487,59 +488,12 @@ export default function BatedeiraDashboard() {
                   <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>
                   {o.payoutSellerDone ? (
                     <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800/60 shadow-sm flex items-center gap-1">
-                      ✅ Repasse Efetuado (R$ {o.taxas?.repasse?.toFixed(2)})
+                      ✅ Repasse Liquidado (R$ {o.taxas?.repasse?.toFixed(2)})
                     </span>
                   ) : (
-                    <button 
-                      type="button"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-                        let targetPixKey = currentUser.pixKey && !isRealUuid(currentUser.pixKey) ? currentUser.pixKey : (currentUser.cpfCnpj || currentUser.email);
-
-                        if (!targetPixKey || isRealUuid(targetPixKey)) {
-                          const inputPix = prompt("Informe a sua Chave PIX externa (CPF, Celular, E-mail ou Aleatória) para receber a transferência no seu banco:", currentUser.cpfCnpj || currentUser.email || "");
-                          if (inputPix && inputPix.trim()) {
-                            targetPixKey = inputPix.trim();
-                          } else {
-                            return;
-                          }
-                        }
-                        if (payingOrderId === o.id) return;
-                        setPayingOrderId(o.id);
-                        const valorRepasse = o.taxas?.repasse || 0;
-                        try {
-                          const res = await fetch('/api/asaas/transfer', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
-                            body: JSON.stringify({
-                              pixKey: targetPixKey,
-                              value: valorRepasse,
-                              description: `Repasse Venda AçaíFood #${o.id.substring(0, 8)}`,
-                              orderId: o.id
-                            })
-                          });
-                          const data = await res.json();
-                          if (data.success || data.transferId) {
-                            alert(`✅ Repasse Pix de R$ ${valorRepasse.toFixed(2)} transferido com sucesso!`);
-                            await store.markPayoutDone([o.id], 'seller');
-                            store.fetchOrders(currentUser.id, true);
-                          } else {
-                            const msg = data.error || '';
-                            alert(`Status do Repasse Asaas: ${msg || 'Não foi possível processar a transferência.'}`);
-                          }
-                        } catch(_err) {
-                          alert("Erro ao solicitar repasse Pix.");
-                        } finally {
-                          setPayingOrderId(null);
-                        }
-                      }}
-                      disabled={payingOrderId === o.id}
-                      className={`text-[10px] ${payingOrderId === o.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-2 py-1 rounded transition shadow-sm`}
-                    >
-                      {payingOrderId === o.id ? '⏳ Transferindo...' : `💸 Resgatar Repasse (R$ ${o.taxas?.repasse?.toFixed(2)})`}
-                    </button>
+                    <span className="text-[10px] bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 font-bold px-2 py-1 rounded border border-purple-200 dark:border-purple-800/60 shadow-sm flex items-center gap-1">
+                      ⏳ No Cofre Virtual (R$ {o.taxas?.repasse?.toFixed(2)})
+                    </span>
                   )}
                 </div>
               )}
@@ -748,14 +702,19 @@ export default function BatedeiraDashboard() {
                 <p className="text-xs text-purple-200">Cofre Virtual (A Receber)</p>
                 <p className="text-2xl font-black text-green-400">{formatMoney(vendasHoje)}</p>
                 <p className="text-[10px] text-purple-300 mt-1 font-bold">🗓️ Pix Automático: às {rates.payout_time || '22:00'}</p>
-                {vendasHoje > 0 && (
+                {vendasHoje > 0 && saquesHoje < 2 && (
                   <button 
                     onClick={handleResgatarPix}
                     disabled={isWithdrawing}
                     className={`mt-2 text-xs ${isWithdrawing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1`}
                   >
-                    {isWithdrawing ? '⏳ Transferindo...' : '💸 Saque Instantâneo Pix'}
+                    {isWithdrawing ? '⏳ Transferindo...' : `💸 Saque Instantâneo Pix (${saquesHoje + 1}/2)`}
                   </button>
+                )}
+                {saquesHoje >= 2 && vendasHoje > 0 && (
+                  <p className="text-[10px] text-amber-300 mt-1.5 font-bold bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/60">
+                    ⚠️ Limite diário de 2 saques atingido (retorna amanhã)
+                  </p>
                 )}
             </div>
         </div>
