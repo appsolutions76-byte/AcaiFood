@@ -530,7 +530,9 @@ export default function BatedeiraDashboard() {
                     }} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
                     <button onClick={() => {
                       store.acaoPedido(o.id, 'aceitar_loja');
-                      printOrderTicket(o, currentUser?.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, 'PREPARO', 'SYSTEM');
+                      if (printerConfig.enabled && printerConfig.printMode === 'auto') {
+                        printOrderTicket(o, currentUser?.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, 'PREPARO', 'SYSTEM');
+                      }
                     }} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
                 </div>
               )}

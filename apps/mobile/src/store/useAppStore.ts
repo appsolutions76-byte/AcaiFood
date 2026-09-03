@@ -1988,12 +1988,12 @@ export const useAppStore = create<AppState>()(
           return { orders: newOrders };
         });
 
-        // Impressão Automática no momento em que a Loja ou Fornecedor aceita o pedido do cliente
+        // Impressão Automática no momento em que a Loja ou Fornecedor aceita o pedido do cliente (apenas se printMode for 'auto')
         if (action === 'aceitar_loja' || action === 'aceitar_forn' || action === 'chamar_moto' || action === 'chamar_caminhao') {
           try {
             const { getPrinterConfig, printOrderTicket } = await import('@/lib/thermalPrinter');
             const pConfig = getPrinterConfig();
-            if (pConfig.enabled) {
+            if (pConfig.enabled && pConfig.printMode === 'auto') {
               const targetOrder = get().orders.find(o => o.id === orderId);
               if (targetOrder) {
                 const pType = (action === 'aceitar_loja' || action === 'aceitar_forn') ? 'PREPARO' : 'ENTREGA';
