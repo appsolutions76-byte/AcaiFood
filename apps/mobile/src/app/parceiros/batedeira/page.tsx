@@ -528,7 +528,10 @@ export default function BatedeiraDashboard() {
                         alert("❌ Pedido recusado e estorno solicitado no Asaas.");
                       }
                     }} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
-                    <button onClick={() => store.acaoPedido(o.id, 'aceitar_loja')} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
+                    <button onClick={() => {
+                      store.acaoPedido(o.id, 'aceitar_loja');
+                      printOrderTicket(o, currentUser?.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, 'PREPARO', 'SYSTEM');
+                    }} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
                 </div>
               )}
 
@@ -675,13 +678,37 @@ export default function BatedeiraDashboard() {
             <div>
                 <h2 className="text-xl font-bold">🏪 {currentUser.name}</h2>
                 <p className="text-purple-300 text-xs mt-1">📍 Bairro: {currentUser.bairro || 'Central'}</p>
-                <button 
-                  onClick={handleUpdateGPS}
-                  disabled={isUpdatingGPS}
-                  className="mt-2 text-[10px] bg-purple-800/80 hover:bg-purple-700 disabled:bg-purple-800/40 text-white font-bold px-2.5 py-1 rounded-lg border border-purple-700 transition shadow flex items-center gap-1 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
-                >
-                  {isUpdatingGPS ? '⏳ Buscando GPS...' : '📍 Atualizar GPS da Loja'}
-                </button>
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <button 
+                    onClick={handleUpdateGPS}
+                    disabled={isUpdatingGPS}
+                    className="text-[10px] bg-purple-800/80 hover:bg-purple-700 disabled:bg-purple-800/40 text-white font-bold px-2.5 py-1 rounded-lg border border-purple-700 transition shadow flex items-center gap-1 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
+                  >
+                    {isUpdatingGPS ? '⏳ Buscando GPS...' : '📍 Atualizar GPS'}
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      const currentPix = (currentUser.pixKey || (currentUser as any).pix_key || '').trim();
+                      const newPix = prompt("Informe a sua Chave PIX (CPF, CNPJ, Celular, E-mail ou Chave Aleatória):", currentPix);
+                      if (newPix === null) return;
+                      const cleanPix = newPix.trim();
+                      if (!cleanPix) {
+                        alert("A Chave Pix não pode ser vazia.");
+                        return;
+                      }
+                      try {
+                        await store.updateUserPixKey(currentUser.id, cleanPix);
+                        alert("✅ Sua Chave Pix foi atualizada com sucesso!");
+                      } catch (err: any) {
+                        alert("Erro ao salvar Chave Pix: " + err.message);
+                      }
+                    }}
+                    className="text-[10px] bg-purple-800/90 hover:bg-purple-700 text-purple-200 hover:text-white font-bold px-2.5 py-1 rounded-lg border border-purple-600 transition shadow flex items-center gap-1 active:scale-95"
+                    title="Clique para cadastrar ou trocar sua Chave Pix"
+                  >
+                    🔑 PIX: {(currentUser.pixKey || (currentUser as any).pix_key) ? (currentUser.pixKey || (currentUser as any).pix_key) : 'Cadastrar'} ✏️
+                  </button>
+                </div>
             </div>
             <div className="text-right flex flex-col items-end">
                 <p className="text-xs text-purple-200">Cofre Virtual (A Receber)</p>

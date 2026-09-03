@@ -234,6 +234,30 @@ export default function CaminhaoDashboard() {
             <div>
                 <h2 className="text-xl font-bold">{currentUser.icon} {currentUser.name} ({currentUser.veiculo})</h2>
                 <p className="text-blue-300 text-xs mt-1">📍 Base: {currentUser.bairro}</p>
+                <div className="mt-2">
+                  <button 
+                    onClick={async () => {
+                      const currentPix = (currentUser.pixKey || (currentUser as any).pix_key || '').trim();
+                      const newPix = prompt("Informe a sua Chave PIX (CPF, CNPJ, Celular, E-mail ou Chave Aleatória):", currentPix);
+                      if (newPix === null) return;
+                      const cleanPix = newPix.trim();
+                      if (!cleanPix) {
+                        alert("A Chave Pix não pode ser vazia.");
+                        return;
+                      }
+                      try {
+                        await store.updateUserPixKey(currentUser.id, cleanPix);
+                        alert("✅ Sua Chave Pix foi atualizada com sucesso!");
+                      } catch (err: any) {
+                        alert("Erro ao salvar Chave Pix: " + err.message);
+                      }
+                    }}
+                    className="text-[10px] bg-blue-900 hover:bg-blue-800 text-blue-200 hover:text-white font-bold px-2.5 py-1 rounded-lg border border-blue-700 transition shadow flex items-center gap-1 active:scale-95"
+                    title="Clique para cadastrar ou trocar sua Chave Pix"
+                  >
+                    🔑 PIX: {(currentUser.pixKey || (currentUser as any).pix_key) ? (currentUser.pixKey || (currentUser as any).pix_key) : 'Cadastrar'} ✏️
+                  </button>
+                </div>
             </div>
             <div className="text-right flex flex-col items-end">
                 <p className="text-sm text-blue-300">Cofre Virtual (A Receber)</p>

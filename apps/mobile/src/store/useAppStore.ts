@@ -219,6 +219,7 @@ interface AppState {
   setupRealtime: (userId: string) => void;
   clearData: () => Promise<void>;
   setClearPassword: (pwd: string) => void;
+  updateUserPixKey: (userId: string, pixKey: string) => Promise<void>;
 
   // Cidades
   fetchCities: () => Promise<void>;
@@ -1987,16 +1988,17 @@ export const useAppStore = create<AppState>()(
           return { orders: newOrders };
         });
 
-        // Impressão Automática em transições de status para a Loja/Batedeira (se configurado como 'auto')
-        if (action === 'aceitar_loja' || action === 'chamar_moto') {
+        // Impressão Automática no momento em que a Loja ou Fornecedor aceita o pedido do cliente
+        if (action === 'aceitar_loja' || action === 'aceitar_forn' || action === 'chamar_moto' || action === 'chamar_caminhao') {
           try {
             const { getPrinterConfig, printOrderTicket } = await import('@/lib/thermalPrinter');
             const pConfig = getPrinterConfig();
-            if (pConfig.enabled && pConfig.printMode === 'auto') {
+            if (pConfig.enabled) {
               const targetOrder = get().orders.find(o => o.id === orderId);
-              if (targetOrder && targetOrder.type === 'B2C') {
-                const pType = action === 'aceitar_loja' ? 'PREPARO' : 'ENTREGA';
-                printOrderTicket(targetOrder, targetOrder.lojaNome || 'Loja/Batedeira', pConfig, get().users, null, pType, 'SYSTEM');
+              if (targetOrder) {
+                const pType = (action === 'aceitar_loja' || action === 'aceitar_forn') ? 'PREPARO' : 'ENTREGA';
+                const storeName = targetOrder.lojaNome || currentUser?.name || 'AçaíFood';
+                printOrderTicket(targetOrder, storeName, pConfig, get().users, null, pType, 'SYSTEM');
               }
             }
           } catch (pErr) {
@@ -2407,6 +2409,28 @@ export const useAppStore = create<AppState>()(
       },
 
       setClearPassword: (pwd) => set({ clearPassword: pwd }),
+
+      updateUserPixKey: async (userId: string, pixKey: string) => {
+         const cleanPix = pixKey.trim();
+         try {
+            const { error } = await supabase.from('users').update({ pix_key: cleanPix }).eq('id', userId);
+            if (error) throw error;
+            set((state) => ({
+               currentUser: state.currentUser && state.currentUser.id === userId ? { ...state.currentUser, pixKey: cleanPix, pix_key: cleanPix } : state.currentUser,
+               users: {
+                  ...state.users,
+                  [userId]: {
+                     ...state.users[userId],
+                     pixKey: cleanPix,
+                     pix_key: cleanPix
+                  }
+               }
+            }));
+         } catch (e: any) {
+            console.error("Erro ao atualizar Chave Pix:", e);
+            throw e;
+         }
+      },
 
       fetchCities: async () => {
          const { data, error } = await supabase.from('cities').select('*').order('name', { ascending: true });

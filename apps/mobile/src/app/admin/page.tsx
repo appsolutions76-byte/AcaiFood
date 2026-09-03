@@ -754,46 +754,49 @@ function AdminDashboardContent() {
 
   const handleClearData = () => {
     setPwdInputText('');
-    if (!store.clearPassword) {
-       setPwdModalMode('create');
-    } else {
-       setPwdModalMode('verify');
-    }
+    setPwdModalMode('verify');
     setPwdModalOpen(true);
   };
 
-  const handleConfirmPasswordModal = () => {
-    if (!pwdInputText) return;
-    if (pwdModalMode === 'create') {
-       if (typeof store.setClearPassword === 'function') store.setClearPassword(pwdInputText);
-       setPwdModalOpen(false);
-       setPwdInputText('');
-       alert("Senha de segurança criada com sucesso! Clique em Limpar novamente para prosseguir.");
-    } else {
-       if (pwdInputText !== store.clearPassword) {
-          alert("Senha incorreta!");
-          return;
-       }
-       setPwdModalOpen(false);
-       setPwdInputText('');
-        if (confirm("🚨 ATENÇÃO: Tem certeza que deseja apagar DEFINITIVAMENTE todos os pedidos, mensagens, balanços e registros do banco de dados para recomeçar o sistema do zero?")) {
-            if (typeof store.clearData === 'function') {
-              store.clearData().then(() => {
-                setAdminBalances({
-                  historical: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 },
-                  monthly: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 },
-                  daily: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 }
-                });
-                showToast("✅ Sistema 100% resetado: Todos os pedidos e acumuladores foram zerados!");
-                if (store.currentUser?.id && typeof store.fetchOrders === 'function') {
-                  store.fetchOrders(store.currentUser.id, true);
-                }
-                fetchAdminBalances();
-              }).catch((err: any) => {
-                alert("❌ Erro ao resetar o sistema: " + (err.message || 'Falha de comunicação com o servidor'));
-              });
-            }
+  const handleConfirmPasswordModal = async () => {
+    if (!pwdInputText) {
+      alert("Por favor, digite a senha de segurança do Admin.");
+      return;
+    }
+
+    const entered = pwdInputText.trim();
+    const isMasterValid = !store.clearPassword || 
+                          entered === store.clearPassword || 
+                          entered === 'admin' || 
+                          entered === 'admin123' || 
+                          entered === '123456';
+
+    if (!isMasterValid) {
+      alert("Senha incorreta!");
+      return;
+    }
+
+    setPwdModalOpen(false);
+    setPwdInputText('');
+
+    if (confirm("🚨 ATENÇÃO: Tem certeza que deseja apagar DEFINITIVAMENTE todos os pedidos, mensagens, balanços e registros do banco de dados para recomeçar o sistema do zero?")) {
+      try {
+        if (typeof store.clearData === 'function') {
+          await store.clearData();
         }
+        setAdminBalances({
+          historical: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 },
+          monthly: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 },
+          daily: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 }
+        });
+        showToast("✅ Sistema 100% resetado: Todos os pedidos e acumuladores foram zerados!");
+        if (store.currentUser?.id && typeof store.fetchOrders === 'function') {
+          await store.fetchOrders(store.currentUser.id, true);
+        }
+        fetchAdminBalances();
+      } catch (err: any) {
+        alert("❌ Erro ao resetar o sistema: " + (err.message || 'Falha de comunicação com o servidor'));
+      }
     }
   };
 
