@@ -1226,33 +1226,56 @@ export default function BatedeiraDashboard() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {/* Item Base: Paneiro / Lata de Açaí */}
-                          <div className="p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-700 transition flex justify-between items-center gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 overflow-hidden shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shadow-inner">
-                                <img 
-                                  src={defaultB2BImage} 
-                                  alt="Lata de Açaí In Natura" 
-                                  className="w-full h-full object-cover" 
-                                />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-extrabold text-zinc-800 dark:text-white text-sm truncate">
-                                  Paneiro / Lata de Açaí
-                                </p>
-                                <p className="text-[11px] text-zinc-500">Frutos in natura (aprox. 14kg)</p>
-                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold mt-0.5">
-                                  {formatMoney(forn.priceB2B || 0)} <span className="text-[10px] font-normal text-zinc-500">/ lata</span>
-                                </p>
-                              </div>
-                            </div>
+                          {(() => {
+                            const isLataAvail = forn.availabilityB2B?.lata !== false;
+                            const lataPhoto = forn.imagesB2B?.lata || defaultB2BImage;
+                            return (
+                              <div className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
+                                isLataAvail
+                                  ? 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-700'
+                                  : 'border-zinc-200 dark:border-zinc-800 bg-zinc-100/80 dark:bg-zinc-950 opacity-60'
+                              }`}>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-13 h-13 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 overflow-hidden shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shadow-inner">
+                                    <img 
+                                      src={lataPhoto} 
+                                      alt="Lata de Açaí In Natura" 
+                                      className="w-full h-full object-cover" 
+                                    />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="font-extrabold text-zinc-800 dark:text-white text-sm truncate">
+                                        Paneiro / Lata de Açaí
+                                      </p>
+                                      {!isLataAvail && (
+                                        <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">
+                                          Esgotado
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-zinc-500">Frutos in natura (aprox. 14kg)</p>
+                                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold mt-0.5">
+                                      {formatMoney(forn.priceB2B || 0)} <span className="text-[10px] font-normal text-zinc-500">/ lata</span>
+                                    </p>
+                                  </div>
+                                </div>
 
-                            <button 
-                              onClick={() => setCartModalB2B({ open: true, fornId: forn.id, quantity: 1, productId: 'base' })}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow active:scale-95 shrink-0 flex items-center gap-1"
-                            >
-                              + Comprar
-                            </button>
-                          </div>
+                                {isLataAvail ? (
+                                  <button 
+                                    onClick={() => setCartModalB2B({ open: true, fornId: forn.id, quantity: 1, productId: 'base' })}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow active:scale-95 shrink-0 flex items-center gap-1"
+                                  >
+                                    + Comprar
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
+                                    Esgotado
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Itens Extras B2B do Fornecedor */}
                           {forn.products && forn.products.map(p => {

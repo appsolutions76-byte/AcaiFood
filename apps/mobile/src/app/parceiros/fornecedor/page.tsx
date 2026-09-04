@@ -465,15 +465,33 @@ export default function FornecedorDashboard() {
                       <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🏭 Status e Lata Açaí</h3>
                       <p className="text-[10px] text-zinc-500">Controle se sua usina está recebendo pedidos e edite seu preço.</p>
                   </div>
-                  <div className="flex items-center gap-3 mt-2 sm:mt-0">
-                      <button onClick={handleToggleStatus} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
+                  <div className="flex items-center gap-2 flex-wrap mt-2 sm:mt-0">
+                      <button onClick={handleToggleStatus} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
                           {isPaused ? 'Pausado 🚫' : 'Operando ✅'}
                       </button>
+                      {(() => {
+                        const isLataAvail = currentUser?.availabilityB2B?.lata !== false;
+                        return (
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              if (currentUser) store.toggleB2BAvailability(currentUser.id);
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition shadow-sm ${
+                              isLataAvail
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                            }`}
+                          >
+                            {isLataAvail ? '🟢 Fruto Disponível' : '🔴 Fruto Esgotado'}
+                          </button>
+                        );
+                      })()}
                       <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
-                          <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Lata Açaí:</span>
+                          <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Lata:</span>
                           <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{formatMoney(b2bPrice)}</span>
                       </div>
-                      <button onClick={() => setPriceModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">Editar Preço</button>
+                      <button onClick={() => setPriceModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">Editar Preço</button>
                   </div>
               </div>
 
@@ -494,12 +512,99 @@ export default function FornecedorDashboard() {
         )}
           
         {activeTab === 'produtos' && (
-        <div className="grid grid-cols-1 gap-4 animate-in fade-in zoom-in-95 duration-300">
+        <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
+          {/* PRODUTO PRINCIPAL B2B: LATA / PANEIRO DE AÇAÍ (FRUTO IN NATURA) */}
+          <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <div>
+                      <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
+                        <span>🧺</span> Produto Principal (Frutos In Natura)
+                      </h3>
+                      <p className="text-xs text-zinc-500">Matéria-prima e latas de açaí vendidas diretamente para as batedeiras.</p>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-2.5 py-1 rounded-full">
+                    Base B2B (~14kg)
+                  </span>
+              </div>
+
+              {(() => {
+                const isLataAvail = currentUser?.availabilityB2B?.lata !== false;
+                const lataPhoto = currentUser?.imagesB2B?.lata || 'https://images.unsplash.com/photo-1628557044797-f21a177c37ec?auto=format&fit=crop&w=400&q=80';
+                return (
+                  <div className={`p-4 rounded-2xl border transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
+                    isLataAvail 
+                      ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60' 
+                      : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-70'
+                  }`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div 
+                        onClick={() => setPhotoModalData({
+                          open: true,
+                          title: 'Foto da Lata de Açaí (Fruto In Natura)',
+                          category: 'b2b',
+                          currentUrl: currentUser?.imagesB2B?.lata,
+                          onSelect: (url) => {
+                            if (currentUser) store.updateB2BImage(currentUser.id, url);
+                          }
+                        })}
+                        className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 overflow-hidden shrink-0 border border-emerald-300 dark:border-emerald-700 cursor-pointer flex items-center justify-center relative group shadow-sm"
+                        title="Trocar Foto da Lata"
+                      >
+                        <img src={lataPhoto} alt="Lata Açaí" className="w-full h-full object-cover" />
+                        <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition">
+                          📷
+                        </span>
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white">
+                            Paneiro / Lata de Açaí (In Natura)
+                          </h4>
+                          {!isLataAvail && (
+                            <span className="text-[9px] bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">
+                              Esgotado
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-zinc-500">Frutos in natura padrão (aprox. 14kg por lata)</p>
+                        <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                          {formatMoney(b2bPrice)} <span className="text-[10px] font-normal text-zinc-500">/ lata</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (currentUser) store.toggleB2BAvailability(currentUser.id);
+                        }}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition shadow-sm ${
+                          isLataAvail
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:border-emerald-700 dark:text-emerald-200'
+                            : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200 dark:bg-red-950 dark:border-red-800 dark:text-red-300'
+                        }`}
+                      >
+                        {isLataAvail ? '🟢 Disponível para Lojas' : '🔴 Esgotado'}
+                      </button>
+                      <button 
+                        onClick={() => setPriceModalOpen(true)} 
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm"
+                      >
+                        ✏️ Editar Preço
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+          </div>
+
           {/* Cadastro de Produtos Extras */}
           <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
               <div className="border-b border-zinc-100 dark:border-zinc-800 pb-2">
                   <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
-                    <span>📦</span> Produtos Extras B2B
+                    <span>📦</span> Outros Produtos & Insumos Extras B2B
                   </h3>
                   <p className="text-xs text-zinc-500">Cadastre outros produtos como sacas, frutos selecionados, polpas, etc.</p>
               </div>
