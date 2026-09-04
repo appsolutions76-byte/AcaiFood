@@ -54,6 +54,22 @@ export function mapDbProducts(rawProducts: any[]): Product[] {
   }));
 }
 
+export interface StorefrontMeta {
+  availabilityB2C?: { popular: boolean; medio: boolean; grosso: boolean };
+  imagesB2C?: { popular?: string; medio?: string; grosso?: string };
+}
+
+export function parseStorefrontMeta(raw?: string | null): StorefrontMeta {
+  if (!raw || typeof raw !== 'string') return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === 'object' && parsed !== null) {
+      return parsed;
+    }
+  } catch (_) {}
+  return {};
+}
+
 export type Role = 'admin' | 'loja' | 'cliente' | 'motorista' | 'fornecedor' | 'ecoponto';
 
 let lastSweepDate: string = '';
@@ -364,6 +380,7 @@ export const useAppStore = create<AppState>()(
                           userProfile.role === 'ADMIN' ? 'admin' : 'cliente';
           
           const sf = extractStorefront(userProfile.storefronts);
+          const sfMeta = parseStorefrontMeta(sf?.logo_url);
 
           // Map DB user to AppUser
           const loggedUser: User = {
@@ -388,6 +405,8 @@ export const useAppStore = create<AppState>()(
                 medio: sf.price_b2c_medio ?? 26,
                 grosso: sf.price_b2c_grosso ?? 35
             } : undefined,
+            availabilityB2C: sfMeta.availabilityB2C || { popular: true, medio: true, grosso: true },
+            imagesB2C: sfMeta.imagesB2C || {},
             freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
             pixKey: userProfile.pix_key,
             products: mapDbProducts(sf?.products),
@@ -800,6 +819,7 @@ export const useAppStore = create<AppState>()(
                 });
                 dbLojas.forEach(dbUser => {
                     const sf = extractStorefront(dbUser.storefronts);
+                    const sfMeta = parseStorefrontMeta(sf?.logo_url);
                     newUsers[dbUser.id] = {
                         id: dbUser.id,
                         role: 'loja',
@@ -817,6 +837,8 @@ export const useAppStore = create<AppState>()(
                             medio: sf?.price_b2c_medio ?? 26,
                             grosso: sf?.price_b2c_grosso ?? 35
                         },
+                        availabilityB2C: sfMeta.availabilityB2C || { popular: true, medio: true, grosso: true },
+                        imagesB2C: sfMeta.imagesB2C || {},
                         freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
                         asaasWalletId: isValidAsaasWalletId(dbUser.asaas_wallet_id) ? dbUser.asaas_wallet_id : (isValidAsaasWalletId(dbUser.pix_key) ? dbUser.pix_key : undefined),
@@ -851,6 +873,7 @@ export const useAppStore = create<AppState>()(
                 const newUsers: Record<string, any> = {};
                 dbUsers.forEach(dbUser => {
                     const sf = extractStorefront(dbUser.storefronts);
+                    const sfMeta = parseStorefrontMeta(sf?.logo_url);
                     const appRole = dbUser.role === 'PARTNER' ? 'loja' :
                                     dbUser.role === 'SUPPLIER' ? 'fornecedor' :
                                     dbUser.role === 'COURIER' ? 'motorista' :
@@ -880,6 +903,8 @@ export const useAppStore = create<AppState>()(
                             medio: sf?.price_b2c_medio ?? 26,
                             grosso: sf?.price_b2c_grosso ?? 35
                         },
+                        availabilityB2C: sfMeta.availabilityB2C || { popular: true, medio: true, grosso: true },
+                        imagesB2C: sfMeta.imagesB2C || {},
                         freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
                         asaasWalletId: isValidAsaasWalletId(dbUser.asaas_wallet_id) ? dbUser.asaas_wallet_id : (isValidAsaasWalletId(dbUser.pix_key) ? dbUser.pix_key : undefined),
@@ -1390,14 +1415,17 @@ export const useAppStore = create<AppState>()(
       },
 
       toggleAcaiAvailability: async (userId, type) => {
+        let updatedAvail = { popular: true, medio: true, grosso: true };
+        let updatedImages = {};
         set((state) => {
           const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user) return state;
           const currentAvail = user.availabilityB2C || { popular: true, medio: true, grosso: true };
-          const updatedAvail = {
+          updatedAvail = {
             ...currentAvail,
             [type]: currentAvail[type] === false ? true : false
           };
+          updatedImages = user.imagesB2C || {};
           const updatedUser = { ...user, availabilityB2C: updatedAvail };
           const isCurrent = state.currentUser?.id === userId;
           return {
@@ -1405,14 +1433,38 @@ export const useAppStore = create<AppState>()(
             currentUser: isCurrent ? updatedUser : state.currentUser
           };
         });
+
+        // Persistir no Supabase (storefronts.logo_url como metadados JSON)
+        try {
+          const metaStr = JSON.stringify({
+            availabilityB2C: updatedAvail,
+            imagesB2C: updatedImages
+          });
+          const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', userId).maybeSingle();
+          if (sf?.id) {
+            await supabase.from('storefronts').update({ logo_url: metaStr }).eq('id', sf.id);
+          } else {
+            const user = get().users[userId] || get().currentUser;
+            await supabase.from('storefronts').insert({
+              partner_id: userId,
+              store_name: user?.name || 'Loja',
+              logo_url: metaStr
+            });
+          }
+        } catch (err) {
+          console.error("Exceção ao persistir disponibilidade do açaí:", err);
+        }
       },
 
       updateAcaiImage: async (userId, type, imageUrl) => {
+        let updatedAvail = { popular: true, medio: true, grosso: true };
+        let updatedImages: Record<string, string | undefined> = {};
         set((state) => {
           const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user) return state;
+          updatedAvail = user.availabilityB2C || { popular: true, medio: true, grosso: true };
           const currentImages = user.imagesB2C || {};
-          const updatedImages = {
+          updatedImages = {
             ...currentImages,
             [type]: imageUrl
           };
@@ -1423,6 +1475,27 @@ export const useAppStore = create<AppState>()(
             currentUser: isCurrent ? updatedUser : state.currentUser
           };
         });
+
+        // Persistir no Supabase (storefronts.logo_url como metadados JSON)
+        try {
+          const metaStr = JSON.stringify({
+            availabilityB2C: updatedAvail,
+            imagesB2C: updatedImages
+          });
+          const { data: sf } = await supabase.from('storefronts').select('id').eq('partner_id', userId).maybeSingle();
+          if (sf?.id) {
+            await supabase.from('storefronts').update({ logo_url: metaStr }).eq('id', sf.id);
+          } else {
+            const user = get().users[userId] || get().currentUser;
+            await supabase.from('storefronts').insert({
+              partner_id: userId,
+              store_name: user?.name || 'Loja',
+              logo_url: metaStr
+            });
+          }
+        } catch (err) {
+          console.error("Exceção ao persistir imagem do açaí:", err);
+        }
       },
 
       criarPedido: async (tipo, targetId, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => {
