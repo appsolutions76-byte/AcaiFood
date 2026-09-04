@@ -1120,71 +1120,214 @@ export default function BatedeiraDashboard() {
         )}
           
         {activeTab === 'abastecimento' && (
-          <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-300">
-              <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Comprar Lata Açaí (Fornecedores B2B)</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {fornecedores.map(forn => {
-                    const lat1 = Number(forn?.lat || 0);
-                    const lon1 = Number(forn?.lng || 0);
-                    const lat2 = Number(currentUser?.lat || 0);
-                    const lon2 = Number(currentUser?.lng || 0);
-                    const dist = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) ? haversineKm(lat1, lon1, lat2, lon2) : 3.0;
-                    const freteTotal = (rates.transporter_payment_mode === 'FIXED') ? (rates.transporter_fixed_fee ?? 150.00) : dist * rates.b2b_km;
-                    const subsidy = forn.freteSubsidyPct || 0;
-                    const freteLoja = freteTotal * (1 - subsidy / 100);
-
-                    return (
-                      <div key={forn.id} className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900 rounded-lg p-3 flex flex-col">
-                          <div className="flex justify-between items-start mb-2">
-                              <div className="flex gap-2 items-center"><span className="text-2xl">{forn.icon}</span><span className="font-bold text-sm text-emerald-900 dark:text-emerald-400">{forn.name}</span></div>
-                              <button 
-                                onClick={() => {
-                                  setMapModal({
-                                    open: true,
-                                    origem: { lat: forn?.lat || 0, lng: forn?.lng || 0, name: forn?.name || 'Fornecedor' },
-                                    destino: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser?.name || 'Sua Loja' },
-                                    motorista: null
-                                  });
-                                }} 
-                                className="text-[10px] font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded"
-                              >
-                                🗺️ {dist.toFixed(1)} km
-                              </button>
-                          </div>
-                          <div className="bg-white/60 dark:bg-black/20 p-2 rounded mb-3 text-xs text-emerald-800 dark:text-emerald-200">
-                              <div className="flex justify-between mb-1"><span>Lata Açaí:</span> <span className="font-bold">{formatMoney(forn.priceB2B || 0)}</span></div>
-                              <div className="flex justify-between">
-                                <span>Frete {subsidy > 0 ? <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded uppercase font-bold ml-1">Forn. paga {subsidy}%</span> : ''}</span> 
-                                <span className="font-bold">{formatMoney(freteLoja)}</span>
-                              </div>
-                              {forn.products && forn.products.length > 0 && (
-                                <div className="mt-2 pt-1.5 border-t border-emerald-200/50 text-[10px] text-emerald-800 dark:text-emerald-300">
-                                  <strong>📦 Extras:</strong> {forn.products.map(p => `${p.name} (${formatMoney(p.price)})`).join(', ')}
-                                </div>
-                              )}
-                          </div>
-                          <button onClick={() => setCartModalB2B({ open: true, fornId: forn.id, quantity: 1, productId: 'base' })} className="w-full mt-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg transition">Comprar</button>
-                      </div>
-                    )
-                  })}
-              </div>
-
-              {/* Lista de Pedidos de Abastecimento B2B */}
-              <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase mb-3 flex items-center gap-2">
-                  📦 Histórico e Pedidos de Abastecimento (B2B / Coleta)
-                </h3>
-                <div className="grid grid-cols-1 gap-4">
-                  {meusPedidos.filter(o => o.type === 'B2B' || o.type === 'COLETA').length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-zinc-900 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
-                      <span className="text-3xl mb-2 opacity-50">🚚</span>
-                      <p className="text-zinc-500 text-xs font-medium">Nenhum pedido de abastecimento B2B registrado ainda.</p>
-                    </div>
-                  ) : (
-                    meusPedidos.filter(o => o.type === 'B2B' || o.type === 'COLETA').map(renderOrderCard)
-                  )}
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            {/* Header com Contexto */}
+            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 rounded-2xl p-5 text-white shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🌿</span>
+                  <h3 className="font-extrabold text-lg text-white">Abastecimento B2B & Fornecedores</h3>
                 </div>
+                <p className="text-emerald-200 text-xs mt-1">
+                  Compre Paneiros/Latas de Frutos In Natura e Insumos direto de portos, cooperativas e produtores cadastrados.
+                </p>
               </div>
+              <span className="bg-emerald-500/30 border border-emerald-400/30 text-emerald-100 text-xs px-3 py-1.5 rounded-full font-bold self-start sm:self-auto shrink-0">
+                {fornecedores.length} {fornecedores.length === 1 ? 'Fornecedor disponível' : 'Fornecedores disponíveis'}
+              </span>
+            </div>
+
+            {/* Grid de Fornecedores */}
+            {fornecedores.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-10 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 text-center shadow-sm">
+                <span className="text-4xl mb-3 opacity-60">🏭</span>
+                <p className="text-zinc-700 dark:text-zinc-300 font-bold text-base">Nenhum fornecedor ativo na sua região no momento</p>
+                <p className="text-zinc-500 text-xs mt-1">Assim que novos produtores ou entrepostos se cadastrarem na sua cidade, eles aparecerão aqui automaticamente.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6">
+                {fornecedores.map(forn => {
+                  const lat1 = Number(forn?.lat || 0);
+                  const lon1 = Number(forn?.lng || 0);
+                  const lat2 = Number(currentUser?.lat || 0);
+                  const lon2 = Number(currentUser?.lng || 0);
+                  const dist = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) ? haversineKm(lat1, lon1, lat2, lon2) : 3.0;
+                  const freteTotal = (rates.transporter_payment_mode === 'FIXED') ? (rates.transporter_fixed_fee ?? 150.00) : dist * rates.b2b_km;
+                  const subsidy = forn.freteSubsidyPct || 0;
+                  const freteLoja = freteTotal * (1 - subsidy / 100);
+
+                  const defaultB2BImage = 'https://images.unsplash.com/photo-1628557044797-f21a177c37ec?auto=format&fit=crop&w=400&q=80';
+
+                  return (
+                    <div 
+                      key={forn.id} 
+                      className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-4"
+                    >
+                      {/* Topo do Card: Informações do Fornecedor */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                            {forn.icon || '🏭'}
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-base text-zinc-900 dark:text-white flex items-center gap-2">
+                              {forn.name}
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold uppercase">
+                                Fornecedor
+                              </span>
+                            </h4>
+                            <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5">
+                              📍 {forn.bairro ? `${forn.bairro}, ` : ''}{forn.cidade || 'Região'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+                          {subsidy > 0 && (
+                            <span className="text-[11px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-sm">
+                              🚚 Fornecedor paga {subsidy}% do frete
+                            </span>
+                          )}
+                          <button 
+                            onClick={() => {
+                              setMapModal({
+                                open: true,
+                                origem: { lat: forn?.lat || 0, lng: forn?.lng || 0, name: forn?.name || 'Fornecedor' },
+                                destino: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser?.name || 'Sua Loja' },
+                                motorista: null
+                              });
+                            }} 
+                            className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 px-3 py-1 rounded-xl transition flex items-center gap-1 shadow-sm"
+                          >
+                            🗺️ Rota: {dist.toFixed(1)} km
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Info de Frete */}
+                      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/80 flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs gap-2 text-zinc-600 dark:text-zinc-400">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">🚚 Frete do Caminhão/Caçamba:</span>
+                          <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteLoja)}</span>
+                          {subsidy > 0 && (
+                            <span className="text-[10px] text-orange-600 dark:text-orange-400">
+                              (Economia de {formatMoney(freteTotal * (subsidy / 100))})
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-zinc-500 italic">Preço do frete compartilhado por viagem</span>
+                      </div>
+
+                      {/* Grade de Produtos do Fornecedor (Apresentação idêntica ao Catálogo) */}
+                      <div>
+                        <p className="text-xs font-extrabold uppercase text-zinc-500 mb-3 tracking-wider flex items-center gap-1.5">
+                          🧺 Itens e Matéria-Prima Disponíveis:
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Item Base: Paneiro / Lata de Açaí */}
+                          <div className="p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-700 transition flex justify-between items-center gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 overflow-hidden shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shadow-inner">
+                                <img 
+                                  src={defaultB2BImage} 
+                                  alt="Lata de Açaí In Natura" 
+                                  className="w-full h-full object-cover" 
+                                />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-extrabold text-zinc-800 dark:text-white text-sm truncate">
+                                  Paneiro / Lata de Açaí
+                                </p>
+                                <p className="text-[11px] text-zinc-500">Frutos in natura (aprox. 14kg)</p>
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold mt-0.5">
+                                  {formatMoney(forn.priceB2B || 0)} <span className="text-[10px] font-normal text-zinc-500">/ lata</span>
+                                </p>
+                              </div>
+                            </div>
+
+                            <button 
+                              onClick={() => setCartModalB2B({ open: true, fornId: forn.id, quantity: 1, productId: 'base' })}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow active:scale-95 shrink-0 flex items-center gap-1"
+                            >
+                              + Comprar
+                            </button>
+                          </div>
+
+                          {/* Itens Extras B2B do Fornecedor */}
+                          {forn.products && forn.products.map(p => {
+                            const isAvail = p.isAvailable !== false;
+                            return (
+                              <div 
+                                key={p.id} 
+                                className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
+                                  isAvail 
+                                    ? 'bg-white dark:bg-zinc-900/90 border-zinc-200 dark:border-zinc-800 shadow-sm hover:border-emerald-300' 
+                                    : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                                    {p.imageUrl ? (
+                                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span className="text-2xl">📦</span>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="font-extrabold text-zinc-800 dark:text-white text-sm truncate">{p.name}</p>
+                                      {!isAvail && (
+                                        <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">
+                                          Esgotado
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold mt-0.5">
+                                      {formatMoney(p.price)}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {isAvail ? (
+                                  <button 
+                                    onClick={() => setCartModalB2B({ open: true, fornId: forn.id, quantity: 1, productId: p.id })}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow active:scale-95 shrink-0 flex items-center gap-1"
+                                  >
+                                    + Comprar
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
+                                    Esgotado
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Lista de Pedidos de Abastecimento B2B */}
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+              <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase mb-3 flex items-center gap-2">
+                📦 Histórico e Pedidos de Abastecimento (B2B / Coleta)
+              </h3>
+              <div className="grid grid-cols-1 gap-4">
+                {meusPedidos.filter(o => o.type === 'B2B' || o.type === 'COLETA').length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-zinc-900 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
+                    <span className="text-3xl mb-2 opacity-50">🚚</span>
+                    <p className="text-zinc-500 text-xs font-medium">Nenhum pedido de abastecimento B2B registrado ainda.</p>
+                  </div>
+                ) : (
+                  meusPedidos.filter(o => o.type === 'B2B' || o.type === 'COLETA').map(renderOrderCard)
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1246,18 +1389,21 @@ export default function BatedeiraDashboard() {
       )}
 
       {/* B2B Cart Modal */}
-{cartModalB2B.open && (
+      {cartModalB2B.open && (
         <div className="fixed inset-0 bg-black/70 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95">
-              <div className="bg-emerald-700 text-white p-4 sm:p-5 flex justify-between items-center">
-                  <h3 className="font-bold text-lg">🛒 Comprar Lata Açaí (B2B)</h3>
-                  <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+          <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95">
+              <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-4 sm:p-5 flex justify-between items-center shadow">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🛒</span>
+                    <h3 className="font-extrabold text-base sm:text-lg">Comprar Insumos B2B</h3>
+                  </div>
+                  <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="text-white/80 hover:text-white font-bold text-2xl leading-none">&times;</button>
               </div>
               
               <div className="p-6">
                   {(() => {
                       const forn = store.users?.[cartModalB2B.fornId];
-                      if (!forn) return <p>Fornecedor não encontrado</p>;
+                      if (!forn) return <p className="text-zinc-500 text-sm">Fornecedor não encontrado</p>;
                       
                       const lat1 = Number(forn?.lat || 0);
                       const lon1 = Number(forn?.lng || 0);
@@ -1271,56 +1417,88 @@ export default function BatedeiraDashboard() {
                       const isBase = cartModalB2B.productId === 'base';
                       const selectedProd = !isBase ? forn.products?.find(p => p.id === cartModalB2B.productId) : null;
                       const unitPrice = isBase ? (forn.priceB2B || 0) : (selectedProd?.price || 0);
-                      const productName = isBase ? 'Paneiro de Açaí' : (selectedProd?.name || 'Produto Extra');
+                      const productName = isBase ? 'Paneiro de Açaí (Lata In Natura)' : (selectedProd?.name || 'Produto Extra');
+                      const productImg = isBase 
+                        ? 'https://images.unsplash.com/photo-1628557044797-f21a177c37ec?auto=format&fit=crop&w=400&q=80'
+                        : selectedProd?.imageUrl;
 
                       const subtotal = unitPrice * cartModalB2B.quantity;
                       const totalToPay = subtotal + freteLoja;
- 
+
                       return (
                           <>
-                              <p className="text-xs text-zinc-500 font-bold uppercase mb-1">Fornecedor Selecionado</p>
-                              <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{forn.name}</h4>
+                              <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-100 dark:border-zinc-800">
+                                <div>
+                                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Fornecedor Selecionado</p>
+                                  <h4 className="font-extrabold text-zinc-900 dark:text-white text-lg">{forn.name}</h4>
+                                </div>
+                                <span className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1 rounded-xl">
+                                  📍 {dist.toFixed(1)} km
+                                </span>
+                              </div>
                               
-                              <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Escolha seu Produto:</label>
+                              <label className="block text-xs font-bold uppercase text-zinc-500 mb-2">Item Escolhido:</label>
                               <select 
                                 value={cartModalB2B.productId} 
                                 onChange={e => setCartModalB2B({ ...cartModalB2B, productId: e.target.value })}
-                                className="w-full border-2 border-emerald-105 dark:border-zinc-700 rounded-xl p-3 bg-emerald-50 dark:bg-zinc-800 text-emerald-900 dark:text-emerald-300 font-bold outline-none focus:border-emerald-500 transition mb-4"
+                                className="w-full border-2 border-emerald-200 dark:border-zinc-700 rounded-xl p-3 bg-emerald-50/50 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold outline-none focus:border-emerald-500 transition mb-4 text-sm"
                               >
-                                  <option value="base">Paneiro de Açaí (Lata) - {formatMoney(forn.priceB2B || 0)}</option>
+                                  <option value="base">Paneiro / Lata de Açaí (In Natura) - {formatMoney(forn.priceB2B || 0)}</option>
                                   {forn.products && forn.products.length > 0 && (
-                                      <optgroup label="Produtos Extras">
+                                      <optgroup label="Outros Insumos & Extras">
                                           {forn.products.map(p => (
-                                              <option key={p.id} value={p.id}>{p.name} - {formatMoney(p.price)}</option>
+                                              <option key={p.id} value={p.id} disabled={p.isAvailable === false}>
+                                                {p.name} - {formatMoney(p.price)} {p.isAvailable === false ? '(ESGOTADO)' : ''}
+                                              </option>
                                           ))}
                                       </optgroup>
                                   )}
                               </select>
 
-                              <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Quantidade:</label>
-                              <div className="flex items-center gap-4 mb-6">
-                                  <button onClick={() => setCartModalB2B(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1)}))} className="bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 w-10 h-10 rounded-full font-bold text-xl flex items-center justify-center hover:bg-zinc-300 transition">-</button>
-                                  <span className="text-2xl font-bold text-zinc-900 dark:text-white w-8 text-center">{cartModalB2B.quantity}</span>
-                                  <button onClick={() => setCartModalB2B(prev => ({ ...prev, quantity: prev.quantity + 1}))} className="bg-emerald-100 text-emerald-700 w-10 h-10 rounded-full font-bold text-xl flex items-center justify-center hover:bg-emerald-200 transition">+</button>
+                              {/* Preview Card do Produto Escolhido */}
+                              <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700/60 mb-5">
+                                <div className="w-12 h-12 rounded-lg bg-emerald-100 dark:bg-emerald-950 overflow-hidden shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
+                                  {productImg ? (
+                                    <img src={productImg} alt={productName} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="text-xl">🌿</span>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">{productName}</p>
+                                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold">{formatMoney(unitPrice)} un.</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/40 p-3 rounded-xl mb-5">
+                                <span className="text-xs font-bold uppercase text-zinc-600 dark:text-zinc-300">Quantidade de Latas/Itens:</span>
+                                <div className="flex items-center gap-3">
+                                    <button onClick={() => setCartModalB2B(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1)}))} className="bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 w-9 h-9 rounded-xl font-extrabold text-lg flex items-center justify-center hover:bg-zinc-300 active:scale-95 transition">-</button>
+                                    <span className="text-xl font-extrabold text-zinc-900 dark:text-white w-7 text-center">{cartModalB2B.quantity}</span>
+                                    <button onClick={() => setCartModalB2B(prev => ({ ...prev, quantity: prev.quantity + 1}))} className="bg-emerald-600 text-white w-9 h-9 rounded-xl font-extrabold text-lg flex items-center justify-center hover:bg-emerald-700 active:scale-95 transition shadow">+</button>
+                                </div>
                               </div>
                               
-                              <div className="space-y-3 mb-6 text-sm text-zinc-600 dark:text-zinc-400">
-                                  <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                                      <span>Valor do Produto ({cartModalB2B.quantity}x {formatMoney(unitPrice)}):</span>
+                              <div className="space-y-2.5 mb-6 text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-950/80 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                                  <div className="flex justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                                      <span>Subtotal ({cartModalB2B.quantity}x {formatMoney(unitPrice)}):</span>
                                       <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(subtotal)}</span>
                                   </div>
-                                  <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                                      <span>Frete (sua parte):</span>
+                                  <div className="flex justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                                      <span className="flex items-center gap-1">
+                                        Frete Caminhão (Loja):
+                                        {subsidy > 0 && <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded font-bold">-{subsidy}%</span>}
+                                      </span>
                                       <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(freteLoja)}</span>
                                   </div>
-                                  <div className="flex justify-between pt-2 text-lg">
-                                      <span className="font-bold text-zinc-800 dark:text-white">Total a Pagar:</span>
-                                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(totalToPay)}</span>
+                                  <div className="flex justify-between pt-1 text-sm">
+                                      <span className="font-extrabold text-zinc-900 dark:text-white">Total a Pagar (PIX):</span>
+                                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-base">{formatMoney(totalToPay)}</span>
                                   </div>
                               </div>
                               
                               <div className="flex gap-3">
-                                  <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="flex-1 px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition">Cancelar</button>
+                                  <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="flex-1 px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition text-sm">Cancelar</button>
                                   <button onClick={async () => {
                                       store.clearCart();
                                       store.addToCart(forn.id, { 
@@ -1331,7 +1509,7 @@ export default function BatedeiraDashboard() {
                                       });
                                       const res: any = await store.criarPedido('B2B', forn.id);
                                       setCartModalB2B({ ...cartModalB2B, open: false });
- 
+
                                       if (res && typeof res === 'object') {
                                         if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
                                            setPixModalData({
@@ -1356,7 +1534,9 @@ export default function BatedeiraDashboard() {
                                       } else {
                                         alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
                                       }
-                                  }} className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-700 active:scale-95 transition">Confirmar Pedido</button>
+                                  }} className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-700 active:scale-95 transition text-sm flex items-center justify-center gap-1.5">
+                                    <span>Confirmar Pedido</span>
+                                  </button>
                               </div>
                           </>
                       );
