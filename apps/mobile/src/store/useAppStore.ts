@@ -43,6 +43,17 @@ export function extractStorefront(sfData: any): any {
   return null;
 }
 
+export function mapDbProducts(rawProducts: any[]): Product[] {
+  if (!Array.isArray(rawProducts)) return [];
+  return rawProducts.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    price: Number(p.price || 0),
+    imageUrl: p.image_url || undefined,
+    isAvailable: p.is_active !== false
+  }));
+}
+
 export type Role = 'admin' | 'loja' | 'cliente' | 'motorista' | 'fornecedor' | 'ecoponto';
 
 let lastSweepDate: string = '';
@@ -51,6 +62,8 @@ export interface Product {
   id: string;
   name: string;
   price: number;
+  imageUrl?: string;
+  isAvailable?: boolean;
 }
 
 export interface User {
@@ -66,6 +79,8 @@ export interface User {
   lng?: number;
   veiculo?: string;
   priceB2C?: { popular: number; medio: number; grosso: number };
+  availabilityB2C?: { popular: boolean; medio: boolean; grosso: boolean };
+  imagesB2C?: { popular?: string; medio?: string; grosso?: string };
   priceB2B?: number;
   freteSubsidyPct?: number;
   asaasWalletId?: string;
@@ -213,8 +228,11 @@ interface AppState {
   updateCpfCnpj: (cpfCnpj: string) => Promise<void>;
   updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => Promise<void>;
   addProduct: (userId: string, product: Product) => Promise<void>;
-  updateProduct: (userId: string, productId: string, updatedData: { name: string; price: number }) => Promise<void>;
+  updateProduct: (userId: string, productId: string, updatedData: Partial<Product>) => Promise<void>;
   removeProduct: (userId: string, productId: string) => Promise<void>;
+  toggleProductAvailability: (userId: string, productId: string) => Promise<void>;
+  toggleAcaiAvailability: (userId: string, type: 'popular' | 'medio' | 'grosso') => Promise<void>;
+  updateAcaiImage: (userId: string, type: 'popular' | 'medio' | 'grosso', imageUrl?: string) => Promise<void>;
   fetchOrders: (userId: string, force?: boolean) => Promise<void>;
   fetchAllUsers: (force?: boolean) => Promise<void>;
   setupRealtime: (userId: string) => void;
@@ -372,7 +390,7 @@ export const useAppStore = create<AppState>()(
             } : undefined,
             freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
             pixKey: userProfile.pix_key,
-            products: sf?.products || [],
+            products: mapDbProducts(sf?.products),
             cpfCnpj: userProfile.cpf_cnpj
           };
           
@@ -803,7 +821,7 @@ export const useAppStore = create<AppState>()(
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
                         asaasWalletId: isValidAsaasWalletId(dbUser.asaas_wallet_id) ? dbUser.asaas_wallet_id : (isValidAsaasWalletId(dbUser.pix_key) ? dbUser.pix_key : undefined),
                         pixKey: dbUser.pix_key,
-                        products: sf?.products || [],
+                        products: mapDbProducts(sf?.products),
                         cpfCnpj: dbUser.cpf_cnpj
                     };
                 });
@@ -866,7 +884,7 @@ export const useAppStore = create<AppState>()(
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
                         asaasWalletId: isValidAsaasWalletId(dbUser.asaas_wallet_id) ? dbUser.asaas_wallet_id : (isValidAsaasWalletId(dbUser.pix_key) ? dbUser.pix_key : undefined),
                         pixKey: dbUser.pix_key,
-                        products: sf?.products || [],
+                        products: mapDbProducts(sf?.products),
                         cpfCnpj: dbUser.cpf_cnpj,
                         storefrontId: sf?.id,
                         storefronts: sf ? [sf] : []
@@ -1303,7 +1321,9 @@ export const useAppStore = create<AppState>()(
                 id: product.id,
                 storefront_id: sfId,
                 name: product.name,
-                price: product.price
+                price: product.price,
+                image_url: product.imageUrl || null,
+                is_active: product.isAvailable !== false
              });
              if (prodErr) console.error("Erro ao inserir produto no Supabase:", prodErr);
           }
@@ -1348,14 +1368,61 @@ export const useAppStore = create<AppState>()(
 
         // Sync with DB
         try {
-          const { error: prodErr } = await supabase.from('products').update({
-            name: updatedData.name,
-            price: updatedData.price
-          }).eq('id', productId);
+          const updatePayload: any = {};
+          if (updatedData.name !== undefined) updatePayload.name = updatedData.name;
+          if (updatedData.price !== undefined) updatePayload.price = updatedData.price;
+          if (updatedData.imageUrl !== undefined) updatePayload.image_url = updatedData.imageUrl || null;
+          if (updatedData.isAvailable !== undefined) updatePayload.is_active = updatedData.isAvailable;
+
+          const { error: prodErr } = await supabase.from('products').update(updatePayload).eq('id', productId);
           if (prodErr) console.error("Erro ao atualizar produto no Supabase:", prodErr);
         } catch (dbErr) {
           console.error("Exceção ao atualizar produto no banco:", dbErr);
         }
+      },
+
+      toggleProductAvailability: async (userId, productId) => {
+        const user = get().users[userId] || (get().currentUser?.id === userId ? get().currentUser : null);
+        const prod = user?.products?.find(p => p.id === productId);
+        if (!prod) return;
+        const newAvailable = prod.isAvailable === false ? true : false;
+        await get().updateProduct(userId, productId, { isAvailable: newAvailable });
+      },
+
+      toggleAcaiAvailability: async (userId, type) => {
+        set((state) => {
+          const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
+          if (!user) return state;
+          const currentAvail = user.availabilityB2C || { popular: true, medio: true, grosso: true };
+          const updatedAvail = {
+            ...currentAvail,
+            [type]: currentAvail[type] === false ? true : false
+          };
+          const updatedUser = { ...user, availabilityB2C: updatedAvail };
+          const isCurrent = state.currentUser?.id === userId;
+          return {
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
+      },
+
+      updateAcaiImage: async (userId, type, imageUrl) => {
+        set((state) => {
+          const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
+          if (!user) return state;
+          const currentImages = user.imagesB2C || {};
+          const updatedImages = {
+            ...currentImages,
+            [type]: imageUrl
+          };
+          const updatedUser = { ...user, imagesB2C: updatedImages };
+          const isCurrent = state.currentUser?.id === userId;
+          return {
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
       },
 
       criarPedido: async (tipo, targetId, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => {

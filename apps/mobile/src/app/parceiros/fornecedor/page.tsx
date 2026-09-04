@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
+import { PhotoPickerModal } from "@/components/PhotoPickerModal";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -80,6 +81,14 @@ export default function FornecedorDashboard() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+  const [newProductImage, setNewProductImage] = useState<string | undefined>(undefined);
+  const [photoModalData, setPhotoModalData] = useState<{
+    open: boolean;
+    title: string;
+    category?: 'acai' | 'adicional' | 'b2b';
+    currentUrl?: string;
+    onSelect: (url?: string) => void;
+  }>({ open: false, title: '', onSelect: () => {} });
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
@@ -111,10 +120,13 @@ export default function FornecedorDashboard() {
       store.addProduct(currentUser.id, {
           id: generateUUID(),
           name: newProductName,
-          price: Number(newProductPrice)
+          price: Number(newProductPrice),
+          imageUrl: newProductImage,
+          isAvailable: true
       });
       setNewProductName('');
       setNewProductPrice('');
+      setNewProductImage(undefined);
   };
 
   const handleEditProduct = (p: any) => {
@@ -484,34 +496,111 @@ export default function FornecedorDashboard() {
         {activeTab === 'produtos' && (
         <div className="grid grid-cols-1 gap-4 animate-in fade-in zoom-in-95 duration-300">
           {/* Cadastro de Produtos Extras */}
-          <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+          <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
               <div className="border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                  <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">📦 Produtos Extras</h3>
-                  <p className="text-[10px] text-zinc-500">Cadastre outros itens B2B para os compradores.</p>
+                  <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
+                    <span>📦</span> Produtos Extras B2B
+                  </h3>
+                  <p className="text-xs text-zinc-500">Cadastre outros produtos como sacas, frutos selecionados, polpas, etc.</p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
-                  <input type="text" placeholder="Nome do Produto" value={newProductName} onChange={e => setNewProductName(e.target.value)} className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:border-emerald-500" />
-                  <input type="number" step="0.1" placeholder="Preço (R$)" value={newProductPrice} onChange={e => setNewProductPrice(e.target.value)} className="w-full sm:w-32 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:border-emerald-500" />
-                  <button onClick={handleAddProduct} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition shrink-0">Adicionar</button>
+              {/* Form de cadastro com foto */}
+              <div className="bg-zinc-50 dark:bg-zinc-950/60 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-2 items-center">
+                <button
+                  type="button"
+                  onClick={() => setPhotoModalData({
+                    open: true,
+                    title: 'Foto do Produto B2B',
+                    category: 'b2b',
+                    currentUrl: newProductImage,
+                    onSelect: (url) => setNewProductImage(url)
+                  })}
+                  className="w-full sm:w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 hover:bg-emerald-200 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-300 dark:border-emerald-700 transition"
+                  title="Escolher Foto"
+                >
+                  {newProductImage ? (
+                    <img src={newProductImage} alt="Extra" className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <span>📸</span>
+                  )}
+                </button>
+                <input 
+                  type="text" 
+                  placeholder="Nome (ex: Saca de Açaí Selecionado)" 
+                  value={newProductName} 
+                  onChange={e => setNewProductName(e.target.value)} 
+                  className="flex-1 w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-emerald-500" 
+                />
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  placeholder="R$" 
+                  value={newProductPrice} 
+                  onChange={e => setNewProductPrice(e.target.value)} 
+                  className="w-full sm:w-28 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-emerald-500" 
+                />
+                <button 
+                  onClick={handleAddProduct} 
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition shrink-0 shadow-sm"
+                >
+                  + Adicionar
+                </button>
               </div>
 
               <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 mt-2">
-                  {currentUser?.products?.map(p => (
-                      <li key={p.id} className="flex justify-between items-center py-2">
-                          <div>
-                              <p className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">{p.name}</p>
-                              <p className="text-emerald-600 text-xs font-bold">R$ {p.price.toFixed(2)}</p>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <button onClick={() => handleEditProduct(p)} className="text-emerald-600 hover:text-emerald-800 p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg transition" title="Editar produto extra">✏️</button>
-                            <button onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} className="text-red-500 hover:text-red-700 p-2 bg-red-50 dark:bg-red-900/30 rounded-lg transition" title="Excluir produto extra">🗑️</button>
-                          </div>
-                      </li>
-                  ))}
-                  {(!currentUser?.products || currentUser.products.length === 0) && (
-                      <p className="text-xs text-zinc-500 text-center py-4">Nenhum produto extra cadastrado.</p>
-                  )}
+                {currentUser?.products?.map(p => {
+                  const isAvail = p.isAvailable !== false;
+                  return (
+                    <li key={p.id} className="flex justify-between items-center py-2.5 gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div 
+                          onClick={() => setPhotoModalData({
+                            open: true,
+                            title: `Foto de ${p.name}`,
+                            category: 'b2b',
+                            currentUrl: p.imageUrl,
+                            onSelect: (url) => {
+                              if (currentUser) store.updateProduct(currentUser.id, p.id, { imageUrl: url });
+                            }
+                          })}
+                          className="w-9 h-9 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 cursor-pointer flex items-center justify-center"
+                          title="Trocar Foto"
+                        >
+                          {p.imageUrl ? (
+                            <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs">🌿</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`font-bold text-xs truncate ${isAvail ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-400 line-through'}`}>{p.name}</p>
+                          <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold">R$ {p.price.toFixed(2)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentUser) store.toggleProductAvailability(currentUser.id, p.id);
+                          }}
+                          className={`px-2 py-1 rounded-md text-[10px] font-bold border transition ${
+                            isAvail
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800'
+                              : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-800'
+                          }`}
+                        >
+                          {isAvail ? '🟢 Disponível' : '🔴 Esgotado'}
+                        </button>
+                        <button onClick={() => handleEditProduct(p)} className="text-emerald-600 hover:text-emerald-800 p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg transition" title="Editar produto extra">✏️</button>
+                        <button onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg transition" title="Excluir produto extra">🗑️</button>
+                      </div>
+                    </li>
+                  );
+                })}
+                {(!currentUser?.products || currentUser.products.length === 0) && (
+                  <p className="text-xs text-zinc-500 text-center py-4">Nenhum produto extra cadastrado.</p>
+                )}
               </ul>
           </div>
         </div>
@@ -949,6 +1038,19 @@ export default function FornecedorDashboard() {
           otherParticipantRole={chatModalData.otherRole}
         />
       )}
+
+      {/* Modal Seletor de Fotos */}
+      <PhotoPickerModal
+        isOpen={photoModalData.open}
+        onClose={() => setPhotoModalData(prev => ({ ...prev, open: false }))}
+        title={photoModalData.title}
+        category={photoModalData.category}
+        currentImageUrl={photoModalData.currentUrl}
+        onSelectPhoto={(url) => {
+          photoModalData.onSelect(url);
+          setPhotoModalData(prev => ({ ...prev, open: false }));
+        }}
+      />
     </div>
   );
 }

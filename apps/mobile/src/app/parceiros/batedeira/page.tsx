@@ -10,6 +10,7 @@ import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
+import { PhotoPickerModal } from "@/components/PhotoPickerModal";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -37,6 +38,15 @@ export default function BatedeiraDashboard() {
   const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
+
+  const [photoModalData, setPhotoModalData] = useState<{
+    open: boolean;
+    title: string;
+    category?: 'acai' | 'adicional' | 'b2b';
+    currentUrl?: string;
+    onSelect: (url?: string) => void;
+  }>({ open: false, title: '', onSelect: () => {} });
+  const [newProductImage, setNewProductImage] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (currentUser?.priceB2C) {
@@ -139,10 +149,13 @@ export default function BatedeiraDashboard() {
       store.addProduct(currentUser.id, {
           id: generateUUID(),
           name: newProductName,
-          price: Number(newProductPrice)
+          price: Number(newProductPrice),
+          imageUrl: newProductImage,
+          isAvailable: true
       });
       setNewProductName('');
       setNewProductPrice('');
+      setNewProductImage(undefined);
   };
 
   const handleEditProduct = (p: any) => {
@@ -753,157 +766,354 @@ export default function BatedeiraDashboard() {
         )}
 
         {activeTab === 'geral' && (
-          <div className="grid grid-cols-1 gap-4 animate-in fade-in zoom-in-95 duration-300">
-          {/* Controles da Loja */}
-          <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                  <div>
-                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🏪 Status e Produtos</h3>
-                      <p className="text-[10px] text-zinc-500">Controle se a loja está aberta e edite seus preços.</p>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                      <button onClick={handleToggleStatus} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
-                          {isPaused ? 'Loja Fechada 🚫' : 'Loja Aberta ✅'}
-                      </button>
-                      <button onClick={() => setPriceModalOpen(true)} className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border border-purple-200">Editar Preços</button>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in zoom-in-95 duration-300">
+            {/* Controles da Loja e Status Geral */}
+            <div className="col-span-1 md:col-span-2 bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                <div>
+                  <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
+                    <span>🏪</span> Status de Funcionamento
+                  </h3>
+                  <p className="text-xs text-zinc-500">Abra ou feche sua loja para receber novos pedidos.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={handleToggleStatus} 
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm border flex items-center gap-1.5 ${
+                      isPaused 
+                        ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-800' 
+                        : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800'
+                    }`}
+                  >
+                    {isPaused ? '🔴 Loja Fechada' : '🟢 Loja Aberta (Recebendo Pedidos)'}
+                  </button>
+                  <button 
+                    onClick={() => setPriceModalOpen(true)} 
+                    className="bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm border border-purple-200 dark:border-purple-800"
+                  >
+                    ✏️ Editar Preços Base
+                  </button>
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+              {/* AÇAÍ BASE (POPULAR, MÉDIO, GROSSO) COM FLAGS E FOTOS */}
+              <div>
+                <div className="flex justify-between items-center mb-3">
                   <div>
-                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🚚 Participação no Frete (%)</h3>
-                      <p className="text-[10px] text-zinc-500">Defina a porcentagem do frete que você quer pagar para atrair mais clientes.</p>
+                    <h4 className="font-bold text-xs uppercase text-zinc-700 dark:text-zinc-300">🥣 Cardápio Base de Açaí (1 Litro)</h4>
+                    <p className="text-[11px] text-zinc-500">Controle a disponibilidade e foto de cada ponto de açaí.</p>
                   </div>
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                      <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Você Paga:</label>
-                      <input type="number" min="0" max="100" value={subsidyInput} onChange={e => setSubsidyInput(e.target.value)} className="w-16 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded p-1.5 text-center font-bold text-sm outline-none focus:ring-2 focus:ring-purple-500" />
-                      <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">%</span>
-                      <button onClick={handleSaveSubsidy} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ml-1">Salvar</button>
-                  </div>
-              </div>
+                </div>
 
-              <div className="flex justify-between items-center mt-2">
-                  <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">Logística Reversa</h3>
-                  <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => {
-                          const ecopontoUser = store.users['ecoponto'];
-                          const latEcoponto = ecopontoUser?.lat || -1.4558;
-                          const lngEcoponto = ecopontoUser?.lng || -48.4908;
-                          setMapModal({
-                            open: true,
-                            origem: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser?.name || 'Sua Loja' },
-                            destino: { lat: latEcoponto, lng: lngEcoponto, name: ecopontoUser?.name || 'Ecoponto' },
-                            motorista: null
-                          });
-                        }} 
-                        className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded"
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(['popular', 'medio', 'grosso'] as const).map((tipo) => {
+                    const label = tipo === 'popular' ? 'Açaí Popular' : tipo === 'medio' ? 'Açaí Médio' : 'Açaí Grosso';
+                    const price = prices[tipo] || (tipo === 'popular' ? 20 : tipo === 'medio' ? 26 : 35);
+                    const isAvailable = currentUser?.availabilityB2C?.[tipo] !== false;
+                    const photo = currentUser?.imagesB2C?.[tipo];
+
+                    return (
+                      <div 
+                        key={tipo} 
+                        className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between ${
+                          isAvailable 
+                            ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/60' 
+                            : 'bg-zinc-100/70 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800 opacity-70'
+                        }`}
                       >
-                        🗺️ {distColeta.toFixed(1)} km
-                      </button>
-                      
-                      {(() => {
-                          const activeColeta = (store.orders || []).find(o => o.type === 'COLETA' && o.origemId === currentUser.id && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado');
+                        <div className="flex items-center gap-2.5 mb-2.5">
+                          <div 
+                            onClick={() => setPhotoModalData({
+                              open: true,
+                              title: `Foto do ${label}`,
+                              category: 'acai',
+                              currentUrl: photo,
+                              onSelect: (url) => {
+                                if (currentUser) store.updateAcaiImage(currentUser.id, tipo, url);
+                              }
+                            })}
+                            className="w-12 h-12 rounded-lg bg-purple-200 dark:bg-purple-900 overflow-hidden shrink-0 cursor-pointer border border-purple-300 dark:border-purple-700 relative group"
+                            title="Clique para alterar foto"
+                          >
+                            {photo ? (
+                              <img src={photo} alt={label} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center text-purple-700 dark:text-purple-300 text-xs font-bold">
+                                <span>📸</span>
+                                <span className="text-[8px]">Foto</span>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">
+                              ✏️
+                            </div>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate">{label}</p>
+                            <p className="text-purple-600 dark:text-purple-400 font-extrabold text-xs">R$ {price.toFixed(2)}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-1.5 pt-2 border-t border-purple-100 dark:border-purple-900/40">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (currentUser) store.toggleAcaiAvailability(currentUser.id, tipo);
+                            }}
+                            className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 border shadow-xs ${
+                              isAvailable
+                                ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-600'
+                                : 'bg-red-500 hover:bg-red-600 text-white border-red-600'
+                            }`}
+                          >
+                            {isAvailable ? '🟢 Disponível' : '🔴 Esgotado'}
+                          </button>
                           
-                          if (activeColeta) {
-                              const statusText = activeColeta.status === 'aguardando_pagamento' ? 'Aguardando Pagamento Pix' :
-                                                 (activeColeta.status === 'pendente' || activeColeta.status === 'pronto') ? 'Aguardando Caçamba' :
-                                                 activeColeta.status === 'em_rota' ? 'Caçamba a Caminho' : 'Em Andamento';
-                              return (
-                                  <div className="flex flex-wrap items-center gap-2">
-                                      <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded border border-amber-200 shadow-sm animate-pulse">🚛 {statusText}</span>
-                                      {activeColeta.status === 'aguardando_pagamento' && (
-                                          <button 
-                                            type="button"
-                                            onClick={() => {
-                                                setPixModalData({
-                                                    open: true,
-                                                    qrCode: activeColeta.pixQrCode,
-                                                    copiaECola: activeColeta.pixCopiaECola,
-                                                    invoiceUrl: activeColeta.invoiceUrl,
-                                                    orderId: activeColeta.id,
-                                                    totalValue: freteColeta
-                                                });
-                                            }}
-                                            className="text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 rounded shadow-sm flex items-center gap-1"
-                                          >
-                                            ⚡ Pagar Pix
-                                          </button>
-                                      )}
-                                      {activeColeta.deliveryPin && (
-                                          <span className="text-xs font-black bg-purple-700 text-white px-2.5 py-1 rounded-md shadow-sm border border-purple-500 tracking-widest flex items-center gap-1">
-                                              🔑 PIN: {activeColeta.deliveryPin}
-                                          </span>
-                                      )}
-                                      <button onClick={() => store.acaoPedido(activeColeta.id, 'cancelar_pedido')} className="text-xs text-red-500 hover:text-red-700 font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Cancelar</button>
-                                  </div>
-                              );
-                          }
+                          <button
+                            type="button"
+                            onClick={() => setPhotoModalData({
+                              open: true,
+                              title: `Foto do ${label}`,
+                              category: 'acai',
+                              currentUrl: photo,
+                              onSelect: (url) => {
+                                if (currentUser) store.updateAcaiImage(currentUser.id, tipo, url);
+                              }
+                            })}
+                            className="p-1.5 rounded-lg bg-white dark:bg-zinc-800 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-bold border border-zinc-200 dark:border-zinc-700 shadow-xs"
+                            title="Trocar Foto"
+                          >
+                            📸
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
 
+            {/* Participação no Frete e Logística Reversa */}
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
+                  <span>🚚</span> Participação no Frete (%)
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1">Defina a porcentagem do frete que você quer subsidiar para os clientes.</p>
+                <div className="flex items-center gap-2 mt-3">
+                  <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Você Paga:</label>
+                  <input type="number" min="0" max="100" value={subsidyInput} onChange={e => setSubsidyInput(e.target.value)} className="w-16 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-2 text-center font-bold text-sm outline-none focus:ring-2 focus:ring-purple-500" />
+                  <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">%</span>
+                  <button onClick={handleSaveSubsidy} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ml-1">Salvar</button>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                <div>
+                  <h4 className="font-bold text-xs uppercase text-zinc-700 dark:text-zinc-300">Logística Reversa</h4>
+                  <p className="text-[10px] text-zinc-500">Descarte sustentável do caroço.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      const ecopontoUser = store.users['ecoponto'];
+                      const latEcoponto = ecopontoUser?.lat || -1.4558;
+                      const lngEcoponto = ecopontoUser?.lng || -48.4908;
+                      setMapModal({
+                        open: true,
+                        origem: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser?.name || 'Sua Loja' },
+                        destino: { lat: latEcoponto, lng: lngEcoponto, name: ecopontoUser?.name || 'Ecoponto' },
+                        motorista: null
+                      });
+                    }} 
+                    className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded"
+                  >
+                    🗺️ {distColeta.toFixed(1)} km
+                  </button>
+                  
+                  {(() => {
+                      const activeColeta = (store.orders || []).find(o => o.type === 'COLETA' && o.origemId === currentUser.id && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado');
+                      
+                      if (activeColeta) {
+                          const statusText = activeColeta.status === 'aguardando_pagamento' ? 'Aguardando Pagamento Pix' :
+                                             (activeColeta.status === 'pendente' || activeColeta.status === 'pronto') ? 'Aguardando Caçamba' :
+                                             activeColeta.status === 'em_rota' ? 'Caçamba a Caminho' : 'Em Andamento';
                           return (
-                              <button onClick={async () => {
-                                  const res: any = await store.criarPedido('COLETA');
-                                  if (res && typeof res === 'object') {
-                                    if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
-                                       setPixModalData({
-                                          open: true,
-                                          qrCode: res.pixQrCode,
-                                          copiaECola: res.pixCopiaECola,
-                                          invoiceUrl: res.invoiceUrl,
-                                          orderId: res.orderId,
-                                          paymentId: res.paymentId,
-                                          isSandbox: res.isSandbox,
-                                          totalValue: res.totalValue || freteColeta
-                                       });
-                                       return;
-                                    }
-                                    if (res.error) {
-                                       alert(`Aviso do Asaas: ${res.error}`);
-                                    } else {
-                                       alert('✅ Chamada de caçamba registrada com sucesso!');
-                                    }
-                                  } else if (typeof res === 'string' && res.startsWith('http')) {
-                                    window.location.href = res;
-                                  } else {
-                                    alert('✅ Chamada de caçamba registrada com sucesso!');
-                                  }
-                              }} className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-1.5 px-3 rounded-lg border border-amber-300 transition text-xs shadow-sm">
-                                  🚛 Chamar Caçamba ({formatMoney(freteColeta)})
-                              </button>
+                              <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded border border-amber-200 shadow-sm animate-pulse">🚛 {statusText}</span>
+                                  {activeColeta.status === 'aguardando_pagamento' && (
+                                      <button 
+                                        type="button"
+                                        onClick={() => {
+                                            setPixModalData({
+                                                open: true,
+                                                qrCode: activeColeta.pixQrCode,
+                                                copiaECola: activeColeta.pixCopiaECola,
+                                                invoiceUrl: activeColeta.invoiceUrl,
+                                                orderId: activeColeta.id,
+                                                totalValue: freteColeta
+                                            });
+                                        }}
+                                        className="text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 rounded shadow-sm flex items-center gap-1"
+                                      >
+                                        ⚡ Pagar Pix
+                                      </button>
+                                  )}
+                                  {activeColeta.deliveryPin && (
+                                      <span className="text-xs font-black bg-purple-700 text-white px-2.5 py-1 rounded-md shadow-sm border border-purple-500 tracking-widest flex items-center gap-1">
+                                          🔑 PIN: {activeColeta.deliveryPin}
+                                      </span>
+                                  )}
+                                  <button onClick={() => store.acaoPedido(activeColeta.id, 'cancelar_pedido')} className="text-xs text-red-500 hover:text-red-700 font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Cancelar</button>
+                              </div>
                           );
-                      })()}
-                  </div>
-              </div>
-          </div>
+                      }
 
-          <div className="col-span-1 md:col-span-2 bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
-              <div className="border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                  <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">📦 Produtos Extras</h3>
-                  <p className="text-[10px] text-zinc-500">Cadastre outros itens para os clientes adicionarem ao pedido.</p>
+                      return (
+                          <button onClick={async () => {
+                              const res: any = await store.criarPedido('COLETA');
+                              if (res && typeof res === 'object') {
+                                if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
+                                   setPixModalData({
+                                      open: true,
+                                      qrCode: res.pixQrCode,
+                                      copiaECola: res.pixCopiaECola,
+                                      invoiceUrl: res.invoiceUrl,
+                                      orderId: res.orderId,
+                                      paymentId: res.paymentId,
+                                      isSandbox: res.isSandbox,
+                                      totalValue: res.totalValue || freteColeta
+                                   });
+                                   return;
+                                }
+                                if (res.error) {
+                                   alert(`Aviso do Asaas: \${res.error}`);
+                                } else {
+                                   alert('✅ Chamada de caçamba registrada com sucesso!');
+                                }
+                              } else if (typeof res === 'string' && res.startsWith('http')) {
+                                window.location.href = res;
+                              } else {
+                                alert('✅ Chamada de caçamba registrada com sucesso!');
+                              }
+                          }} className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-1.5 px-3 rounded-lg border border-amber-300 transition text-xs shadow-sm">
+                              🚛 Chamar Caçamba ({formatMoney(freteColeta)})
+                          </button>
+                      );
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* PRODUTOS EXTRAS / ADICIONAIS COM DISPONIBILIDADE E FOTOS */}
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+              <div className="border-b border-zinc-100 dark:border-zinc-800 pb-2 flex justify-between items-center">
+                <div>
+                  <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
+                    <span>📦</span> Produtos Extras & Adicionais
+                  </h3>
+                  <p className="text-xs text-zinc-500">Farinha de tapioca, banana, granola, leite em pó, etc.</p>
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
-                  <input type="text" placeholder="Nome do Produto" value={newProductName} onChange={e => setNewProductName(e.target.value)} className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:border-purple-500" />
-                  <input type="number" step="0.1" placeholder="Preço (R$)" value={newProductPrice} onChange={e => setNewProductPrice(e.target.value)} className="w-full sm:w-32 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:border-purple-500" />
-                  <button onClick={handleAddProduct} className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition shrink-0">Adicionar</button>
-              </div>
-
-              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 mt-2">
-                  {currentUser?.products?.map(p => (
-                      <li key={p.id} className="flex justify-between items-center py-2">
-                          <div>
-                              <p className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">{p.name}</p>
-                              <p className="text-purple-600 text-xs font-bold">R$ {p.price.toFixed(2)}</p>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <button onClick={() => handleEditProduct(p)} className="text-purple-600 hover:text-purple-800 p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg transition" title="Editar produto extra">✏️</button>
-                            <button onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} className="text-red-500 hover:text-red-700 p-2 bg-red-50 dark:bg-red-900/30 rounded-lg transition" title="Excluir produto extra">🗑️</button>
-                          </div>
-                      </li>
-                  ))}
-                  {(!currentUser?.products || currentUser.products.length === 0) && (
-                      <p className="text-xs text-zinc-500 text-center py-4">Nenhum produto extra cadastrado.</p>
+              {/* Form de Cadastro */}
+              <div className="bg-zinc-50 dark:bg-zinc-950/60 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-2 items-center">
+                <button
+                  type="button"
+                  onClick={() => setPhotoModalData({
+                    open: true,
+                    title: 'Foto do Produto Extra',
+                    category: 'adicional',
+                    currentUrl: newProductImage,
+                    onSelect: (url) => setNewProductImage(url)
+                  })}
+                  className="w-full sm:w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0 border border-purple-300 dark:border-purple-700 transition"
+                  title="Escolher Foto"
+                >
+                  {newProductImage ? (
+                    <img src={newProductImage} alt="Extra" className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <span>📸</span>
                   )}
+                </button>
+                <input 
+                  type="text" 
+                  placeholder="Nome (ex: Farinha de Tapioca)" 
+                  value={newProductName} 
+                  onChange={e => setNewProductName(e.target.value)} 
+                  className="flex-1 w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-purple-500" 
+                />
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  placeholder="R$" 
+                  value={newProductPrice} 
+                  onChange={e => setNewProductPrice(e.target.value)} 
+                  className="w-full sm:w-24 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-purple-500" 
+                />
+                <button 
+                  onClick={handleAddProduct} 
+                  className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition shrink-0 shadow-sm"
+                >
+                  + Adicionar
+                </button>
+              </div>
+
+              {/* Lista de Extras */}
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-60 overflow-y-auto">
+                {currentUser?.products?.map(p => {
+                  const isAvail = p.isAvailable !== false;
+                  return (
+                    <li key={p.id} className="flex justify-between items-center py-2.5 gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div 
+                          onClick={() => setPhotoModalData({
+                            open: true,
+                            title: `Foto de ${p.name}`,
+                            category: 'adicional',
+                            currentUrl: p.imageUrl,
+                            onSelect: (url) => {
+                              if (currentUser) store.updateProduct(currentUser.id, p.id, { imageUrl: url });
+                            }
+                          })}
+                          className="w-9 h-9 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 cursor-pointer flex items-center justify-center"
+                          title="Trocar Foto"
+                        >
+                          {p.imageUrl ? (
+                            <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs">📦</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`font-bold text-xs truncate ${isAvail ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-400 line-through'}`}>{p.name}</p>
+                          <p className="text-purple-600 dark:text-purple-400 text-xs font-bold">R$ {p.price.toFixed(2)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentUser) store.toggleProductAvailability(currentUser.id, p.id);
+                          }}
+                          className={`px-2 py-1 rounded-md text-[10px] font-bold border transition ${
+                            isAvail
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800'
+                              : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-800'
+                          }`}
+                        >
+                          {isAvail ? '🟢 Disponível' : '🔴 Esgotado'}
+                        </button>
+                        <button onClick={() => handleEditProduct(p)} className="text-purple-600 hover:text-purple-800 p-1.5 bg-purple-50 dark:bg-purple-900/30 rounded-lg transition" title="Editar produto extra">✏️</button>
+                        <button onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg transition" title="Excluir produto extra">🗑️</button>
+                      </div>
+                    </li>
+                  );
+                })}
+                {(!currentUser?.products || currentUser.products.length === 0) && (
+                  <p className="text-xs text-zinc-500 text-center py-4">Nenhum produto extra cadastrado.</p>
+                )}
               </ul>
             </div>
           </div>
@@ -1326,6 +1536,19 @@ export default function BatedeiraDashboard() {
           otherParticipantRole={chatModalData.otherRole}
         />
       )}
+
+      {/* Modal Seletor de Fotos */}
+      <PhotoPickerModal
+        isOpen={photoModalData.open}
+        onClose={() => setPhotoModalData(prev => ({ ...prev, open: false }))}
+        title={photoModalData.title}
+        category={photoModalData.category}
+        currentImageUrl={photoModalData.currentUrl}
+        onSelectPhoto={(url) => {
+          photoModalData.onSelect(url);
+          setPhotoModalData(prev => ({ ...prev, open: false }));
+        }}
+      />
     </div>
   );
 }
