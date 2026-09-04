@@ -414,11 +414,13 @@ export default function StorefrontPage() {
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
             <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a) ao AçaíFood!</h2>
             <p className="text-zinc-500 dark:text-zinc-400">O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</p>
+            <p className="text-xs text-purple-700 dark:text-purple-400 font-bold mt-3 tracking-wide">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
         </div>
 
         {!currentUser ? (
-          <div className="flex justify-center items-center mt-8 mb-8">
+          <div className="flex flex-col justify-center items-center mt-6 mb-8 text-center">
              <img src="/banner.png?v=4" alt="Marca Oficial AçaíFood" className="w-full max-w-xs sm:max-w-sm rounded-3xl shadow-2xl object-contain border-4 border-purple-900/40 dark:border-purple-800/50" />
+             <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-3">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
           </div>
         ) : (
           <>
@@ -1100,6 +1102,11 @@ export default function StorefrontPage() {
           otherParticipantRole={chatModalData.otherRole}
         />
       )}
+
+      <footer className="text-center py-6 px-4 text-xs text-zinc-500 dark:text-zinc-400 border-t border-zinc-200 dark:border-zinc-800 mt-12 mb-8">
+        <p className="font-semibold text-purple-700 dark:text-purple-400">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
+        <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Belém - PA • Todos os direitos reservados</p>
+      </footer>
     </div>
   );
 }

@@ -201,8 +201,9 @@ function CadastroForm() {
       {step === 1 && (
         <>
           <div className="sm:mx-auto sm:w-full sm:max-w-md">
-            <div className="flex justify-center mb-4">
+            <div className="flex flex-col justify-center items-center mb-4 text-center">
               <img src="/banner.png?v=4" alt="Marca Oficial AçaíFood" className="w-36 h-36 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-2 max-w-xs">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
             </div>
             <h2 className="text-center text-3xl font-extrabold text-zinc-900 dark:text-white">
               Crie sua Conta
@@ -470,6 +471,9 @@ export default function CadastroPage() {
       <Suspense fallback={<div className="text-center">Carregando...</div>}>
         <CadastroForm />
       </Suspense>
+      <p className="text-center text-xs text-zinc-500 dark:text-zinc-400 mt-8">
+        AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.
+      </p>
     </div>
   );
 }
