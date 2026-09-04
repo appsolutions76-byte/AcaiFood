@@ -1,19 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
 export function isAuthorizedRequest(request: Request): boolean {
-  const internalSecret = process.env.INTERNAL_API_SECRET || process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_2026_@AppS76_seguro';
+  // Segredo interno — lido APENAS de env do servidor (nunca NEXT_PUBLIC_ em produção)
+  const internalSecret = process.env.INTERNAL_API_SECRET || process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '';
   const webhookSecret = process.env.WEBHOOK_SECRET || 'acaifood_webhook_2026';
 
   const headerToken = request.headers.get('x-internal-secret');
-  if (headerToken && (headerToken === internalSecret || headerToken === 'acaifood_2026_@AppS76_seguro')) return true;
+  if (headerToken && internalSecret && headerToken === internalSecret) return true;
 
   const asaasHeaderToken = request.headers.get('asaas-access-token');
-  if (asaasHeaderToken && (asaasHeaderToken === webhookSecret || asaasHeaderToken === 'acaifood_webhook_2026')) return true;
+  if (asaasHeaderToken && asaasHeaderToken === webhookSecret) return true;
+
+  // Verificar cron jobs da Vercel
+  const cronSecret = process.env.CRON_SECRET || '';
+  const cronHeader = request.headers.get('x-vercel-cron');
+  if (cronHeader === '1' && cronSecret && request.headers.get('authorization') === `Bearer ${cronSecret}`) return true;
 
   try {
     const url = new URL(request.url);
     const whToken = url.searchParams.get('wh_token');
-    if (whToken && (whToken === webhookSecret || whToken === 'acaifood_webhook_2026')) return true;
+    if (whToken && whToken === webhookSecret) return true;
   } catch (_e) {}
 
   return false;
@@ -106,4 +112,30 @@ export function unauthorizedResponse(message?: string) {
     JSON.stringify({ error: message || 'Não autorizado' }),
     { status: 401, headers: { 'Content-Type': 'application/json' } }
   );
+}
+
+/**
+ * Valida se a requisição é um webhook legítimo do Asaas.
+ * SEMPRE verifica o token, independente do conteúdo do body.
+ */
+export function isValidAsaasWebhook(request: Request): boolean {
+  const webhookSecret = process.env.WEBHOOK_SECRET || 'acaifood_webhook_2026';
+  
+  // Verificar header asaas-access-token (método oficial do Asaas)
+  const asaasToken = request.headers.get('asaas-access-token');
+  if (asaasToken && asaasToken === webhookSecret) return true;
+
+  // Verificar query param wh_token
+  try {
+    const url = new URL(request.url);
+    const whToken = url.searchParams.get('wh_token');
+    if (whToken && whToken === webhookSecret) return true;
+  } catch (_e) {}
+
+  // Verificar x-internal-secret como fallback para chamadas internas do servidor
+  const internalSecret = process.env.INTERNAL_API_SECRET || process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '';
+  const internalToken = request.headers.get('x-internal-secret');
+  if (internalToken && internalSecret && internalToken === internalSecret) return true;
+
+  return false;
 }

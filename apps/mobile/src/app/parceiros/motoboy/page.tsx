@@ -8,6 +8,7 @@ import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
+import { supabase } from "@/lib/supabase";
 
 const emptySubscribe = () => () => {};
 
@@ -164,9 +165,10 @@ export default function MotoboyDashboard() {
         const pendingOrders = minhasCorridasAll.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone);
         const pendingOrderIds = pendingOrders.map((o: any) => o.id);
 
+        const { data: { session } } = await supabase.auth.getSession();
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '' },
+          headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) },
           body: JSON.stringify({
             pixKey: targetKey,
             value: ganhosHoje,

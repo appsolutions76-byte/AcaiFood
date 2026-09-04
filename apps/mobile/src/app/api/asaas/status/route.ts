@@ -175,16 +175,18 @@ export async function GET(request: Request) {
 // 4. Endpoint Webhook (POST) para receber notificações oficiais do Asaas em tempo real
 export async function POST(request: Request) {
   try {
+    // Validação rigorosa de autenticidade do Webhook Asaas para TODOS os eventos
+    const { isValidAsaasWebhook } = await import('@/lib/apiAuth');
+    if (!isValidAsaasWebhook(request)) {
+      console.warn("⚠️ [Webhook Asaas] Tentativa de chamada de webhook não autorizada rejeitada.");
+      return unauthorizedResponse("Assinatura de webhook ou token de acesso inválido.");
+    }
+
     const body = await request.json();
     console.log("Recebido Webhook Asaas (POST):", JSON.stringify(body));
 
     const event = body.event;
     const payment = body.payment || body;
-
-    // Se não tiver evento reconhecido do Asaas, valida autorização estrita
-    if (!event && !payment?.id) {
-      if (!isAuthorizedRequest(request)) return unauthorizedResponse();
-    }
 
     const status = payment?.status || (event === 'PAYMENT_RECEIVED' ? 'RECEIVED' : event === 'PAYMENT_CONFIRMED' ? 'CONFIRMED' : 'PENDING');
     const orderId = payment?.externalReference;

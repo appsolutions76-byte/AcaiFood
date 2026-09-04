@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getAsaasApiKey } from '@/lib/asaasConfig';
+import { isAuthorizedRequest, authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
+  // Verificar autenticação: aceita admin JWT, internal-secret ou cron da Vercel
+  const isInternalOrCron = isAuthorizedRequest(request);
+  if (!isInternalOrCron) {
+    const auth = await authorizeRequest(request, ['admin']);
+    if (!auth.authorized) {
+      console.warn("[API Sweep] Acesso negado:", auth.error);
+      return unauthorizedResponse(auth.error);
+    }
+  }
+
   try {
     const supabase = getSupabaseAdmin();
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -24,26 +35,22 @@ export async function POST(request: Request) {
           return NextResponse.json({ success: true, mode: 'edge-function', ...edgeData });
         }
       } catch (edgeErr) {
-        console.warn("Edge function payout-sweep falhou, processando via backend Next.js:", edgeErr);
+        console.warn("Edge function payout-sweep falhou, executando varredura via backend Next.js:", edgeErr);
       }
     }
 
-    // 2. Fallback de varredura executado diretamente no servidor Next.js
+    // 2. Fallback: Identificar pedidos com repasses pendentes para revisão manual
+    // IMPORTANTE: Este fallback NÃO envia PIX automaticamente e NÃO marca como liquidado.
+    // A liquidação real deve ocorrer via Asaas (Edge Function) ou via admin manual no painel.
     const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
       return NextResponse.json({ error: 'ASAAS_API_KEY não configurada' }, { status: 400 });
     }
 
-    const { data: settings } = await supabase.from('platform_settings').select('*').limit(1).maybeSingle();
-    const courierMode = settings?.courier_payment_mode || 'KM';
-    const courierFixed = Number(settings?.courier_fixed_fee ?? 0);
-    const transporterMode = settings?.transporter_payment_mode || 'KM';
-    const transporterFixed = Number(settings?.transporter_fixed_fee ?? 0);
-
     const validStatuses = ['RECEIVED', 'DELIVERED', 'COMPLETED', 'entregue', 'concluido'];
     const { data: rawOrders } = await supabase
       .from('orders')
-      .select('id, order_type, status, products_subtotal, delivery_distance_km, applied_delivery_fee_per_km, applied_platform_fee_percent, applied_delivery_platform_fee_percent, seller_storefront_id, driver_id, payout_seller_done, payout_driver_done')
+      .select('id, order_type, status, products_subtotal, delivery_distance_km, seller_storefront_id, driver_id, payout_seller_done, payout_driver_done')
       .order('created_at', { ascending: false })
       .limit(100);
 
@@ -51,22 +58,20 @@ export async function POST(request: Request) {
       validStatuses.includes(String(o.status || '')) && (!o.payout_seller_done || !o.payout_driver_done)
     );
 
-    let processedCount = 0;
-    for (const order of pendingOrders) {
-      // Marcar repasses pendentes como liquidados na varredura diária
-      const updates: any = {};
-      if (!order.payout_seller_done) updates.payout_seller_done = true;
-      if (!order.payout_driver_done) updates.payout_driver_done = true;
-      if (Object.keys(updates).length > 0) {
-        await supabase.from('orders').update(updates).eq('id', order.id);
-        processedCount++;
-      }
-    }
+    const pendingList = pendingOrders.map((o: any) => ({
+      id: o.id,
+      sellerPending: !o.payout_seller_done,
+      driverPending: !o.payout_driver_done,
+    }));
+
+    console.log(`[Sweep] ${pendingOrders.length} pedidos com repasses pendentes identificados. Nenhum PIX foi enviado automaticamente neste fallback.`);
 
     return NextResponse.json({
       success: true,
-      message: `Varredura diária executada com sucesso. Pedidos regularizados: ${processedCount}`,
-      pendingCount: pendingOrders.length
+      message: `Varredura executada. ${pendingOrders.length} pedidos com repasses pendentes para revisão.`,
+      pendingCount: pendingOrders.length,
+      pendingOrders: pendingList,
+      note: 'O fallback identifica pendências mas não envia PIX automaticamente. Use o painel admin ou a Edge Function payout-sweep para liquidar.'
     });
 
   } catch (err: any) {

@@ -176,8 +176,7 @@ export default function FornecedorDashboard() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const authHeaders: any = { 
-          'Content-Type': 'application/json',
-          'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_2026_@AppS76_seguro'
+          'Content-Type': 'application/json'
         };
         if (session?.access_token) {
           authHeaders['Authorization'] = `Bearer ${session.access_token}`;

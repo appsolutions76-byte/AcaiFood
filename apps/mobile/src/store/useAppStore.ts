@@ -256,8 +256,9 @@ const lastFetchOrdersTime: Record<string, number> = {};
 async function getAuthHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || 'acaifood_2026_@AppS76_seguro'
+    'Content-Type': 'application/json'
+    // x-internal-secret removido do frontend por segurança
+    // A autenticação é feita exclusivamente via JWT do Supabase (Authorization: Bearer)
   };
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -1260,8 +1261,6 @@ export const useAppStore = create<AppState>()(
             } catch (dbErr) {
               console.error("Exceção ao persistir preços no banco:", dbErr);
             }
-            await get().fetchAllUsers(true);
-            await get().fetchLojas(true);
         }
       },
 
@@ -1306,8 +1305,6 @@ export const useAppStore = create<AppState>()(
         } catch (dbErr) {
           console.error("Exceção ao cadastrar produto no banco:", dbErr);
         }
-        await get().fetchAllUsers(true);
-        await get().fetchLojas(true);
       },
 
       removeProduct: async (userId, productId) => {
@@ -1329,8 +1326,6 @@ export const useAppStore = create<AppState>()(
         } catch (dbErr) {
           console.error("Exceção ao remover produto no banco:", dbErr);
         }
-        await get().fetchAllUsers(true);
-        await get().fetchLojas(true);
       },
 
       updateProduct: async (userId, productId, updatedData) => {
@@ -1356,8 +1351,6 @@ export const useAppStore = create<AppState>()(
         } catch (dbErr) {
           console.error("Exceção ao atualizar produto no banco:", dbErr);
         }
-        await get().fetchAllUsers(true);
-        await get().fetchLojas(true);
       },
 
       criarPedido: async (tipo, targetId, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => {

@@ -55,6 +55,43 @@ export async function POST(request: Request) {
 
     const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
 
+    // 0. Idempotência: verificar se este orderId já possui cobrança gerada no Asaas
+    if (orderId) {
+      try {
+        const existingPayRes = await fetch(`${ASAAS_URL}/payments?externalReference=${encodeURIComponent(orderId)}`, {
+          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+        });
+        if (existingPayRes.ok) {
+          const existingPayData = await existingPayRes.json();
+          if (existingPayData && existingPayData.data && existingPayData.data.length > 0) {
+            const existingPayment = existingPayData.data[0];
+            if (existingPayment.status !== 'CANCELLED' && existingPayment.status !== 'REFUNDED') {
+              // Buscar QR Code existente
+              let existingPix: any = {};
+              try {
+                const pixRes = await fetch(`${ASAAS_URL}/payments/${existingPayment.id}/pixQrCode`, {
+                  headers: { 'access_token': ASAAS_API_KEY }
+                });
+                existingPix = await pixRes.json();
+              } catch (_e) {}
+
+              return NextResponse.json({
+                paymentId: existingPayment.id,
+                invoiceUrl: existingPayment.invoiceUrl || existingPayment.bankSlipUrl,
+                pixQrCode: existingPix.encodedImage || null,
+                pixCopiaECola: existingPix.payload || null,
+                status: existingPayment.status,
+                isSandbox: false,
+                isExisting: true
+              });
+            }
+          }
+        }
+      } catch (checkErr) {
+        console.warn("Aviso ao checar idempotência de cobrança no Asaas:", checkErr);
+      }
+    }
+
     // 1. Criar ou Buscar Cliente no Asaas
     let customerId = '';
     const emailToSearch = customerEmail || 'cliente@acaifood.com.br';

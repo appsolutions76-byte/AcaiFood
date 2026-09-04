@@ -107,13 +107,33 @@ export async function POST(request: Request) {
     }
 
     // Persistir estado de cancelamento e estorno no Supabase DB
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const { getSupabaseAdmin } = await import('@/lib/supabaseAdmin');
+    const supabase = getSupabaseAdmin();
 
-    if (orderId && supabaseUrl && supabaseServiceKey) {
+    if (orderId) {
       try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        // Verificar se o pedido pertence ao usuário que está solicitando o estorno (se não for admin)
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('id, buyer_id, driver_id, seller_storefront_id, status')
+          .eq('id', orderId)
+          .maybeSingle();
+
+        if (orderData && auth.source === 'user_jwt') {
+          const userId = auth.user?.id || auth.profile?.id;
+          const userRole = String(auth.profile?.role || '').toUpperCase();
+          const isAdmin = userRole === 'ADMIN' || auth.profile?.role === 'admin';
+
+          if (!isAdmin) {
+            const isBuyer = orderData.buyer_id === userId;
+            const isDriver = orderData.driver_id === userId;
+            const isStore = orderData.seller_storefront_id === userId;
+
+            if (!isBuyer && !isDriver && !isStore) {
+              return NextResponse.json({ error: 'Você não tem permissão para cancelar ou estornar este pedido.' }, { status: 403 });
+            }
+          }
+        }
         
         const targetDbStatus = refundStatus === 'REFUNDED' ? 'REFUNDED' : (asaasPaymentId ? 'REFUND_REQUESTED' : 'CANCELED');
         
