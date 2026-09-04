@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       ? ['historical', 'monthly', 'daily'] 
       : [targetPeriod];
 
-    const { error: balancesErr } = await supabase.from('admin_balances').update({
+    const zeroPayload = {
       total_orders: 0,
       total_volume: 0,
       app_revenue: 0,
@@ -28,11 +28,10 @@ export async function POST(request: Request) {
       caminhoes_bruto: 0,
       caminhoes_liquido: 0,
       updated_at: new Date().toISOString()
-    }).in('id', targetIds);
+    };
 
-    if (balancesErr) {
-      console.error("Erro ao zerar admin_balances:", balancesErr);
-      return NextResponse.json({ error: balancesErr.message }, { status: 500 });
+    for (const bId of targetIds) {
+      await supabase.from('admin_balances').upsert({ id: bId, ...zeroPayload });
     }
 
     return NextResponse.json({ 

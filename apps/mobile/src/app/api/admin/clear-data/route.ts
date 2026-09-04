@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     }
 
     // Zerar atômica e completamente todos os acumuladores de admin_balances
-    const { error: balancesErr } = await supabase.from('admin_balances').update({
+    const zeroPayload = {
       total_orders: 0,
       total_volume: 0,
       app_revenue: 0,
@@ -50,10 +50,14 @@ export async function POST(request: Request) {
       caminhoes_bruto: 0,
       caminhoes_liquido: 0,
       updated_at: new Date().toISOString()
-    }).in('id', ['historical', 'monthly', 'daily']);
+    };
 
-    if (balancesErr) {
-      console.warn("Aviso ao zerar admin_balances:", balancesErr);
+    for (const bId of ['historical', 'monthly', 'daily']) {
+      try {
+        await supabase.from('admin_balances').upsert({ id: bId, ...zeroPayload });
+      } catch (bErr) {
+        console.warn("Aviso ao zerar admin_balances para " + bId + ":", bErr);
+      }
     }
 
     return NextResponse.json({ 

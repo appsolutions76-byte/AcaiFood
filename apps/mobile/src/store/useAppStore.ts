@@ -257,11 +257,16 @@ async function getAuthHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
-    // x-internal-secret removido do frontend por segurança
-    // A autenticação é feita exclusivamente via JWT do Supabase (Authorization: Bearer)
   };
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+  const current = useAppStore.getState()?.currentUser;
+  if (current?.id) {
+    headers['x-user-id'] = current.id;
+  }
+  if (current?.role) {
+    headers['x-user-role'] = String(current.role).toLowerCase();
   }
   return headers;
 }
