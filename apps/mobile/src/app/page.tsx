@@ -446,7 +446,7 @@ export default function StorefrontPage() {
 
       <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role="login" />
 
-      <main className="p-4 sm:p-6 max-w-3xl mx-auto space-y-8">
+      <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-8">
         
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
             <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a) ao AçaíFood!</h2>
@@ -762,7 +762,7 @@ export default function StorefrontPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                       {batedeirasFiltered.length === 0 ? (
                         <div className="col-span-full p-8 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 text-sm">
                           <p className="text-3xl mb-2">🔍</p>
@@ -791,78 +791,86 @@ export default function StorefrontPage() {
                         return (
                           <div 
                             key={loja.id} 
-                            className={`bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border transition-all hover:shadow-md flex flex-col justify-between ${
+                            className={`bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border transition-all hover:shadow-md flex flex-col justify-between gap-3 ${
                               isSelectedLoja 
                                 ? 'border-purple-500 ring-2 ring-purple-500/20' 
                                 : 'border-zinc-200 dark:border-zinc-800 hover:border-purple-300 dark:hover:border-purple-700'
-                            } ${isLojaPaused ? 'opacity-70 bg-zinc-50/80 dark:bg-zinc-950/60' : ''}`}
+                            } ${isLojaPaused ? 'opacity-75 bg-zinc-50/80 dark:bg-zinc-950/60' : ''}`}
                           >
                               <div>
-                                <div className="flex justify-between items-start mb-2.5">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <span className="text-3xl bg-purple-50 dark:bg-purple-950/50 p-2 rounded-xl shrink-0 border border-purple-100 dark:border-purple-900/40">{loja.icon || '🏪'}</span>
-                                        <div className="min-w-0">
-                                            <p className="font-bold text-zinc-900 dark:text-white text-sm leading-tight truncate">{loja.name}</p>
-                                            <p className="text-[11px] text-zinc-500 truncate flex items-center gap-1">
-                                              <span>📍 {loja.bairro || 'Centro'}</span>
-                                              <span className="text-amber-500 font-bold ml-1">★ 4.9</span>
-                                            </p>
-                                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                              {isLojaPaused ? (
-                                                <span className="text-[9px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-1.5 py-0.5 rounded">🔴 Fechada</span>
-                                              ) : (
-                                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">🟢 Aberta</span>
-                                              )}
-                                              {subsidy > 0 && (
-                                                <span className="text-[9px] font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/50 px-1.5 py-0.5 rounded">⚡ Frete -{subsidy}%</span>
-                                              )}
-                                              <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">⏱️ {minTime}-{maxTime} min</span>
-                                            </div>
-                                        </div>
+                                {/* TOPO DO CARD: ÍCONE, NOME COMPLETO E DISTÂNCIA */}
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                  <div className="flex items-start gap-3 min-w-0">
+                                    <span className="text-3xl bg-purple-50 dark:bg-purple-950/60 p-2.5 rounded-2xl shrink-0 border border-purple-100 dark:border-purple-900/40 shadow-xs">
+                                      {loja.icon || '🏪'}
+                                    </span>
+                                    <div className="min-w-0">
+                                      <h4 className="font-extrabold text-zinc-900 dark:text-white text-base leading-snug break-words">
+                                        {loja.name}
+                                      </h4>
+                                      <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
+                                        <span>📍 {loja.bairro || 'Centro'}</span>
+                                        <span className="text-amber-500 font-bold">★ 4.9</span>
+                                      </div>
                                     </div>
-                                    {currentUser && (
-                                      <button 
-                                        onClick={() => {
-                                          const latOrig = loja?.lat || 0;
-                                          const lngOrig = loja?.lng || 0;
-                                          const latDest = currentUser?.lat || (latOrig ? latOrig + 0.0045 : -1.455);
-                                          const lngDest = currentUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.490);
-                                          setMapModal({
-                                            open: true,
-                                            origem: { lat: latOrig, lng: lngOrig, name: loja.name || 'Retirada' },
-                                            destino: { lat: latDest, lng: lngDest, name: currentUser.name || 'Entrega' },
-                                            motorista: null
-                                          });
-                                        }} 
-                                        className="text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg shrink-0 hover:bg-blue-100 transition"
-                                        title="Ver no mapa"
-                                      >
-                                        🗺️ {dist.toFixed(1)} km
-                                      </button>
-                                    )}
+                                  </div>
+
+                                  {currentUser && (
+                                    <button 
+                                      onClick={() => {
+                                        const latOrig = loja?.lat || 0;
+                                        const lngOrig = loja?.lng || 0;
+                                        const latDest = currentUser?.lat || (latOrig ? latOrig + 0.0045 : -1.455);
+                                        const lngDest = currentUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.490);
+                                        setMapModal({
+                                          open: true,
+                                          origem: { lat: latOrig, lng: lngOrig, name: loja.name || 'Retirada' },
+                                          destino: { lat: latDest, lng: lngDest, name: currentUser.name || 'Entrega' },
+                                          motorista: null
+                                        });
+                                      }} 
+                                      className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2.5 py-1.5 rounded-xl shrink-0 transition flex items-center gap-1 border border-blue-200 dark:border-blue-800 shadow-xs"
+                                      title="Ver rota no mapa"
+                                    >
+                                      🗺️ {dist.toFixed(1)} km
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* BADGES DE STATUS & TEMPO */}
+                                <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                                  {isLojaPaused ? (
+                                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-lg">🔴 Fechada</span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-lg">🟢 Aberta</span>
+                                  )}
+                                  {subsidy > 0 && (
+                                    <span className="text-[10px] font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900/40 px-2 py-0.5 rounded-lg">⚡ Frete -{subsidy}%</span>
+                                  )}
+                                  <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg">⏱️ {minTime}-{maxTime} min</span>
                                 </div>
                                 
-                                <div className="bg-zinc-50 dark:bg-zinc-950/60 p-2.5 rounded-xl flex flex-col gap-1 text-xs mb-3 border border-zinc-100 dark:border-zinc-800">
-                                    <div className="flex justify-between items-center text-[11px]">
+                                <div className="bg-zinc-50 dark:bg-zinc-950/60 p-3 rounded-xl flex flex-col gap-1.5 text-xs mb-3 border border-zinc-100 dark:border-zinc-800/80">
+                                    <div className="flex justify-between items-center text-xs">
                                       <span className="text-zinc-500 font-medium">A partir de:</span>
                                       <span className="font-extrabold text-purple-600 dark:text-purple-400">{formatMoney(loja.priceB2C?.popular || loja.priceB2C?.medio || 0)} /L</span>
                                     </div>
-                                    <div className="flex justify-between items-center text-[11px]">
-                                      <span className="text-zinc-500 font-medium">Entrega:</span>
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="text-zinc-500 font-medium">Entrega estimada:</span>
                                       <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
                                     </div>
                                 </div>
 
                                 {/* TAGS DE TIPOS DE AÇAÍ DISPONÍVEIS */}
-                                <div className="flex items-center gap-1 flex-wrap mb-2.5">
+                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
                                   {loja.availabilityB2C?.popular !== false && (
-                                    <span className="text-[9px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold">🥣 Popular</span>
+                                    <span className="text-[10px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 px-2 py-0.5 rounded-md font-bold">🥣 Popular</span>
                                   )}
                                   {loja.availabilityB2C?.medio !== false && (
-                                    <span className="text-[9px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold">🥣 Médio</span>
+                                    <span className="text-[10px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 px-2 py-0.5 rounded-md font-bold">🥣 Médio</span>
                                   )}
                                   {loja.availabilityB2C?.grosso !== false && (
-                                    <span className="text-[9px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold">🌿 Grosso</span>
+                                    <span className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded-md font-bold">🌿 Grosso</span>
                                   )}
                                 </div>
                               </div>
@@ -870,12 +878,12 @@ export default function StorefrontPage() {
                               {currentUser ? (
                                   <button 
                                     onClick={() => handleSelectStore(loja.id)} 
-                                    className="w-full mt-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-3 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-1.5 text-xs"
+                                    className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2 text-xs"
                                   >
                                       <ShoppingCart size={15} /> Ver Cardápio & Pedir
                                   </button>
                               ) : (
-                                  <Link href="/login" className="w-full mt-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-2.5 px-3 rounded-xl shadow-xs transition active:scale-95 flex justify-center items-center gap-1.5 text-xs">
+                                  <Link href="/login" className="w-full mt-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-2.5 px-4 rounded-xl shadow-xs transition active:scale-95 flex justify-center items-center gap-2 text-xs">
                                       Entrar para Pedir
                                   </Link>
                               )}
