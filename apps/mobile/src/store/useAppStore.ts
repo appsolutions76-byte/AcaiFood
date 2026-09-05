@@ -1640,6 +1640,15 @@ export const useAppStore = create<AppState>()(
         if (tipo === 'B2C' || tipo === 'B2B') { originId = targetId || ''; destId = currentUser.id; }
         if (tipo === 'COLETA') { destId = 'ecoponto'; }
 
+        // BLOQUEIO DE PEDIDO SE A LOJA ESTIVER FECHADA/PAUSADA
+        if (tipo === 'B2C' && targetId) {
+          const targetStore = state.users[targetId];
+          if (targetStore?.status === 'paused') {
+            alert(`⚠️ A batedeira "${targetStore.name || 'selecionada'}" está fechada no momento e não está aceitando novos pedidos.`);
+            return { error: 'Loja fechada no momento.' };
+          }
+        }
+
         // REVALIDAÇÃO PRÉ-CHECKOUT DIRETA NO SUPABASE (Regras 11 e 12)
         if (tipo === 'B2C' && targetId && state.cart.items.length > 0) {
           try {

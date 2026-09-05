@@ -227,6 +227,12 @@ export default function StorefrontPage() {
 
     return true;
   }).sort((a, b) => {
+    // 1. Prioridade Máxima: Lojas Abertas (status !== 'paused') aparecem primeiro
+    const aOpen = a.status !== 'paused' ? 1 : 0;
+    const bOpen = b.status !== 'paused' ? 1 : 0;
+    if (aOpen !== bOpen) return bOpen - aOpen;
+
+    // 2. Ordenação secundária por filtro ou distância
     if (selectedCategoryChip === 'lowest_price') {
       const priceA = a.priceB2C?.medio ?? a.priceB2C?.popular ?? 999;
       const priceB = b.priceB2C?.medio ?? b.priceB2C?.popular ?? 999;
@@ -252,6 +258,12 @@ export default function StorefrontPage() {
   };
 
   const handleSelectStore = (lojaId: string) => {
+    const loja = store.users?.[lojaId];
+    if (loja?.status === 'paused') {
+      alert(`⚠️ A batedeira "${loja.name}" está fechada no momento e não está aceitando pedidos agora.`);
+      return;
+    }
+
     if (cart.storeId && cart.storeId !== lojaId && cart.items.length > 0) {
       const lojaAtualNome = store.users?.[cart.storeId]?.name || 'outra loja';
       const novaLojaNome = store.users?.[lojaId]?.name || 'esta loja';
@@ -269,6 +281,12 @@ export default function StorefrontPage() {
     const { lojaId, tipo, quantity } = productSelectModal;
     const loja = store.users?.[lojaId];
     if (!loja) return;
+
+    if (loja.status === 'paused') {
+      alert(`⚠️ A batedeira "${loja.name}" está fechada no momento e não está aceitando novos pedidos.`);
+      setProductSelectModal({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
+      return;
+    }
 
     if (cart.storeId && cart.storeId !== lojaId && cart.items.length > 0) {
       const lojaAtualNome = store.users?.[cart.storeId]?.name || 'outra loja';
@@ -320,6 +338,12 @@ export default function StorefrontPage() {
     if (!currentUser) {
       alert("Por favor, faça login ou crie sua conta para finalizar o pedido.");
       router.push('/login');
+      return;
+    }
+
+    const storeUser = store.users?.[cart.storeId];
+    if (storeUser?.status === 'paused') {
+      alert(`⚠️ A batedeira "${storeUser.name}" está fechada no momento. O pedido não pode ser enviado agora.`);
       return;
     }
 
@@ -509,6 +533,13 @@ export default function StorefrontPage() {
                           </button>
                         </div>
                       </div>
+
+                      {selLoja.status === 'paused' && (
+                        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 p-3.5 rounded-xl mb-4 flex items-center gap-2.5 text-red-700 dark:text-red-300 text-xs font-bold shadow-xs">
+                          <span className="text-base">⛔</span>
+                          <span>Esta batedeira está <strong>fechada no momento</strong> e pausou o recebimento de pedidos.</span>
+                        </div>
+                      )}
 
                       <div className="bg-purple-50 dark:bg-purple-950/30 p-3 rounded-xl mb-4 border border-purple-100 dark:border-purple-900/30 flex justify-between items-center text-xs text-purple-900 dark:text-purple-300 font-medium">
                         <span>Frete Estimado p/ esta loja: <strong>{formatMoney(freteCliente)}</strong></span>
@@ -921,16 +952,31 @@ export default function StorefrontPage() {
                               </div>
                               
                               {currentUser ? (
-                                  <button 
-                                    onClick={() => handleSelectStore(loja.id)} 
-                                    className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2 text-xs"
-                                  >
-                                      <ShoppingCart size={15} /> Ver Cardápio & Pedir
-                                  </button>
+                                  isLojaPaused ? (
+                                    <button 
+                                      onClick={() => alert(`⚠️ A batedeira "${loja.name}" está fechada no momento e não está aceitando pedidos agora.`)}
+                                      className="w-full mt-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700/60 text-zinc-400 dark:text-zinc-500 font-bold py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700/60 transition flex justify-center items-center gap-2 text-xs"
+                                    >
+                                      ⛔ Fechada no Momento
+                                    </button>
+                                  ) : (
+                                    <button 
+                                      onClick={() => handleSelectStore(loja.id)} 
+                                      className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2 text-xs"
+                                    >
+                                        <ShoppingCart size={15} /> Ver Cardápio & Pedir
+                                    </button>
+                                  )
                               ) : (
-                                  <Link href="/login" className="w-full mt-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-2.5 px-4 rounded-xl shadow-xs transition active:scale-95 flex justify-center items-center gap-2 text-xs">
-                                      Entrar para Pedir
-                                  </Link>
+                                  isLojaPaused ? (
+                                    <div className="w-full mt-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 text-center font-bold py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700/60 text-xs">
+                                      ⛔ Fechada no Momento
+                                    </div>
+                                  ) : (
+                                    <Link href="/login" className="w-full mt-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-2.5 px-4 rounded-xl shadow-xs transition active:scale-95 flex justify-center items-center gap-2 text-xs">
+                                        Entrar para Pedir
+                                    </Link>
+                                  )
                               )}
                           </div>
                         );
