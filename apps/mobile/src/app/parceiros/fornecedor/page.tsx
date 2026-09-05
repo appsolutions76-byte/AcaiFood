@@ -89,6 +89,7 @@ export default function FornecedorDashboard() {
     currentUrl?: string;
     onSelect: (url?: string) => void;
   }>({ open: false, title: '', onSelect: () => {} });
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
@@ -101,6 +102,18 @@ export default function FornecedorDashboard() {
       });
     }
   }, [currentUser?.id]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    setActiveTab('pedidos');
+    if (currentUser?.id) {
+      await Promise.all([
+        store.fetchOrders(currentUser.id, true),
+        store.fetchAllUsers(true)
+      ]);
+    }
+    setIsRefreshing(false);
+  };
 
   const isPaused = currentUser?.status === 'paused';
   const handleToggleStatus = () => {
@@ -354,7 +367,14 @@ export default function FornecedorDashboard() {
             >
               <Printer size={14} /> 🖨️ Impressora
             </button>
-            <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
+            <button 
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+              className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 disabled:opacity-60"
+              title="Atualizar dados e abrir Gestão de Pedidos"
+            >
+              <span className={isRefreshing ? "animate-spin" : ""}>🔄</span> {isRefreshing ? "Atualizando..." : "Atualizar"}
+            </button>
             <button onClick={() => setPartnerManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">
               <BookOpen size={13} /> Manual
             </button>
@@ -368,7 +388,14 @@ export default function FornecedorDashboard() {
       <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
         <div className="max-w-5xl mx-auto px-4 flex gap-6 overflow-x-auto">
           <button onClick={() => setActiveTab('geral')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'geral' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
-          <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🚚 Gestão de Pedidos</button>
+          <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'pedidos' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
+            <span>🚚 Gestão de Pedidos</span>
+            {fornActiveOrders.length > 0 && (
+              <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                {fornActiveOrders.length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
