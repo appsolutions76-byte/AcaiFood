@@ -37,7 +37,7 @@ export default function BatedeiraDashboard() {
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
   const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
-  const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33 });
+  const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33, branco: 38 });
 
   const [photoModalData, setPhotoModalData] = useState<{
     open: boolean;
@@ -927,10 +927,10 @@ export default function BatedeiraDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {(['popular', 'medio', 'grosso'] as const).map((tipo) => {
-                    const label = tipo === 'popular' ? 'Açaí Popular' : tipo === 'medio' ? 'Açaí Médio' : 'Açaí Grosso';
-                    const price = prices[tipo] || (tipo === 'popular' ? 20 : tipo === 'medio' ? 26 : 35);
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {(['popular', 'medio', 'grosso', 'branco'] as const).map((tipo) => {
+                    const label = tipo === 'popular' ? 'Açaí Popular' : tipo === 'medio' ? 'Açaí Médio' : tipo === 'grosso' ? 'Açaí Grosso' : 'Açaí Branco';
+                    const price = prices[tipo] || (tipo === 'popular' ? 20 : tipo === 'medio' ? 26 : tipo === 'grosso' ? 35 : 38);
                     const isAvailable = currentUser?.availabilityB2C?.[tipo] !== false;
                     const photo = currentUser?.imagesB2C?.[tipo];
 
@@ -1703,6 +1703,10 @@ export default function BatedeiraDashboard() {
               <div>
                   <label className="text-xs uppercase text-zinc-500 font-bold">Açaí Grosso Especial (R$)</label>
                   <input type="number" step="0.1" value={prices.grosso} onChange={e => setPrices({...prices, grosso: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 mt-1 font-bold text-lg"/>
+              </div>
+              <div>
+                  <label className="text-xs uppercase text-zinc-500 font-bold">Açaí Branco Especial (R$)</label>
+                  <input type="number" step="0.1" value={prices.branco ?? 38} onChange={e => setPrices({...prices, branco: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 mt-1 font-bold text-lg"/>
               </div>
             </div>
 

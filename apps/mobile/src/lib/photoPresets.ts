@@ -36,6 +36,13 @@ export const PHOTO_PRESETS: PhotoPreset[] = [
     url: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=400&q=80',
     thumbnail: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=150&q=70',
   },
+  {
+    id: 'acai-branco',
+    category: 'acai',
+    title: 'Açaí Branco Especial (Tingido Natural)',
+    url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=70',
+  },
 
   // ADICIONAIS & FRUTAS
   {

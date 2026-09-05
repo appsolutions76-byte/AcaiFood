@@ -67,7 +67,7 @@ export default function StorefrontPage() {
 
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedCategoryChip, setSelectedCategoryChip] = useState<'all' | 'open' | 'free_frete' | 'nearest' | 'grosso' | 'lowest_price'>('all');
+  const [selectedCategoryChip, setSelectedCategoryChip] = useState<'all' | 'open' | 'free_frete' | 'nearest' | 'grosso' | 'branco' | 'lowest_price'>('all');
   const [selectedBairro, setSelectedBairro] = useState<string>('all');
   const [visibleStoreLimit, setVisibleStoreLimit] = useState<number>(12);
 
@@ -204,6 +204,7 @@ export default function StorefrontPage() {
   const countOpen = batedeirasAll.filter(u => u.status !== 'paused').length;
   const countFreeFrete = batedeirasAll.filter(u => (u.freteSubsidyPct || 0) > 0).length;
   const countGrosso = batedeirasAll.filter(u => u.availabilityB2C?.grosso !== false).length;
+  const countBranco = batedeirasAll.filter(u => u.availabilityB2C?.branco !== false).length;
 
   const batedeirasFiltered = batedeirasAll.filter(loja => {
     if (selectedBairro !== 'all') {
@@ -222,6 +223,7 @@ export default function StorefrontPage() {
     if (selectedCategoryChip === 'open' && loja.status === 'paused') return false;
     if (selectedCategoryChip === 'free_frete' && (!loja.freteSubsidyPct || loja.freteSubsidyPct <= 0)) return false;
     if (selectedCategoryChip === 'grosso' && loja.availabilityB2C?.grosso === false) return false;
+    if (selectedCategoryChip === 'branco' && loja.availabilityB2C?.branco === false) return false;
 
     return true;
   }).sort((a, b) => {
@@ -280,13 +282,13 @@ export default function StorefrontPage() {
     let price = 0;
     let name = '';
 
-    if (['popular', 'medio', 'grosso'].includes(tipo)) {
+    if (['popular', 'medio', 'grosso', 'branco'].includes(tipo)) {
       if (loja.availabilityB2C?.[tipo as keyof typeof loja.availabilityB2C] === false) {
         alert('Este item está esgotado nesta loja.');
         return;
       }
-      price = loja.priceB2C![tipo as keyof typeof loja.priceB2C] || 0;
-      name = `Açaí ${tipo.charAt(0).toUpperCase() + tipo.slice(1)} (1L)`;
+      price = (loja.priceB2C as any)?.[tipo] || (tipo === 'branco' ? 38 : tipo === 'grosso' ? 35 : tipo === 'medio' ? 26 : 20);
+      name = tipo === 'branco' ? 'Açaí Branco Especial (1L)' : `Açaí ${tipo.charAt(0).toUpperCase() + tipo.slice(1)} (1L)`;
     } else {
       const customProd = loja.products?.find(p => p.id === tipo);
       if (customProd) {
@@ -642,6 +644,45 @@ export default function StorefrontPage() {
                           );
                         })()}
 
+                        {/* AÇAÍ BRANCO */}
+                        {(() => {
+                          const isAvail = selLoja.availabilityB2C?.branco !== false;
+                          const photo = selLoja.imagesB2C?.branco;
+                          return (
+                            <div className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
+                              isAvail 
+                                ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' 
+                                : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
+                            }`}>
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950 overflow-hidden shrink-0 border border-teal-200 dark:border-teal-800 flex items-center justify-center">
+                                  {photo ? (
+                                    <img src={photo} alt="Açaí Branco" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="text-xl">🥥</span>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">Açaí Branco Especial (1L)</p>
+                                    {!isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
+                                  </div>
+                                  <p className="text-xs text-teal-600 dark:text-teal-400 font-extrabold">{formatMoney(selLoja.priceB2C?.branco ?? 38)}</p>
+                                </div>
+                              </div>
+                              {isAvail ? (
+                                <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: 'branco', quantity: 1 })} className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow shrink-0">
+                                  + Adicionar
+                                </button>
+                              ) : (
+                                <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2 py-1.5 rounded-lg shrink-0">
+                                  Esgotado
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+
                         {/* PRODUTOS EXTRAS */}
                         {selLoja.products && selLoja.products.map(p => {
                           const isAvail = p.isAvailable !== false;
@@ -721,6 +762,7 @@ export default function StorefrontPage() {
                           { id: 'free_frete', label: `⚡ Frete Promocional (${countFreeFrete})` },
                           { id: 'nearest', label: '📍 Mais Próximas' },
                           { id: 'grosso', label: `🥣 Açaí Grosso (${countGrosso})` },
+                          { id: 'branco', label: `🥥 Açaí Branco (${countBranco})` },
                           { id: 'lowest_price', label: '💲 Menor Preço' },
                         ].map(chip => (
                           <button
@@ -871,6 +913,9 @@ export default function StorefrontPage() {
                                   )}
                                   {loja.availabilityB2C?.grosso !== false && (
                                     <span className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded-md font-bold">🌿 Grosso</span>
+                                  )}
+                                  {loja.availabilityB2C?.branco !== false && (
+                                    <span className="text-[10px] bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200 dark:border-teal-800/50 px-2 py-0.5 rounded-md font-bold">🥥 Branco</span>
                                   )}
                                 </div>
                               </div>
@@ -1095,9 +1140,11 @@ export default function StorefrontPage() {
                       const pricePopular = loja?.priceB2C?.popular ?? 20;
                       const priceMedio = loja?.priceB2C?.medio ?? 26;
                       const priceGrosso = loja?.priceB2C?.grosso ?? 35;
+                      const priceBranco = loja?.priceB2C?.branco ?? 38;
                       const isPopAvail = loja?.availabilityB2C?.popular !== false;
                       const isMedAvail = loja?.availabilityB2C?.medio !== false;
                       const isGroAvail = loja?.availabilityB2C?.grosso !== false;
+                      const isBraAvail = loja?.availabilityB2C?.branco !== false;
 
                       return (
                           <select 
@@ -1105,7 +1152,7 @@ export default function StorefrontPage() {
                             onChange={e => setProductSelectModal({ ...productSelectModal, tipo: e.target.value })}
                             className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-4"
                           >
-                              <optgroup label="Açaí Padrão (1L)">
+                              <optgroup label="Açaí Padrão & Especiais (1L)">
                                   <option value="popular" disabled={!isPopAvail}>
                                     Açaí Popular - {formatMoney(pricePopular)} {!isPopAvail ? '(Esgotado)' : ''}
                                   </option>
@@ -1114,6 +1161,9 @@ export default function StorefrontPage() {
                                   </option>
                                   <option value="grosso" disabled={!isGroAvail}>
                                     Açaí Grosso (Especial) - {formatMoney(priceGrosso)} {!isGroAvail ? '(Esgotado)' : ''}
+                                  </option>
+                                  <option value="branco" disabled={!isBraAvail}>
+                                    Açaí Branco (Especial) - {formatMoney(priceBranco)} {!isBraAvail ? '(Esgotado)' : ''}
                                   </option>
                               </optgroup>
                               

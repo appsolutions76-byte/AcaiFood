@@ -55,8 +55,9 @@ export function mapDbProducts(rawProducts: any[]): Product[] {
 }
 
 export interface StorefrontMeta {
-  availabilityB2C?: { popular: boolean; medio: boolean; grosso: boolean };
-  imagesB2C?: { popular?: string; medio?: string; grosso?: string };
+  priceB2C?: { popular?: number; medio?: number; grosso?: number; branco?: number };
+  availabilityB2C?: { popular?: boolean; medio?: boolean; grosso?: boolean; branco?: boolean };
+  imagesB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string };
   availabilityB2B?: { lata: boolean };
   imagesB2B?: { lata?: string };
 }
@@ -96,9 +97,9 @@ export interface User {
   lat?: number;
   lng?: number;
   veiculo?: string;
-  priceB2C?: { popular: number; medio: number; grosso: number };
-  availabilityB2C?: { popular: boolean; medio: boolean; grosso: boolean };
-  imagesB2C?: { popular?: string; medio?: string; grosso?: string };
+  priceB2C?: { popular: number; medio: number; grosso: number; branco?: number };
+  availabilityB2C?: { popular?: boolean; medio?: boolean; grosso?: boolean; branco?: boolean };
+  imagesB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string };
   priceB2B?: number;
   availabilityB2B?: { lata: boolean };
   imagesB2B?: { lata?: string };
@@ -246,13 +247,13 @@ interface AppState {
   deleteUser: (userId: string) => Promise<void>;
   changePassword: (userId: string, newPassword: string) => void;
   updateCpfCnpj: (cpfCnpj: string) => Promise<void>;
-  updateUserPrice: (userId: string, b2cPrices?: { popular: number; medio: number; grosso: number }, b2bPrice?: number) => Promise<void>;
+  updateUserPrice: (userId: string, b2cPrices?: { popular?: number; medio?: number; grosso?: number; branco?: number }, b2bPrice?: number) => Promise<void>;
   addProduct: (userId: string, product: Product) => Promise<void>;
   updateProduct: (userId: string, productId: string, updatedData: Partial<Product>) => Promise<void>;
   removeProduct: (userId: string, productId: string) => Promise<void>;
   toggleProductAvailability: (userId: string, productId: string) => Promise<void>;
-  toggleAcaiAvailability: (userId: string, type: 'popular' | 'medio' | 'grosso') => Promise<void>;
-  updateAcaiImage: (userId: string, type: 'popular' | 'medio' | 'grosso', imageUrl?: string) => Promise<void>;
+  toggleAcaiAvailability: (userId: string, type: 'popular' | 'medio' | 'grosso' | 'branco') => Promise<void>;
+  updateAcaiImage: (userId: string, type: 'popular' | 'medio' | 'grosso' | 'branco', imageUrl?: string) => Promise<void>;
   toggleB2BAvailability: (userId: string) => Promise<void>;
   updateB2BImage: (userId: string, imageUrl?: string) => Promise<void>;
   fetchOrders: (userId: string, force?: boolean) => Promise<void>;
@@ -409,9 +410,10 @@ export const useAppStore = create<AppState>()(
             priceB2C: sf ? {
                 popular: sf.price_b2c_popular ?? 20,
                 medio: sf.price_b2c_medio ?? 26,
-                grosso: sf.price_b2c_grosso ?? 35
+                grosso: sf.price_b2c_grosso ?? 35,
+                branco: sfMeta.priceB2C?.branco ?? 38
             } : undefined,
-            availabilityB2C: sfMeta.availabilityB2C || { popular: true, medio: true, grosso: true },
+            availabilityB2C: sfMeta.availabilityB2C || { popular: true, medio: true, grosso: true, branco: true },
             imagesB2C: sfMeta.imagesB2C || {},
             availabilityB2B: sfMeta.availabilityB2B || { lata: true },
             imagesB2B: sfMeta.imagesB2B || {},
@@ -845,9 +847,10 @@ export const useAppStore = create<AppState>()(
                         priceB2C: {
                             popular: sf?.price_b2c_popular ?? 20,
                             medio: sf?.price_b2c_medio ?? 26,
-                            grosso: sf?.price_b2c_grosso ?? 35
+                            grosso: sf?.price_b2c_grosso ?? 35,
+                            branco: sfMeta.priceB2C?.branco ?? 38
                         },
-                        availabilityB2C: sfMeta.availabilityB2C || { popular: true, medio: true, grosso: true },
+                        availabilityB2C: sfMeta.availabilityB2C || { popular: true, medio: true, grosso: true, branco: true },
                         imagesB2C: sfMeta.imagesB2C || {},
                         freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
@@ -911,9 +914,10 @@ export const useAppStore = create<AppState>()(
                         priceB2C: {
                             popular: sf?.price_b2c_popular ?? 20,
                             medio: sf?.price_b2c_medio ?? 26,
-                            grosso: sf?.price_b2c_grosso ?? 35
+                            grosso: sf?.price_b2c_grosso ?? 35,
+                            branco: sfMeta.priceB2C?.branco ?? 38
                         },
-                        availabilityB2C: sfMeta.availabilityB2C || { popular: true, medio: true, grosso: true },
+                        availabilityB2C: sfMeta.availabilityB2C || { popular: true, medio: true, grosso: true, branco: true },
                         imagesB2C: sfMeta.imagesB2C || {},
                         availabilityB2B: sfMeta.availabilityB2B || { lata: true },
                         imagesB2B: sfMeta.imagesB2B || {},
@@ -1286,7 +1290,7 @@ export const useAppStore = create<AppState>()(
           const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user) return state;
           const updatedUser = { ...user };
-          if (b2cPrices) updatedUser.priceB2C = { ...(user.priceB2C || {}), ...b2cPrices };
+          if (b2cPrices) updatedUser.priceB2C = { popular: 20, medio: 26, grosso: 35, ...(user.priceB2C || {}), ...b2cPrices };
           if (b2bPrice !== undefined) updatedUser.priceB2B = b2bPrice;
           const isCurrent = state.currentUser?.id === userId;
           return { 
@@ -1302,6 +1306,19 @@ export const useAppStore = create<AppState>()(
             if (b2cPrices.grosso !== undefined) updates.price_b2c_grosso = b2cPrices.grosso;
         }
         if (b2bPrice !== undefined) updates.price_b2b = b2bPrice;
+
+        try {
+          const { data: sf } = await supabase.from('storefronts').select('id, logo_url').eq('partner_id', userId).maybeSingle();
+          const existingMeta = parseStorefrontMeta(sf?.logo_url);
+          const metaStr = JSON.stringify({
+            ...existingMeta,
+            priceB2C: {
+              ...(existingMeta.priceB2C || {}),
+              ...(b2cPrices || {})
+            }
+          });
+          updates.logo_url = metaStr;
+        } catch (_) {}
 
         if (Object.keys(updates).length > 0) {
             try {
@@ -1427,14 +1444,17 @@ export const useAppStore = create<AppState>()(
       },
 
       toggleAcaiAvailability: async (userId, type) => {
-        let updatedAvail = { popular: true, medio: true, grosso: true };
+        let updatedAvail: { popular: boolean; medio: boolean; grosso: boolean; branco?: boolean } = { popular: true, medio: true, grosso: true, branco: true };
         let updatedImages = {};
         set((state) => {
           const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user) return state;
-          const currentAvail = user.availabilityB2C || { popular: true, medio: true, grosso: true };
+          const currentAvail = user.availabilityB2C || { popular: true, medio: true, grosso: true, branco: true };
           updatedAvail = {
-            ...currentAvail,
+            popular: currentAvail.popular !== false,
+            medio: currentAvail.medio !== false,
+            grosso: currentAvail.grosso !== false,
+            branco: currentAvail.branco !== false,
             [type]: currentAvail[type] === false ? true : false
           };
           updatedImages = user.imagesB2C || {};
@@ -1471,12 +1491,18 @@ export const useAppStore = create<AppState>()(
       },
 
       updateAcaiImage: async (userId, type, imageUrl) => {
-        let updatedAvail = { popular: true, medio: true, grosso: true };
+        let updatedAvail: { popular: boolean; medio: boolean; grosso: boolean; branco?: boolean } = { popular: true, medio: true, grosso: true, branco: true };
         let updatedImages: Record<string, string | undefined> = {};
         set((state) => {
           const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user) return state;
-          updatedAvail = user.availabilityB2C || { popular: true, medio: true, grosso: true };
+          const currentAvail = user.availabilityB2C || { popular: true, medio: true, grosso: true, branco: true };
+          updatedAvail = {
+            popular: currentAvail.popular !== false,
+            medio: currentAvail.medio !== false,
+            grosso: currentAvail.grosso !== false,
+            branco: currentAvail.branco !== false,
+          };
           const currentImages = user.imagesB2C || {};
           updatedImages = {
             ...currentImages,
