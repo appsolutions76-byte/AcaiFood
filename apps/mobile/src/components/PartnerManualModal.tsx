@@ -174,11 +174,12 @@ function ManualBatedeira() {
             <p>1. Na aba <strong>🛒 Abastecimento B2B</strong>, visualize fornecedores atacadistas da sua região.</p>
             <p>2. Escolha o lote (latas, sacas, paneiros de frutos de safra) e pague com Pix dinâmico.</p>
             <p>3. O fornecedor prepara a carga e despacha um Caminhão pesado para entrega.</p>
-            <p>4. Na entrega dos frutos, informe o <strong>PIN de 4 dígitos</strong> ao caminhoneiro para confirmar o recebimento.</p>
+            <p>4. 🔑 <strong>PIN B2B</strong>: Na entrega das latas, confira o produto na porta e forneça o seu <strong>PIN de 4 dígitos</strong> ao caminhoneiro para concluir o recebimento.</p>
           </div>
-          <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs">
+          <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs space-y-1">
             <p className="font-bold text-amber-900 dark:text-amber-300">🚛 Solicitação de Caçamba (Coleta de Caroço ESG):</p>
-            <p className="text-amber-700 dark:text-amber-300 mt-1">Também na aba B2B, solicite caçambas para descarte sustentável de caroços e resíduos até os Ecopontos credenciados da cidade, com tarifa fixa ou por km.</p>
+            <p className="text-amber-700 dark:text-amber-300">Solicite caçambas para descarte sustentável de caroços até os Ecopontos e Usinas credenciadas da cidade. Entregue seu <strong>PIN de Coleta</strong> ao motorista da caçamba após o carregamento dos sacos.</p>
+            <p className="text-[11px] text-amber-800 dark:text-amber-400 italic">📌 Nota: O caroço vai para usinas de biomassa/reciclagem e <strong>NÃO retorna ao fornecedor de frutos</strong>.</p>
           </div>
         </div>
       )}
@@ -191,7 +192,7 @@ function ManualBatedeira() {
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
             <p>• <strong>Divisão Automática (Split)</strong>: A cada pedido entregue com PIN, o sistema calcula seu valor líquido: <code>Subtotal − Comissão da Plataforma (%) − Subsídio de Frete</code>.</p>
             <p>• <strong>Vinculação de Carteira</strong>: Cadastre sua chave Pix (CPF/CNPJ, celular, e-mail) ou conecte sua Carteira Asaas para recebimento.</p>
-            <p>• <strong>Liquidação pelo Admin</strong>: O administrador visualiza seu saldo a pagar e aciona o pagamento Pix em lote com o botão <em>💸 Pagar e Zerar</em>, além da varredura programada às 22:00.</p>
+            <p>• <strong>Saques Instantâneos Pix</strong>: Realize até <strong>2 saques instantâneos por dia</strong> para sua conta bancária a qualquer momento, além da varredura programada às 22:00.</p>
           </div>
         </div>
       )}
@@ -215,13 +216,13 @@ function ManualFornecedor() {
         <p>6. 🔐 <strong>Conclusão e PIN</strong>: O caminhoneiro valida a entrega no destino mediante o PIN fornecido pela batedeira, liberando seu repasse financeiro.</p>
         <p>7. ↩️ <strong>Estorno Automático</strong>: Caso não haja lote disponível para entrega, a recusa dispara o estorno Pix automático para a batedeira.</p>
       </div>
-      <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs">
-        <p className="font-bold text-emerald-900 dark:text-emerald-300">💡 Subsídio de Frete Atacadista:</p>
-        <p className="text-emerald-700 dark:text-emerald-300 mt-1">Configure uma porcentagem de subsídio de frete B2B para absorver parte do transporte e tornar suas ofertas mais competitivas para as batedeiras.</p>
+      <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1">
+        <p className="font-bold text-emerald-900 dark:text-emerald-300">📌 Escopo do Fornecedor:</p>
+        <p className="text-emerald-700 dark:text-emerald-300">O fornecedor atua exclusivamente na venda dos frutos frescos colhidos e <strong>NÃO recebe ou precisa receber caroços de volta</strong>.</p>
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
-        <p className="font-bold">💰 Repasse Líquido:</p>
-        <p className="mt-1">Vincule sua chave Pix ou Carteira Asaas para receber o valor líquido das vendas atacadistas diretamente no seu banco.</p>
+        <p className="font-bold">💰 Repasse Líquido & Saques:</p>
+        <p className="mt-1">Receba o valor líquido das vendas atacadistas via Pix (com até 2 saques instantâneos diários permitidos).</p>
       </div>
     </div>
   );
@@ -240,9 +241,9 @@ function ManualMotoboy() {
         <p>3. 👁️ <strong>Transparência Antes do Aceite</strong>: Veja o valor líquido do frete, a distância em km e o mapa da rota pelas ruas antes de aceitar a corrida.</p>
         <p>4. 🧭 <strong>Navegação Nativa por GPS (Google Maps)</strong>:</p>
         <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
-          <li>Toque em <em>"GPS p/ Loja"</em> para abrir a navegação curva-a-curva até a batedeira.</li>
-          <li>Ao chegar, clique em <em>"Confirmar Chegada na Loja"</em> (botão estável na tela).</li>
-          <li>Após retirar, toque em <em>"GPS p/ Cliente"</em> para navegar até o destino final.</li>
+          <li>Toque em <em>"🚀 GPS p/ Retirada"</em> para abrir a navegação curva-a-curva até a batedeira.</li>
+          <li>Ao chegar, clique em <em>"🏪 Confirmar Chegada na Loja"</em> (registra a retirada).</li>
+          <li>Após retirar, toque em <em>"🏁 GPS p/ Cliente"</em> para navegar até o destino final.</li>
           <li>Ao chegar ao cliente, clique em <em>"Confirmar Chegada no Cliente"</em>.</li>
         </ul>
         <p>5. 💬 <strong>Chat Integrado</strong>: Use o chat do pedido para tirar dúvidas com o cliente ou loja, com atalho para discagem telefônica direta.</p>
@@ -254,7 +255,7 @@ function ManualMotoboy() {
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
         <p className="font-bold">💸 Saque Instantâneo Pix:</p>
-        <p className="mt-1">Acompanhe seu saldo em tempo real e use o botão <em>💸 Saque Instantâneo Pix</em> para transferir seus ganhos para seu banco pessoal.</p>
+        <p className="mt-1">Acompanhe seu saldo em tempo real e use o botão <em>💸 Saque Instantâneo Pix</em> para transferir seus ganhos para seu banco pessoal (até 2 saques diários).</p>
       </div>
     </div>
   );
@@ -272,15 +273,15 @@ function ManualCaminhao() {
         <p>2. 🚛 <strong>2 Modalidades no Radar</strong>:</p>
         <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
           <li><strong>Frete B2B</strong>: Transporte de sacas, latas e paneiros do Fornecedor para a Batedeira (chamado liberado pelo fornecedor via <em>Chamar Caminhão</em>).</li>
-          <li><strong>Coleta de Resíduos (Caçamba)</strong>: Remoção de caroços da Batedeira para destinação em Ecoponto ecológico.</li>
+          <li><strong>Coleta de Resíduos (Caçamba)</strong>: Remoção de caroços da Batedeira para destinação em Ecopontos e Usinas (não retorna ao fornecedor).</li>
         </ul>
         <p>3. 🗺️ <strong>Rotas & Navegação</strong>: Visualize origem, destino, traçado pelas vias principais e valor líquido do frete (por km rodado ou tarifa fixa).</p>
-        <p>4. 🧭 <strong>Botões de GPS</strong>: Use os atalhos de GPS para abrir a rota no Google Maps até a origem e depois até o destino.</p>
-        <p>5. 🔐 <strong>PIN de Conclusão</strong>: Ao descarregar, solicite o PIN de 4 dígitos ao responsável no destino e valide na tela para liberar o repasse no Pix.</p>
+        <p>4. 🧭 <strong>Botões de GPS</strong>: Use os atalhos <em>"🚀 GPS p/ Retirada"</em> e <em>"🏁 GPS p/ Destino"</em> para abrir a rota no Google Maps.</p>
+        <p>5. 🔐 <strong>PIN de Conclusão</strong>: Ao descarregar, solicite o PIN de 4 dígitos ao responsável no destino (loja ou ecoponto) e valide na tela para liberar o repasse no Pix.</p>
       </div>
       <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-800 text-xs">
-        <p className="font-bold text-blue-900 dark:text-blue-300">💰 Repasses Transparentes:</p>
-        <p className="text-blue-700 dark:text-blue-300 mt-1">O valor exibido no radar já é o valor líquido do transportador, livre de taxas, transferido diretamente para sua conta cadastrada.</p>
+        <p className="font-bold text-blue-900 dark:text-blue-300">💰 Repasses Transparentes & Saques:</p>
+        <p className="text-blue-700 dark:text-blue-300 mt-1">O valor exibido no radar já é o valor líquido do transportador, com suporte a até 2 saques instantâneos diários via Pix.</p>
       </div>
     </div>
   );

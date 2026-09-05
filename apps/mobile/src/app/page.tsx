@@ -67,6 +67,9 @@ export default function StorefrontPage() {
 
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedCategoryChip, setSelectedCategoryChip] = useState<'all' | 'open' | 'free_frete' | 'nearest' | 'grosso' | 'lowest_price'>('all');
+  const [selectedBairro, setSelectedBairro] = useState<string>('all');
+  const [visibleStoreLimit, setVisibleStoreLimit] = useState<number>(12);
 
   const handleGetGpsLocation = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
@@ -187,26 +190,52 @@ export default function StorefrontPage() {
   const userCityNorm = norm(currentUser?.cidade);
 
   const batedeirasAll = Object.values(store.users || {})
-    .filter(u => u.role === 'loja' && u.status !== 'paused' && u.status !== 'blocked')
+    .filter(u => u.role === 'loja' && u.status !== 'blocked')
     .filter(u => {
       if (!userCityNorm || !u.cidade) return true;
       return norm(u.cidade) === userCityNorm;
-    })
-    .sort((a, b) => {
-      const distA = (a.lat && currentUser?.lat) ? haversineKm(a.lat, a.lng!, currentUser!.lat, currentUser!.lng!) : 999;
-      const distB = (b.lat && currentUser?.lat) ? haversineKm(b.lat, b.lng!, currentUser!.lat, currentUser!.lng!) : 999;
-      return distA - distB;
     });
 
-  const batedeiras = batedeirasAll.filter(loja => {
-    if (!searchQuery.trim()) return true;
-    const q = norm(searchQuery);
-    const nameMatch = norm(loja.name).includes(q);
-    const bairroMatch = norm(loja.bairro).includes(q);
-    const cidadeMatch = norm(loja.cidade).includes(q);
-    const prodMatch = loja.products?.some(p => norm(p.name).includes(q));
-    return nameMatch || bairroMatch || cidadeMatch || prodMatch;
+  // Extração de bairros distintos disponíveis
+  const bairrosList = Array.from(new Set(batedeirasAll.map(u => u.bairro?.trim()).filter(Boolean) as string[])).sort();
+
+  // Contadores para os Chips Rápidos
+  const countTotal = batedeirasAll.length;
+  const countOpen = batedeirasAll.filter(u => u.status !== 'paused').length;
+  const countFreeFrete = batedeirasAll.filter(u => (u.freteSubsidyPct || 0) > 0).length;
+  const countGrosso = batedeirasAll.filter(u => u.availabilityB2C?.grosso !== false).length;
+
+  const batedeirasFiltered = batedeirasAll.filter(loja => {
+    if (selectedBairro !== 'all') {
+      if (!loja.bairro || norm(loja.bairro) !== norm(selectedBairro)) return false;
+    }
+
+    if (searchQuery.trim()) {
+      const q = norm(searchQuery);
+      const nameMatch = norm(loja.name).includes(q);
+      const bairroMatch = norm(loja.bairro).includes(q);
+      const cidadeMatch = norm(loja.cidade).includes(q);
+      const prodMatch = loja.products?.some(p => norm(p.name).includes(q));
+      if (!nameMatch && !bairroMatch && !cidadeMatch && !prodMatch) return false;
+    }
+
+    if (selectedCategoryChip === 'open' && loja.status === 'paused') return false;
+    if (selectedCategoryChip === 'free_frete' && (!loja.freteSubsidyPct || loja.freteSubsidyPct <= 0)) return false;
+    if (selectedCategoryChip === 'grosso' && loja.availabilityB2C?.grosso === false) return false;
+
+    return true;
+  }).sort((a, b) => {
+    if (selectedCategoryChip === 'lowest_price') {
+      const priceA = a.priceB2C?.medio ?? a.priceB2C?.popular ?? 999;
+      const priceB = b.priceB2C?.medio ?? b.priceB2C?.popular ?? 999;
+      return priceA - priceB;
+    }
+    const distA = (a.lat && currentUser?.lat) ? haversineKm(a.lat, a.lng!, currentUser!.lat, currentUser!.lng!) : 999;
+    const distB = (b.lat && currentUser?.lat) ? haversineKm(b.lat, b.lng!, currentUser!.lat, currentUser!.lng!) : 999;
+    return distA - distB;
   });
+
+  const batedeiras = batedeirasFiltered.slice(0, visibleStoreLimit);
 
   const calcFreteCliente = (lojaId: string) => {
     const loja = store.users?.[lojaId];
@@ -655,89 +684,220 @@ export default function StorefrontPage() {
                   );
                 })() : (
                   <>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                        <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200">Batedeiras Próximas</h3>
+                    <div className="space-y-3 mb-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                          <h3 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
+                            <span>🏪</span> Batedeiras de Açaí
+                          </h3>
+                          <p className="text-xs text-zinc-500">
+                            {batedeirasFiltered.length} {batedeirasFiltered.length === 1 ? 'loja encontrada' : 'lojas encontradas'} {userCityNorm ? `em ${currentUser?.cidade}` : ''}
+                          </p>
+                        </div>
+                        
                         <div className="relative w-full sm:w-72">
                           <input 
                             type="text"
                             value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="🔍 Buscar loja ou bairro..."
+                            onChange={e => {
+                              setSearchQuery(e.target.value);
+                              setVisibleStoreLimit(12);
+                            }}
+                            placeholder="🔍 Buscar loja, bairro ou produto..."
                             className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl py-2 pl-9 pr-8 text-xs font-medium text-zinc-800 dark:text-white outline-none focus:border-purple-500 shadow-sm"
                           />
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs">🔍</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-60">🔍</span>
                           {searchQuery && (
-                            <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-400 hover:text-zinc-600">✕</button>
+                            <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400 hover:text-zinc-600 bg-zinc-100 dark:bg-zinc-800 rounded-full w-5 h-5 flex items-center justify-center">✕</button>
                           )}
                         </div>
+                      </div>
+
+                      {/* CHIPS DE FILTROS RÁPIDOS (SCROLL HORIZONTAL) */}
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none text-xs">
+                        {[
+                          { id: 'all', label: `Todas (${countTotal})` },
+                          { id: 'open', label: `🟢 Abertas Agora (${countOpen})` },
+                          { id: 'free_frete', label: `⚡ Frete Promocional (${countFreeFrete})` },
+                          { id: 'nearest', label: '📍 Mais Próximas' },
+                          { id: 'grosso', label: `🥣 Açaí Grosso (${countGrosso})` },
+                          { id: 'lowest_price', label: '💲 Menor Preço' },
+                        ].map(chip => (
+                          <button
+                            key={chip.id}
+                            onClick={() => {
+                              setSelectedCategoryChip(chip.id as any);
+                              setVisibleStoreLimit(12);
+                            }}
+                            className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all flex items-center gap-1 shrink-0 border ${
+                              selectedCategoryChip === chip.id
+                                ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                                : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                            }`}
+                          >
+                            {chip.label}
+                          </button>
+                        ))}
+
+                        {/* FILTRO DE BAIRRO (SE HOUVER MAIS DE 1) */}
+                        {bairrosList.length > 1 && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-zinc-400 text-xs font-semibold pl-1">Bairro:</span>
+                            <select
+                              value={selectedBairro}
+                              onChange={(e) => {
+                                setSelectedBairro(e.target.value);
+                                setVisibleStoreLimit(12);
+                              }}
+                              aria-label="Filtrar por Bairro"
+                              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full px-3 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 outline-none focus:border-purple-500 shadow-xs cursor-pointer"
+                            >
+                              <option value="all">📍 Todos os Bairros</option>
+                              {bairrosList.map(b => (
+                                <option key={b} value={b}>{b}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {batedeiras.length === 0 ? (
-                        <div className="col-span-full p-8 text-center bg-white dark:bg-zinc-900 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 text-sm">
-                          <p className="text-2xl mb-1">🔍</p>
-                          Nenhuma batedeira encontrada com o termo "{searchQuery}".
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {batedeirasFiltered.length === 0 ? (
+                        <div className="col-span-full p-8 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 text-sm">
+                          <p className="text-3xl mb-2">🔍</p>
+                          <p className="font-bold text-zinc-700 dark:text-zinc-300">Nenhuma batedeira encontrada</p>
+                          <p className="text-xs text-zinc-500 mt-1">Tente remover os filtros ou buscar por outro termo.</p>
+                          {(searchQuery || selectedCategoryChip !== 'all' || selectedBairro !== 'all') && (
+                            <button
+                              onClick={() => {
+                                setSearchQuery('');
+                                setSelectedCategoryChip('all');
+                                setSelectedBairro('all');
+                              }}
+                              className="mt-3 px-3.5 py-1.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-lg text-xs font-bold"
+                            >
+                              Limpar Filtros
+                            </button>
+                          )}
                         </div>
                       ) : batedeiras.map(loja => {
                         const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
                         const isSelectedLoja = cart.storeId === loja.id && cart.items.length > 0;
+                        const isLojaPaused = loja.status === 'paused';
+                        const minTime = Math.max(15, Math.min(50, 15 + Math.round(dist * 3.5)));
+                        const maxTime = Math.max(25, Math.min(65, 25 + Math.round(dist * 3.5)));
 
                         return (
-                          <div key={loja.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${isSelectedLoja ? 'border-purple-500 ring-2 ring-purple-500/20' : 'border-purple-100 dark:border-purple-900/30'} flex flex-col transition hover:shadow-md`}>
-                              <div className="flex justify-between items-center mb-3">
-                                  <div className="flex items-center gap-2">
-                                      <span className="text-3xl">{loja.icon}</span>
-                                      <div>
-                                          <p className="font-bold text-zinc-800 dark:text-white leading-tight">{loja.name}</p>
-                                          <p className="text-[10px] text-zinc-500">{loja.bairro}</p>
-                                      </div>
-                                  </div>
-                                  {currentUser && (
-                                    <button 
-                                      onClick={() => {
-                                        const latOrig = loja?.lat || 0;
-                                        const lngOrig = loja?.lng || 0;
-                                        const latDest = currentUser?.lat || (latOrig ? latOrig + 0.0045 : -1.455);
-                                        const lngDest = currentUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.490);
-                                        setMapModal({
-                                          open: true,
-                                          origem: { lat: latOrig, lng: lngOrig, name: loja.name || 'Retirada' },
-                                          destino: { lat: latDest, lng: lngDest, name: currentUser.name || 'Entrega' },
-                                          motorista: null
-                                        });
-                                      }} 
-                                      className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded"
-                                    >
-                                      🗺️ {dist.toFixed(1)} km
-                                    </button>
+                          <div 
+                            key={loja.id} 
+                            className={`bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border transition-all hover:shadow-md flex flex-col justify-between ${
+                              isSelectedLoja 
+                                ? 'border-purple-500 ring-2 ring-purple-500/20' 
+                                : 'border-zinc-200 dark:border-zinc-800 hover:border-purple-300 dark:hover:border-purple-700'
+                            } ${isLojaPaused ? 'opacity-70 bg-zinc-50/80 dark:bg-zinc-950/60' : ''}`}
+                          >
+                              <div>
+                                <div className="flex justify-between items-start mb-2.5">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <span className="text-3xl bg-purple-50 dark:bg-purple-950/50 p-2 rounded-xl shrink-0 border border-purple-100 dark:border-purple-900/40">{loja.icon || '🏪'}</span>
+                                        <div className="min-w-0">
+                                            <p className="font-bold text-zinc-900 dark:text-white text-sm leading-tight truncate">{loja.name}</p>
+                                            <p className="text-[11px] text-zinc-500 truncate flex items-center gap-1">
+                                              <span>📍 {loja.bairro || 'Centro'}</span>
+                                              <span className="text-amber-500 font-bold ml-1">★ 4.9</span>
+                                            </p>
+                                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                              {isLojaPaused ? (
+                                                <span className="text-[9px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-1.5 py-0.5 rounded">🔴 Fechada</span>
+                                              ) : (
+                                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">🟢 Aberta</span>
+                                              )}
+                                              {subsidy > 0 && (
+                                                <span className="text-[9px] font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/50 px-1.5 py-0.5 rounded">⚡ Frete -{subsidy}%</span>
+                                              )}
+                                              <span className="text-[9px] font-semibold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">⏱️ {minTime}-{maxTime} min</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {currentUser && (
+                                      <button 
+                                        onClick={() => {
+                                          const latOrig = loja?.lat || 0;
+                                          const lngOrig = loja?.lng || 0;
+                                          const latDest = currentUser?.lat || (latOrig ? latOrig + 0.0045 : -1.455);
+                                          const lngDest = currentUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.490);
+                                          setMapModal({
+                                            open: true,
+                                            origem: { lat: latOrig, lng: lngOrig, name: loja.name || 'Retirada' },
+                                            destino: { lat: latDest, lng: lngDest, name: currentUser.name || 'Entrega' },
+                                            motorista: null
+                                          });
+                                        }} 
+                                        className="text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg shrink-0 hover:bg-blue-100 transition"
+                                        title="Ver no mapa"
+                                      >
+                                        🗺️ {dist.toFixed(1)} km
+                                      </button>
+                                    )}
+                                </div>
+                                
+                                <div className="bg-zinc-50 dark:bg-zinc-950/60 p-2.5 rounded-xl flex flex-col gap-1 text-xs mb-3 border border-zinc-100 dark:border-zinc-800">
+                                    <div className="flex justify-between items-center text-[11px]">
+                                      <span className="text-zinc-500 font-medium">A partir de:</span>
+                                      <span className="font-extrabold text-purple-600 dark:text-purple-400">{formatMoney(loja.priceB2C?.popular || loja.priceB2C?.medio || 0)} /L</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[11px]">
+                                      <span className="text-zinc-500 font-medium">Entrega:</span>
+                                      <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
+                                    </div>
+                                </div>
+
+                                {/* TAGS DE TIPOS DE AÇAÍ DISPONÍVEIS */}
+                                <div className="flex items-center gap-1 flex-wrap mb-2.5">
+                                  {loja.availabilityB2C?.popular !== false && (
+                                    <span className="text-[9px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold">🥣 Popular</span>
                                   )}
-                              </div>
-                              
-                              <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded flex flex-col gap-1 text-sm mb-4 border border-zinc-100 dark:border-zinc-800">
-                                  <span className="text-zinc-500 text-[10px] uppercase font-bold">A partir de {formatMoney(loja.priceB2C?.popular || 0)}</span>
-                                  <span className="text-zinc-600 dark:text-zinc-400 text-xs flex justify-between">
-                                    <span>Frete Estimado:</span>
-                                    {subsidy > 0 && <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded uppercase font-bold">Loja paga {subsidy}%</span>}
-                                  </span>
-                                  <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
+                                  {loja.availabilityB2C?.medio !== false && (
+                                    <span className="text-[9px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold">🥣 Médio</span>
+                                  )}
+                                  {loja.availabilityB2C?.grosso !== false && (
+                                    <span className="text-[9px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold">🌿 Grosso</span>
+                                  )}
+                                </div>
                               </div>
                               
                               {currentUser ? (
                                   <button 
                                     onClick={() => handleSelectStore(loja.id)} 
-                                    className="w-full mt-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2"
+                                    className="w-full mt-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-3 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-1.5 text-xs"
                                   >
-                                      <ShoppingCart size={18} /> Entrar na Loja & Comprar
+                                      <ShoppingCart size={15} /> Ver Cardápio & Pedir
                                   </button>
                               ) : (
-                                  <Link href="/login" className="w-full mt-auto bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-3 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2">
-                                      Fazer Login para Pedir
+                                  <Link href="/login" className="w-full mt-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-2.5 px-3 rounded-xl shadow-xs transition active:scale-95 flex justify-center items-center gap-1.5 text-xs">
+                                      Entrar para Pedir
                                   </Link>
                               )}
                           </div>
                         );
                       })}
                     </div>
+
+                    {/* BOTÃO CARREGAR MAIS (PAGINAÇÃO EM LOTES) */}
+                    {batedeirasFiltered.length > visibleStoreLimit && (
+                      <div className="flex flex-col items-center justify-center pt-4 pb-2 gap-2">
+                        <p className="text-xs text-zinc-500">
+                          Exibindo <strong>{batedeiras.length}</strong> de <strong>{batedeirasFiltered.length}</strong> batedeiras
+                        </p>
+                        <button
+                          onClick={() => setVisibleStoreLimit(prev => prev + 12)}
+                          className="px-6 py-2.5 bg-white dark:bg-zinc-900 border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-xl text-xs font-extrabold transition shadow-sm active:scale-95"
+                        >
+                          ➕ Carregar Mais Batedeiras (+12)
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
             </div>

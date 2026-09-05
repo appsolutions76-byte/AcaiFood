@@ -104,47 +104,8 @@ export async function authorizeRequest(
     }
   }
 
-  // 3. Validação via header x-user-id e perfil no banco
-  const headerUserId = request.headers.get('x-user-id');
-  const headerUserRole = request.headers.get('x-user-role');
-  if (headerUserId) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (supabaseUrl && supabaseKey) {
-      try {
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', headerUserId)
-          .maybeSingle();
-
-        if (profile) {
-          const userRole = String(
-            profile.role === 'PARTNER' ? 'loja' :
-            profile.role === 'SUPPLIER' ? 'fornecedor' :
-            profile.role === 'COURIER' ? 'motorista' :
-            profile.role === 'ADMIN' ? 'admin' : 'cliente'
-          ).toLowerCase();
-
-          if (!allowedRoles || allowedRoles.length === 0 || allowedRoles.includes(userRole as any)) {
-            return {
-              authorized: true,
-              source: 'user_jwt',
-              profile
-            };
-          }
-        }
-      } catch (_e) {}
-    }
-  }
-
-  // 4. Se a ação for especificamente do painel admin autenticado
-  if (headerUserRole === 'admin' && (allowedRoles?.includes('admin') || !allowedRoles || allowedRoles.length === 0)) {
-    return { authorized: true, source: 'internal_secret' };
-  }
-
-  return { authorized: false, error: 'Não autorizado' };
+  // 3. Se não houver segredo interno válido nem JWT assinado pelo Supabase, rejeita a requisição
+  return { authorized: false, error: 'Não autorizado: credenciais de acesso inválidas ou sessão expirada' };
 }
 
 export function unauthorizedResponse(message?: string) {

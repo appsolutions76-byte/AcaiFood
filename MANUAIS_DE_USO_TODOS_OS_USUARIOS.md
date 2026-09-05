@@ -64,12 +64,15 @@
 
 ### 2.4. Abastecimento B2B & Coleta ESG de Caroços
 - **Abastecimento B2B:** Na aba B2B, visualize produtores atacadistas, compre lotes (latas, sacas, paneiros) e pague com Pix dinâmico. O fornecedor envia via caminhão pesado.
-- **Coleta de Caroço (Caçamba ESG):** Solicite caçambas de remoção para descarte ecológico dos caroços de açaí em Ecopontos autorizados.
+  - 🔑 **PIN B2B da Loja:** Na entrega das latas, a batedeira confere a carga na porta e fornece seu **PIN de 4 dígitos** ao caminhoneiro para concluir a transação.
+- **Coleta de Caroço (Caçamba ESG):** Solicite caçambas de remoção para descarte ecológico dos caroços de açaí.
+  - 🔑 **PIN de Coleta:** A batedeira possui um PIN exclusivo que é entregue ao motorista da caçamba somente após o carregamento dos resíduos.
+  - 📌 **Destinação:** O caroço recolhido é encaminhado para **Usinas de Biomassa, Cerâmicas e Ecopontos de Reciclagem**. O fornecedor de frutos **NÃO** recebe e não precisa receber o caroço de volta.
 
 ### 2.5. Gestão Financeira e Repasses
 - O sistema calcula seu saldo líquido: `Subtotal dos Produtos − Comissão da Plataforma (%) − Subsídio de Frete`.
 - Vincule sua chave Pix ou carteira Asaas para recebimento.
-- A liquidação é feita pelo Admin via botão *"💸 Pagar e Zerar"* ou pela varredura programada diária às 22:00.
+- **Saque Instantâneo Pix:** Realize até **2 saques instantâneos por dia** diretamente para sua conta bancária pelo app, além da varredura programada diária às 22:00.
 
 ---
 
@@ -78,13 +81,14 @@
 ### 3.1. Gestão do Catálogo Atacadista
 - Cadastre lotes em grande volume: sacas de frutos de safra, latas de 14kg ou 28kg, paneiros e insumos industriais complementares.
 - Configure preços no atacado e subsídio de frete B2B para atrair mais batedeiras da região.
+- 📌 **Escopo do Fornecedor:** O fornecedor é exclusivamente o produtor/vendedor dos frutos frescos e **NÃO recebe nem tem obrigação de receber caroços de volta**.
 
 ### 3.2. Separação de Lotes e Despacho ("Chamar Caminhão")
 1. Ao receber a notificação de compra paga via Pix por uma batedeira, separe e prepare o lote no armazém ou porto.
 2. 🚛 **NOVO — Chamar Caminhão:** Clique em **"Chamar Caminhão"** para disponibilizar a carga no radar dos caminhoneiros.
 3. Imprima o romaneio/comanda de saída B2B com dados da loja de destino e quantitativos.
 4. No destino, o caminhoneiro colhe o PIN de 4 dígitos da batedeira para finalizar o frete.
-5. O repasse líquido das vendas atacadistas entra automaticamente em sua conta bancária cadastrada.
+5. O repasse líquido das vendas atacadistas entra automaticamente em sua conta bancária cadastrada (com suporte a até 2 saques instantâneos diários via Pix).
 
 ---
 
@@ -96,8 +100,8 @@
 3. **Informações Prévias:** Veja o valor líquido a receber, distância em km e traçado da rota pelas ruas antes de aceitar.
 
 ### 4.2. Navegação com GPS Nativo & Botões de Chegada
-- Toque em **"GPS p/ Loja"**: Abre o Google Maps com navegação curva-a-curva até a batedeira.
-- Ao chegar na loja, clique em **"Confirmar Chegada na Loja"** (botão persistente na tela).
+- Toque em **"GPS p/ Retirada"**: Abre o Google Maps/Waze com navegação curva-a-curva até a batedeira.
+- Ao chegar na loja, clique em **"Confirmar Chegada na Loja"** (registra a retirada).
 - Retire a encomenda e toque em **"GPS p/ Cliente"** para navegar até o endereço final.
 - Ao chegar no cliente, clique em **"Confirmar Chegada no Cliente"**.
 
@@ -107,7 +111,7 @@
 - **Segurança:** O sistema bloqueia após tentativas inválidas consecutivas. Sem o PIN correto, a entrega não é homologada e o valor do frete não é creditado.
 
 ### 4.4. Saque Instantâneo Pix
-- Acompanhe seus ganhos acumulados no painel e use o botão **"💸 Saque Instantâneo Pix"** para transferir para seu banco a qualquer momento.
+- Acompanhe seus ganhos acumulados no painel e use o botão **"💸 Saque Instantâneo Pix"** para transferir para seu banco a qualquer momento (até 2 saques por dia).
 
 ---
 
@@ -115,13 +119,14 @@
 
 ### 5.1. Modalidades de Carga no Radar
 - 🏭 **Fretes B2B:** Transporte de paneiros, sacas e latas de açaí do fornecedor até a batedeira compradora.
-- 🚛 **Coleta de Resíduos (Caçamba ESG):** Remoção de caroços da batedeira até os Ecopontos credenciados para reciclagem ecológica.
+- 🚛 **Coleta de Resíduos (Caçamba ESG):** Remoção de caroços da batedeira até os Ecopontos e Usinas credenciadas para reciclagem ecológica (não retorna ao fornecedor de frutos).
 
-### 5.2. Execução da Carga
+### 5.2. Execução da Carga & Validação por PIN
 1. Fique **Online** para receber os chamados de carga pesada na sua praça.
 2. Analise a distância, remuneração líquida (por KM rodado ou valor fixo) e pontos de carga e descarga.
-3. Aceite o frete e utilize a navegação por rotas adequadas a caminhões.
-4. No destino, solicite o **PIN de 4 dígitos** ao encarregado do recebimento para confirmar a entrega e liberar o pagamento via Pix.
+3. Utilize os botões **"🚀 GPS p/ Retirada"** e **"🏁 GPS p/ Destino"** para navegação ponto a ponto.
+4. No destino (batedeira ou ponto de coleta), solicite o **PIN de 4 dígitos** ao responsável para confirmar a entrega/coleta e liberar o pagamento líquido via Pix.
+5. Realize saques dos seus fretes a qualquer momento pelo botão de Saque Instantâneo Pix (até 2 saques diários).
 
 ---
 

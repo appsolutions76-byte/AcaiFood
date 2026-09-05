@@ -4,6 +4,7 @@ import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, Role, User } from "@/store/useAppStore";
+import { supabase } from "@/lib/supabase";
 import { ShieldCheck, BookOpen } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
@@ -125,9 +126,15 @@ function CadastroForm() {
 
     try {
       if (newUserId && name && email && cpfCnpj) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+
         const subRes = await fetch('/api/asaas/subaccount', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             userId: newUserId,
             name,

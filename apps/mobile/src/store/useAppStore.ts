@@ -425,32 +425,34 @@ export const useAppStore = create<AppState>()(
 
           // Se for usuário parceiro/motorista legado sem walletId mas com CPF, gera subconta automaticamente em segundo plano
           if ((appRole === 'loja' || appRole === 'fornecedor' || appRole === 'motorista') && !loggedUser.asaasWalletId && loggedUser.cpfCnpj) {
-            fetch('/api/asaas/subaccount', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: loggedUser.id,
-                name: loggedUser.name,
-                email: loggedUser.email,
-                cpfCnpj: loggedUser.cpfCnpj,
-                phone: loggedUser.telefone,
-                endereco: loggedUser.endereco,
-                bairro: loggedUser.bairro,
-                cidade: loggedUser.cidade,
-                role: userProfile.role
-              })
-            }).then(r => r.json()).then(data => {
-              if (data?.walletId && isValidAsaasWalletId(data.walletId)) {
-                set(prev => {
-                  const u = prev.users[loggedUser.id] || loggedUser;
-                  const updated = { ...u, asaasWalletId: data.walletId, asaasLinked: true };
-                  return {
-                    users: { ...prev.users, [loggedUser.id]: updated },
-                    currentUser: prev.currentUser?.id === loggedUser.id ? updated : prev.currentUser
-                  };
-                });
-              }
-            }).catch(() => {});
+            getAuthHeaders().then(authHeaders => {
+              fetch('/api/asaas/subaccount', {
+                method: 'POST',
+                headers: authHeaders,
+                body: JSON.stringify({
+                  userId: loggedUser.id,
+                  name: loggedUser.name,
+                  email: loggedUser.email,
+                  cpfCnpj: loggedUser.cpfCnpj,
+                  phone: loggedUser.telefone,
+                  endereco: loggedUser.endereco,
+                  bairro: loggedUser.bairro,
+                  cidade: loggedUser.cidade,
+                  role: userProfile.role
+                })
+              }).then(r => r.json()).then(data => {
+                if (data?.walletId && isValidAsaasWalletId(data.walletId)) {
+                  set(prev => {
+                    const u = prev.users[loggedUser.id] || loggedUser;
+                    const updated = { ...u, asaasWalletId: data.walletId, asaasLinked: true };
+                    return {
+                      users: { ...prev.users, [loggedUser.id]: updated },
+                      currentUser: prev.currentUser?.id === loggedUser.id ? updated : prev.currentUser
+                    };
+                  });
+                }
+              }).catch(() => {});
+            });
           }
 
           get().setupRealtime(loggedUser.id);
