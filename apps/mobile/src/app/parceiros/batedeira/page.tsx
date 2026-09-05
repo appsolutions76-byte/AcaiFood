@@ -67,7 +67,17 @@ export default function BatedeiraDashboard() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
-  const [cartModalB2B, setCartModalB2B] = useState<{ open: boolean; fornId: string; quantity: number; productId: string }>({ open: false, fornId: '', quantity: 1, productId: 'base' });
+  const { cart, addToCart, removeFromCart, updateCartQuantity, clearCart } = store;
+  const [productSelectModalB2B, setProductSelectModalB2B] = useState<{
+    open: boolean;
+    fornId: string;
+    productId: string;
+    name: string;
+    price: number;
+    imageUrl?: string;
+    quantity: number;
+  } | null>(null);
+  const [b2bCheckoutModalOpen, setB2bCheckoutModalOpen] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
@@ -350,6 +360,78 @@ export default function BatedeiraDashboard() {
   const freteColeta = (rates.ecopoint_payment_mode === 'FIXED') 
     ? (rates.ecopoint_fixed_fee ?? rates.col_valor ?? 50) 
     : (distColeta > 0 ? (distColeta * (rates.col_km || 0)) : (rates.ecopoint_fixed_fee ?? rates.col_valor ?? 50));
+
+  const calcFreteB2B = (fornId: string) => {
+    const forn = store.users?.[fornId];
+    if (!forn) return { freteTotal: 0, freteLoja: 0, subsidy: 0, dist: 3.0 };
+    const lat1 = Number(forn?.lat || 0);
+    const lon1 = Number(forn?.lng || 0);
+    const lat2 = Number(currentUser?.lat || 0);
+    const lon2 = Number(currentUser?.lng || 0);
+    const dist = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) ? haversineKm(lat1, lon1, lat2, lon2) : 3.0;
+    const freteTotal = (rates.transporter_payment_mode === 'FIXED') ? (rates.transporter_fixed_fee ?? 150.00) : dist * rates.b2b_km;
+    const subsidy = forn.freteSubsidyPct || 0;
+    const freteLoja = freteTotal * (1 - subsidy / 100);
+    return { freteTotal, freteLoja, subsidy, dist };
+  };
+
+  const cartB2BStore = cart.storeId ? store.users[cart.storeId] : null;
+  const isB2BCart = cartB2BStore?.role === 'fornecedor';
+  const b2bCartItems = isB2BCart ? cart.items : [];
+  const b2bCartItemsTotal = b2bCartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const b2bCartTotalQuantity = b2bCartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const b2bCartFreteLoja = (isB2BCart && cart.storeId) ? calcFreteB2B(cart.storeId).freteLoja : 0;
+  const b2bFinalCartTotal = b2bCartItemsTotal + b2bCartFreteLoja;
+
+  const handleAddToCartB2B = () => {
+    if (!productSelectModalB2B) return;
+    const { fornId, productId, name, price, quantity } = productSelectModalB2B;
+    const forn = store.users?.[fornId];
+    if (!forn) return;
+
+    if (cart.storeId && cart.storeId !== fornId && cart.items.length > 0) {
+      const fornAtualNome = store.users?.[cart.storeId]?.name || 'outro fornecedor';
+      if (!confirm(`⚠️ Seu carrinho possui itens do fornecedor "${fornAtualNome}". Você só pode comprar de um fornecedor por vez.\n\nDeseja limpar o carrinho anterior e adicionar os itens de "${forn.name}"?`)) {
+        return;
+      }
+      clearCart();
+    }
+
+    addToCart(fornId, { id: productId, name, price, quantity });
+    setProductSelectModalB2B(null);
+  };
+
+  const handleConfirmB2BOrder = async () => {
+    if (!cart.storeId || b2bCartItems.length === 0) return;
+    const fornId = cart.storeId;
+    const res: any = await store.criarPedido('B2B', fornId);
+    setB2bCheckoutModalOpen(false);
+
+    if (res && typeof res === 'object') {
+      if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
+         setPixModalData({
+            open: true,
+            qrCode: res.pixQrCode,
+            copiaECola: res.pixCopiaECola,
+            invoiceUrl: res.invoiceUrl,
+            orderId: res.orderId,
+            paymentId: res.paymentId,
+            isSandbox: res.isSandbox,
+            totalValue: res.totalValue || b2bFinalCartTotal
+         });
+         return;
+      }
+      if (res.error) {
+         alert(`Aviso do Asaas: ${res.error}`);
+      } else {
+         alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
+      }
+    } else if (typeof res === 'string' && res.startsWith('http')) {
+      window.location.href = res;
+    } else {
+      alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
+    }
+  };
 
   const renderOrderCard = (o: any) => {
     const isCanceled = o.status === 'cancelado';
@@ -1218,6 +1300,21 @@ export default function BatedeiraDashboard() {
                         <span className="text-[11px] text-zinc-500 italic">Preço do frete compartilhado por viagem</span>
                       </div>
 
+                      {/* Banner se houver produtos deste fornecedor no carrinho */}
+                      {cart.storeId === forn.id && b2bCartItems.length > 0 && (
+                        <div className="bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 p-3 rounded-xl flex items-center justify-between gap-2 text-xs">
+                          <span className="font-bold text-emerald-900 dark:text-emerald-300">
+                            🛒 Você tem {b2bCartTotalQuantity} item(ns) no carrinho deste fornecedor ({formatMoney(b2bCartItemsTotal)})
+                          </span>
+                          <button 
+                            onClick={() => setB2bCheckoutModalOpen(true)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3 py-1.5 rounded-lg transition shadow-sm shrink-0"
+                          >
+                            Ver Carrinho 🛍️
+                          </button>
+                        </div>
+                      )}
+
                       {/* Grade de Produtos do Fornecedor (Apresentação idêntica ao Catálogo) */}
                       <div>
                         <p className="text-xs font-extrabold uppercase text-zinc-500 mb-3 tracking-wider flex items-center gap-1.5">
@@ -1263,10 +1360,27 @@ export default function BatedeiraDashboard() {
 
                                 {isLataAvail ? (
                                   <button 
-                                    onClick={() => setCartModalB2B({ open: true, fornId: forn.id, quantity: 1, productId: 'base' })}
+                                    onClick={() => {
+                                      if (cart.storeId && cart.storeId !== forn.id && cart.items.length > 0) {
+                                        const fornAtualNome = store.users?.[cart.storeId]?.name || 'outro fornecedor';
+                                        if (!confirm(`⚠️ Seu carrinho possui itens do fornecedor "${fornAtualNome}". Você só pode comprar de um fornecedor por vez.\n\nDeseja limpar o carrinho anterior e adicionar os itens de "${forn.name}"?`)) {
+                                          return;
+                                        }
+                                        clearCart();
+                                      }
+                                      setProductSelectModalB2B({
+                                        open: true,
+                                        fornId: forn.id,
+                                        productId: 'base',
+                                        name: 'Paneiro / Lata de Açaí (In Natura)',
+                                        price: forn.priceB2B || 140,
+                                        imageUrl: lataPhoto,
+                                        quantity: 1
+                                      });
+                                    }}
                                     className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow active:scale-95 shrink-0 flex items-center gap-1"
                                   >
-                                    + Comprar
+                                    + Adicionar
                                   </button>
                                 ) : (
                                   <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
@@ -1314,10 +1428,27 @@ export default function BatedeiraDashboard() {
 
                                 {isAvail ? (
                                   <button 
-                                    onClick={() => setCartModalB2B({ open: true, fornId: forn.id, quantity: 1, productId: p.id })}
+                                    onClick={() => {
+                                      if (cart.storeId && cart.storeId !== forn.id && cart.items.length > 0) {
+                                        const fornAtualNome = store.users?.[cart.storeId]?.name || 'outro fornecedor';
+                                        if (!confirm(`⚠️ Seu carrinho possui itens do fornecedor "${fornAtualNome}". Você só pode comprar de um fornecedor por vez.\n\nDeseja limpar o carrinho anterior e adicionar os itens de "${forn.name}"?`)) {
+                                          return;
+                                        }
+                                        clearCart();
+                                      }
+                                      setProductSelectModalB2B({
+                                        open: true,
+                                        fornId: forn.id,
+                                        productId: p.id,
+                                        name: p.name,
+                                        price: p.price,
+                                        imageUrl: p.imageUrl,
+                                        quantity: 1
+                                      });
+                                    }}
                                     className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow active:scale-95 shrink-0 flex items-center gap-1"
                                   >
-                                    + Comprar
+                                    + Adicionar
                                   </button>
                                 ) : (
                                   <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
@@ -1411,160 +1542,242 @@ export default function BatedeiraDashboard() {
         </div>
       )}
 
-      {/* B2B Cart Modal */}
-      {cartModalB2B.open && (
+      {/* Floating B2B Cart Bar */}
+      {isB2BCart && b2bCartItems.length > 0 && !b2bCheckoutModalOpen && (
+        <div className="fixed bottom-4 left-4 right-4 z-40 max-w-md mx-auto animate-in slide-in-from-bottom-5">
+          <button
+            onClick={() => setB2bCheckoutModalOpen(true)}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between font-bold text-sm transition-all transform active:scale-95 border-2 border-emerald-400/30"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2.5 rounded-xl text-xl">🛒</div>
+              <div className="text-left">
+                <p className="text-xs text-emerald-100 font-medium">Fornecedor: {cartB2BStore?.name || 'Fornecedor'}</p>
+                <p className="text-sm font-extrabold">{b2bCartTotalQuantity} {b2bCartTotalQuantity === 1 ? 'item' : 'itens'} • {formatMoney(b2bCartItemsTotal)}</p>
+              </div>
+            </div>
+            <span className="bg-white text-emerald-700 px-3.5 py-2 rounded-xl text-xs font-black shadow-sm flex items-center gap-1">
+              Ver Carrinho ➔
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Modal Selecionar Quantidade de Item B2B */}
+      {productSelectModalB2B && (
+        <div className="fixed inset-0 bg-black/70 z-[160] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95">
+            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-4 flex justify-between items-center shadow">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📦</span>
+                <h3 className="font-extrabold text-base">Adicionar ao Pedido</h3>
+              </div>
+              <button onClick={() => setProductSelectModalB2B(null)} className="text-white/80 hover:text-white font-bold text-2xl leading-none">&times;</button>
+            </div>
+
+            <div className="p-5">
+              <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700/60 mb-5">
+                <div className="w-14 h-14 rounded-lg bg-emerald-100 dark:bg-emerald-950 overflow-hidden shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
+                  {productSelectModalB2B.imageUrl ? (
+                    <img src={productSelectModalB2B.imageUrl} alt={productSelectModalB2B.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl">🌿</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-extrabold text-sm text-zinc-900 dark:text-white truncate">{productSelectModalB2B.name}</p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold mt-0.5">{formatMoney(productSelectModalB2B.price)} un.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/40 p-3.5 rounded-xl mb-5">
+                <span className="text-xs font-bold uppercase text-zinc-600 dark:text-zinc-300">Quantidade:</span>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setProductSelectModalB2B(prev => prev ? { ...prev, quantity: Math.max(1, prev.quantity - 1) } : null)} 
+                    className="bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 w-9 h-9 rounded-xl font-extrabold text-lg flex items-center justify-center hover:bg-zinc-300 active:scale-95 transition"
+                  >
+                    -
+                  </button>
+                  <span className="text-xl font-extrabold text-zinc-900 dark:text-white w-8 text-center">{productSelectModalB2B.quantity}</span>
+                  <button 
+                    onClick={() => setProductSelectModalB2B(prev => prev ? { ...prev, quantity: prev.quantity + 1 } : null)} 
+                    className="bg-emerald-600 text-white w-9 h-9 rounded-xl font-extrabold text-lg flex items-center justify-center hover:bg-emerald-700 active:scale-95 transition shadow"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 mb-5 text-sm">
+                <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase">Subtotal do Item:</span>
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-base">
+                  {formatMoney(productSelectModalB2B.price * productSelectModalB2B.quantity)}
+                </span>
+              </div>
+
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setProductSelectModalB2B(null)} 
+                  className="flex-1 px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition text-sm"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleAddToCartB2B} 
+                  className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition text-sm flex items-center justify-center gap-1.5"
+                >
+                  <span>Adicionar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Checkout / Carrinho B2B Multi-item */}
+      {b2bCheckoutModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95">
-              <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-4 sm:p-5 flex justify-between items-center shadow">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">🛒</span>
-                    <h3 className="font-extrabold text-base sm:text-lg">Comprar Insumos B2B</h3>
-                  </div>
-                  <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="text-white/80 hover:text-white font-bold text-2xl leading-none">&times;</button>
+          <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom-full sm:zoom-in-95">
+            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-4 sm:p-5 flex justify-between items-center shadow shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🛒</span>
+                <h3 className="font-extrabold text-base sm:text-lg">Carrinho de Abastecimento B2B</h3>
               </div>
-              
-              <div className="p-6">
-                  {(() => {
-                      const forn = store.users?.[cartModalB2B.fornId];
-                      if (!forn) return <p className="text-zinc-500 text-sm">Fornecedor não encontrado</p>;
-                      
-                      const lat1 = Number(forn?.lat || 0);
-                      const lon1 = Number(forn?.lng || 0);
-                      const lat2 = Number(currentUser?.lat || 0);
-                      const lon2 = Number(currentUser?.lng || 0);
-                      const dist = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) ? haversineKm(lat1, lon1, lat2, lon2) : 3.0;
-                      const freteTotal = (rates.transporter_payment_mode === 'FIXED') ? (rates.transporter_fixed_fee ?? 150.00) : dist * rates.b2b_km;
-                      const subsidy = forn.freteSubsidyPct || 0;
-                      const freteLoja = freteTotal * (1 - subsidy / 100);
-                      
-                      const isBase = cartModalB2B.productId === 'base';
-                      const selectedProd = !isBase ? forn.products?.find(p => p.id === cartModalB2B.productId) : null;
-                      const unitPrice = isBase ? (forn.priceB2B || 0) : (selectedProd?.price || 0);
-                      const productName = isBase ? 'Paneiro de Açaí (Lata In Natura)' : (selectedProd?.name || 'Produto Extra');
-                      const productImg = isBase 
-                        ? 'https://images.unsplash.com/photo-1628557044797-f21a177c37ec?auto=format&fit=crop&w=400&q=80'
-                        : selectedProd?.imageUrl;
+              <button onClick={() => setB2bCheckoutModalOpen(false)} className="text-white/80 hover:text-white font-bold text-2xl leading-none">&times;</button>
+            </div>
 
-                      const subtotal = unitPrice * cartModalB2B.quantity;
-                      const totalToPay = subtotal + freteLoja;
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
+              {(() => {
+                if (!cart.storeId || b2bCartItems.length === 0) {
+                  return (
+                    <div className="text-center py-8">
+                      <span className="text-4xl mb-2 block">🛒</span>
+                      <p className="text-zinc-500 font-bold text-sm">Seu carrinho de abastecimento está vazio.</p>
+                    </div>
+                  );
+                }
 
-                      return (
-                          <>
-                              <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-100 dark:border-zinc-800">
-                                <div>
-                                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Fornecedor Selecionado</p>
-                                  <h4 className="font-extrabold text-zinc-900 dark:text-white text-lg">{forn.name}</h4>
-                                </div>
-                                <span className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1 rounded-xl">
-                                  📍 {dist.toFixed(1)} km
-                                </span>
+                const forn = store.users?.[cart.storeId];
+                if (!forn) return <p className="text-zinc-500 text-sm">Fornecedor não encontrado</p>;
+
+                const { dist, subsidy, freteLoja } = calcFreteB2B(forn.id);
+
+                return (
+                  <>
+                    {/* Info Fornecedor */}
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                      <div>
+                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Fornecedor Selecionado</p>
+                        <h4 className="font-extrabold text-zinc-900 dark:text-white text-base sm:text-lg">{forn.name}</h4>
+                      </div>
+                      <span className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1 rounded-xl">
+                        📍 {dist.toFixed(1)} km
+                      </span>
+                    </div>
+
+                    {/* Lista de Itens do Carrinho */}
+                    <div className="space-y-2.5">
+                      <p className="text-xs font-bold uppercase text-zinc-500 tracking-wider">Itens do Pedido ({b2bCartTotalQuantity}):</p>
+                      {b2bCartItems.map((item) => {
+                        const isBase = item.id === 'base' || item.id === 'B2B';
+                        const itemImg = isBase
+                          ? (forn.imagesB2B?.lata || 'https://images.unsplash.com/photo-1628557044797-f21a177c37ec?auto=format&fit=crop&w=400&q=80')
+                          : forn.products?.find(p => p.id === item.id)?.imageUrl;
+
+                        return (
+                          <div key={item.id} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700/60 gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <div className="w-11 h-11 rounded-lg bg-emerald-100 dark:bg-emerald-950 overflow-hidden shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
+                                {itemImg ? (
+                                  <img src={itemImg} alt={item.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-lg">🌿</span>
+                                )}
                               </div>
-                              
-                              <label className="block text-xs font-bold uppercase text-zinc-500 mb-2">Item Escolhido:</label>
-                              <select 
-                                value={cartModalB2B.productId} 
-                                onChange={e => setCartModalB2B({ ...cartModalB2B, productId: e.target.value })}
-                                className="w-full border-2 border-emerald-200 dark:border-zinc-700 rounded-xl p-3 bg-emerald-50/50 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold outline-none focus:border-emerald-500 transition mb-4 text-sm"
+                              <div className="min-w-0">
+                                <p className="font-extrabold text-xs sm:text-sm text-zinc-900 dark:text-white truncate">{item.name}</p>
+                                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold">{formatMoney(item.price)} un.</p>
+                              </div>
+                            </div>
+
+                            {/* Controles de Quantidade */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => updateCartQuantity(item.id, Math.max(1, item.quantity - 1))}
+                                className="w-7 h-7 bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-lg font-extrabold text-sm flex items-center justify-center hover:bg-zinc-300 active:scale-95 transition"
                               >
-                                  <option value="base">Paneiro / Lata de Açaí (In Natura) - {formatMoney(forn.priceB2B || 0)}</option>
-                                  {forn.products && forn.products.length > 0 && (
-                                      <optgroup label="Outros Insumos & Extras">
-                                          {forn.products.map(p => (
-                                              <option key={p.id} value={p.id} disabled={p.isAvailable === false}>
-                                                {p.name} - {formatMoney(p.price)} {p.isAvailable === false ? '(ESGOTADO)' : ''}
-                                              </option>
-                                          ))}
-                                      </optgroup>
-                                  )}
-                              </select>
+                                -
+                              </button>
+                              <span className="text-sm font-extrabold text-zinc-900 dark:text-white w-6 text-center">{item.quantity}</span>
+                              <button
+                                onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                                className="w-7 h-7 bg-emerald-600 text-white rounded-lg font-extrabold text-sm flex items-center justify-center hover:bg-emerald-700 active:scale-95 transition shadow"
+                              >
+                                +
+                              </button>
+                              <button
+                                onClick={() => removeFromCart(item.id)}
+                                className="w-7 h-7 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg flex items-center justify-center transition ml-1"
+                                title="Remover item"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                              {/* Preview Card do Produto Escolhido */}
-                              <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700/60 mb-5">
-                                <div className="w-12 h-12 rounded-lg bg-emerald-100 dark:bg-emerald-950 overflow-hidden shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
-                                  {productImg ? (
-                                    <img src={productImg} alt={productName} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <span className="text-xl">🌿</span>
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">{productName}</p>
-                                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold">{formatMoney(unitPrice)} un.</p>
-                                </div>
-                              </div>
+                    {/* Resumo Financeiro */}
+                    <div className="space-y-2 text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-950/80 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                      <div className="flex justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                        <span>Subtotal dos Produtos ({b2bCartTotalQuantity} itens):</span>
+                        <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(b2bCartItemsTotal)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                        <span className="flex items-center gap-1">
+                          Frete Caminhão (Loja):
+                          {subsidy > 0 && <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded font-bold">-{subsidy}% subsídio</span>}
+                        </span>
+                        <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(freteLoja)}</span>
+                      </div>
+                      <div className="flex justify-between pt-1 text-sm">
+                        <span className="font-extrabold text-zinc-900 dark:text-white">Total a Pagar (PIX):</span>
+                        <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-base">{formatMoney(b2bFinalCartTotal)}</span>
+                      </div>
+                    </div>
 
-                              <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/40 p-3 rounded-xl mb-5">
-                                <span className="text-xs font-bold uppercase text-zinc-600 dark:text-zinc-300">Quantidade de Latas/Itens:</span>
-                                <div className="flex items-center gap-3">
-                                    <button onClick={() => setCartModalB2B(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1)}))} className="bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 w-9 h-9 rounded-xl font-extrabold text-lg flex items-center justify-center hover:bg-zinc-300 active:scale-95 transition">-</button>
-                                    <span className="text-xl font-extrabold text-zinc-900 dark:text-white w-7 text-center">{cartModalB2B.quantity}</span>
-                                    <button onClick={() => setCartModalB2B(prev => ({ ...prev, quantity: prev.quantity + 1}))} className="bg-emerald-600 text-white w-9 h-9 rounded-xl font-extrabold text-lg flex items-center justify-center hover:bg-emerald-700 active:scale-95 transition shadow">+</button>
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-2.5 mb-6 text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-950/80 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                                  <div className="flex justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                                      <span>Subtotal ({cartModalB2B.quantity}x {formatMoney(unitPrice)}):</span>
-                                      <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(subtotal)}</span>
-                                  </div>
-                                  <div className="flex justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                                      <span className="flex items-center gap-1">
-                                        Frete Caminhão (Loja):
-                                        {subsidy > 0 && <span className="text-[9px] bg-orange-100 text-orange-700 px-1 rounded font-bold">-{subsidy}%</span>}
-                                      </span>
-                                      <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(freteLoja)}</span>
-                                  </div>
-                                  <div className="flex justify-between pt-1 text-sm">
-                                      <span className="font-extrabold text-zinc-900 dark:text-white">Total a Pagar (PIX):</span>
-                                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-base">{formatMoney(totalToPay)}</span>
-                                  </div>
-                              </div>
-                              
-                              <div className="flex gap-3">
-                                  <button onClick={() => setCartModalB2B({ ...cartModalB2B, open: false })} className="flex-1 px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition text-sm">Cancelar</button>
-                                  <button onClick={async () => {
-                                      store.clearCart();
-                                      store.addToCart(forn.id, { 
-                                          id: cartModalB2B.productId === 'base' ? 'B2B' : cartModalB2B.productId, 
-                                          name: productName, 
-                                          price: unitPrice, 
-                                          quantity: cartModalB2B.quantity 
-                                      });
-                                      const res: any = await store.criarPedido('B2B', forn.id);
-                                      setCartModalB2B({ ...cartModalB2B, open: false });
-
-                                      if (res && typeof res === 'object') {
-                                        if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
-                                           setPixModalData({
-                                              open: true,
-                                              qrCode: res.pixQrCode,
-                                              copiaECola: res.pixCopiaECola,
-                                              invoiceUrl: res.invoiceUrl,
-                                              orderId: res.orderId,
-                                              paymentId: res.paymentId,
-                                              isSandbox: res.isSandbox,
-                                              totalValue: res.totalValue || totalToPay
-                                           });
-                                           return;
-                                        }
-                                        if (res.error) {
-                                           alert(`Aviso do Asaas: ${res.error}`);
-                                        } else {
-                                           alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
-                                         }
-                                      } else if (typeof res === 'string' && res.startsWith('http')) {
-                                        window.location.href = res;
-                                      } else {
-                                        alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
-                                      }
-                                  }} className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-700 active:scale-95 transition text-sm flex items-center justify-center gap-1.5">
-                                    <span>Confirmar Pedido</span>
-                                  </button>
-                              </div>
-                          </>
-                      );
-                  })()}
-              </div>
+                    {/* Botões de Ação */}
+                    <div className="flex gap-2.5 pt-2">
+                      <button
+                        onClick={() => {
+                          if (confirm('Deseja realmente esvaziar o carrinho?')) {
+                            clearCart();
+                            setB2bCheckoutModalOpen(false);
+                          }
+                        }}
+                        className="px-3 py-3 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition text-xs"
+                      >
+                        Limpar
+                      </button>
+                      <button
+                        onClick={() => setB2bCheckoutModalOpen(false)}
+                        className="px-4 py-3 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition text-xs"
+                      >
+                        + Mais Itens
+                      </button>
+                      <button
+                        onClick={handleConfirmB2BOrder}
+                        className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition text-sm flex items-center justify-center gap-1.5"
+                      >
+                        <span>Confirmar e Pagar via PIX</span>
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </div>
       )}

@@ -77,7 +77,7 @@ export default function FornecedorDashboard() {
       setB2bPrice(currentUser.priceB2B);
     }
   }, [currentUser?.priceB2B]);
-  const [activeTab, setActiveTab] = useState('pedidos');
+  const [activeTab, setActiveTab] = useState('geral');
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
@@ -368,7 +368,6 @@ export default function FornecedorDashboard() {
       <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
         <div className="max-w-5xl mx-auto px-4 flex gap-6 overflow-x-auto">
           <button onClick={() => setActiveTab('geral')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'geral' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
-          <button onClick={() => setActiveTab('produtos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'produtos' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>➕ Produtos Extras</button>
           <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🚚 Gestão de Pedidos</button>
         </div>
       </div>
@@ -457,74 +456,59 @@ export default function FornecedorDashboard() {
         </div>
 
         {activeTab === 'geral' && (
-        <div className="grid grid-cols-1 gap-4 animate-in fade-in zoom-in-95 duration-300">
-          {/* Controles */}
-          <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl shadow border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center gap-3">
+          <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
+            {/* Card 1: Status de Funcionamento & Lata Açaí */}
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center gap-3">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                  <div>
-                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🏭 Status e Lata Açaí</h3>
-                      <p className="text-[10px] text-zinc-500">Controle se sua usina está recebendo pedidos e edite seu preço.</p>
+                <div>
+                  <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase flex items-center gap-2">
+                    <span>🏭</span> Status da Usina / Fornecedor
+                  </h3>
+                  <p className="text-[10px] text-zinc-500">Controle se seu estabelecimento está operando e recebendo pedidos das lojas.</p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap mt-2 sm:mt-0">
+                  <button onClick={handleToggleStatus} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
+                    {isPaused ? 'Pausado 🚫' : 'Operando ✅'}
+                  </button>
+                  <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                    <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Lata:</span>
+                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{formatMoney(b2bPrice)}</span>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap mt-2 sm:mt-0">
-                      <button onClick={handleToggleStatus} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
-                          {isPaused ? 'Pausado 🚫' : 'Operando ✅'}
-                      </button>
-                      {(() => {
-                        const isLataAvail = currentUser?.availabilityB2B?.lata !== false;
-                        return (
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              if (currentUser) store.toggleB2BAvailability(currentUser.id);
-                            }}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition shadow-sm ${
-                              isLataAvail
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
-                            }`}
-                          >
-                            {isLataAvail ? '🟢 Fruto Disponível' : '🔴 Fruto Esgotado'}
-                          </button>
-                        );
-                      })()}
-                      <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
-                          <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Lata:</span>
-                          <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{formatMoney(b2bPrice)}</span>
-                      </div>
-                      <button onClick={() => setPriceModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">Editar Preço</button>
-                  </div>
+                  <button onClick={() => setPriceModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm">
+                    ✏️ Editar Preço
+                  </button>
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                  <div>
-                      <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase">🚚 Participação no Frete (%)</h3>
-                      <p className="text-[10px] text-zinc-500">Defina a porcentagem do frete que você quer pagar para atrair as batedeiras.</p>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                      <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Você Paga:</label>
-                      <input type="number" min="0" max="100" value={subsidyInput} onChange={e => setSubsidyInput(e.target.value)} className="w-16 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded p-1.5 text-center font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
-                      <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">%</span>
-                      <button onClick={handleSaveSubsidy} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ml-1">Salvar</button>
-                  </div>
+              {/* Participação no Frete */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-1">
+                <div>
+                  <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase flex items-center gap-1.5">
+                    <span>🚚</span> Participação no Frete do Caminhão (%)
+                  </h3>
+                  <p className="text-[10px] text-zinc-500">Defina a porcentagem do frete que você quer subsidiar para atrair batedeiras.</p>
+                </div>
+                <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                  <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Você Paga:</label>
+                  <input type="number" min="0" max="100" value={subsidyInput} onChange={e => setSubsidyInput(e.target.value)} className="w-16 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-1.5 text-center font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">%</span>
+                  <button onClick={handleSaveSubsidy} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ml-1">Salvar</button>
+                </div>
               </div>
-          </div>
-        </div>
-        )}
-          
-        {activeTab === 'produtos' && (
-        <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
-          {/* PRODUTO PRINCIPAL B2B: LATA / PANEIRO DE AÇAÍ (FRUTO IN NATURA) */}
-          <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+            </div>
+
+            {/* Card 2: PRODUTO PRINCIPAL B2B: LATA / PANEIRO DE AÇAÍ (FRUTO IN NATURA) */}
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                  <div>
-                      <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
-                        <span>🧺</span> Produto Principal (Frutos In Natura)
-                      </h3>
-                      <p className="text-xs text-zinc-500">Matéria-prima e latas de açaí vendidas diretamente para as batedeiras.</p>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-2.5 py-1 rounded-full">
-                    Base B2B (~14kg)
-                  </span>
+                <div>
+                  <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
+                    <span>🧺</span> Produto Principal (Frutos In Natura)
+                  </h3>
+                  <p className="text-xs text-zinc-500">Matéria-prima e latas de açaí vendidas diretamente para as batedeiras.</p>
+                </div>
+                <span className="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-2.5 py-1 rounded-full">
+                  Base B2B (~14kg)
+                </span>
               </div>
 
               {(() => {
@@ -536,7 +520,7 @@ export default function FornecedorDashboard() {
                       ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60' 
                       : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-70'
                   }`}>
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3.5 min-w-0">
                       <div 
                         onClick={() => setPhotoModalData({
                           open: true,
@@ -547,7 +531,7 @@ export default function FornecedorDashboard() {
                             if (currentUser) store.updateB2BImage(currentUser.id, url);
                           }
                         })}
-                        className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 overflow-hidden shrink-0 border border-emerald-300 dark:border-emerald-700 cursor-pointer flex items-center justify-center relative group shadow-sm"
+                        className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 overflow-hidden shrink-0 border border-emerald-300 dark:border-emerald-700 cursor-pointer flex items-center justify-center relative group shadow-sm"
                         title="Trocar Foto da Lata"
                       >
                         <img src={lataPhoto} alt="Lata Açaí" className="w-full h-full object-cover" />
@@ -574,7 +558,7 @@ export default function FornecedorDashboard() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
                       <button
                         type="button"
                         onClick={() => {
@@ -586,7 +570,22 @@ export default function FornecedorDashboard() {
                             : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200 dark:bg-red-950 dark:border-red-800 dark:text-red-300'
                         }`}
                       >
-                        {isLataAvail ? '🟢 Disponível para Lojas' : '🔴 Esgotado'}
+                        {isLataAvail ? '🟢 Fruto Disponível' : '🔴 Fruto Esgotado'}
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setPhotoModalData({
+                          open: true,
+                          title: 'Foto da Lata de Açaí (Fruto In Natura)',
+                          category: 'b2b',
+                          currentUrl: currentUser?.imagesB2B?.lata,
+                          onSelect: (url) => {
+                            if (currentUser) store.updateB2BImage(currentUser.id, url);
+                          }
+                        })}
+                        className="bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 px-3 py-2 rounded-xl text-xs font-bold transition border border-zinc-200 dark:border-zinc-700"
+                      >
+                        📷 Foto
                       </button>
                       <button 
                         onClick={() => setPriceModalOpen(true)} 
@@ -598,15 +597,15 @@ export default function FornecedorDashboard() {
                   </div>
                 );
               })()}
-          </div>
+            </div>
 
-          {/* Cadastro de Produtos Extras */}
-          <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+            {/* Card 3: Cadastro & Lista de Produtos Extras / Insumos B2B */}
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
               <div className="border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                  <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
-                    <span>📦</span> Outros Produtos & Insumos Extras B2B
-                  </h3>
-                  <p className="text-xs text-zinc-500">Cadastre outros produtos como sacas, frutos selecionados, polpas, etc.</p>
+                <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
+                  <span>📦</span> Produtos & Insumos Extras B2B
+                </h3>
+                <p className="text-xs text-zinc-500">Cadastre outros produtos como sacas, frutos selecionados, polpas, insumos, etc.</p>
               </div>
 
               {/* Form de cadastro com foto */}
@@ -668,13 +667,13 @@ export default function FornecedorDashboard() {
                               if (currentUser) store.updateProduct(currentUser.id, p.id, { imageUrl: url });
                             }
                           })}
-                          className="w-9 h-9 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 cursor-pointer flex items-center justify-center"
+                          className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 cursor-pointer flex items-center justify-center"
                           title="Trocar Foto"
                         >
                           {p.imageUrl ? (
                             <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-xs">🌿</span>
+                            <span className="text-sm">🌿</span>
                           )}
                         </div>
                         <div className="min-w-0">
@@ -707,8 +706,8 @@ export default function FornecedorDashboard() {
                   <p className="text-xs text-zinc-500 text-center py-4">Nenhum produto extra cadastrado.</p>
                 )}
               </ul>
+            </div>
           </div>
-        </div>
         )}
 
         {activeTab === 'pedidos' && (
