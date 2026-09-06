@@ -211,11 +211,15 @@ export function AdminSupportSection() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-[11px] bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shadow-2xs">
+            <span>🕒 Horário:</span>
+            <span>Seg-Sáb (08h-22h) | Dom (09h-18h)</span>
+          </div>
           <button
             onClick={loadAllSupportMessages}
             disabled={loading}
-            className="p-2 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 rounded-xl border border-zinc-200 dark:border-zinc-700 transition active:scale-95"
+            className="p-2 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 rounded-xl border border-zinc-200 dark:border-zinc-700 transition active:scale-95 cursor-pointer"
             title="Atualizar conversas"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
