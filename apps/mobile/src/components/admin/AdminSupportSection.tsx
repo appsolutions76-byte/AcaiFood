@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Headphones, Send, CheckCircle2, MessageSquare, Phone, User, RefreshCw, Search, ShieldCheck, Clock, ExternalLink } from "lucide-react";
-import { SupportMessageItem } from "@/app/api/support/route";
+import { 
+  Headphones, Send, CheckCircle2, MessageSquare, Phone, User, RefreshCw, 
+  Search, ShieldCheck, Clock, ExternalLink, Settings2, Sliders, ToggleLeft, ToggleRight, X, Save
+} from "lucide-react";
+import { SupportMessageItem, SupportConfig, DEFAULT_SUPPORT_CONFIG } from "@/app/api/support/route";
 import { playChatDing } from "@/lib/soundAlerts";
 import { supabase } from "@/lib/supabase";
 
@@ -14,13 +17,22 @@ export function AdminSupportSection() {
   const [filterStatus, setFilterStatus] = useState<"all" | "open" | "resolved">("open");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [supportConfig, setSupportConfig] = useState<SupportConfig>(DEFAULT_SUPPORT_CONFIG);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const loadAllSupportMessages = async () => {
+  const loadAllSupportMessagesAndConfig = async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/support?all=true");
@@ -29,17 +41,20 @@ export function AdminSupportSection() {
         if (data.messages && Array.isArray(data.messages)) {
           setAllMessages(data.messages);
         }
+        if (data.config) {
+          setSupportConfig(data.config);
+        }
       }
     } catch (_err) {
-      console.warn("Erro ao carregar mensagens no painel admin:", _err);
+      console.warn("Erro ao carregar suporte admin:", _err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAllSupportMessages();
-    const interval = setInterval(loadAllSupportMessages, 6000);
+    loadAllSupportMessagesAndConfig();
+    const interval = setInterval(loadAllSupportMessagesAndConfig, 6000);
 
     // Canal Realtime Supabase
     const channel = supabase
@@ -67,6 +82,33 @@ export function AdminSupportSection() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const handleSaveConfig = async (updatedConfig: Partial<SupportConfig>) => {
+    const finalConfig = { ...supportConfig, ...updatedConfig };
+    setSupportConfig(finalConfig);
+    setIsSavingConfig(true);
+
+    try {
+      const res = await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save_config",
+          config: finalConfig
+        })
+      });
+      if (res.ok) {
+        showToast("✅ Configurações de Atendimento salvas com sucesso!");
+        setConfigModalOpen(false);
+      } else {
+        alert("Erro ao salvar configurações de suporte.");
+      }
+    } catch (e: any) {
+      alert("Erro ao salvar: " + e.message);
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
 
   // Agrupamento de conversas por user_id
   const threadsMap = new Map<string, {
@@ -199,27 +241,75 @@ export function AdminSupportSection() {
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-      {/* HEADER DA SEÇÃO */}
-      <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      {toastMsg && (
+        <div className="fixed top-5 right-5 z-[300] bg-zinc-900 text-white border border-zinc-700 px-4 py-3 rounded-xl shadow-xl font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
+          <span className="text-sm">{toastMsg}</span>
+          <button onClick={() => setToastMsg(null)} className="text-zinc-400 hover:text-white font-bold text-lg leading-none">&times;</button>
+        </div>
+      )}
+
+      {/* HEADER DA SEÇÃO COM CONTROLE RÁPIDO DE STATUS E BOTÃO DE CONFIGURAÇÕES */}
+      <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/50 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h3 className="text-lg font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
             <Headphones className="text-purple-600" size={20} />
             Central de Atendimento & Suporte Geral
           </h3>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Converse em tempo real com clientes, batedeiras, entregadores e parceiros.
+            Converse ao vivo com clientes, batedeiras, entregadores e fornecedores.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="text-[11px] bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shadow-2xs">
-            <span>🕒 Horário:</span>
-            <span>Seg-Sáb (08h-22h) | Dom (09h-18h)</span>
+        {/* CONTROLES DE STATUS / HORÁRIOS */}
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-start lg:justify-end">
+          {/* SELETOR RÁPIDO DE MODO DE OPERAÇÃO */}
+          <div className="flex items-center bg-zinc-200/80 dark:bg-zinc-800 p-1 rounded-xl text-xs font-bold">
+            <button
+              onClick={() => handleSaveConfig({ mode: "auto" })}
+              className={`px-3 py-1.5 rounded-lg transition ${
+                supportConfig.mode === "auto"
+                  ? "bg-white dark:bg-zinc-900 text-purple-700 dark:text-purple-300 shadow-xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900"
+              }`}
+              title="Abre e fecha automaticamente de acordo com o relógio"
+            >
+              🕒 Auto (Relógio)
+            </button>
+            <button
+              onClick={() => handleSaveConfig({ mode: "open" })}
+              className={`px-3 py-1.5 rounded-lg transition ${
+                supportConfig.mode === "open"
+                  ? "bg-emerald-500 text-white shadow-xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900"
+              }`}
+              title="Forçar atendimento como Aberto/Online agora"
+            >
+              🟢 Forçar Aberto
+            </button>
+            <button
+              onClick={() => handleSaveConfig({ mode: "closed" })}
+              className={`px-3 py-1.5 rounded-lg transition ${
+                supportConfig.mode === "closed"
+                  ? "bg-red-500 text-white shadow-xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900"
+              }`}
+              title="Forçar atendimento como Fechado/Pausado agora"
+            >
+              🔴 Forçar Fechado
+            </button>
           </div>
+
           <button
-            onClick={loadAllSupportMessages}
+            onClick={() => setConfigModalOpen(true)}
+            className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 font-bold px-3 py-2 rounded-xl border border-purple-300 dark:border-purple-800 flex items-center gap-1.5 shadow-2xs transition active:scale-95 cursor-pointer shrink-0"
+          >
+            <Settings2 size={15} /> Ajustar Horários
+          </button>
+
+          <button
+            onClick={loadAllSupportMessagesAndConfig}
             disabled={loading}
-            className="p-2 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 rounded-xl border border-zinc-200 dark:border-zinc-700 transition active:scale-95 cursor-pointer"
+            className="p-2 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 rounded-xl border border-zinc-200 dark:border-zinc-700 transition active:scale-95 cursor-pointer shrink-0"
             title="Atualizar conversas"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
@@ -374,7 +464,7 @@ export function AdminSupportSection() {
                   {activeThread.status !== "resolvido" && (
                     <button
                       onClick={() => handleResolveTicket(activeThread.userId)}
-                      className="text-xs bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 flex items-center gap-1 transition"
+                      className="text-xs bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 flex items-center gap-1 transition cursor-pointer"
                     >
                       <CheckCircle2 size={13} /> Resolver
                     </button>
@@ -438,6 +528,176 @@ export function AdminSupportSection() {
           )}
         </div>
       </div>
+
+      {/* MODAL DE CONFIGURAÇÃO DE HORÁRIOS E CHAVE DE ATENDIMENTO */}
+      {configModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-[250] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-purple-200 dark:border-zinc-800 animate-in zoom-in-95">
+            <div className="bg-gradient-to-r from-purple-800 to-indigo-900 text-white p-5 flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <Settings2 size={20} />
+                <h3 className="font-extrabold text-base">Configurar Horários & Chave do Suporte</h3>
+              </div>
+              <button
+                onClick={() => setConfigModalOpen(false)}
+                className="text-white/80 hover:text-white text-2xl font-bold leading-none cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              {/* MODO DE FUNCIONAMENTO */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-2">
+                  Modo de Operação do Canal:
+                </label>
+                <div className="grid grid-cols-3 gap-2 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setSupportConfig(prev => ({ ...prev, mode: "auto" }))}
+                    className={`p-2.5 rounded-xl border text-center transition ${
+                      supportConfig.mode === "auto"
+                        ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                        : "bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
+                    }`}
+                  >
+                    🕒 Automático (Relógio)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSupportConfig(prev => ({ ...prev, mode: "open" }))}
+                    className={`p-2.5 rounded-xl border text-center transition ${
+                      supportConfig.mode === "open"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                        : "bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
+                    }`}
+                  >
+                    🟢 Forçar Aberto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSupportConfig(prev => ({ ...prev, mode: "closed" }))}
+                    className={`p-2.5 rounded-xl border text-center transition ${
+                      supportConfig.mode === "closed"
+                        ? "bg-red-600 text-white border-red-600 shadow-xs"
+                        : "bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
+                    }`}
+                  >
+                    🔴 Forçar Fechado
+                  </button>
+                </div>
+              </div>
+
+              {/* INTERRUPTOR CANAL ATIVO */}
+              <div className="flex items-center justify-between p-3.5 bg-purple-50/50 dark:bg-purple-950/30 rounded-2xl border border-purple-100 dark:border-purple-900/40">
+                <div>
+                  <p className="text-xs font-bold text-zinc-900 dark:text-white">Exibir Botão de Suporte no App</p>
+                  <p className="text-[11px] text-zinc-500">Se desativado, o botão flutuante ficará invisível para os usuários</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSupportConfig(prev => ({ ...prev, channelEnabled: !prev.channelEnabled }))}
+                  className="cursor-pointer text-purple-600 dark:text-purple-400"
+                >
+                  {supportConfig.channelEnabled ? (
+                    <ToggleRight size={32} className="text-emerald-500" />
+                  ) : (
+                    <ToggleLeft size={32} className="text-zinc-400" />
+                  )}
+                </button>
+              </div>
+
+              {/* HORÁRIOS SEGUNDA A SÁBADO */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                  🗓️ Segunda a Sábado:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[10px] text-zinc-400 block mb-1">Abertura:</span>
+                    <input
+                      type="time"
+                      value={supportConfig.weekdayOpen}
+                      onChange={(e) => setSupportConfig(prev => ({ ...prev, weekdayOpen: e.target.value }))}
+                      className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl p-2.5 text-xs font-bold text-zinc-800 dark:text-white outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-400 block mb-1">Fechamento:</span>
+                    <input
+                      type="time"
+                      value={supportConfig.weekdayClose}
+                      onChange={(e) => setSupportConfig(prev => ({ ...prev, weekdayClose: e.target.value }))}
+                      className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl p-2.5 text-xs font-bold text-zinc-800 dark:text-white outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* HORÁRIOS DOMINGOS E FERIADOS */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                  ☀️ Domingos e Feriados:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[10px] text-zinc-400 block mb-1">Abertura:</span>
+                    <input
+                      type="time"
+                      value={supportConfig.weekendOpen}
+                      onChange={(e) => setSupportConfig(prev => ({ ...prev, weekendOpen: e.target.value }))}
+                      className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl p-2.5 text-xs font-bold text-zinc-800 dark:text-white outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-400 block mb-1">Fechamento:</span>
+                    <input
+                      type="time"
+                      value={supportConfig.weekendClose}
+                      onChange={(e) => setSupportConfig(prev => ({ ...prev, weekendClose: e.target.value }))}
+                      className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl p-2.5 text-xs font-bold text-zinc-800 dark:text-white outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* WHATSAPP OFICIAL DE PLANTÃO */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                  📞 WhatsApp Oficial de Plantão (com DDD):
+                </label>
+                <input
+                  type="text"
+                  value={supportConfig.whatsappNumber}
+                  onChange={(e) => setSupportConfig(prev => ({ ...prev, whatsappNumber: e.target.value }))}
+                  placeholder="5591981244876"
+                  className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl p-2.5 text-xs font-bold text-zinc-800 dark:text-white outline-none focus:border-purple-500"
+                />
+              </div>
+
+              {/* BOTÕES DE AÇÃO */}
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-zinc-200 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setConfigModalOpen(false)}
+                  className="px-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingConfig}
+                  onClick={() => handleSaveConfig(supportConfig)}
+                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs rounded-xl shadow-md transition active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Save size={14} /> {isSavingConfig ? "Salvando..." : "Salvar Configurações"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

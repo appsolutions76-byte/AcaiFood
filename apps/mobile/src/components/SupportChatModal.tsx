@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { MessageSquare, Send, X, Headphones, Phone, Mail, CheckCheck, Sparkles, User, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { playChatDing } from "@/lib/soundAlerts";
-import { SupportMessageItem } from "@/app/api/support/route";
+import { SupportMessageItem, SupportConfig, DEFAULT_SUPPORT_CONFIG } from "@/app/api/support/route";
 
 interface SupportChatModalProps {
   isOpen: boolean;
@@ -17,14 +17,16 @@ interface SupportChatModalProps {
     email?: string;
     cidade?: string;
   } | null;
+  config?: SupportConfig;
 }
 
-export function SupportChatModal({ isOpen, onClose, currentUser }: SupportChatModalProps) {
+export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAULT_SUPPORT_CONFIG }: SupportChatModalProps) {
   const [messages, setMessages] = useState<SupportMessageItem[]>([]);
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+  const [liveConfig, setLiveConfig] = useState<SupportConfig>(config);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // ID persistente para usuários anônimos / visitantes
@@ -68,6 +70,9 @@ export function SupportChatModal({ isOpen, onClose, currentUser }: SupportChatMo
             return data.messages;
           });
           setTimeout(scrollToBottom, 80);
+        }
+        if (data.config) {
+          setLiveConfig(data.config);
         }
       }
     } catch (_err) {}
@@ -150,14 +155,26 @@ export function SupportChatModal({ isOpen, onClose, currentUser }: SupportChatMo
 
   if (!isOpen) return null;
 
-  // Cálculo dinâmico do horário de funcionamento
+  // Cálculo dinâmico do status de atendimento com base na configuração do administrador
+  const parseHour = (timeStr: string, defaultVal: number) => {
+    if (!timeStr) return defaultVal;
+    const [h, m] = timeStr.split(':').map(Number);
+    return isNaN(h) ? defaultVal : h + (isNaN(m) ? 0 : m / 60);
+  };
+
   const now = new Date();
   const dayOfWeek = now.getDay(); // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
   const currentHour = now.getHours() + now.getMinutes() / 60;
   const isSunday = dayOfWeek === 0;
-  const isWithinHours = isSunday ? (currentHour >= 9 && currentHour < 18) : (currentHour >= 8 && currentHour < 22);
 
-  const whatsappNumber = "5591981244876"; // Central WhatsApp Oficial
+  const openTime = isSunday ? parseHour(liveConfig.weekendOpen, 9) : parseHour(liveConfig.weekdayOpen, 8);
+  const closeTime = isSunday ? parseHour(liveConfig.weekendClose, 18) : parseHour(liveConfig.weekdayClose, 22);
+
+  let isWithinHours = currentHour >= openTime && currentHour < closeTime;
+  if (liveConfig.mode === 'open') isWithinHours = true;
+  if (liveConfig.mode === 'closed') isWithinHours = false;
+
+  const whatsappNumber = (liveConfig.whatsappNumber || "5591981244876").replace(/\D/g, "");
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     `Olá, Suporte AçaíFood! Meu nome é ${activeUserName} (${activeUserRole.toUpperCase()}) e preciso de atendimento.`
   )}`;
@@ -200,11 +217,13 @@ export function SupportChatModal({ isOpen, onClose, currentUser }: SupportChatMo
           </button>
         </div>
 
-        {/* FAIXA INFORMATIVA DE HORÁRIO DE ATENDIMENTO */}
+        {/* FAIXA INFORMATIVA DE HORÁRIO DE ATENDIMENTO CONFIGURADO */}
         <div className="bg-purple-900/40 border-b border-purple-200/60 dark:border-purple-900/40 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-purple-900 dark:text-purple-200">
           <div className="flex items-center gap-1.5 font-semibold">
             <span>🕒</span>
-            <span><strong>Horário:</strong> Seg a Sáb das <strong>08h às 22h</strong> | Dom e Feriados das <strong>09h às 18h</strong></span>
+            <span>
+              <strong>Horário:</strong> Seg a Sáb das <strong>{liveConfig.weekdayOpen} às {liveConfig.weekdayClose}</strong> | Dom e Feriados das <strong>{liveConfig.weekendOpen} às {liveConfig.weekendClose}</strong>
+            </span>
           </div>
         </div>
 
@@ -223,7 +242,7 @@ export function SupportChatModal({ isOpen, onClose, currentUser }: SupportChatMo
               <Phone size={12} /> WhatsApp Plantão
             </a>
             <a
-              href="mailto:appsolutions76@gmail.com"
+              href={`mailto:${liveConfig.supportEmail || "appsolutions76@gmail.com"}`}
               className="bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-2.5 py-1 rounded-xl text-[11px] flex items-center gap-1 transition shrink-0"
             >
               <Mail size={12} /> E-mail

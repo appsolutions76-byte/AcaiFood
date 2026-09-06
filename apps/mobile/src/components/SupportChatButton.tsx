@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
-import { Headphones, MessageSquare } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Headphones } from "lucide-react";
 import { SupportChatModal } from "./SupportChatModal";
+import { SupportConfig, DEFAULT_SUPPORT_CONFIG } from "@/app/api/support/route";
 
 interface SupportChatButtonProps {
   currentUser?: {
@@ -18,6 +19,28 @@ interface SupportChatButtonProps {
 
 export function SupportChatButton({ currentUser, positionClassName }: SupportChatButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [config, setConfig] = useState<SupportConfig>(DEFAULT_SUPPORT_CONFIG);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch("/api/support?config=true");
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.config) {
+            setConfig(data.config);
+          }
+        }
+      } catch (_e) {}
+    };
+
+    fetchConfig();
+  }, []);
+
+  // Se o administrador desativou a exibição do canal de atendimento
+  if (config.channelEnabled === false) {
+    return null;
+  }
 
   return (
     <>
@@ -43,6 +66,7 @@ export function SupportChatButton({ currentUser, positionClassName }: SupportCha
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         currentUser={currentUser}
+        config={config}
       />
     </>
   );
