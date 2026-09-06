@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Trash2, Search, BookOpen, Zap, ShieldAlert } from "lucide-react";
+import { 
+  Settings, Trash2, Search, BookOpen, Zap, ShieldAlert,
+  Download, Printer, Filter, Calendar, MapPin, User as UserIcon,
+  Clock, CheckCircle, X, Eye, ArrowUpRight, Check, FileSpreadsheet,
+  FileText, Layers, Phone, Navigation, ShieldCheck, DollarSign
+} from "lucide-react";
 import { useAppStore, Order, City, getRatesForCity } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
 import { MapModal, MapPoint } from "@/components/MapModal";
@@ -99,6 +104,11 @@ function AdminDashboardContent() {
   const [adminManualOpen, setAdminManualOpen] = useState(false);
   const [payingPartnerId, setPayingPartnerId] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<'historical' | 'monthly' | 'daily'>('historical');
+  const [orderSearchQuery, setOrderSearchQuery] = useState<string>('');
+  const [orderPeriodFilter, setOrderPeriodFilter] = useState<'all' | 'today' | '7days' | 'month'>('all');
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'B2C' | 'B2B' | 'COLETA'>('all');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
+  const [selectedAuditOrder, setSelectedAuditOrder] = useState<Order | null>(null);
   const [adminBalances, setAdminBalances] = useState<{
     historical: any;
     monthly: any;
@@ -722,6 +732,184 @@ function AdminDashboardContent() {
     return currentActivePartners.reduce((acc, curr) => acc + curr.amountOwed, 0);
   }, [currentActivePartners]);
 
+  const filteredOrdersForReport = useMemo(() => {
+    return orders.filter(o => {
+      if (!o) return false;
+      
+      // Status filter
+      if (orderStatusFilter !== 'all') {
+        if (orderStatusFilter === 'concluidos' && !(o.status === 'entregue' || o.status === 'arquivado')) return false;
+        if (orderStatusFilter === 'em_rota' && o.status !== 'em_rota') return false;
+        if (orderStatusFilter === 'preparo' && o.status !== 'preparo') return false;
+        if (orderStatusFilter === 'pendentes' && o.status !== 'pendente') return false;
+        if (orderStatusFilter === 'aguardando_pin' && o.status !== 'aguardando_cliente') return false;
+        if (orderStatusFilter === 'bloqueado_pin' && !((o as any).status === 'PIN_LOCKED' || (o as any).status === 'bloqueado_pin')) return false;
+        if (orderStatusFilter === 'cancelados' && o.status !== 'cancelado') return false;
+      }
+
+      // Type filter
+      if (orderTypeFilter !== 'all') {
+        const oType = o.type || 'B2C';
+        if (oType !== orderTypeFilter) return false;
+      }
+
+      // Period filter
+      if (orderPeriodFilter !== 'all' && o.createdAt) {
+        const orderDate = new Date(o.createdAt);
+        const now = new Date();
+        if (orderPeriodFilter === 'today') {
+          const isToday = orderDate.getDate() === now.getDate() &&
+                          orderDate.getMonth() === now.getMonth() &&
+                          orderDate.getFullYear() === now.getFullYear();
+          if (!isToday) return false;
+        } else if (orderPeriodFilter === '7days') {
+          const diffTime = Math.abs(now.getTime() - orderDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          if (diffDays > 7) return false;
+        } else if (orderPeriodFilter === 'month') {
+          const isThisMonth = orderDate.getMonth() === now.getMonth() &&
+                              orderDate.getFullYear() === now.getFullYear();
+          if (!isThisMonth) return false;
+        }
+      }
+
+      // Search Query filter
+      if (orderSearchQuery.trim()) {
+        const q = orderSearchQuery.toLowerCase().trim();
+        const idMatch = (o.id || '').toLowerCase().includes(q);
+        const clientMatch = (o.clienteNome || (o.clienteId && users[o.clienteId]?.name) || '').toLowerCase().includes(q);
+        const phoneMatch = (o.clienteTelefone || (o.clienteId && (users[o.clienteId]?.telefone || (users[o.clienteId] as any)?.phone)) || '').toLowerCase().includes(q);
+        const storeMatch = (o.lojaNome || (o.lojaId && users[o.lojaId]?.name) || '').toLowerCase().includes(q);
+        const driverMatch = (o.motoristaNome || (o.motoristaId && users[o.motoristaId]?.name) || '').toLowerCase().includes(q);
+        const addressMatch = (o.deliveryAddress || (o.destinoId && users[o.destinoId]?.endereco) || '').toLowerCase().includes(q);
+        const refMatch = (o.deliveryReference || '').toLowerCase().includes(q);
+        const pinMatch = (o.deliveryPin || '').toLowerCase().includes(q);
+        const asaasMatch = (o.asaasPaymentId || '').toLowerCase().includes(q);
+
+        if (!idMatch && !clientMatch && !phoneMatch && !storeMatch && !driverMatch && !addressMatch && !refMatch && !pinMatch && !asaasMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [orders, orderStatusFilter, orderTypeFilter, orderPeriodFilter, orderSearchQuery, users]);
+
+  const reportMetrics = useMemo(() => {
+    let totalOrders = filteredOrdersForReport.length;
+    let totalProductVolume = 0;
+    let totalFreightVolume = 0;
+    let totalPlatformFee = 0;
+    let totalDriverNet = 0;
+    let totalSellerNet = 0;
+
+    filteredOrdersForReport.forEach(o => {
+      const dyn = getDynamicTaxes(o);
+      totalProductVolume += (o.valor || 0);
+      totalFreightVolume += (dyn.entregaTotal || 0);
+      totalPlatformFee += (dyn.platVenda || 0) + (dyn.platEntrega || 0);
+      totalDriverNet += (dyn.repasseMoto || 0);
+      if (o.type === 'B2B') {
+        totalSellerNet += (dyn.repasseForn || 0);
+      } else {
+        totalSellerNet += (dyn.repasseLoja || 0);
+      }
+    });
+
+    return {
+      totalOrders,
+      totalProductVolume,
+      totalFreightVolume,
+      totalGrossVolume: totalProductVolume + totalFreightVolume,
+      totalPlatformFee,
+      totalDriverNet,
+      totalSellerNet
+    };
+  }, [filteredOrdersForReport, rates, cities, users]);
+
+  const handleExportOrdersCSV = () => {
+    if (filteredOrdersForReport.length === 0) {
+      alert("Nenhum pedido encontrado nos filtros atuais para exportar.");
+      return;
+    }
+
+    const headers = [
+      "ID Pedido",
+      "Data / Hora Criacao",
+      "Tipo",
+      "Status",
+      "Cliente (Quem Pediu)",
+      "Telefone Cliente",
+      "Endereco de Entrega",
+      "Bairro / Referencia",
+      "Loja / Origem (De Onde Saiu)",
+      "Entregador (Quem Levou)",
+      "Veiculo",
+      "Valor Produtos (R$)",
+      "Valor Frete (R$)",
+      "Taxa App Plataforma (R$)",
+      "Repasse Vendedor (R$)",
+      "Repasse Entregador (R$)",
+      "Distancia (km)",
+      "PIN Entrega",
+      "ID Transacao Asaas",
+      "Hora Aceite",
+      "Hora Pronto",
+      "Hora Coletado",
+      "Hora Chegada",
+      "Hora Finalizado"
+    ];
+
+    const rows = filteredOrdersForReport.map(o => {
+      const dyn = getDynamicTaxes(o);
+      const uClient = o.clienteId ? users[o.clienteId] : null;
+      const uStore = o.lojaId ? users[o.lojaId] : null;
+      const uDriver = o.motoristaId ? users[o.motoristaId] : null;
+
+      return [
+        `"${o.id}"`,
+        `"${o.createdAt ? new Date(o.createdAt).toLocaleString('pt-BR') : ''}"`,
+        `"${o.type || 'B2C'}"`,
+        `"${o.status}"`,
+        `"${(o.clienteNome || uClient?.name || 'Cliente').replace(/"/g, '""')}"`,
+        `"${(o.clienteTelefone || uClient?.telefone || (uClient as any)?.phone || '').replace(/"/g, '""')}"`,
+        `"${(o.deliveryAddress || uClient?.endereco || '').replace(/"/g, '""')}"`,
+        `"${(o.deliveryReference || uClient?.bairro || '').replace(/"/g, '""')}"`,
+        `"${(o.lojaNome || uStore?.name || '').replace(/"/g, '""')}"`,
+        `"${(o.motoristaNome || uDriver?.name || 'Não atribuído').replace(/"/g, '""')}"`,
+        `"${(uDriver?.veiculo || 'moto').replace(/"/g, '""')}"`,
+        `"${(o.valor || 0).toFixed(2).replace('.', ',')}"`,
+        `"${(dyn.entregaTotal || 0).toFixed(2).replace('.', ',')}"`,
+        `"${((dyn.platVenda || 0) + (dyn.platEntrega || 0)).toFixed(2).replace('.', ',')}"`,
+        `"${((o.type === 'B2B' ? dyn.repasseForn : dyn.repasseLoja) || 0).toFixed(2).replace('.', ',')}"`,
+        `"${(dyn.repasseMoto || 0).toFixed(2).replace('.', ',')}"`,
+        `"${(o.distancia || 0).toFixed(1).replace('.', ',')}"`,
+        `"${o.deliveryPin || ''}"`,
+        `"${o.asaasPaymentId || ''}"`,
+        `"${safeTime(o.acceptedAt) || ''}"`,
+        `"${safeTime(o.readyAt) || ''}"`,
+        `"${safeTime(o.pickedUpAt) || ''}"`,
+        `"${safeTime(o.deliveredAt) || ''}"`,
+        `"${safeTime(o.receivedAt) || ''}"`
+      ].join(';');
+    });
+
+    const csvContent = "\uFEFF" + [headers.join(';'), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Relatorio_Auditoria_Pedidos_AcaiFood_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("📥 Relatório CSV exportado com sucesso!");
+  };
+
+  const handlePrintOrdersReport = () => {
+    window.print();
+  };
+
   const handleSaveRates = async () => {
     if (isSavingRates) return;
     setIsSavingRates(true);
@@ -978,93 +1166,419 @@ function AdminDashboardContent() {
 
         {activeTab === 'pedidos' && (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">🛒 Gestão de Pedidos</h3>
-            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-x-auto">
-                <table className="w-full text-left text-sm min-w-max">
-                <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
-                    <tr><th className="p-4">ID / Rota</th><th className="p-4">Tipo</th><th className="p-4">Valores</th><th className="p-4">Atores</th><th className="p-4">Status</th></tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {orders.map(o => (
-                        <tr key={o.id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${o.status === 'cancelado' ? 'opacity-50' : ''}`}>
-                            <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">
-                                {o.id}<br/>
-                                <button 
-                                  onClick={() => {
-                                    const origemUser = store.users[o.origemId];
-                                    const destinoUser = store.users[o.destinoId];
-                                    const latOrigem = origemUser?.lat || 0;
-                                    const lngOrigem = origemUser?.lng || 0;
-                                    const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
-                                    const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
-                                    const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
-                                    setMapModal({
-                                      open: true,
-                                      origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
-                                      destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
-                                      motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
-                                    });
-                                  }} 
-                                  className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                  🗺️ Ver {(o.distancia || 0).toFixed(1)} km
-                                </button>
-                                <div className="mt-1 flex flex-col gap-0.5">
-                                    {safeTime(o.createdAt) && <span className="text-[9px] text-zinc-500 font-normal">🕒 {safeTime(o.createdAt)}</span>}
-                                    {safeTime(o.acceptedAt) && <span className="text-[9px] text-purple-500 font-normal">👨‍🍳 {safeTime(o.acceptedAt)}</span>}
-                                    {safeTime(o.readyAt) && <span className="text-[9px] text-orange-500 font-normal">🛎️ {safeTime(o.readyAt)}</span>}
-                                    {safeTime(o.pickedUpAt) && <span className="text-[9px] text-blue-500 font-normal">📦 {safeTime(o.pickedUpAt)}</span>}
-                                    {safeTime(o.deliveredAt) && <span className="text-[9px] text-teal-500 font-normal">📍 {safeTime(o.deliveredAt)}</span>}
-                                    {safeTime(o.receivedAt) && <span className="text-[9px] text-green-500 font-normal">✅ {safeTime(o.receivedAt)}</span>}
+            {/* Cabeçalho do Relatório de Auditoria */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-2 bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 rounded-xl">
+                    <FileText size={20} />
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
+                      Relatório de Histórico e Auditoria Completa de Pedidos
+                    </h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Rastreabilidade ponta a ponta: quem pediu, de onde saiu, quem entregou, rota, horários de cada etapa e PINs.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botões de Ação Executiva: Exportar CSV e Imprimir */}
+              <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                <button
+                  onClick={handleExportOrdersCSV}
+                  className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-95"
+                >
+                  <Download size={14} /> Exportar Planilha (CSV)
+                </button>
+                <button
+                  onClick={handlePrintOrdersReport}
+                  className="flex-1 sm:flex-none bg-zinc-800 hover:bg-black text-white dark:bg-zinc-700 dark:hover:bg-zinc-600 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-95"
+                >
+                  <Printer size={14} /> Imprimir Relatório
+                </button>
+              </div>
+            </div>
+
+            {/* Barra de Filtros e Busca */}
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Campo de Busca Livre */}
+                <div className="relative sm:col-span-2 lg:col-span-1">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={orderSearchQuery}
+                    onChange={e => setOrderSearchQuery(e.target.value)}
+                    placeholder="Buscar ID, Cliente, Loja, Motoboy, PIN..."
+                    className="w-full pl-9 pr-8 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  />
+                  {orderSearchQuery && (
+                    <button
+                      onClick={() => setOrderSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs font-bold"
+                    >
+                      &times;
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro de Período */}
+                <div>
+                  <select
+                    value={orderPeriodFilter}
+                    onChange={e => setOrderPeriodFilter(e.target.value as any)}
+                    className="w-full py-2.5 px-3 text-xs bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  >
+                    <option value="all">🗓️ Todo o Período</option>
+                    <option value="today">☀️ Hoje</option>
+                    <option value="7days">📅 Últimos 7 Dias</option>
+                    <option value="month">📆 Este Mês</option>
+                  </select>
+                </div>
+
+                {/* Filtro de Tipo */}
+                <div>
+                  <select
+                    value={orderTypeFilter}
+                    onChange={e => setOrderTypeFilter(e.target.value as any)}
+                    className="w-full py-2.5 px-3 text-xs bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  >
+                    <option value="all">🏷️ Todos os Tipos</option>
+                    <option value="B2C">🛒 B2C (Consumidor Final)</option>
+                    <option value="B2B">🚚 B2B (Fruto / Produtor)</option>
+                    <option value="COLETA">🌱 Coleta (Ecoponto)</option>
+                  </select>
+                </div>
+
+                {/* Filtro de Status */}
+                <div>
+                  <select
+                    value={orderStatusFilter}
+                    onChange={e => setOrderStatusFilter(e.target.value)}
+                    className="w-full py-2.5 px-3 text-xs bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  >
+                    <option value="all">🚦 Todos os Status</option>
+                    <option value="concluidos">✅ Concluídos (Entregues)</option>
+                    <option value="em_rota">🛵 Em Transporte (Rota)</option>
+                    <option value="aguardando_pin">📍 Aguardando PIN</option>
+                    <option value="bloqueado_pin">🔒 PIN Bloqueado</option>
+                    <option value="preparo">👨‍🍳 Em Preparo / Pronto</option>
+                    <option value="pendentes">⏳ Pendentes</option>
+                    <option value="cancelados">❌ Cancelados</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Badges de filtros ativos & contador */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-zinc-700 dark:text-zinc-300">
+                    {filteredOrdersForReport.length} pedido(s) encontrado(s)
+                  </span>
+                  {(orderSearchQuery || orderPeriodFilter !== 'all' || orderTypeFilter !== 'all' || orderStatusFilter !== 'all') && (
+                    <button
+                      onClick={() => {
+                        setOrderSearchQuery('');
+                        setOrderPeriodFilter('all');
+                        setOrderTypeFilter('all');
+                        setOrderStatusFilter('all');
+                      }}
+                      className="text-purple-600 dark:text-purple-400 hover:underline font-bold text-[11px]"
+                    >
+                      Limpar Filtros
+                    </button>
+                  )}
+                </div>
+                <div className="text-[11px] text-zinc-400">
+                  Valores e taxas calculados conforme regras de cada município
+                </div>
+              </div>
+            </div>
+
+            {/* Cards de Métricas e Totais do Relatório Filtrado */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">Qtd Pedidos</p>
+                <p className="text-lg font-bold text-zinc-900 dark:text-white mt-0.5">{reportMetrics.totalOrders}</p>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">Volume Total</p>
+                <p className="text-lg font-bold text-purple-600 dark:text-purple-400 mt-0.5">{formatMoney(reportMetrics.totalGrossVolume)}</p>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">Total Fretes</p>
+                <p className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-0.5">{formatMoney(reportMetrics.totalFreightVolume)}</p>
+              </div>
+              <div className="bg-purple-50 dark:bg-purple-950/30 p-3.5 rounded-xl border border-purple-200 dark:border-purple-900/50 shadow-sm">
+                <p className="text-[10px] text-purple-700 dark:text-purple-400 uppercase font-bold">Receita App</p>
+                <p className="text-lg font-bold text-purple-800 dark:text-purple-300 mt-0.5">{formatMoney(reportMetrics.totalPlatformFee)}</p>
+              </div>
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/50 shadow-sm">
+                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase font-bold">Repasse Lojas/Forn</p>
+                <p className="text-lg font-bold text-emerald-800 dark:text-emerald-300 mt-0.5">{formatMoney(reportMetrics.totalSellerNet)}</p>
+              </div>
+              <div className="bg-amber-50 dark:bg-amber-950/30 p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/50 shadow-sm">
+                <p className="text-[10px] text-amber-700 dark:text-amber-400 uppercase font-bold">Repasse Entregadores</p>
+                <p className="text-lg font-bold text-amber-800 dark:text-amber-300 mt-0.5">{formatMoney(reportMetrics.totalDriverNet)}</p>
+              </div>
+            </div>
+
+            {/* Tabela de Rastreabilidade e Auditoria de Pedidos */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[950px]">
+                  <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 font-bold uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th className="p-4">ID / Data & Rota</th>
+                      <th className="p-4">Quem Pediu (Cliente)</th>
+                      <th className="p-4">Origem (Loja / Produtor)</th>
+                      <th className="p-4">Quem Entregou</th>
+                      <th className="p-4">Valores & Repasses</th>
+                      <th className="p-4">Status & PIN</th>
+                      <th className="p-4 text-center">Auditoria</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                    {filteredOrdersForReport.map(o => {
+                      const dyn = getDynamicTaxes(o);
+                      const uClient = o.clienteId ? users[o.clienteId] : null;
+                      const uStore = o.lojaId ? users[o.lojaId] : null;
+                      const uDriver = o.motoristaId ? users[o.motoristaId] : null;
+
+                      return (
+                        <tr key={o.id} className={`hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition ${o.status === 'cancelado' ? 'opacity-60 bg-red-50/20' : ''}`}>
+                          {/* Coluna 1: ID, Data, Tipo e Linha do Tempo */}
+                          <td className="p-4 align-top">
+                            <div className="flex items-center gap-1.5 font-mono font-bold text-zinc-900 dark:text-white">
+                              <span>#{o.id.slice(-6)}</span>
+                              <span className="text-[10px] font-sans font-bold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                                {o.type || 'B2C'}
+                              </span>
+                            </div>
+                            
+                            <div className="text-[11px] text-zinc-500 mt-1 font-medium">
+                              {o.createdAt ? new Date(o.createdAt).toLocaleDateString('pt-BR') : ''} às {safeTime(o.createdAt) || '--:--'}
+                            </div>
+
+                            {/* Botão de Mapa / Distância */}
+                            <button
+                              onClick={() => {
+                                const origemUser = store.users[o.origemId];
+                                const destinoUser = store.users[o.destinoId];
+                                const latOrigem = origemUser?.lat || 0;
+                                const lngOrigem = origemUser?.lng || 0;
+                                const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                                const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                                const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                                setMapModal({
+                                  open: true,
+                                  origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                                  destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                                  motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
+                                });
+                              }}
+                              className="inline-flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 font-bold hover:underline mt-1.5 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded"
+                            >
+                              <Navigation size={10} /> {(o.distancia || 0).toFixed(1)} km (Ver Mapa)
+                            </button>
+
+                            {/* Linha do Tempo Compacta */}
+                            <div className="mt-2 flex flex-col gap-0.5 text-[9px] text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-950 p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                              {safeTime(o.createdAt) && <span>🕒 Criado: <strong>{safeTime(o.createdAt)}</strong></span>}
+                              {safeTime(o.acceptedAt) && <span className="text-purple-600 dark:text-purple-400">👨‍🍳 Aceito: <strong>{safeTime(o.acceptedAt)}</strong></span>}
+                              {safeTime(o.readyAt) && <span className="text-orange-600 dark:text-orange-400">🛎️ Pronto: <strong>{safeTime(o.readyAt)}</strong></span>}
+                              {safeTime(o.pickedUpAt) && <span className="text-blue-600 dark:text-blue-400">📦 Coletado: <strong>{safeTime(o.pickedUpAt)}</strong></span>}
+                              {safeTime(o.deliveredAt) && <span className="text-teal-600 dark:text-teal-400">📍 Chegou: <strong>{safeTime(o.deliveredAt)}</strong></span>}
+                              {safeTime(o.receivedAt) && <span className="text-emerald-600 dark:text-emerald-400">✅ Entregue: <strong>{safeTime(o.receivedAt)}</strong></span>}
+                            </div>
+                          </td>
+
+                          {/* Coluna 2: Quem Pediu (Cliente) */}
+                          <td className="p-4 align-top space-y-1">
+                            <div className="font-bold text-zinc-900 dark:text-white flex items-center gap-1">
+                              <UserIcon size={12} className="text-zinc-400" />
+                              <span>{o.clienteNome || uClient?.name || 'Cliente'}</span>
+                            </div>
+                            
+                            {(o.clienteTelefone || uClient?.telefone || (uClient as any)?.phone) && (
+                              <div className="text-[11px] text-zinc-500 font-mono flex items-center gap-1">
+                                <Phone size={10} className="text-emerald-600" />
+                                <span>{o.clienteTelefone || uClient?.telefone || (uClient as any)?.phone}</span>
+                              </div>
+                            )}
+
+                            <div className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                              <span className="font-medium text-zinc-700 dark:text-zinc-300">Entrega:</span> {o.deliveryAddress || uClient?.endereco || 'Endereço não informado'}
+                            </div>
+
+                            {(o.deliveryReference || uClient?.bairro) && (
+                              <div className="text-[10px] text-zinc-400">
+                                Ref: {o.deliveryReference || uClient?.bairro}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Coluna 3: Origem (Loja / Produtor) */}
+                          <td className="p-4 align-top space-y-1">
+                            <div className="font-bold text-zinc-900 dark:text-white">
+                              🏪 {o.lojaNome || uStore?.name || 'Loja Parceira'}
+                            </div>
+                            <div className="text-[11px] text-zinc-500">
+                              {uStore?.endereco || uStore?.bairro || 'Endereço da Loja'}
+                            </div>
+                            <div className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">
+                              Praça: {uStore?.cidade || (o as any).cidadeOrigem || 'Belém'}
+                            </div>
+                          </td>
+
+                          {/* Coluna 4: Quem Entregou */}
+                          <td className="p-4 align-top space-y-1">
+                            {o.motoristaId ? (
+                              <>
+                                <div className="font-bold text-zinc-900 dark:text-white flex items-center gap-1">
+                                  <span>{uDriver?.veiculo === 'caminhao' ? '🚚' : '🛵'}</span>
+                                  <span>{o.motoristaNome || uDriver?.name || 'Entregador'}</span>
                                 </div>
-                            </td>
-                            <td className="p-4"><span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold text-zinc-700 dark:text-zinc-300">{o.type}</span></td>
-                            <td className="p-4 text-xs text-zinc-600 dark:text-zinc-400">Prod: {formatMoney(o.valor)}<br/>Frete: {formatMoney(getDynamicTaxes(o).entregaTotal)}</td>
-                            <td className="p-4 text-xs text-zinc-500">
-                                <span className="block">Cliente: {o.clienteNome || (o.clienteId && users[o.clienteId] ? users[o.clienteId]?.name : '') || '—'}</span>
-                                <span className="block">Loja: {o.lojaNome || (o.lojaId && users[o.lojaId] ? users[o.lojaId]?.name : '') || '—'}</span>
-                                <span className="block text-purple-600 dark:text-purple-400 font-medium">Mot: {o.motoristaNome || '---'}</span>
-                            </td>
-                            <td className="p-4">
-                                {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pendente</span>}
-                                {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Preparo</span>}
-                                {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
-                                {o.status === 'aguardando_cliente' && (
-                                  <div className="flex flex-col gap-1 items-start">
-                                    <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguard. PIN</span>
-                                    <button onClick={() => { if(confirm('Forçar baixa manual do pedido? (Use apenas se o cliente perdeu o PIN)')) if(typeof store.acaoPedido === 'function') store.acaoPedido(o.id, 'forcar_baixa'); }} className="bg-zinc-800 hover:bg-black text-white px-2 py-1.5 rounded text-[9px] font-bold w-full transition">Forçar Baixa</button>
+                                <div className="text-[10px] text-zinc-500 uppercase font-medium">
+                                  {uDriver?.veiculo || 'Moto'}
+                                </div>
+                                {(uDriver?.telefone || (uDriver as any)?.phone) && (
+                                  <div className="text-[10px] text-zinc-500 font-mono">
+                                    {uDriver?.telefone || (uDriver as any)?.phone}
                                   </div>
                                 )}
-                                {((o as any).status === 'PIN_LOCKED' || (o as any).status === 'bloqueado_pin') && (
-                                  <div className="flex flex-col gap-1 items-start">
-                                    <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">PIN Bloqueado</span>
-                                    <button onClick={async () => {
-                                      if (confirm('Deseja resetar o PIN deste pedido e gerar um novo código?')) {
-                                        try {
-                                          const { data: newPin, error } = await supabase.rpc('generate_delivery_pin', { p_order_id: o.id });
-                                          if (!error) {
-                                            alert(`✅ Novo PIN de 4 dígitos gerado com sucesso: ${newPin}`);
-                                            store.fetchOrders(store.currentUser?.id || 'admin', true);
-                                          } else {
-                                            alert(`Erro ao resetar PIN: ${error.message}`);
-                                          }
-                                        } catch (e: any) {
-                                          alert(`Exceção: ${e.message}`);
+                              </>
+                            ) : (
+                              <span className="text-zinc-400 italic text-[11px]">Aguardando entregador...</span>
+                            )}
+                          </td>
+
+                          {/* Coluna 5: Valores & Repasses */}
+                          <td className="p-4 align-top text-xs space-y-1">
+                            <div className="flex justify-between gap-2">
+                              <span className="text-zinc-500">Produtos:</span>
+                              <span className="font-bold text-zinc-900 dark:text-white">{formatMoney(o.valor)}</span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-zinc-500">Frete Total:</span>
+                              <span className="font-bold text-blue-600 dark:text-blue-400">{formatMoney(dyn.entregaTotal)}</span>
+                            </div>
+                            <div className="flex justify-between gap-2 text-[10px] border-t border-zinc-100 dark:border-zinc-800 pt-0.5">
+                              <span className="text-purple-600 dark:text-purple-400">Taxa App:</span>
+                              <span className="font-bold text-purple-700 dark:text-purple-300">{formatMoney((dyn.platVenda || 0) + (dyn.platEntrega || 0))}</span>
+                            </div>
+                            <div className="flex justify-between gap-2 text-[10px]">
+                              <span className="text-emerald-600 dark:text-emerald-400">Repasse Venda:</span>
+                              <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                                {formatMoney(o.type === 'B2B' ? dyn.repasseForn : dyn.repasseLoja)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2 text-[10px]">
+                              <span className="text-amber-600 dark:text-amber-400">Repasse Motoboy:</span>
+                              <span className="font-bold text-amber-700 dark:text-amber-300">{formatMoney(dyn.repasseMoto)}</span>
+                            </div>
+                          </td>
+
+                          {/* Coluna 6: Status & PIN */}
+                          <td className="p-4 align-top space-y-1.5">
+                            {o.status === 'pendente' && <span className="bg-yellow-100 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-300 px-2 py-1 rounded-md text-[10px] font-bold uppercase inline-block">⏳ Pendente</span>}
+                            {o.status === 'preparo' && <span className="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 px-2 py-1 rounded-md text-[10px] font-bold uppercase inline-block">👨‍🍳 Em Preparo</span>}
+                            {o.status === 'em_rota' && <span className="bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 px-2 py-1 rounded-md text-[10px] font-bold uppercase inline-block">🛵 Em Rota</span>}
+                            {o.status === 'aguardando_cliente' && (
+                              <div className="flex flex-col gap-1 items-start">
+                                <span className="bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 px-2 py-1 rounded-md text-[10px] font-bold uppercase inline-block">📍 Aguardando PIN</span>
+                                <button
+                                  onClick={() => {
+                                    if(confirm('Forçar baixa manual do pedido? (Use apenas se o cliente perdeu o PIN e a entrega foi conferida)')) {
+                                      if(typeof store.acaoPedido === 'function') store.acaoPedido(o.id, 'forcar_baixa');
+                                    }
+                                  }}
+                                  className="bg-zinc-800 hover:bg-black text-white px-2 py-1 rounded text-[9px] font-bold transition w-full"
+                                >
+                                  Forçar Baixa
+                                </button>
+                              </div>
+                            )}
+                            {((o as any).status === 'PIN_LOCKED' || (o as any).status === 'bloqueado_pin') && (
+                              <div className="flex flex-col gap-1 items-start">
+                                <span className="bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 px-2 py-1 rounded-md text-[10px] font-bold uppercase inline-block">🔒 PIN Bloqueado</span>
+                                <button
+                                  onClick={async () => {
+                                    if (confirm('Deseja resetar o PIN deste pedido e gerar um novo código?')) {
+                                      try {
+                                        const { data: newPin, error } = await supabase.rpc('generate_delivery_pin', { p_order_id: o.id });
+                                        if (!error) {
+                                          alert(`✅ Novo PIN de 4 dígitos gerado: ${newPin}`);
+                                          store.fetchOrders(store.currentUser?.id || 'admin', true);
+                                        } else {
+                                          alert(`Erro ao resetar PIN: ${error.message}`);
                                         }
+                                      } catch (e: any) {
+                                        alert(`Exceção: ${e.message}`);
                                       }
-                                    }} className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1.5 rounded text-[9px] font-bold w-full transition">Resetar PIN</button>
-                                  </div>
-                                )}
-                                {(o.status === 'entregue' || o.status === 'arquivado') && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>}
-                                {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
-                            </td>
+                                    }
+                                  }}
+                                  className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-[9px] font-bold transition w-full"
+                                >
+                                  Resetar PIN
+                                </button>
+                              </div>
+                            )}
+                            {(o.status === 'entregue' || o.status === 'arquivado') && (
+                              <span className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2 py-1 rounded-md text-[10px] font-bold uppercase inline-block">✅ Concluído</span>
+                            )}
+                            {o.status === 'cancelado' && (
+                              <span className="bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 px-2 py-1 rounded-md text-[10px] font-bold uppercase inline-block">❌ Cancelado</span>
+                            )}
+
+                            {/* PIN de Entrega */}
+                            {o.deliveryPin && (
+                              <div className="text-[10px] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-zinc-700 dark:text-zinc-300 flex items-center justify-between">
+                                <span className="text-[9px] text-zinc-500 font-sans">PIN:</span>
+                                <strong>{o.deliveryPin}</strong>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Coluna 7: Botão Ficha de Auditoria */}
+                          <td className="p-4 align-top text-center">
+                            <button
+                              onClick={() => setSelectedAuditOrder(o)}
+                              className="bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 p-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 w-full shadow-sm"
+                            >
+                              <Eye size={14} /> Ficha
+                            </button>
+                          </td>
                         </tr>
-                    ))}
-                    {orders.length === 0 && (
-                        <tr><td colSpan={5} className="text-center p-6 text-zinc-500">Nenhum pedido gerado na plataforma ainda.</td></tr>
+                      );
+                    })}
+
+                    {filteredOrdersForReport.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="text-center py-12 text-zinc-500">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <Search size={28} className="text-zinc-300 dark:text-zinc-700" />
+                            <p className="font-medium text-sm">Nenhum pedido encontrado para os filtros selecionados.</p>
+                            <button
+                              onClick={() => {
+                                setOrderSearchQuery('');
+                                setOrderPeriodFilter('all');
+                                setOrderTypeFilter('all');
+                                setOrderStatusFilter('all');
+                              }}
+                              className="text-xs text-purple-600 dark:text-purple-400 font-bold hover:underline"
+                            >
+                              Limpar todos os filtros
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                </tbody>
-            </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -1347,6 +1861,278 @@ function AdminDashboardContent() {
         destino={mapModal.destino} 
         motorista={mapModal.motorista} 
       />
+
+      {selectedAuditOrder && (
+        <div className="fixed inset-0 bg-black/70 z-[250] flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col my-auto border border-zinc-200 dark:border-zinc-800">
+            {/* Cabeçalho */}
+            <div className="bg-zinc-900 text-white p-5 flex justify-between items-center shrink-0 border-b border-zinc-800">
+              <div className="flex items-center gap-3">
+                <span className="p-2 bg-purple-900/60 text-purple-400 rounded-xl">
+                  <ShieldCheck size={22} />
+                </span>
+                <div>
+                  <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                    Ficha de Auditoria do Pedido #{selectedAuditOrder.id.slice(-6)}
+                  </h3>
+                  <p className="text-xs text-zinc-400">
+                    ID Completo: <span className="font-mono">{selectedAuditOrder.id}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition"
+                >
+                  <Printer size={14} /> Imprimir Ficha
+                </button>
+                <button
+                  onClick={() => setSelectedAuditOrder(null)}
+                  className="text-zinc-400 hover:text-white font-bold text-2xl leading-none p-1"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+
+            {/* Conteúdo com Scroll */}
+            <div className="p-5 sm:p-6 space-y-6 overflow-y-auto max-h-[80vh] text-xs">
+              {/* Badges de Status, Tipo e Horário de Criação */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                <div>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase block">Status Atual</span>
+                  <span className="font-bold text-sm text-zinc-900 dark:text-white uppercase">
+                    {selectedAuditOrder.status}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase block">Tipo de Pedido</span>
+                  <span className="font-bold text-sm text-purple-600 dark:text-purple-400">
+                    {selectedAuditOrder.type || 'B2C'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase block">Data de Criação</span>
+                  <span className="font-bold text-xs text-zinc-800 dark:text-zinc-200">
+                    {selectedAuditOrder.createdAt ? new Date(selectedAuditOrder.createdAt).toLocaleDateString('pt-BR') : '---'} às {safeTime(selectedAuditOrder.createdAt) || '--:--'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase block">PIN de Entrega</span>
+                  <span className="font-mono font-black text-sm bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded inline-block">
+                    {selectedAuditOrder.deliveryPin || 'Sem PIN'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Grid 3 Atores: QUEM PEDIU, DE ONDE SAIU, QUEM ENTREGOU */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* QUEM PEDIU (Cliente) */}
+                <div className="bg-blue-50/50 dark:bg-blue-950/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/40 space-y-2">
+                  <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-400 font-bold text-xs">
+                    <UserIcon size={14} /> QUEM PEDIU (Cliente)
+                  </div>
+                  <p className="font-bold text-sm text-zinc-900 dark:text-white">
+                    {selectedAuditOrder.clienteNome || (selectedAuditOrder.clienteId && users[selectedAuditOrder.clienteId]?.name) || 'Cliente Final'}
+                  </p>
+                  {(selectedAuditOrder.clienteTelefone || (selectedAuditOrder.clienteId && (users[selectedAuditOrder.clienteId]?.telefone || (users[selectedAuditOrder.clienteId] as any)?.phone))) && (
+                    <p className="text-zinc-600 dark:text-zinc-400 font-mono">
+                      📞 {selectedAuditOrder.clienteTelefone || (selectedAuditOrder.clienteId && (users[selectedAuditOrder.clienteId]?.telefone || (users[selectedAuditOrder.clienteId] as any)?.phone))}
+                    </p>
+                  )}
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    📍 <strong>Entrega:</strong> {selectedAuditOrder.deliveryAddress || (selectedAuditOrder.destinoId && users[selectedAuditOrder.destinoId]?.endereco) || 'Endereço não informado'}
+                  </p>
+                  {(selectedAuditOrder.deliveryReference || (selectedAuditOrder.destinoId && users[selectedAuditOrder.destinoId]?.bairro)) && (
+                    <p className="text-zinc-500 text-[11px]">
+                      🏷️ <strong>Ref:</strong> {selectedAuditOrder.deliveryReference || (selectedAuditOrder.destinoId && users[selectedAuditOrder.destinoId]?.bairro)}
+                    </p>
+                  )}
+                  {selectedAuditOrder.deliveryLat && selectedAuditOrder.deliveryLng && (
+                    <p className="text-[10px] text-zinc-400 font-mono">
+                      GPS: {selectedAuditOrder.deliveryLat.toFixed(5)}, {selectedAuditOrder.deliveryLng.toFixed(5)}
+                    </p>
+                  )}
+                </div>
+
+                {/* DE ONDE SAIU (Origem / Loja) */}
+                <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/40 space-y-2">
+                  <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold text-xs">
+                    🏪 DE ONDE SAIU (Origem)
+                  </div>
+                  <p className="font-bold text-sm text-zinc-900 dark:text-white">
+                    {selectedAuditOrder.lojaNome || (selectedAuditOrder.lojaId && users[selectedAuditOrder.lojaId]?.name) || 'Loja / Batedeira'}
+                  </p>
+                  {(selectedAuditOrder.lojaId && (users[selectedAuditOrder.lojaId]?.telefone || (users[selectedAuditOrder.lojaId] as any)?.phone)) && (
+                    <p className="text-zinc-600 dark:text-zinc-400 font-mono">
+                      📞 {users[selectedAuditOrder.lojaId]?.telefone || (users[selectedAuditOrder.lojaId] as any)?.phone}
+                    </p>
+                  )}
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    📍 <strong>Endereço:</strong> {(selectedAuditOrder.lojaId && users[selectedAuditOrder.lojaId]?.endereco) || 'Endereço da loja'}
+                  </p>
+                  <p className="text-zinc-500 text-[11px]">
+                    🏙️ <strong>Praça:</strong> {(selectedAuditOrder.lojaId && users[selectedAuditOrder.lojaId]?.cidade) || (selectedAuditOrder as any).cidadeOrigem || 'Belém'}
+                  </p>
+                </div>
+
+                {/* QUEM LEVOU (Entregador / Motorista) */}
+                <div className="bg-amber-50/50 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-100 dark:border-amber-900/40 space-y-2">
+                  <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold text-xs">
+                    🛵 QUEM LEVOU (Entregador)
+                  </div>
+                  {selectedAuditOrder.motoristaId ? (
+                    <>
+                      <p className="font-bold text-sm text-zinc-900 dark:text-white">
+                        {selectedAuditOrder.motoristaNome || (selectedAuditOrder.motoristaId && users[selectedAuditOrder.motoristaId]?.name) || 'Entregador'}
+                      </p>
+                      <p className="text-zinc-600 dark:text-zinc-400 font-mono">
+                        📞 {(selectedAuditOrder.motoristaId && (users[selectedAuditOrder.motoristaId]?.telefone || (users[selectedAuditOrder.motoristaId] as any)?.phone)) || 'Sem telefone'}
+                      </p>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        🚗 <strong>Veículo:</strong> {(selectedAuditOrder.motoristaId && users[selectedAuditOrder.motoristaId]?.veiculo) || 'Moto'}
+                      </p>
+                      {(selectedAuditOrder.motoristaId && users[selectedAuditOrder.motoristaId]?.pixKey) && (
+                        <p className="text-zinc-500 text-[11px] font-mono">
+                          🔑 <strong>Pix:</strong> {users[selectedAuditOrder.motoristaId]?.pixKey}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-zinc-400 italic py-2">Nenhum entregador assumiu este pedido.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* LINHA DO TEMPO & RASTREABILIDADE */}
+              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-3">
+                <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                  <Clock size={16} className="text-purple-600" /> Linha do Tempo e Auditoria de Horários
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-center">
+                  <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] text-zinc-500 uppercase font-bold block">1. Criado</span>
+                    <span className="font-bold text-xs text-zinc-800 dark:text-zinc-200">{safeTime(selectedAuditOrder.createdAt) || '---'}</span>
+                  </div>
+                  <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] text-purple-600 uppercase font-bold block">2. Aceito</span>
+                    <span className="font-bold text-xs text-purple-700 dark:text-purple-300">{safeTime(selectedAuditOrder.acceptedAt) || '---'}</span>
+                  </div>
+                  <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] text-orange-600 uppercase font-bold block">3. Pronto</span>
+                    <span className="font-bold text-xs text-orange-700 dark:text-orange-300">{safeTime(selectedAuditOrder.readyAt) || '---'}</span>
+                  </div>
+                  <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] text-blue-600 uppercase font-bold block">4. Coletado</span>
+                    <span className="font-bold text-xs text-blue-700 dark:text-blue-300">{safeTime(selectedAuditOrder.pickedUpAt) || '---'}</span>
+                  </div>
+                  <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] text-teal-600 uppercase font-bold block">5. Chegou</span>
+                    <span className="font-bold text-xs text-teal-700 dark:text-teal-300">{safeTime(selectedAuditOrder.deliveredAt) || '---'}</span>
+                  </div>
+                  <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] text-emerald-600 uppercase font-bold block">6. Concluído</span>
+                    <span className="font-bold text-xs text-emerald-700 dark:text-emerald-300">{safeTime(selectedAuditOrder.receivedAt) || '---'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Itens do Pedido */}
+              {selectedAuditOrder.items && selectedAuditOrder.items.length > 0 && (
+                <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+                  <h4 className="font-bold text-zinc-900 dark:text-white">
+                    📦 Itens do Pedido ({selectedAuditOrder.items.length})
+                  </h4>
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {selectedAuditOrder.items.map((item: any, idx: number) => (
+                      <div key={idx} className="py-2 flex justify-between items-center">
+                        <div>
+                          <p className="font-bold text-zinc-800 dark:text-zinc-200">{item.name || item.titulo || 'Item do Pedido'}</p>
+                          <p className="text-[11px] text-zinc-500">Qtd: {item.quantity || 1} {item.litros ? `(${item.litros}L)` : ''}</p>
+                        </div>
+                        <div className="font-bold text-zinc-900 dark:text-white">
+                          {formatMoney((item.price || item.preco || 0) * (item.quantity || 1))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Decomposição Financeira do Pedido */}
+              {(() => {
+                const dyn = getDynamicTaxes(selectedAuditOrder);
+                return (
+                  <div className="bg-purple-50/50 dark:bg-purple-950/20 p-4 rounded-xl border border-purple-200 dark:border-purple-900/40 space-y-3">
+                    <h4 className="font-bold text-purple-900 dark:text-purple-300 flex items-center gap-1.5">
+                      <DollarSign size={16} /> Decomposição Financeira e Repasses
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                      <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-purple-100 dark:border-purple-900/50">
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold block">Subtotal Produtos</span>
+                        <span className="font-bold text-sm text-zinc-900 dark:text-white">{formatMoney(selectedAuditOrder.valor)}</span>
+                      </div>
+                      <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-purple-100 dark:border-purple-900/50">
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold block">Frete Total</span>
+                        <span className="font-bold text-sm text-blue-600 dark:text-blue-400">{formatMoney(dyn.entregaTotal)}</span>
+                      </div>
+                      <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-purple-100 dark:border-purple-900/50">
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold block">Comissão App</span>
+                        <span className="font-bold text-sm text-purple-600 dark:text-purple-400">{formatMoney((dyn.platVenda || 0) + (dyn.platEntrega || 0))}</span>
+                      </div>
+                      <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-purple-100 dark:border-purple-900/50">
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold block">Repasse Entregador</span>
+                        <span className="font-bold text-sm text-amber-600 dark:text-amber-400">{formatMoney(dyn.repasseMoto)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Detalhes de Integração Asaas */}
+              {selectedAuditOrder.asaasPaymentId && (
+                <div className="text-[11px] bg-zinc-100 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+                  <span className="text-zinc-600 dark:text-zinc-400 font-medium">ID da Cobrança / PIX Asaas:</span>
+                  <span className="font-mono font-bold text-zinc-900 dark:text-white">{selectedAuditOrder.asaasPaymentId}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Rodapé com Botões de Ação */}
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/80 flex flex-wrap justify-between items-center gap-3 border-t border-zinc-200 dark:border-zinc-800">
+              <button
+                onClick={() => {
+                  const o = selectedAuditOrder;
+                  const origemUser = store.users[o.origemId];
+                  const destinoUser = store.users[o.destinoId];
+                  const latOrigem = origemUser?.lat || 0;
+                  const lngOrigem = origemUser?.lng || 0;
+                  const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                  const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                  const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                  setMapModal({
+                    open: true,
+                    origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                    destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                    motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
+                  });
+                }}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
+              >
+                <Navigation size={14} /> Ver Rota no Mapa
+              </button>
+
+              <button
+                onClick={() => setSelectedAuditOrder(null)}
+                className="px-5 py-2.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl font-bold text-xs transition"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {ratesModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">

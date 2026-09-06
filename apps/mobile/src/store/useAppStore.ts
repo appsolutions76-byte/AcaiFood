@@ -167,6 +167,8 @@ export interface Order {
   pixCopiaECola?: string | null;
   invoiceUrl?: string | null;
   totalValue?: number;
+  asaasPaymentId?: string | null;
+  asaas_payment_id?: string | null;
 }
 
 export interface CityRates {
