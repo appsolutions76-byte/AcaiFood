@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, Role, User } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
-import { ShieldCheck, BookOpen } from "lucide-react";
+import { ShieldCheck, BookOpen, Sparkles, CheckCircle2, QrCode, Copy, ArrowRight, Clock, AlertCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 
@@ -18,10 +18,6 @@ function CadastroForm() {
   const linkAsaasAccount = useAppStore(state => state.linkAsaasAccount);
   const cities = useAppStore(state => state.cities);
   const fetchCities = useAppStore(state => state.fetchCities);
-  
-  React.useEffect(() => {
-    fetchCities();
-  }, [fetchCities]);
   
   const [role, setRole] = useState<Role>(defaultRole as Role);
   const [veiculo, setVeiculo] = useState("Moto"); // Para motoristas
@@ -41,8 +37,55 @@ function CadastroForm() {
   const [manualOpen, setManualOpen] = useState(false);
   const [isRegisteringAtStore, setIsRegisteringAtStore] = useState(true);
   
-  const [step, setStep] = useState(1); // 1 = Formulario, 2 = Asaas (apenas parceiros)
+  const [step, setStep] = useState(1); // 1 = Formulario, 2 = Ativação / Homologação
   const [newUserId, setNewUserId] = useState("");
+
+  // Estado da cota e taxa de ativação
+  const [activationInfo, setActivationInfo] = useState<{
+    activationEnabled: boolean;
+    activationFee: number;
+    freeQuota: number;
+    subsidizedCount: number;
+    freeSlotsRemaining: number;
+    isFree: boolean;
+  }>({
+    activationEnabled: true,
+    activationFee: 12.90,
+    freeQuota: 50,
+    subsidizedCount: 0,
+    freeSlotsRemaining: 50,
+    isFree: true
+  });
+
+  // Estado de pagamento Pix
+  const [pixData, setPixData] = useState<{
+    paymentId?: string;
+    pixQrCode?: string;
+    pixCopiaECola?: string;
+    isFreeGranted?: boolean;
+  } | null>(null);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+  const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
+  const [copiedPix, setCopiedPix] = useState(false);
+
+  useEffect(() => {
+    fetchCities();
+    fetch('/api/asaas/activation')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success) {
+          setActivationInfo({
+            activationEnabled: Boolean(data.activationEnabled),
+            activationFee: Number(data.activationFee || 12.90),
+            freeQuota: Number(data.freeQuota || 50),
+            subsidizedCount: Number(data.subsidizedCount || 0),
+            freeSlotsRemaining: Number(data.freeSlotsRemaining || 0),
+            isFree: Boolean(data.isFree)
+          });
+        }
+      })
+      .catch(_e => console.warn("Aviso ao carregar info de ativação:", _e));
+  }, [fetchCities]);
 
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,7 +152,36 @@ function CadastroForm() {
           router.push('/');
         } else {
           setNewUserId(newUser.id);
-          setStep(2); // Vai para o passo de Asaas
+          
+          try {
+            const actRes = await fetch('/api/asaas/activation', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: newUser.id,
+                name,
+                email,
+                cpfCnpj: cleanCpf,
+                phone: telefone
+              })
+            });
+            const actData = await actRes.json();
+            if (actData.isFounderSubsidized) {
+              setPixData({ isFreeGranted: true });
+              setIsPaymentConfirmed(true);
+            } else {
+              setPixData({
+                paymentId: actData.paymentId,
+                pixQrCode: actData.pixQrCode,
+                pixCopiaECola: actData.pixCopiaECola,
+                isFreeGranted: false
+              });
+            }
+          } catch (_e) {
+            console.warn("Aviso ao inicializar ativação:", _e);
+          }
+
+          setStep(2);
         }
       } else {
         alert("Erro ao criar conta. Verifique os dados informados.");
@@ -120,49 +192,36 @@ function CadastroForm() {
     }
   };
 
-  const handleLinkAsaas = async () => {
-    setIsLocating(true);
-    let finalWalletId = pixKey;
-
+  const checkPixStatus = async () => {
+    if (!newUserId) return;
+    setIsCheckingPayment(true);
     try {
-      if (newUserId && name && email && cpfCnpj) {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`;
-        }
-
-        const subRes = await fetch('/api/asaas/subaccount', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            userId: newUserId,
-            name,
-            email,
-            cpfCnpj,
-            phone: telefone,
-            bairro,
-            cidade
-          })
-        });
-        const subData = await subRes.json();
-        if (subData.walletId) {
-          finalWalletId = subData.walletId;
-        }
+      const res = await fetch(`/api/asaas/activation?userId=${newUserId}${pixData?.paymentId ? `&paymentId=${pixData.paymentId}` : ''}`);
+      const data = await res.json();
+      if (data?.userStatus?.isPaid) {
+        setIsPaymentConfirmed(true);
+      } else {
+        alert("Pagamento ainda em processamento. Aguarde alguns segundos após pagar no seu banco e tente novamente.");
       }
     } catch (_e) {
-      console.warn("Aviso ao gerar subconta Asaas no cadastro:", _e);
+      alert("Erro ao checar status. Tente novamente.");
+    } finally {
+      setIsCheckingPayment(false);
     }
+  };
 
-    if (finalWalletId) {
-      await linkAsaasAccount(newUserId, finalWalletId);
+  const handleCopyPix = () => {
+    if (pixData?.pixCopiaECola) {
+      navigator.clipboard.writeText(pixData.pixCopiaECola);
+      setCopiedPix(true);
+      setTimeout(() => setCopiedPix(false), 3000);
     }
-    setIsLocating(false);
-    
+  };
+
+  const handleGoToPartnerPanel = () => {
     const roleStr = String(role || '').toLowerCase();
     const veicStr = String(veiculo || '').toLowerCase();
 
-    // Redireciona
     if (roleStr === 'loja') router.push('/parceiros/batedeira');
     else if (roleStr === 'fornecedor') router.push('/parceiros/fornecedor');
     else if (roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb')))) router.push('/parceiros/caminhao');
@@ -220,7 +279,44 @@ function CadastroForm() {
             </p>
           </div>
 
-          <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
+            
+            {/* Banner de Vagas Promocionais para Parceiros */}
+            {role !== 'cliente' && (
+              <div className="mb-4 bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-emerald-500/10 border border-amber-300 dark:border-amber-700/60 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+                <div className="bg-amber-500 text-white p-2.5 rounded-xl shrink-0 shadow-md">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  {activationInfo.isFree ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
+                          100% Grátis
+                        </span>
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white">Vaga Fundador Disponível!</p>
+                      </div>
+                      <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
+                        Restam <strong>{activationInfo.freeSlotsRemaining} de {activationInfo.freeQuota}</strong> vagas com taxa Asaas isenta pelo app.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-purple-300 dark:border-purple-800">
+                          Ativação Comercial
+                        </span>
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white">Homologação Asaas</p>
+                      </div>
+                      <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
+                        Taxa única de ativação bancária de apenas <strong>R$ {activationInfo.activationFee.toFixed(2).replace('.', ',')}</strong> via Pix.
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="bg-white dark:bg-zinc-900 py-8 px-4 shadow sm:rounded-2xl sm:px-10 border border-zinc-200 dark:border-zinc-800">
               <form className="space-y-4" onSubmit={handleCadastro}>
                 
@@ -388,55 +484,136 @@ function CadastroForm() {
       {step === 2 && (
         <div className="sm:mx-auto sm:w-full sm:max-w-md animate-in fade-in duration-300">
            <div className="bg-white dark:bg-zinc-900 w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800">
-            <div className="bg-purple-700 p-6 text-white text-center shrink-0">
-              <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+            
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-800 to-indigo-800 p-6 text-white text-center shrink-0">
+              <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
                 <ShieldCheck size={32} />
               </div>
-              <h3 className="text-xl font-bold">Conta Criada com Sucesso!</h3>
-              <p className="text-purple-100 text-sm mt-1">Split Automático Ativado</p>
+              <h3 className="text-xl font-black">
+                {isPaymentConfirmed ? '🎉 Conta Ativada com Sucesso!' : '🔒 Quase Pronto: Ativação Parceiro'}
+              </h3>
+              <p className="text-purple-100 text-xs mt-1">
+                {isPaymentConfirmed ? 'Homologação bancária garantida' : 'Homologação Asaas & Split Automático'}
+              </p>
             </div>
             
             <div className="p-6 text-center space-y-4">
-              <div className="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-xl p-4">
-                <p className="text-2xl mb-2">🎉</p>
-                <p className="text-emerald-800 dark:text-emerald-300 font-bold text-sm">
-                  Sua conta parceira foi criada e sua carteira Asaas foi configurada automaticamente!
-                </p>
-              </div>
-
-              <div className="text-left space-y-2">
-                <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg p-3">
-                  <span className="text-xl">✅</span>
-                  <div>
-                    <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Conta Asaas Criada</p>
-                    <p className="text-xs text-zinc-500">Carteira digital para receber seus repasses</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg p-3">
-                  <span className="text-xl">✅</span>
-                  <div>
-                    <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Split Automático Ativo</p>
-                    <p className="text-xs text-zinc-500">Você recebe automaticamente a cada venda concluída</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg p-3">
-                  <span className="text-xl">✅</span>
-                  <div>
-                    <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Pronto para Vender</p>
-                    <p className="text-xs text-zinc-500">Configure seus preços no painel parceiro</p>
-                  </div>
-                </div>
-              </div>
-
-              <button 
-                onClick={handleLinkAsaas}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95"
-              >
-                🚀 Acessar Meu Painel Parceiro
-              </button>
               
-              <p className="text-xs text-zinc-400">
-                Seus repasses serão creditados automaticamente a cada pedido concluído.
+              {/* CASO 1: Parceiro Fundador ou Pix Confirmado */}
+              {isPaymentConfirmed ? (
+                <>
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 text-left space-y-2">
+                    <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-black text-sm">
+                      <CheckCircle2 size={20} className="text-emerald-600" />
+                      {pixData?.isFreeGranted ? 'Vaga Fundador Garantida (100% Grátis)' : 'Taxa de Ativação Paga com Sucesso!'}
+                    </div>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      Sua conta já está pronta para operar. Sua subconta bancária no Asaas será conectada automaticamente na sua primeira transação.
+                    </p>
+                  </div>
+
+                  <div className="text-left space-y-2.5">
+                    <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                      <span className="text-lg">💰</span>
+                      <div>
+                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Split Automático Ativo</p>
+                        <p className="text-[11px] text-zinc-500">Receba seus repasses diretamente na sua chave Pix</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                      <span className="text-lg">🛡️</span>
+                      <div>
+                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Homologação Asaas</p>
+                        <p className="text-[11px] text-zinc-500">Transações seguras e criptografadas</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleGoToPartnerPanel}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95 text-sm"
+                  >
+                    🚀 Acessar Meu Painel Parceiro <ArrowRight size={16} />
+                  </button>
+                </>
+              ) : (
+                /* CASO 2: Exige Pagamento Pix de R$ 12,90 */
+                <>
+                  <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-2xl p-4 text-left space-y-1">
+                    <p className="text-xs font-black text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                      <Clock size={16} className="text-purple-600" />
+                      Taxa Única de Homologação Asaas
+                    </p>
+                    <p className="text-[11px] text-purple-700 dark:text-purple-300">
+                      Para abrir sua conta bancária digital e receber repasses automáticos de pedidos, realize o pagamento via Pix:
+                    </p>
+                    <p className="text-lg font-black text-purple-900 dark:text-purple-100 mt-2">
+                      R$ {activationInfo.activationFee.toFixed(2).replace('.', ',')}
+                    </p>
+                  </div>
+
+                  {/* QR CODE DISPLAY */}
+                  {pixData?.pixQrCode ? (
+                    <div className="flex flex-col items-center justify-center p-3 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-inner">
+                      <img 
+                        src={`data:image/png;base64,${pixData.pixQrCode}`} 
+                        alt="QR Code Pix Ativação" 
+                        className="w-48 h-48 rounded-lg object-contain"
+                      />
+                      <span className="text-[10px] text-zinc-400 mt-2 font-mono">Escaneie no app do seu banco</span>
+                    </div>
+                  ) : (
+                    <div className="p-6 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex flex-col items-center">
+                      <QrCode size={48} className="text-zinc-400 mb-2" />
+                      <p className="text-xs text-zinc-500">Gerando QR Code Pix...</p>
+                    </div>
+                  )}
+
+                  {/* Copia e Cola */}
+                  {pixData?.pixCopiaECola && (
+                    <div className="space-y-1 text-left">
+                      <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400">Pix Copia e Cola:</label>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="text" 
+                          readOnly 
+                          value={pixData.pixCopiaECola} 
+                          className="bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-[10px] font-mono p-2.5 rounded-xl w-full text-zinc-700 dark:text-zinc-300 select-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCopyPix}
+                          className="bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs shrink-0 flex items-center gap-1 shadow transition active:scale-95"
+                        >
+                          <Copy size={14} />
+                          {copiedPix ? 'Copiado!' : 'Copiar'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2 space-y-2">
+                    <button 
+                      onClick={checkPixStatus}
+                      disabled={isCheckingPayment}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95 text-sm disabled:opacity-50"
+                    >
+                      {isCheckingPayment ? '⏳ Verificando no Asaas...' : '✅ Já Paguei o Pix'}
+                    </button>
+
+                    <button 
+                      onClick={handleGoToPartnerPanel}
+                      className="w-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 font-bold py-2.5 rounded-xl transition text-xs flex justify-center items-center"
+                    >
+                      Pagar Depois e Acessar Painel
+                    </button>
+                  </div>
+                </>
+              )}
+              
+              <p className="text-[11px] text-zinc-400">
+                Seus dados e pagamentos são protegidos pela infraestrutura bancária Asaas.
               </p>
             </div>
           </div>
