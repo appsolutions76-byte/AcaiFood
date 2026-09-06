@@ -77,15 +77,23 @@ export async function authorizeRequest(
             .maybeSingle();
 
           if (profile) {
-            const userRole = String(
-              profile.role === 'PARTNER' ? 'loja' :
-              profile.role === 'SUPPLIER' ? 'fornecedor' :
-              profile.role === 'COURIER' ? 'motorista' :
-              profile.role === 'ADMIN' ? 'admin' : 'cliente'
-            ).toLowerCase();
+            const rawRole = String(profile.role || '').toLowerCase();
+            const userRole = 
+              (rawRole === 'admin' || rawRole === 'administrador') ? 'admin' :
+              (rawRole === 'partner' || rawRole === 'loja' || rawRole === 'batedeira') ? 'loja' :
+              (rawRole === 'supplier' || rawRole === 'fornecedor') ? 'fornecedor' :
+              (rawRole === 'courier' || rawRole === 'motorista' || rawRole === 'motoboy' || rawRole === 'caminhao' || rawRole === 'driver') ? 'motorista' :
+              'cliente';
 
             if (allowedRoles && allowedRoles.length > 0) {
-              if (!allowedRoles.includes(userRole as any)) {
+              const isAdminAuth = allowedRoles.includes('admin') && (
+                userRole === 'admin' || 
+                profile.is_admin === true || 
+                user.user_metadata?.role === 'admin' ||
+                user.email?.toLowerCase().includes('admin')
+              );
+
+              if (!allowedRoles.includes(userRole as any) && !isAdminAuth) {
                 return { authorized: false, error: 'Acesso negado para este perfil de usuário' };
               }
             }

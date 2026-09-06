@@ -56,12 +56,8 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle();
 
-    if (!firstRow?.id) {
-      return NextResponse.json({ error: 'Configuração da plataforma não encontrada' }, { status: 404 });
-    }
-
     let currentCfg: any = {};
-    if (firstRow.asaas_platform_wallet_id) {
+    if (firstRow?.asaas_platform_wallet_id) {
       try {
         currentCfg = JSON.parse(firstRow.asaas_platform_wallet_id) || {};
       } catch (_e) {}
@@ -73,11 +69,32 @@ export async function POST(request: Request) {
     if (action === 'save' && ad) {
       const existingIdx = ads.findIndex(a => a.id === ad.id);
       const isAct = ad.active !== false && ad.isActive !== false;
+      const targetVal = (ad.targetUrl || ad.targetValue || '').trim();
+      const isWa = targetVal.includes('whatsapp') || targetVal.includes('wa.me');
+      const isHttp = targetVal.startsWith('http') || targetVal.startsWith('/');
+      const targetType = isWa ? 'whatsapp' : isHttp ? 'url' : 'store';
+      const advName = ad.partnerName || ad.advertiserName || 'AçaíFood Oficial';
+
       const newAd: AdItem = {
         ...ad,
         id: ad.id || `ad-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        title: ad.title || 'Comercial Especial',
+        advertiserName: advName,
+        partnerName: advName,
+        partnerId: ad.partnerId || '',
+        description: ad.description || '',
+        mediaType: ad.mediaType || 'image',
+        mediaUrl: ad.mediaUrl || '',
+        targetUrl: targetVal,
+        targetValue: targetVal,
+        targetType: (ad.targetType || targetType) as any,
+        placement: (ad.placement || 'both') as any,
+        city: ad.city || 'ALL',
+        startDate: ad.startDate || ad.startsAt || new Date().toISOString().slice(0, 10),
+        endDate: ad.endDate || ad.endsAt || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+        pricePaid: Number(ad.pricePaid) || 0,
         isActive: isAct,
-        viewsCount: ad.viewsCount || 0,
+        viewsCount: ad.viewsCount || ad.impressionsCount || 0,
         clicksCount: ad.clicksCount || 0,
         createdAt: ad.createdAt || new Date().toISOString()
       };
@@ -102,12 +119,18 @@ export async function POST(request: Request) {
 
     currentCfg.ads = ads;
 
-    const { error: updErr } = await supabase
-      .from('platform_settings')
-      .update({ asaas_platform_wallet_id: JSON.stringify(currentCfg) })
-      .eq('id', firstRow.id);
-
-    if (updErr) throw updErr;
+    if (firstRow?.id) {
+      const { error: updErr } = await supabase
+        .from('platform_settings')
+        .update({ asaas_platform_wallet_id: JSON.stringify(currentCfg) })
+        .eq('id', firstRow.id);
+      if (updErr) throw updErr;
+    } else {
+      const { error: insErr } = await supabase
+        .from('platform_settings')
+        .insert({ asaas_platform_wallet_id: JSON.stringify(currentCfg) });
+      if (insErr) throw insErr;
+    }
 
     return NextResponse.json({
       success: true,

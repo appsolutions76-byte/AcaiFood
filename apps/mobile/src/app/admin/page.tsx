@@ -532,7 +532,11 @@ function AdminDashboardContent() {
   const fetchAds = async () => {
     setIsLoadingAds(true);
     try {
-      const res = await fetch('/api/admin/ads');
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = {};
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch('/api/admin/ads', { headers: authHeaders });
       if (res.ok) {
         const data = await res.json();
         setAdsList(data.ads || []);
@@ -552,28 +556,49 @@ function AdminDashboardContent() {
     }
     setIsSavingAd(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 'Content-Type': 'application/json' };
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
       const isAct = adFormData.active !== false;
+      const targetVal = adFormData.targetUrl.trim();
+      const isWa = targetVal.includes('whatsapp') || targetVal.includes('wa.me');
+      const isHttp = targetVal.startsWith('http') || targetVal.startsWith('/');
+      const targetType = isWa ? 'whatsapp' : isHttp ? 'url' : 'store';
+
       const payload = {
         action: 'save',
         ad: {
           ...(editingAd ? { id: editingAd.id } : {}),
           ...adFormData,
+          advertiserName: adFormData.partnerName || 'AçaíFood Oficial',
+          partnerName: adFormData.partnerName || 'AçaíFood Oficial',
+          targetValue: targetVal,
+          targetUrl: targetVal,
+          targetType,
           isActive: isAct,
           active: isAct
         }
       };
+
       const res = await fetch('/api/admin/ads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify(payload)
       });
-      if (res.ok) {
+      const data = await res.json();
+
+      if (res.ok && data.success) {
         showToast(editingAd ? "✅ Anúncio atualizado com sucesso!" : "✅ Anúncio comercial criado com sucesso!");
         setAdModalOpen(false);
         setEditingAd(null);
-        fetchAds();
+        if (data.ads) {
+          setAdsList(data.ads);
+        } else {
+          fetchAds();
+        }
       } else {
-        alert("Erro ao salvar campanha de anúncio.");
+        alert("Erro ao salvar anúncio: " + (data.error || 'Falha de autorização ou comunicação'));
       }
     } catch (err: any) {
       alert("Erro ao salvar: " + err.message);
@@ -584,18 +609,30 @@ function AdminDashboardContent() {
 
   const handleToggleAdStatus = async (ad: any) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 'Content-Type': 'application/json' };
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
       const res = await fetch('/api/admin/ads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({
           action: 'toggle',
           adId: ad.id
         })
       });
-      if (res.ok) {
+      const data = await res.json();
+
+      if (res.ok && data.success) {
         const currentlyActive = ad.isActive !== false && ad.active !== false;
         showToast(currentlyActive ? "⏸️ Anúncio pausado!" : "▶️ Anúncio ativado!");
-        fetchAds();
+        if (data.ads) {
+          setAdsList(data.ads);
+        } else {
+          fetchAds();
+        }
+      } else {
+        alert("Erro ao alterar status: " + (data.error || 'Falha de autorização'));
       }
     } catch (err: any) {
       alert("Erro ao alterar status: " + err.message);
@@ -605,17 +642,29 @@ function AdminDashboardContent() {
   const handleDeleteAd = async (adId: string) => {
     if (!confirm("Tem certeza que deseja excluir este anúncio comercial?")) return;
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 'Content-Type': 'application/json' };
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
       const res = await fetch('/api/admin/ads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({
           action: 'delete',
           adId
         })
       });
-      if (res.ok) {
+      const data = await res.json();
+
+      if (res.ok && data.success) {
         showToast("🗑️ Anúncio excluído com sucesso!");
-        fetchAds();
+        if (data.ads) {
+          setAdsList(data.ads);
+        } else {
+          fetchAds();
+        }
+      } else {
+        alert("Erro ao excluir: " + (data.error || 'Falha de autorização'));
       }
     } catch (err: any) {
       alert("Erro ao excluir: " + err.message);
@@ -1209,9 +1258,9 @@ function AdminDashboardContent() {
           </button>
           <button onClick={() => { setActiveTab('anuncios'); fetchAds(); }} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'anuncios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
             <span>📢 Comerciais & Anúncios</span>
-            {adsList.filter(a => a.active).length > 0 && (
+            {adsList.filter(a => a.isActive !== false && (a as any).active !== false).length > 0 && (
               <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full font-black">
-                {adsList.filter(a => a.active).length}
+                {adsList.filter(a => a.isActive !== false && (a as any).active !== false).length}
               </span>
             )}
           </button>
@@ -2367,15 +2416,16 @@ function AdminDashboardContent() {
                                 <button
                                   onClick={() => {
                                     setEditingAd(ad);
+                                    const plc = ad.placement === 'home_banner' ? 'banner' : ad.placement === 'home_story' ? 'story' : (ad.placement || 'both');
                                     setAdFormData({
                                       partnerId: ad.partnerId || '',
-                                      partnerName: ad.partnerName || '',
+                                      partnerName: ad.partnerName || ad.advertiserName || '',
                                       title: ad.title || '',
                                       description: ad.description || '',
                                       mediaType: ad.mediaType || 'image',
                                       mediaUrl: ad.mediaUrl || '',
                                       targetUrl: ad.targetUrl || ad.targetValue || '',
-                                      placement: ad.placement || 'both',
+                                      placement: plc,
                                       city: ad.city || 'all',
                                       startDate: ad.startDate || ad.startsAt || new Date().toISOString().slice(0, 10),
                                       endDate: ad.endDate || ad.endsAt || new Date().toISOString().slice(0, 10),
