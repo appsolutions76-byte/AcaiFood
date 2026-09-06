@@ -235,16 +235,24 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
       }
     }
 
-    // Auto-Ajustar enquadramento do mapa apenas uma vez por abertura para respeitar a manipulação do usuário
+    // Auto-Ajustar enquadramento do mapa
     if (boundsPoints.length >= 2 && !hasCenteredRef.current) {
-      map.fitBounds(boundsPoints, { padding: [50, 50] });
+      try {
+        map.fitBounds(boundsPoints, { padding: [40, 40], maxZoom: 16 });
+      } catch (_e) {}
       hasCenteredRef.current = true;
     }
 
-    // Recálculo do tamanho do container após renderização do DOM
-    setTimeout(() => {
-      if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
-    }, 250);
+    // Múltiplos recálculos de tamanho para garantir renderização perfeita após animação
+    const t1 = setTimeout(() => { if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize(); }, 100);
+    const t2 = setTimeout(() => { if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize(); }, 300);
+    const t3 = setTimeout(() => { if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize(); }, 600);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
 
   }, [isOpen, leafletLoaded, origem, destino, motorista]);
 
@@ -252,35 +260,113 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
 
   const p1 = origem;
   const p2 = destino;
-  const dist = (p1?.lat && p2?.lat) ? haversineKm(p1.lat || 0, p1.lng || 0, p2.lat || 0, p2.lng || 0) : 0;
+  const pm = motorista;
+  const distLojaCliente = (p1?.lat && p2?.lat) ? haversineKm(p1.lat || 0, p1.lng || 0, p2.lat || 0, p2.lng || 0) : 0;
+  const distMotoLoja = (pm?.lat && p1?.lat) ? haversineKm(pm.lat || 0, pm.lng || 0, p1.lat || 0, p1.lng || 0) : 0;
+
+  const gmapsLojaUrl = p1?.lat ? `https://www.google.com/maps/dir/?api=1&destination=${p1.lat},${p1.lng}` : '';
+  const gmapsClienteUrl = p2?.lat ? `https://www.google.com/maps/dir/?api=1&destination=${p2.lat},${p2.lng}` : '';
+  const wazeClienteUrl = p2?.lat ? `https://waze.com/ul?ll=${p2.lat},${p2.lng}&navigate=yes` : '';
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white dark:bg-zinc-950 rounded-t-3xl sm:rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95">
-        <div className="bg-blue-900 text-white p-4 sm:p-5 flex justify-between items-center shrink-0">
-          <h3 className="font-bold text-lg">🗺️ Trajeto da Entrega (OSM)</h3>
-          <button onClick={onClose} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white dark:bg-zinc-950 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[92vh] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 border border-zinc-200 dark:border-zinc-800">
+        
+        {/* Header com Legenda da Rota */}
+        <div className="bg-gradient-to-r from-purple-800 to-indigo-900 text-white p-4 sm:p-5 flex justify-between items-center shrink-0 shadow-sm">
+          <div>
+            <h3 className="font-bold text-base sm:text-lg flex items-center gap-2">
+              <span>🗺️</span> Rota & Trajeto da Entrega
+            </h3>
+            <p className="text-[11px] text-purple-200 mt-0.5 flex items-center gap-2 flex-wrap">
+              {pm?.lat && <span>🛵 Posição Atual ➔</span>}
+              <span>🏪 {p1?.name || 'Retirada'} ➔</span>
+              <span>🏁 {p2?.name || 'Entrega'}</span>
+            </p>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-lg flex items-center justify-center transition"
+          >
+            ✕
+          </button>
         </div>
         
-        <div className="relative w-full h-[45vh] sm:h-[400px] bg-zinc-100 dark:bg-zinc-900 shrink-0 overflow-hidden">
+        {/* Container do Mapa Leaflet */}
+        <div className="relative w-full h-[45vh] sm:h-[420px] bg-zinc-100 dark:bg-zinc-900 shrink-0 overflow-hidden">
           <div id="acaifood-leaflet-map" ref={mapContainerRef} className="w-full h-full z-10" />
           
+          {/* Legenda visual flutuante sobre o mapa */}
+          <div className="absolute top-3 right-3 z-20 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xs p-2.5 rounded-xl shadow-md border border-zinc-200 dark:border-zinc-800 text-[11px] font-bold space-y-1">
+            {pm?.lat && (
+              <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                <span className="w-3 h-0.5 border-b-2 border-dashed border-amber-500"></span>
+                <span>🛵 ➔ 🏪 {distMotoLoja.toFixed(1)} km</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+              <span className="w-3 h-1 bg-blue-600 rounded"></span>
+              <span>🏪 ➔ 🏁 {distLojaCliente.toFixed(1)} km</span>
+            </div>
+          </div>
+
           {!leafletLoaded && (
             <div className="absolute inset-0 bg-zinc-100 dark:bg-zinc-900 flex flex-col items-center justify-center gap-3 z-20">
-              <div className="w-8 h-8 border-4 border-blue-900 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Carregando mapa interativo...</p>
             </div>
           )}
         </div>
 
-        <div className="p-5 bg-gray-50 dark:bg-zinc-900 flex justify-between items-center border-t border-zinc-200 dark:border-zinc-800 shrink-0 pb-8 sm:pb-5">
-          <div className="text-sm font-bold text-gray-700 dark:text-zinc-300">
-            Distância: <span className="text-blue-700 dark:text-blue-400 text-lg">{dist.toFixed(1)} km</span>
+        {/* Rodapé com Navegação Externa (Google Maps / Waze) e Distâncias */}
+        <div className="p-4 bg-zinc-50 dark:bg-zinc-900/90 flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="font-bold text-zinc-700 dark:text-zinc-300">
+              Distância total entre pontos: <strong className="text-purple-600 dark:text-purple-400 text-sm">{distLojaCliente.toFixed(1)} km</strong>
+            </span>
+            <button 
+              onClick={onClose} 
+              className="px-4 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-lg font-bold transition text-xs"
+            >
+              Fechar
+            </button>
           </div>
-          <button onClick={onClose} className="px-5 py-3 bg-gray-800 hover:bg-black dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white rounded-xl font-bold transition active:scale-95">
-            Fechar
-          </button>
+
+          {/* Botões de Ação GPS Direta */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {gmapsLojaUrl && (
+              <a 
+                href={gmapsLojaUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center active:scale-95"
+              >
+                🚀 GPS p/ Retirada
+              </a>
+            )}
+            {gmapsClienteUrl && (
+              <a 
+                href={gmapsClienteUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center active:scale-95"
+              >
+                🏁 GPS p/ Cliente
+              </a>
+            )}
+            {wazeClienteUrl && (
+              <a 
+                href={wazeClienteUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center active:scale-95"
+              >
+                🚗 Abrir no Waze
+              </a>
+            )}
+          </div>
         </div>
+
       </div>
     </div>
   );
