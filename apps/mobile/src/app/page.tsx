@@ -78,18 +78,25 @@ export default function StorefrontPage() {
     }
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
         setGpsLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          address: `Localização GPS (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`
+          lat,
+          lng,
+          address: `Localização GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`
         });
         setAddressMode('gps');
         setIsLocating(false);
+
+        if (currentUser?.id) {
+          await store.updateUserLocation(currentUser.id, lat, lng);
+        }
+        alert(`📍 Localização GPS atualizada com sucesso!\n\nCoordenadas: ${lat.toFixed(4)}, ${lng.toFixed(4)}\nAs distâncias e fretes das batedeiras foram recalculados para sua posição atual.`);
       },
       (_err) => {
         setIsLocating(false);
-        alert("Não foi possível obter sua localização GPS. Verifique as permissões de localização do dispositivo.");
+        alert("Não foi possível obter sua localização GPS. Verifique se a permissão de localização do seu navegador está autorizada.");
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -477,6 +484,21 @@ export default function StorefrontPage() {
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
             <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a) ao AçaíFood!</h2>
             <p className="text-zinc-500 dark:text-zinc-400">O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</p>
+            {currentUser && (
+              <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+                <span className="text-xs bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shadow-2xs">
+                  📍 {currentUser.bairro ? `${currentUser.bairro} (${currentUser.cidade || 'Belém'})` : (currentUser.cidade || 'Belém')}
+                </span>
+                <button
+                  onClick={handleGetGpsLocation}
+                  disabled={isLocating}
+                  className="text-xs bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5 transition shadow-2xs active:scale-95 cursor-pointer"
+                  title="Calibrar sua localização GPS para calcular fretes e distâncias exatas"
+                >
+                  {isLocating ? '⏳ Obtendo GPS...' : '🛰️ Calibrar GPS em Tempo Real'}
+                </button>
+              </div>
+            )}
             <p className="text-xs text-purple-700 dark:text-purple-400 font-bold mt-3 tracking-wide">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
         </div>
 

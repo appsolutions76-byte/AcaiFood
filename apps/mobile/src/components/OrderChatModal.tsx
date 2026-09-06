@@ -164,13 +164,32 @@ export function OrderChatModal({
     const sRole = (msg.sender_role || "").toLowerCase().trim();
     const user = store.users ? store.users[sId] : null;
 
-    // 1. FORNECEDOR / USINA
+    // 1. CLIENTE CONSUMIDOR FINAL (B2C)
+    const isCustomer = sRole === "cliente" || 
+                       sRole === "customer" || 
+                       sRole === "buyer" ||
+                       user?.role === "cliente" ||
+                       (!isB2B && currentOrder && (
+                         currentOrder.clienteId === sId || 
+                         currentOrder.criadoPor === sId || 
+                         currentOrder.destinoId === sId ||
+                         (currentOrder.clienteNome && sName === currentOrder.clienteNome.toLowerCase().trim())
+                       ));
+
+    if (isCustomer) {
+      return { 
+        label: "👤 Cliente", 
+        class: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
+      };
+    }
+
+    // 2. FORNECEDOR / USINA
     const isSupplier = sRole === "fornecedor" || 
                        sRole === "supplier" || 
                        sRole === "usina" || 
                        sRole === "vendedor" ||
                        user?.role === "fornecedor" ||
-                       (currentOrder && (currentOrder.fornecedorId === sId || currentOrder.origemId === sId || (currentOrder as any)?.sellerStorefrontId === sId)) ||
+                       (currentOrder && (currentOrder.fornecedorId === sId || (isB2B && currentOrder.origemId === sId) || (currentOrder as any)?.sellerStorefrontId === sId)) ||
                        (isB2B && currentOrder?.lojaNome && sName === currentOrder.lojaNome.toLowerCase().trim()) ||
                        sName.includes("bianca");
 
@@ -181,7 +200,7 @@ export function OrderChatModal({
       };
     }
 
-    // 2. TRANSPORTE / CAMINHÃO
+    // 3. TRANSPORTE / CAMINHÃO
     const isTruck = sRole === "caminhoneiro" || 
                     sRole === "caminhao" || 
                     sRole === "caminhão" || 
@@ -199,7 +218,7 @@ export function OrderChatModal({
       };
     }
 
-    // 3. MOTOBOY / ENTREGA RÁPIDA
+    // 4. MOTOBOY / ENTREGA RÁPIDA
     const isMotoboy = sRole === "motoboy" || 
                       sRole === "motorista" || 
                       sRole === "entregador" || 
@@ -215,13 +234,12 @@ export function OrderChatModal({
       };
     }
 
-    // 4. LOJA / BATEDEIRA
+    // 5. LOJA / BATEDEIRA
     const isStore = sRole === "loja" || 
                     sRole === "batedeira" || 
                     sRole === "partner" || 
                     user?.role === "loja" ||
-                    (currentOrder && (currentOrder.lojaId === sId || currentOrder.destinoId === sId || (!isB2B && currentOrder.origemId === sId))) ||
-                    (isB2B && currentOrder?.clienteNome && sName === currentOrder.clienteNome.toLowerCase().trim()) ||
+                    (currentOrder && (currentOrder.lojaId === sId || (!isB2B && currentOrder.origemId === sId) || (isB2B && currentOrder.destinoId === sId))) ||
                     sName.includes("ponto do açaí") ||
                     sName.includes("ponto do acai");
 
@@ -232,7 +250,7 @@ export function OrderChatModal({
       };
     }
 
-    // 5. ADMIN / SUPORTE
+    // 6. ADMIN / SUPORTE
     if (sRole === "admin" || user?.role === "admin") {
       return { 
         label: "🛡️ Admin", 
@@ -240,7 +258,7 @@ export function OrderChatModal({
       };
     }
 
-    // 6. CLIENTE CONSUMIDOR FINAL (B2C)
+    // 7. CLIENTE CONSUMIDOR FINAL (B2C)
     return { 
       label: "👤 Cliente", 
       class: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
