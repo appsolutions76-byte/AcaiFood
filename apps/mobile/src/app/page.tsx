@@ -520,12 +520,12 @@ export default function StorefrontPage() {
         <PaymentHandler />
         <DirectStoreUrlHandler onStoreFound={(id) => setSelectedStoreId(id)} />
       </Suspense>
-      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
-        <div className="flex justify-between items-center max-w-5xl mx-auto">
-          <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-            <span className="text-2xl">🥣</span>
+      <header className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 p-3 sm:p-4 sticky top-0 z-30 shadow-xs">
+        <div className="flex justify-between items-center max-w-7xl mx-auto w-full px-2 sm:px-4">
+          <div className="flex items-center gap-2.5 text-zinc-900 dark:text-white">
+            <span className="text-2xl sm:text-3xl">🥣</span>
             <div>
-              <h1 className="text-xl font-bold leading-tight">AçaíFood</h1>
+              <h1 className="text-lg sm:text-xl font-black leading-tight tracking-tight">AçaíFood</h1>
               {selectedStoreId && store.users?.[selectedStoreId] && (
                 <p className="text-[10px] text-purple-600 dark:text-purple-400 font-black uppercase tracking-wide">
                   🏪 {store.users[selectedStoreId].name}
@@ -534,37 +534,45 @@ export default function StorefrontPage() {
             </div>
           </div>
           <div className="flex gap-2 items-center">
-             <button onClick={() => setManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">
-               <BookOpen size={13} /> Manual
+             <button onClick={() => setManualOpen(true)} className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border border-amber-200 dark:border-amber-900/50 transition-all">
+               <BookOpen size={13} /> <span className="hidden sm:inline">Manual</span>
              </button>
              {!currentUser ? (
-               <>
-                 <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-200 transition hidden sm:inline-block">
-                   📲 Compartilhar
-                 </button>
-                 <Link href="/login" className="bg-transparent hover:bg-purple-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-400 transition text-xs sm:text-sm">
-                   Entrar
-                 </Link>
-                 <Link href="/cadastro" className="bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-500 transition text-xs sm:text-sm">
-                   Criar Conta
-                 </Link>
-               </>
-             ) : (
-               <div className="flex items-center gap-2 sm:gap-3">
-                 <span className="text-sm font-medium hidden sm:inline-block">Olá, {currentUser.name.split(' ')[0]}</span>
-                 <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
-                 <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold hidden sm:inline-block">📲 Compartilhar</button>
-                 <ThemeToggle />
-                 <button onClick={() => store.logout()} className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 underline">Sair</button>
-               </div>
-             )}
+                <>
+                  <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 px-3 py-1.5 rounded-xl text-xs font-bold border border-purple-200 dark:border-purple-800 transition hidden sm:inline-block">
+                    📲 Compartilhar
+                  </button>
+                  <Link href="/login" className="bg-transparent hover:bg-purple-50 dark:hover:bg-purple-950/40 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 transition">
+                    Entrar
+                  </Link>
+                  <Link href="/cadastro" className="bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition">
+                    Criar Conta
+                  </Link>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 hidden sm:inline-block bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-xl">
+                    👋 Olá, {currentUser.name.split(' ')[0]}
+                  </span>
+                  <button onClick={() => window.location.reload()} className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-2xs border border-indigo-200 dark:border-indigo-900/50 transition-all">
+                    🔄 <span className="hidden sm:inline">Atualizar</span>
+                  </button>
+                  <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 px-3 py-1.5 rounded-xl font-bold hidden sm:inline-block border border-purple-200 dark:border-purple-800">
+                    📲 Compartilhar
+                  </button>
+                  <ThemeToggle />
+                  <button onClick={() => store.logout()} className="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-900/50 transition">
+                    Sair
+                  </button>
+                </div>
+              )}
           </div>
         </div>
       </header>
 
       <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role="login" />
 
-      <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+      <main className="p-3 sm:p-5 max-w-7xl mx-auto space-y-5">
         
         {/* STORIES DE ANÚNCIOS / PARCEIROS */}
         {!selectedStoreId && (
@@ -573,48 +581,38 @@ export default function StorefrontPage() {
           </div>
         )}
 
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
-            <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">
+        {/* HERO COMPACTO & BARRA DE LOCALIZAÇÃO INTELIGENTE */}
+        <div className="bg-gradient-to-r from-purple-900/90 via-zinc-900 to-purple-950 text-white p-4 sm:p-5 rounded-2xl shadow-md border border-purple-500/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-black text-white leading-tight flex items-center gap-2">
+              <span>🥣</span>
               {selectedStoreId && store.users?.[selectedStoreId] ? (
-                <>Bem-vindo(a) à {store.users[selectedStoreId].name}!</>
+                <span>Cardápio Oficial: {store.users[selectedStoreId].name}</span>
               ) : (
-                <>Bem-vindo(a) ao AçaíFood!</>
+                <span>O Verdadeiro Açaí da Amazônia</span>
               )}
             </h2>
-            <p className="text-zinc-500 dark:text-zinc-400">
-              {selectedStoreId && store.users?.[selectedStoreId] ? (
-                <>Cardápio oficial no AçaíFood • Entregas rápidas e calculadas por GPS</>
-              ) : (
-                <>O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</>
-              )}
+            <p className="text-xs text-purple-200/90 mt-0.5 font-medium">
+              Entregas rápidas de açaí batido na hora com frete justo calculado por GPS.
             </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap shrink-0 w-full sm:w-auto">
             {currentUser ? (
-              <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
-                <span className="text-xs bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shadow-2xs">
-                  📍 {currentUser.bairro ? `${currentUser.bairro} (${currentUser.cidade || 'Belém'})` : (currentUser.cidade || 'Belém')}
-                </span>
-                <button
-                  onClick={handleGetGpsLocation}
-                  disabled={isLocating}
-                  className="text-xs bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5 transition shadow-2xs active:scale-95 cursor-pointer"
-                  title="Calibrar sua localização GPS para calcular fretes e distâncias exatas"
-                >
-                  {isLocating ? '⏳ Obtendo GPS...' : '🛰️ Calibrar GPS em Tempo Real'}
-                </button>
-              </div>
-            ) : (
-              <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
-                <button
-                  onClick={handleGetGpsLocation}
-                  disabled={isLocating}
-                  className="text-xs bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 transition shadow-2xs active:scale-95 cursor-pointer"
-                  title="Calibrar sua localização para ver lojas mais próximas"
-                >
-                  {isLocating ? '⏳ Obtendo GPS...' : gpsLocation ? `📍 GPS Ativo: ${gpsLocation.lat.toFixed(3)}, ${gpsLocation.lng.toFixed(3)}` : '🛰️ Localizar Mais Próximas via GPS'}
-                </button>
-              </div>
-            )}
-            <p className="text-xs text-purple-700 dark:text-purple-400 font-bold mt-3 tracking-wide">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
+              <span className="text-xs bg-black/40 text-purple-200 font-bold px-3 py-2 rounded-xl border border-purple-400/30 flex items-center gap-1.5 backdrop-blur-xs">
+                📍 {currentUser.bairro ? `${currentUser.bairro} (${currentUser.cidade || 'Belém'})` : (currentUser.cidade || 'Belém')}
+              </span>
+            ) : null}
+
+            <button
+              onClick={handleGetGpsLocation}
+              disabled={isLocating}
+              className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3.5 py-2 rounded-xl shadow-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer shrink-0"
+              title="Calibrar sua localização GPS para ver distâncias exatas"
+            >
+              {isLocating ? '⏳ GPS...' : gpsLocation ? `📍 GPS Ativo (${gpsLocation.lat.toFixed(2)}, ${gpsLocation.lng.toFixed(2)})` : '🛰️ Localizar Mais Próximas'}
+            </button>
+          </div>
         </div>
 
         {/* CARROSSEL DE BANNERS COMERCIAIS */}
@@ -972,9 +970,9 @@ export default function StorefrontPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
                       {batedeirasFiltered.length === 0 ? (
-                        <div className="col-span-full p-8 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 text-sm">
+                        <div className="col-span-full p-8 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 text-zinc-500 text-sm">
                           <p className="text-3xl mb-2">🔍</p>
                           <p className="font-bold text-zinc-700 dark:text-zinc-300">Nenhuma batedeira encontrada</p>
                           <p className="text-xs text-zinc-500 mt-1">Tente remover os filtros ou buscar por outro termo.</p>
@@ -1001,26 +999,32 @@ export default function StorefrontPage() {
                         return (
                           <div 
                             key={loja.id} 
-                            className={`bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border transition-all hover:shadow-md flex flex-col justify-between gap-3 ${
+                            className={`group bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl shadow-xs border transition-all duration-200 hover:shadow-lg flex flex-col justify-between gap-3 relative overflow-hidden ${
                               isSelectedLoja 
-                                ? 'border-purple-500 ring-2 ring-purple-500/20' 
-                                : 'border-zinc-200 dark:border-zinc-800 hover:border-purple-300 dark:hover:border-purple-700'
-                            } ${isLojaPaused ? 'opacity-75 bg-zinc-50/80 dark:bg-zinc-950/60' : ''}`}
+                                ? 'border-purple-500 ring-2 ring-purple-500/30' 
+                                : 'border-zinc-200/90 dark:border-zinc-800/90 hover:border-purple-400 dark:hover:border-purple-600'
+                            } ${isLojaPaused ? 'opacity-70 bg-zinc-50/90 dark:bg-zinc-950/70' : ''}`}
                           >
+                              {isSelectedLoja && (
+                                <div className="absolute top-0 right-0 bg-purple-600 text-white text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-bl-lg shadow-xs">
+                                  No Carrinho ({cartTotalQuantity})
+                                </div>
+                              )}
+
                               <div>
                                 {/* TOPO DO CARD: ÍCONE, NOME COMPLETO E DISTÂNCIA */}
-                                <div className="flex items-start justify-between gap-3 mb-3">
-                                  <div className="flex items-start gap-3 min-w-0">
-                                    <span className="text-3xl bg-purple-50 dark:bg-purple-950/60 p-2.5 rounded-2xl shrink-0 border border-purple-100 dark:border-purple-900/40 shadow-xs">
+                                <div className="flex items-start justify-between gap-2.5 mb-2.5">
+                                  <div className="flex items-start gap-2.5 min-w-0">
+                                    <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-950/70 shrink-0 border border-purple-100 dark:border-purple-900/40 flex items-center justify-center text-2xl shadow-xs group-hover:scale-105 transition">
                                       {loja.icon || '🏪'}
-                                    </span>
+                                    </div>
                                     <div className="min-w-0">
-                                      <h4 className="font-extrabold text-zinc-900 dark:text-white text-base leading-snug break-words">
+                                      <h4 className="font-extrabold text-zinc-900 dark:text-white text-sm sm:text-base leading-snug truncate" title={loja.name}>
                                         {loja.name}
                                       </h4>
-                                      <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
-                                        <span>📍 {loja.bairro || 'Centro'}</span>
-                                        <span className="text-amber-500 font-bold">★ 4.9</span>
+                                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-0.5">
+                                        <span className="truncate">📍 {loja.bairro || 'Centro'}</span>
+                                        <span className="text-amber-500 font-bold shrink-0">★ 4.9</span>
                                       </div>
                                     </div>
                                   </div>
@@ -1039,7 +1043,7 @@ export default function StorefrontPage() {
                                           motorista: null
                                         });
                                       }} 
-                                      className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2.5 py-1.5 rounded-xl shrink-0 transition flex items-center gap-1 border border-blue-200 dark:border-blue-800 shadow-xs"
+                                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2 py-1 rounded-xl shrink-0 transition flex items-center gap-1 border border-blue-200/80 dark:border-blue-800/80 shadow-xs"
                                       title="Ver rota no mapa"
                                     >
                                       🗺️ {dist.toFixed(1)} km
@@ -1048,42 +1052,42 @@ export default function StorefrontPage() {
                                 </div>
 
                                 {/* BADGES DE STATUS & TEMPO */}
-                                <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                                <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
                                   {isLojaPaused ? (
-                                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-lg">🔴 Fechada</span>
+                                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md">🔴 Fechada</span>
                                   ) : (
-                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-lg">🟢 Aberta</span>
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">🟢 Aberta</span>
                                   )}
                                   {subsidy > 0 && (
-                                    <span className="text-[10px] font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900/40 px-2 py-0.5 rounded-lg">⚡ Frete -{subsidy}%</span>
+                                    <span className="text-[10px] font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900/40 px-2 py-0.5 rounded-md">⚡ Frete -{subsidy}%</span>
                                   )}
-                                  <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg">⏱️ {minTime}-{maxTime} min</span>
+                                  <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">⏱️ {minTime}-{maxTime} min</span>
                                 </div>
                                 
-                                <div className="bg-zinc-50 dark:bg-zinc-950/60 p-3 rounded-xl flex flex-col gap-1.5 text-xs mb-3 border border-zinc-100 dark:border-zinc-800/80">
+                                <div className="bg-zinc-50 dark:bg-zinc-950/70 p-2.5 rounded-xl flex flex-col gap-1 text-xs mb-2.5 border border-zinc-100 dark:border-zinc-800/80">
                                     <div className="flex justify-between items-center text-xs">
                                       <span className="text-zinc-500 font-medium">A partir de:</span>
-                                      <span className="font-extrabold text-purple-600 dark:text-purple-400">{formatMoney(loja.priceB2C?.popular || loja.priceB2C?.medio || 0)} /L</span>
+                                      <span className="font-extrabold text-purple-600 dark:text-purple-400 text-sm">{formatMoney(loja.priceB2C?.popular || loja.priceB2C?.medio || 0)} <span className="text-[10px] text-zinc-400 font-normal">/L</span></span>
                                     </div>
-                                    <div className="flex justify-between items-center text-xs">
-                                      <span className="text-zinc-500 font-medium">Entrega estimada:</span>
+                                    <div className="flex justify-between items-center text-[11px]">
+                                      <span className="text-zinc-500">Entrega estimada:</span>
                                       <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
                                     </div>
                                 </div>
 
                                 {/* TAGS DE TIPOS DE AÇAÍ DISPONÍVEIS */}
-                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                <div className="flex items-center gap-1 flex-wrap">
                                   {loja.availabilityB2C?.popular !== false && (
-                                    <span className="text-[10px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 px-2 py-0.5 rounded-md font-bold">🥣 Popular</span>
+                                    <span className="text-[9px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 px-1.5 py-0.5 rounded font-bold">🥣 Popular</span>
                                   )}
                                   {loja.availabilityB2C?.medio !== false && (
-                                    <span className="text-[10px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 px-2 py-0.5 rounded-md font-bold">🥣 Médio</span>
+                                    <span className="text-[9px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 px-1.5 py-0.5 rounded font-bold">🥣 Médio</span>
                                   )}
                                   {loja.availabilityB2C?.grosso !== false && (
-                                    <span className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded-md font-bold">🌿 Grosso</span>
+                                    <span className="text-[9px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 px-1.5 py-0.5 rounded font-bold">🌿 Grosso</span>
                                   )}
                                   {loja.availabilityB2C?.branco !== false && (
-                                    <span className="text-[10px] bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200 dark:border-teal-800/50 px-2 py-0.5 rounded-md font-bold">🥥 Branco</span>
+                                    <span className="text-[9px] bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/40 px-1.5 py-0.5 rounded font-bold">🥥 Branco</span>
                                   )}
                                 </div>
                               </div>
@@ -1091,16 +1095,16 @@ export default function StorefrontPage() {
                                {isLojaPaused ? (
                                  <button 
                                    onClick={() => alert(`⚠️ A batedeira "${loja.name}" está fechada no momento e não está aceitando pedidos agora.`)}
-                                   className="w-full mt-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700/60 text-zinc-400 dark:text-zinc-500 font-bold py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700/60 transition flex justify-center items-center gap-2 text-xs"
+                                   className="w-full mt-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700/60 text-zinc-400 dark:text-zinc-500 font-bold py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700/60 transition flex justify-center items-center gap-1.5 text-xs"
                                  >
                                    ⛔ Fechada no Momento
                                  </button>
                                ) : (
                                  <button 
                                    onClick={() => handleSelectStore(loja.id)} 
-                                   className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2 text-xs"
+                                   className="w-full mt-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold py-2.5 px-3 rounded-xl shadow-sm transition-all duration-150 active:scale-98 flex justify-center items-center gap-1.5 text-xs cursor-pointer"
                                  >
-                                     <ShoppingCart size={15} /> Ver Cardápio & Pedir
+                                     <ShoppingCart size={14} /> Ver Cardápio & Pedir
                                  </button>
                                )}
                           </div>
@@ -1116,7 +1120,7 @@ export default function StorefrontPage() {
                         </p>
                         <button
                           onClick={() => setVisibleStoreLimit(prev => prev + 12)}
-                          className="px-6 py-2.5 bg-white dark:bg-zinc-900 border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-xl text-xs font-extrabold transition shadow-sm active:scale-95"
+                          className="px-6 py-2.5 bg-white dark:bg-zinc-900 border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-xl text-xs font-extrabold transition shadow-sm active:scale-95 cursor-pointer"
                         >
                           ➕ Carregar Mais Batedeiras (+12)
                         </button>
@@ -1126,57 +1130,78 @@ export default function StorefrontPage() {
                 )}
             </div>
 
-        {currentUser && (
-          <div>
-              <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Meus Pedidos em Andamento</h3>
-              <div className="space-y-4">
-                {meusPedidos.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center opacity-70">
-                      <span className="text-4xl mb-3">🛒</span>
-                      <p className="text-zinc-500 font-medium">Você ainda não fez nenhum pedido hoje.</p>
-                  </div>
-                ) : meusPedidos.map(o => {
+        {currentUser && meusPedidos.length > 0 && (
+          <div className="mt-8">
+              <div className="flex items-center justify-between mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                <h3 className="font-extrabold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
+                  <span>🛍️</span> Meus Pedidos ({meusPedidos.length})
+                </h3>
+                {clientActiveOrders.length > 0 && (
+                  <span className="text-xs bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-extrabold px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-800 animate-pulse">
+                    ⚡ {clientActiveOrders.length} em andamento
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {meusPedidos.map(o => {
                   const isCanceled = o.status === 'cancelado';
+                  const isActive = o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado';
                   
                   return (
-                    <div key={o.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-xl shadow-sm border ${o.status === 'aguardando_cliente' ? 'border-green-400 shadow-green-100 dark:shadow-none' : isCanceled ? 'border-red-200 opacity-60' : 'border-zinc-200 dark:border-zinc-800'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>
-                        <div className="w-full sm:w-auto">
-                            <p className="font-bold text-zinc-800 dark:text-white">{o.title} <span className="text-xs text-zinc-500">({o.id})</span></p>
-                             <p className="text-[10px] text-zinc-600 dark:text-zinc-400 mt-1 uppercase font-bold">
+                    <div 
+                      key={o.id} 
+                      className={`bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl shadow-xs border transition-all flex flex-col justify-between gap-3 ${
+                        isActive
+                          ? 'border-purple-400 dark:border-purple-700 ring-1 ring-purple-400/20' 
+                          : isCanceled 
+                            ? 'border-zinc-200 dark:border-zinc-800 opacity-60' 
+                            : 'border-zinc-200 dark:border-zinc-800'
+                      }`}
+                    >
+                        <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="font-extrabold text-zinc-900 dark:text-white text-sm">{o.title} <span className="text-[11px] text-zinc-400 font-normal">({o.id.slice(-6)})</span></p>
+                              <div>
+                                {o.status === 'aguardando_pagamento' && <span className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase animate-pulse">⏳ Pix Pendente</span>}
+                                {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">Aguardando Loja</span>}
+                                {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">Em Preparo</span>}
+                                {o.status === 'pronto' && <span className="bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">Aguardando Entregador</span>}
+                                {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">🛵 Moto em Rota</span>}
+                                {o.status === 'aguardando_cliente' && <span className="bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase font-black">📍 Chegou!</span>}
+                                {(o.status === 'entregue' || o.status === 'arquivado') && <span className="bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">✅ Entregue</span>}
+                                {isCanceled && <span className="bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">Cancelado</span>}
+                              </div>
+                            </div>
+
+                             <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-1 font-bold">
                                Motorista: {(() => {
                                  const mUser = o.motoristaId ? store.users[o.motoristaId] : null;
                                  const dName = o.motoristaNome || mUser?.name;
                                  const isFinished = o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado' || !!o.receivedAt || !!o.deliveredAt;
-                                 return dName || (isFinished ? 'Concluído' : 'Aguardando');
+                                 return dName || (isFinished ? 'Concluído' : 'Aguardando Atribuição');
                                })()}
                              </p>
                             {o.deliveryAddress && (
-                              <p className="text-xs text-purple-700 dark:text-purple-300 font-bold mt-0.5">📍 Destino: {o.deliveryAddress}</p>
+                              <p className="text-xs text-purple-700 dark:text-purple-300 font-bold mt-0.5 truncate">📍 {o.deliveryAddress}</p>
                             )}
                             {o.deliveryReference && (
-                              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-medium italic">📌 Ref: {o.deliveryReference}</p>
+                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 italic">📌 {o.deliveryReference}</p>
                             )}
-                            <p className="text-xs text-zinc-500 mt-1">Total: {formatMoney(o.valor + o.taxas.entregaCliente)} (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
-                            <div className="flex flex-wrap gap-2 mt-2 mb-2">
-                               {o.createdAt && <span className="text-[9px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded font-bold">🕒 Pedido: {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                               {o.acceptedAt && <span className="text-[9px] bg-purple-50 text-purple-600 px-2 py-0.5 rounded font-bold">👨‍🍳 Aceito: {new Date(o.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                               {o.readyAt && <span className="text-[9px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded font-bold">🛎️ Pronto: {new Date(o.readyAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                               {o.pickedUpAt && <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold">📦 Retirada: {new Date(o.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                               {o.deliveredAt && <span className="text-[9px] bg-teal-50 text-teal-600 px-2 py-0.5 rounded font-bold">📍 Chegou: {new Date(o.deliveredAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                               {o.receivedAt && <span className="text-[9px] bg-green-50 text-green-600 px-2 py-0.5 rounded font-bold">✅ Recebido: {new Date(o.receivedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
-                            </div>
+                            <p className="text-xs text-zinc-500 mt-1">Total: <strong className="text-zinc-800 dark:text-zinc-200">{formatMoney(o.valor + o.taxas.entregaCliente)}</strong> (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
                             
                             {o.deliveryPin && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && (
-                               <div className="mt-3 bg-zinc-900 dark:bg-zinc-800 text-white p-3 rounded-lg flex items-center justify-between shadow-md border border-zinc-700">
+                               <div className="mt-3 bg-zinc-900 dark:bg-zinc-950 text-white p-2.5 rounded-xl flex items-center justify-between shadow-xs border border-zinc-700">
                                    <div>
-                                       <p className="text-[10px] font-bold uppercase text-zinc-400">PIN de Entrega</p>
-                                       <p className="text-xs text-zinc-300 leading-tight">Informe ao motorista</p>
+                                       <p className="text-[9px] font-bold uppercase text-zinc-400">PIN de Entrega</p>
+                                       <p className="text-[11px] text-zinc-300 leading-tight">Informe ao entregador</p>
                                    </div>
-                                   <div className="text-2xl font-black tracking-widest text-emerald-400">{o.deliveryPin}</div>
+                                   <div className="text-xl font-black tracking-widest text-emerald-400">{o.deliveryPin}</div>
                                </div>
                             )}
+
                              {!isCanceled && (
-                                <div className="flex flex-wrap gap-2 mt-2">
+                                <div className="flex flex-wrap gap-2 mt-3">
                                   <button 
                                     onClick={() => {
                                       const origemUser = store.users[o.origemId];
@@ -1193,7 +1218,7 @@ export default function StorefrontPage() {
                                         motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
                                       });
                                     }} 
-                                    className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1"
+                                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 border border-blue-200 dark:border-blue-800"
                                   >
                                     🗺️ Ver Rota ({(o.distancia || 0).toFixed(1)} km)
                                   </button>
@@ -1210,7 +1235,7 @@ export default function StorefrontPage() {
                                         otherRole: motoristaUser ? 'Motoboy' : 'Batedeira'
                                       });
                                     }}
-                                    className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-sm"
+                                    className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-xs"
                                   >
                                     💬 Chat & 📞 Voz
                                   </button>
@@ -1218,58 +1243,48 @@ export default function StorefrontPage() {
                              )}
                         </div>
                         
-                        <div className="flex flex-col sm:flex-row items-center justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">
+                        <div className="flex items-center justify-end w-full border-t border-zinc-100 dark:border-zinc-800 pt-2.5 gap-2">
                             {o.status === 'aguardando_pagamento' && (
-                              <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
-                                <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase animate-pulse">⏳ Aguardando Pagamento Pix</span>
-                                <button 
-                                  onClick={async () => {
-                                    try {
-                                      const res = await fetch(`/api/asaas/status?orderId=${o.id}`);
-                                      if (res.ok) {
-                                        const data = await res.json();
-                                        if (data.isPaid) {
-                                          store.acaoPedido(o.id, 'confirmar_pagamento');
-                                          alert("✅ Pagamento confirmado no Asaas! Seu pedido foi enviado para a loja.");
-                                        } else {
-                                          alert("Pagamento ainda em processamento no Asaas. Aguarde alguns instantes até a confirmação automática pelo banco.");
-                                        }
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch(`/api/asaas/status?orderId=${o.id}`);
+                                    if (res.ok) {
+                                      const data = await res.json();
+                                      if (data.isPaid) {
+                                        store.acaoPedido(o.id, 'confirmar_pagamento');
+                                        alert("✅ Pagamento confirmado no Asaas! Seu pedido foi enviado para a loja.");
+                                      } else {
+                                        alert("Pagamento ainda em processamento no Asaas. Aguarde alguns instantes.");
                                       }
-                                    } catch(err) {
-                                      alert("Erro ao verificar pagamento no Asaas.");
                                     }
-                                  }}
-                                  className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold px-2 py-1 rounded transition"
-                                >
-                                  🔍 Checar Pix no Asaas
-                                </button>
-                              </div>
+                                  } catch(err) {
+                                    alert("Erro ao verificar pagamento no Asaas.");
+                                  }
+                                }}
+                                className="text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-xs"
+                              >
+                                🔍 Checar Pix no Asaas
+                              </button>
                             )}
-                            {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Loja</span>}
-                            {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Preparo</span>}
-                            {o.status === 'pronto' && <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Entregador</span>}
-                            {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Moto a caminho</span>}
-                            {o.status === 'aguardando_cliente' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Chegou!</span>}
-                            {(o.status === 'entregue' || o.status === 'arquivado') && <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Entregue</span>}
-                            {isCanceled && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
   
                             {!isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'em_rota' && o.status !== 'aguardando_cliente' && (
                               <button 
                                 onClick={() => {
-                                  const reason = prompt("Informe o motivo do cancelamento para registro e solicitação de estorno Pix Asaas:", "Desistência do pedido");
+                                  const reason = prompt("Informe o motivo do cancelamento para estorno Pix Asaas:", "Desistência");
                                   if (reason !== null && reason.trim() !== "") {
                                     store.acaoPedido(o.id, 'cancelar_cliente', undefined, reason.trim());
-                                    alert("❌ Pedido cancelado com sucesso. Caso o Pix tenha sido pago, o estorno foi acionado no Asaas.");
+                                    alert("❌ Pedido cancelado.");
                                   }
                                 }} 
-                                className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3.5 py-2 rounded-xl transition w-full sm:w-auto mt-2 sm:mt-0 shadow-sm flex items-center justify-center gap-1 active:scale-95"
+                                className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-1.5 rounded-lg transition"
                               >
                                 ❌ Cancelar Pedido
                               </button>
                             )}
 
                             {isCanceled && (
-                              <button onClick={() => { if(confirm('Deseja excluir este pedido do seu histórico?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">🗑️ Excluir</button>
+                              <button onClick={() => { if(confirm('Deseja excluir este pedido do seu histórico?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-1.5 rounded-lg transition">🗑️ Excluir</button>
                             )}
                         </div>
                     </div>
@@ -1281,12 +1296,14 @@ export default function StorefrontPage() {
 
       </main>
 
-      <footer className="mt-8 py-8 border-t border-zinc-200 dark:border-zinc-800 text-center flex flex-col items-center justify-center space-y-3">
-        <img src="/appsolutions76-logo.png" alt="AppSolutions76" className="w-full max-w-xs object-contain" />
-        <div className="text-[11px] text-zinc-500 dark:text-zinc-400 space-y-1">
-           <p className="font-bold text-zinc-700 dark:text-zinc-300">Desenvolvido por AppSolutions76</p>
-           <p>EMPRESA PARAENSE | Belém - PA</p>
-           <p>Contato: <a href="mailto:appsolutions76@gmail.com" className="text-purple-600 hover:underline">appsolutions76@gmail.com</a></p>
+      <footer className="mt-12 py-8 border-t border-zinc-200 dark:border-zinc-800 text-center flex flex-col items-center justify-center space-y-4">
+        <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-xs border border-zinc-200 dark:border-zinc-800 inline-block">
+          <img src="/appsolutions76-logo.png" alt="AppSolutions76" className="max-w-[220px] h-auto object-contain" />
+        </div>
+        <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
+           <p className="font-extrabold text-zinc-800 dark:text-zinc-200">Desenvolvido por AppSolutions76</p>
+           <p className="text-[11px]">TECNOLOGIA & INOVAÇÃO PARAENSE | Belém - PA</p>
+           <p className="text-[11px]">Contato: <a href="mailto:appsolutions76@gmail.com" className="text-purple-600 dark:text-purple-400 font-semibold hover:underline">appsolutions76@gmail.com</a></p>
         </div>
       </footer>
 
