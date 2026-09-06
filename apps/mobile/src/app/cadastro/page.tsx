@@ -509,7 +509,7 @@ function CadastroForm() {
                       {pixData?.isFreeGranted ? 'Vaga Fundador Garantida (100% Grátis)' : 'Taxa de Ativação Paga com Sucesso!'}
                     </div>
                     <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                      Sua conta já está pronta para operar. Sua subconta bancária no Asaas será conectada automaticamente na sua primeira transação.
+                      Sua conta já está cadastrada e liberada. Para sua comodidade e segurança, sua subconta bancária no Asaas será conectada automaticamente assim que você aceitar a sua <strong>1ª corrida ou concluir sua 1ª venda</strong>.
                     </p>
                   </div>
 
@@ -524,8 +524,8 @@ function CadastroForm() {
                     <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
                       <span className="text-lg">🛡️</span>
                       <div>
-                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Homologação Asaas</p>
-                        <p className="text-[11px] text-zinc-500">Transações seguras e criptografadas</p>
+                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Homologação Asaas Sob Demanda</p>
+                        <p className="text-[11px] text-zinc-500">Subconta gerada automaticamente na sua primeira operação real</p>
                       </div>
                     </div>
                   </div>
@@ -546,7 +546,7 @@ function CadastroForm() {
                       Taxa Única de Homologação Asaas
                     </p>
                     <p className="text-[11px] text-purple-700 dark:text-purple-300">
-                      Para abrir sua conta bancária digital e receber repasses automáticos de pedidos, realize o pagamento via Pix:
+                      Para liberar sua conta de recebimentos e gerar sua subconta bancária na sua 1ª operação, realize o pagamento via Pix:
                     </p>
                     <p className="text-lg font-black text-purple-900 dark:text-purple-100 mt-2">
                       R$ {activationInfo.activationFee.toFixed(2).replace('.', ',')}
