@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabase';
 import { generateValidPixPayload } from '@/lib/pix';
+import { initAudioUnlock, playNewOrderChime, playDeliveryAlertTone } from '@/lib/soundAlerts';
 
 // --- UTILITÁRIOS: Haversine e Coordenadas de Belém ---
 export function generateUUID(): string {
@@ -845,13 +846,39 @@ export const useAppStore = create<AppState>()(
               supabaseChannel.unsubscribe();
           }
 
+          initAudioUnlock();
+
           let channel = supabase.channel('schema-db-changes');
 
           channel = channel
               .on(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'orders' },
-                  () => {
+                  (payload: any) => {
+                      const newOrder = payload?.new;
+                      const eventType = payload?.eventType;
+                      const u = get().currentUser;
+
+                      if (u && newOrder) {
+                        const userRole = String(u.role || '').toLowerCase();
+                        // 1. Sinal sonoro de Novo Pedido para Lojas / Batedeiras & Fornecedores
+                        if (
+                          (userRole === 'loja' || userRole === 'batedeira' || userRole === 'fornecedor') &&
+                          (newOrder.loja_id === u.id || newOrder.lojaId === u.id || newOrder.fornecedor_id === u.id || newOrder.fornecedorId === u.id) &&
+                          (eventType === 'INSERT' || newOrder.status === 'preparo' || newOrder.status === 'aguardando_loja')
+                        ) {
+                          playNewOrderChime();
+                        }
+                        // 2. Sinal sonoro de Nova Chamada de Frete/Entrega para Motoboy, Caminhão e Caçamba
+                        else if (
+                          (userRole === 'motorista' || userRole === 'motoboy' || userRole === 'caminhao') &&
+                          (newOrder.status === 'pronto' || newOrder.status === 'preparo' || (newOrder.type === 'COLETA' && newOrder.status === 'aguardando_motorista')) &&
+                          (!newOrder.motorista_id || newOrder.motorista_id === u.id)
+                        ) {
+                          playDeliveryAlertTone();
+                        }
+                      }
+
                       if (ordersDebounceTimer) clearTimeout(ordersDebounceTimer);
                       ordersDebounceTimer = setTimeout(() => {
                           const u = get().currentUser;
@@ -3005,3 +3032,64 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
+
+// ==========================================
+// MODO DORMIR INTELIGENTE & DESPERTAR (SLEEP / WAKE-UP)
+// Economiza 100% de banco e servidor quando o usuário estiver ocioso
+// ==========================================
+let idleTimer: any = null;
+let isSleeping = false;
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutos de inatividade
+
+function putAppToSleep() {
+  if (isSleeping) return;
+  isSleeping = true;
+  const store = useAppStore.getState();
+  if (typeof store.stopAutoRefresh === 'function') {
+    store.stopAutoRefresh();
+  }
+  if (supabaseChannel) {
+    try {
+      supabaseChannel.unsubscribe();
+      supabaseChannel = null;
+    } catch (_e) {}
+  }
+}
+
+function wakeUpApp() {
+  if (!isSleeping) return;
+  isSleeping = false;
+  const store = useAppStore.getState();
+  if (typeof store.startRealtime === 'function') {
+    store.startRealtime();
+  }
+}
+
+function resetIdleTimer() {
+  if (typeof window === 'undefined') return;
+  if (isSleeping) {
+    wakeUpApp();
+  }
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    putAppToSleep();
+  }, IDLE_TIMEOUT_MS);
+}
+
+if (typeof window !== 'undefined') {
+  ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(evt => {
+    window.addEventListener(evt, resetIdleTimer, { passive: true });
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      putAppToSleep();
+    } else {
+      wakeUpApp();
+      resetIdleTimer();
+    }
+  });
+
+  resetIdleTimer();
+}
+

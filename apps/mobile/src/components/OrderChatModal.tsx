@@ -5,6 +5,8 @@ import { MessageSquare, Phone, Send, X, Shield, PhoneCall } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAppStore } from "@/store/useAppStore";
 
+import { playChatDing } from "@/lib/soundAlerts";
+
 export interface OrderMessage {
   id: string;
   order_id: string;
@@ -106,6 +108,9 @@ export function OrderChatModal({
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
+          if (newMsg.sender_id !== currentUserId) {
+            playChatDing();
+          }
           setTimeout(scrollToBottom, 100);
         }
       )
