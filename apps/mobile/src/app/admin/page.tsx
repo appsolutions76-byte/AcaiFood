@@ -84,7 +84,7 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios'>('dashboard');
   const [activationConfig, setActivationConfig] = useState<{
     activationFee: number;
     freeQuota: number;
@@ -101,6 +101,40 @@ function AdminDashboardContent() {
     paidCount: 0,
     pendingCount: 0,
     freeSlotsRemaining: 50
+  });
+  const [adsList, setAdsList] = useState<any[]>([]);
+  const [isLoadingAds, setIsLoadingAds] = useState(false);
+  const [isSavingAd, setIsSavingAd] = useState(false);
+  const [adModalOpen, setAdModalOpen] = useState(false);
+  const [editingAd, setEditingAd] = useState<any | null>(null);
+  const [adFormData, setAdFormData] = useState<{
+    partnerId: string;
+    partnerName: string;
+    title: string;
+    description: string;
+    mediaType: 'image' | 'video';
+    mediaUrl: string;
+    targetUrl: string;
+    placement: 'banner' | 'story' | 'both';
+    city: string;
+    startDate: string;
+    endDate: string;
+    pricePaid: number;
+    active: boolean;
+  }>({
+    partnerId: '',
+    partnerName: '',
+    title: '',
+    description: '',
+    mediaType: 'image',
+    mediaUrl: '',
+    targetUrl: '',
+    placement: 'both',
+    city: 'all',
+    startDate: new Date().toISOString().slice(0, 10),
+    endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+    pricePaid: 50,
+    active: true
   });
   const [isSavingActivationConfig, setIsSavingActivationConfig] = useState(false);
   const [isPayingAll, setIsPayingAll] = useState(false);
@@ -495,6 +529,87 @@ function AdminDashboardContent() {
     }
   };
 
+  const fetchAds = async () => {
+    setIsLoadingAds(true);
+    try {
+      const res = await fetch('/api/admin/ads');
+      if (res.ok) {
+        const data = await res.json();
+        setAdsList(data.ads || []);
+      }
+    } catch (e) {
+      console.error("Erro ao carregar anúncios:", e);
+    } finally {
+      setIsLoadingAds(false);
+    }
+  };
+
+  const handleSaveAd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adFormData.title.trim() || !adFormData.mediaUrl.trim()) {
+      alert("Por favor, preencha o título e a URL da mídia (imagem ou vídeo).");
+      return;
+    }
+    setIsSavingAd(true);
+    try {
+      const payload = {
+        ...(editingAd ? { id: editingAd.id } : {}),
+        ...adFormData
+      };
+      const res = await fetch('/api/admin/ads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        showToast(editingAd ? "✅ Anúncio atualizado com sucesso!" : "✅ Anúncio comercial criado com sucesso!");
+        setAdModalOpen(false);
+        setEditingAd(null);
+        fetchAds();
+      } else {
+        alert("Erro ao salvar campanha de anúncio.");
+      }
+    } catch (err: any) {
+      alert("Erro ao salvar: " + err.message);
+    } finally {
+      setIsSavingAd(false);
+    }
+  };
+
+  const handleToggleAdStatus = async (ad: any) => {
+    try {
+      const res = await fetch('/api/admin/ads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...ad,
+          active: !ad.active
+        })
+      });
+      if (res.ok) {
+        showToast(ad.active ? "⏸️ Anúncio pausado!" : "▶️ Anúncio ativado!");
+        fetchAds();
+      }
+    } catch (err: any) {
+      alert("Erro ao alterar status: " + err.message);
+    }
+  };
+
+  const handleDeleteAd = async (adId: string) => {
+    if (!confirm("Tem certeza que deseja excluir este anúncio comercial?")) return;
+    try {
+      const res = await fetch(`/api/admin/ads?id=${adId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        showToast("🗑️ Anúncio excluído com sucesso!");
+        fetchAds();
+      }
+    } catch (err: any) {
+      alert("Erro ao excluir: " + err.message);
+    }
+  };
+
   const handleGrantFreeActivation = async (targetUserId: string) => {
     if (!confirm("Deseja conceder isenção gratuita e homologar este parceiro manualmente?")) return;
     try {
@@ -524,6 +639,7 @@ function AdminDashboardContent() {
        if (typeof s.fetchRates === 'function') s.fetchRates();
        fetchAdminBalances();
        fetchActivationConfig();
+       fetchAds();
     }
   }, [isAdmin]);
 
@@ -1078,6 +1194,14 @@ function AdminDashboardContent() {
             <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full font-black">
               {subsidizedPartnersCount}/{activationConfig.freeQuota}
             </span>
+          </button>
+          <button onClick={() => { setActiveTab('anuncios'); fetchAds(); }} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'anuncios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
+            <span>📢 Comerciais & Anúncios</span>
+            {adsList.filter(a => a.active).length > 0 && (
+              <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full font-black">
+                {adsList.filter(a => a.active).length}
+              </span>
+            )}
           </button>
           <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
           <button onClick={() => setActiveTab('ocorrencias')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📋 Ocorrências & Auditoria</button>
@@ -2065,6 +2189,212 @@ function AdminDashboardContent() {
           </div>
         )}
 
+        {activeTab === 'anuncios' && (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            {/* Header com botão de criar campanha */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+              <div>
+                <h3 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                  <span>📢</span> Gestão de Comerciais & Anúncios Monetizados
+                </h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                  Crie propagandas de parceiros, veicule vídeos curtos e banners nas cidades, configure preços cobrados e acompanhe métricas reais de visualização e cliques.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingAd(null);
+                  setAdFormData({
+                    partnerId: '',
+                    partnerName: '',
+                    title: '',
+                    description: '',
+                    mediaType: 'image',
+                    mediaUrl: '',
+                    targetUrl: '',
+                    placement: 'both',
+                    city: 'all',
+                    startDate: new Date().toISOString().slice(0, 10),
+                    endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+                    pricePaid: 50,
+                    active: true
+                  });
+                  setAdModalOpen(true);
+                }}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-sm transition active:scale-95 shrink-0"
+              >
+                <span>➕</span> Novo Comercial / Propaganda
+              </button>
+            </div>
+
+            {/* KPI Cards de Monetização e Performance */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">Campanhas Ativas</p>
+                <p className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">
+                  {adsList.filter(a => a.active).length} <span className="text-xs text-zinc-400 font-normal">/ {adsList.length} total</span>
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">Total de Impressões</p>
+                <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">
+                  {adsList.reduce((acc, a) => acc + (a.impressionsCount || 0), 0).toLocaleString('pt-BR')}
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">Total de Cliques</p>
+                <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                  {adsList.reduce((acc, a) => acc + (a.clicksCount || 0), 0).toLocaleString('pt-BR')}
+                </p>
+              </div>
+
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/50 shadow-sm">
+                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase font-bold">Receita de Anúncios</p>
+                <p className="text-2xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
+                  {formatMoney(adsList.reduce((acc, a) => acc + (Number(a.pricePaid) || 0), 0))}
+                </p>
+              </div>
+            </div>
+
+            {/* Tabela de Campanhas */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+              <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                <h4 className="font-bold text-sm text-zinc-900 dark:text-white">Campanhas e Propagandas Cadastradas ({adsList.length})</h4>
+                <button onClick={fetchAds} disabled={isLoadingAds} className="text-xs text-purple-600 hover:text-purple-700 font-bold flex items-center gap-1">
+                  {isLoadingAds ? '🔄 Atualizando...' : '🔄 Recarregar'}
+                </button>
+              </div>
+
+              {adsList.length === 0 ? (
+                <div className="p-12 text-center text-zinc-500">
+                  <p className="text-3xl mb-2">📢</p>
+                  <p className="font-bold">Nenhum anúncio comercial cadastrado ainda.</p>
+                  <p className="text-xs text-zinc-400 mt-1">Clique no botão acima para cadastrar a primeira campanha de propaganda monetizada.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 uppercase font-bold border-b border-zinc-200 dark:border-zinc-800">
+                      <tr>
+                        <th className="p-3.5">Mídia & Título</th>
+                        <th className="p-3.5">Parceiro</th>
+                        <th className="p-3.5">Formato</th>
+                        <th className="p-3.5">Praça</th>
+                        <th className="p-3.5">Vigência</th>
+                        <th className="p-3.5">Valor Pago</th>
+                        <th className="p-3.5">Performance</th>
+                        <th className="p-3.5">Status</th>
+                        <th className="p-3.5 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                      {adsList.map(ad => {
+                        const ctr = ad.impressionsCount > 0 ? ((ad.clicksCount || 0) / ad.impressionsCount * 100).toFixed(1) : '0.0';
+                        return (
+                          <tr key={ad.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition">
+                            <td className="p-3.5">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                                  {ad.mediaType === 'video' ? (
+                                    <video src={ad.mediaUrl} className="w-full h-full object-cover" muted />
+                                  ) : (
+                                    <img src={ad.mediaUrl} alt={ad.title} className="w-full h-full object-cover" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 max-w-xs">
+                                  <p className="font-bold text-zinc-900 dark:text-white truncate">{ad.title}</p>
+                                  {ad.description && <p className="text-[11px] text-zinc-500 truncate">{ad.description}</p>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-3.5 font-medium text-zinc-700 dark:text-zinc-300">
+                              {ad.partnerName || (ad.partnerId && users[ad.partnerId]?.name) || 'Geral / AçaíFood'}
+                            </td>
+                            <td className="p-3.5">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                ad.placement === 'story' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
+                                ad.placement === 'banner' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+                                'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                              }`}>
+                                {ad.placement === 'story' ? '🟣 Stories' : ad.placement === 'banner' ? '🔵 Banner' : '🟢 Stories + Banner'}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-zinc-600 dark:text-zinc-400 font-medium">
+                              {ad.city === 'all' || !ad.city ? 'Todas as Cidades' : ad.city}
+                            </td>
+                            <td className="p-3.5 text-[11px] text-zinc-500 whitespace-nowrap">
+                              {ad.startDate ? new Date(ad.startDate).toLocaleDateString('pt-BR') : '---'} até {ad.endDate ? new Date(ad.endDate).toLocaleDateString('pt-BR') : '---'}
+                            </td>
+                            <td className="p-3.5 font-bold text-emerald-600 dark:text-emerald-400">
+                              {formatMoney(ad.pricePaid)}
+                            </td>
+                            <td className="p-3.5">
+                              <div className="space-y-0.5">
+                                <p className="text-zinc-700 dark:text-zinc-300 font-bold">👁️ {ad.impressionsCount || 0} views</p>
+                                <p className="text-[10px] text-zinc-500">🖱️ {ad.clicksCount || 0} cliques ({ctr}% CTR)</p>
+                              </div>
+                            </td>
+                            <td className="p-3.5">
+                              <button
+                                onClick={() => handleToggleAdStatus(ad)}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                                  ad.active 
+                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300' 
+                                    : 'bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400'
+                                }`}
+                              >
+                                {ad.active ? '🟢 Ativo' : '⏸️ Pausado'}
+                              </button>
+                            </td>
+                            <td className="p-3.5 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    setEditingAd(ad);
+                                    setAdFormData({
+                                      partnerId: ad.partnerId || '',
+                                      partnerName: ad.partnerName || '',
+                                      title: ad.title || '',
+                                      description: ad.description || '',
+                                      mediaType: ad.mediaType || 'image',
+                                      mediaUrl: ad.mediaUrl || '',
+                                      targetUrl: ad.targetUrl || '',
+                                      placement: ad.placement || 'both',
+                                      city: ad.city || 'all',
+                                      startDate: ad.startDate || new Date().toISOString().slice(0, 10),
+                                      endDate: ad.endDate || new Date().toISOString().slice(0, 10),
+                                      pricePaid: ad.pricePaid || 0,
+                                      active: ad.active !== false
+                                    });
+                                    setAdModalOpen(true);
+                                  }}
+                                  className="p-1.5 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/50 rounded-lg transition"
+                                  title="Editar Anúncio"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteAd(ad.id)}
+                                  className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
+                                  title="Excluir Anúncio"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       </main>
 
       <MapModal 
@@ -2074,6 +2404,192 @@ function AdminDashboardContent() {
         destino={mapModal.destino} 
         motorista={mapModal.motorista} 
       />
+
+      {adModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-purple-900 text-white p-5 flex justify-between items-center shrink-0">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <span>📢</span> {editingAd ? 'Editar Comercial / Propaganda' : 'Novo Comercial / Propaganda'}
+              </h3>
+              <button onClick={() => setAdModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+            </div>
+
+            <form onSubmit={handleSaveAd} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+              <div>
+                <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">Título do Anúncio *</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Super Promoção de Açaí Especial"
+                  value={adFormData.title}
+                  onChange={e => setAdFormData({...adFormData, title: e.target.value})}
+                  className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">Texto de Apoio / Descrição</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Peça 2L e ganhe taxa reduzida hoje!"
+                  value={adFormData.description}
+                  onChange={e => setAdFormData({...adFormData, description: e.target.value})}
+                  className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">Formato</label>
+                  <select
+                    value={adFormData.placement}
+                    onChange={e => setAdFormData({...adFormData, placement: e.target.value as any})}
+                    className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  >
+                    <option value="both">🟢 Ambos (Stories + Banner)</option>
+                    <option value="story">🟣 Stories no Topo</option>
+                    <option value="banner">🔵 Banner Carrossel</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">Tipo de Mídia</label>
+                  <select
+                    value={adFormData.mediaType}
+                    onChange={e => setAdFormData({...adFormData, mediaType: e.target.value as any})}
+                    className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  >
+                    <option value="image">🖼️ Imagem (PNG/JPG/WebP)</option>
+                    <option value="video">🎥 Vídeo Curto (MP4)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">URL da Mídia (Imagem ou Vídeo) *</label>
+                <input
+                  type="url"
+                  placeholder="https://exemplo.com/imagem-anuncio.jpg"
+                  value={adFormData.mediaUrl}
+                  onChange={e => setAdFormData({...adFormData, mediaUrl: e.target.value})}
+                  className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">Parceiro Anunciante</label>
+                  <select
+                    value={adFormData.partnerId}
+                    onChange={e => {
+                      const selId = e.target.value;
+                      const partner = users[selId];
+                      setAdFormData({
+                        ...adFormData,
+                        partnerId: selId,
+                        partnerName: partner ? partner.name : ''
+                      });
+                    }}
+                    className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  >
+                    <option value="">Anunciante Geral / AçaíFood</option>
+                    {partnerList.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">Praça / Cidade</label>
+                  <select
+                    value={adFormData.city}
+                    onChange={e => setAdFormData({...adFormData, city: e.target.value})}
+                    className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  >
+                    <option value="all">Todas as Cidades</option>
+                    {cities.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">Link de Destino / Ação</label>
+                <input
+                  type="text"
+                  placeholder="Ex: https://instagram.com/sualoja ou /?loja=ID_DA_LOJA"
+                  value={adFormData.targetUrl}
+                  onChange={e => setAdFormData({...adFormData, targetUrl: e.target.value})}
+                  className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">Data Início</label>
+                  <input
+                    type="date"
+                    value={adFormData.startDate}
+                    onChange={e => setAdFormData({...adFormData, startDate: e.target.value})}
+                    className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">Data Fim</label>
+                  <input
+                    type="date"
+                    value={adFormData.endDate}
+                    onChange={e => setAdFormData({...adFormData, endDate: e.target.value})}
+                    className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">Valor Pago (R$)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    value={adFormData.pricePaid}
+                    onChange={e => setAdFormData({...adFormData, pricePaid: Number(e.target.value)})}
+                    className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="adActiveCheck"
+                  checked={adFormData.active}
+                  onChange={e => setAdFormData({...adFormData, active: e.target.checked})}
+                  className="w-4 h-4 accent-purple-600"
+                />
+                <label htmlFor="adActiveCheck" className="text-zinc-800 dark:text-zinc-200 font-bold cursor-pointer">
+                  Campanha Ativa imediatamente na Plataforma
+                </label>
+              </div>
+
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-4 -mx-6 -mb-6">
+                <button
+                  type="button"
+                  onClick={() => setAdModalOpen(false)}
+                  className="px-4 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingAd}
+                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl font-bold transition shadow-sm flex items-center gap-2"
+                >
+                  {isSavingAd ? 'Salvando...' : editingAd ? 'Salvar Alterações' : 'Criar Campanha'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {selectedAuditOrder && (
         <div className="fixed inset-0 bg-black/70 z-[250] flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">

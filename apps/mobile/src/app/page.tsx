@@ -10,9 +10,22 @@ import { PixModal } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
+import { AdBannerCarousel } from "@/components/AdBannerCarousel";
+import { AdStoriesRow } from "@/components/AdStoriesRow";
 import { validateCpfCnpjDigits } from "@/lib/pix";
 
 const emptySubscribe = () => () => {};
+
+function DirectStoreUrlHandler({ onStoreFound }: { onStoreFound: (storeId: string) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const lojaParam = searchParams.get('loja') || searchParams.get('store');
+    if (lojaParam) {
+      onStoreFound(lojaParam);
+    }
+  }, [searchParams, onStoreFound]);
+  return null;
+}
 
 function PaymentHandler() {
   const searchParams = useSearchParams();
@@ -70,6 +83,13 @@ export default function StorefrontPage() {
   const [selectedCategoryChip, setSelectedCategoryChip] = useState<'all' | 'open' | 'free_frete' | 'nearest' | 'grosso' | 'branco' | 'lowest_price'>('all');
   const [selectedBairro, setSelectedBairro] = useState<string>('all');
   const [visibleStoreLimit, setVisibleStoreLimit] = useState<number>(12);
+
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPassword, setGuestPassword] = useState("");
+  const [guestCpf, setGuestCpf] = useState("");
+  const [isRegisteringGuest, setIsRegisteringGuest] = useState(false);
 
   const handleGetGpsLocation = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
@@ -254,8 +274,10 @@ export default function StorefrontPage() {
 
   const calcFreteCliente = (lojaId: string) => {
     const loja = store.users?.[lojaId];
-    if (!loja || !loja.lat || !currentUser?.lat) return { freteCliente: 0, dist: 0, subsidy: 0 };
-    const dist = haversineKm(loja.lat, loja.lng!, currentUser!.lat, currentUser!.lng!);
+    const userLat = currentUser?.lat || gpsLocation?.lat || (loja?.lat ? loja.lat + 0.015 : -1.455);
+    const userLng = currentUser?.lng || gpsLocation?.lng || (loja?.lng ? loja.lng + 0.015 : -48.490);
+    if (!loja || !loja.lat) return { freteCliente: rates.courier_payment_mode === 'FIXED' ? (rates.courier_fixed_fee || 6) : 6, dist: 2.0, subsidy: 0 };
+    const dist = haversineKm(loja.lat, loja.lng!, userLat, userLng);
     const freteTotal = calculateOrderFreight('B2C', dist, rates);
     const subsidy = loja.freteSubsidyPct || 0;
     const freteCliente = freteTotal * (1 - subsidy / 100);
@@ -340,15 +362,64 @@ export default function StorefrontPage() {
   const handleConfirmOrder = async () => {
     if (!cart.storeId || cart.items.length === 0) return;
 
-    if (!currentUser) {
-      alert("Por favor, faça login ou crie sua conta para finalizar o pedido.");
-      router.push('/login');
-      return;
-    }
-
     const storeUser = store.users?.[cart.storeId];
     if (storeUser?.status === 'paused') {
       alert(`⚠️ A batedeira "${storeUser.name}" está fechada no momento. O pedido não pode ser enviado agora.`);
+      return;
+    }
+
+    if (!currentUser) {
+      if (!guestName.trim()) {
+        alert("Por favor, informe seu Nome Completo para a entrega.");
+        return;
+      }
+      const cleanPhone = guestPhone.replace(/\D/g, '');
+      if (!cleanPhone || cleanPhone.length < 10) {
+        alert("Por favor, informe um WhatsApp / Celular válido com DDD.");
+        return;
+      }
+      if (!guestEmail.trim() || !guestEmail.includes('@')) {
+        alert("Por favor, informe um E-mail válido.");
+        return;
+      }
+      if (!guestPassword || guestPassword.length < 6) {
+        alert("Por favor, crie uma senha simples de pelo menos 6 dígitos.");
+        return;
+      }
+      if (addressMode === 'custom' && !customAddress.trim()) {
+        alert("Por favor, informe seu Endereço de Entrega.");
+        return;
+      }
+
+      setIsRegisteringGuest(true);
+      try {
+        const finalAddress = addressMode === 'custom' ? customAddress : (gpsLocation?.address || 'Belém');
+        const regRes = await store.registerUser({
+          name: guestName.trim(),
+          email: guestEmail.trim(),
+          telefone: cleanPhone,
+          endereco: finalAddress,
+          cidade: storeUser?.cidade || 'Belém',
+          bairro: storeUser?.bairro || 'Central',
+          lat: gpsLocation?.lat || storeUser?.lat || -1.455,
+          lng: gpsLocation?.lng || storeUser?.lng || -48.490,
+          role: 'cliente',
+          icon: '👤',
+          password: guestPassword,
+          cpfCnpj: guestCpf.trim() ? guestCpf.trim().replace(/\D/g, '') : undefined
+        });
+
+        if (!regRes) {
+          setIsRegisteringGuest(false);
+          return;
+        }
+
+        await processCheckout();
+      } catch (err: any) {
+        alert("Erro ao criar conta: " + (err.message || 'Falha de comunicação'));
+      } finally {
+        setIsRegisteringGuest(false);
+      }
       return;
     }
 
@@ -439,6 +510,7 @@ export default function StorefrontPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-44 sm:pb-48 font-sans">
       <Suspense fallback={null}>
         <PaymentHandler />
+        <DirectStoreUrlHandler onStoreFound={(id) => setSelectedStoreId(id)} />
       </Suspense>
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
         <div className="flex justify-between items-center max-w-5xl mx-auto">
@@ -477,12 +549,19 @@ export default function StorefrontPage() {
 
       <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role="login" />
 
-      <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-8">
+      <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
         
+        {/* STORIES DE ANÚNCIOS / PARCEIROS */}
+        {!selectedStoreId && (
+          <div className="pt-1">
+            <AdStoriesRow />
+          </div>
+        )}
+
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
             <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a) ao AçaíFood!</h2>
             <p className="text-zinc-500 dark:text-zinc-400">O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</p>
-            {currentUser && (
+            {currentUser ? (
               <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
                 <span className="text-xs bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shadow-2xs">
                   📍 {currentUser.bairro ? `${currentUser.bairro} (${currentUser.cidade || 'Belém'})` : (currentUser.cidade || 'Belém')}
@@ -496,19 +575,27 @@ export default function StorefrontPage() {
                   {isLocating ? '⏳ Obtendo GPS...' : '🛰️ Calibrar GPS em Tempo Real'}
                 </button>
               </div>
+            ) : (
+              <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+                <button
+                  onClick={handleGetGpsLocation}
+                  disabled={isLocating}
+                  className="text-xs bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 transition shadow-2xs active:scale-95 cursor-pointer"
+                  title="Calibrar sua localização para ver lojas mais próximas"
+                >
+                  {isLocating ? '⏳ Obtendo GPS...' : gpsLocation ? `📍 GPS Ativo: ${gpsLocation.lat.toFixed(3)}, ${gpsLocation.lng.toFixed(3)}` : '🛰️ Localizar Mais Próximas via GPS'}
+                </button>
+              </div>
             )}
             <p className="text-xs text-purple-700 dark:text-purple-400 font-bold mt-3 tracking-wide">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
         </div>
 
-        {!currentUser ? (
-          <div className="flex flex-col justify-center items-center mt-6 mb-8 text-center">
-             <img src="/banner.png?v=4" alt="Marca Oficial AçaíFood" className="w-full max-w-xs sm:max-w-sm rounded-3xl shadow-2xl object-contain border-4 border-purple-900/40 dark:border-purple-800/50" />
-             <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-3">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
-          </div>
-        ) : (
-          <>
+        {/* CARROSSEL DE BANNERS COMERCIAIS */}
+        {!selectedStoreId && (
+          <AdBannerCarousel />
+        )}
 
-            <div>
+        <div>
                 {selectedStoreId && store.users?.[selectedStoreId] ? (() => {
                   const selLoja = store.users[selectedStoreId];
                   const { freteCliente, dist, subsidy } = calcFreteCliente(selLoja.id);
@@ -536,7 +623,7 @@ export default function StorefrontPage() {
                               setMapModal({
                                 open: true,
                                 origem: { lat: latOrig, lng: lngOrig, name: selLoja.name || 'Retirada' },
-                                destino: { lat: latDest, lng: lngDest, name: currentUser.name || 'Entrega' },
+                                destino: { lat: latDest, lng: lngDest, name: currentUser?.name || 'Entrega' },
                                 motorista: null
                               });
                             }} 
@@ -971,33 +1058,21 @@ export default function StorefrontPage() {
                                 </div>
                               </div>
                               
-                              {currentUser ? (
-                                  isLojaPaused ? (
-                                    <button 
-                                      onClick={() => alert(`⚠️ A batedeira "${loja.name}" está fechada no momento e não está aceitando pedidos agora.`)}
-                                      className="w-full mt-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700/60 text-zinc-400 dark:text-zinc-500 font-bold py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700/60 transition flex justify-center items-center gap-2 text-xs"
-                                    >
-                                      ⛔ Fechada no Momento
-                                    </button>
-                                  ) : (
-                                    <button 
-                                      onClick={() => handleSelectStore(loja.id)} 
-                                      className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2 text-xs"
-                                    >
-                                        <ShoppingCart size={15} /> Ver Cardápio & Pedir
-                                    </button>
-                                  )
-                              ) : (
-                                  isLojaPaused ? (
-                                    <div className="w-full mt-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 text-center font-bold py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700/60 text-xs">
-                                      ⛔ Fechada no Momento
-                                    </div>
-                                  ) : (
-                                    <Link href="/login" className="w-full mt-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold py-2.5 px-4 rounded-xl shadow-xs transition active:scale-95 flex justify-center items-center gap-2 text-xs">
-                                        Entrar para Pedir
-                                    </Link>
-                                  )
-                              )}
+                               {isLojaPaused ? (
+                                 <button 
+                                   onClick={() => alert(`⚠️ A batedeira "${loja.name}" está fechada no momento e não está aceitando pedidos agora.`)}
+                                   className="w-full mt-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700/60 text-zinc-400 dark:text-zinc-500 font-bold py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700/60 transition flex justify-center items-center gap-2 text-xs"
+                                 >
+                                   ⛔ Fechada no Momento
+                                 </button>
+                               ) : (
+                                 <button 
+                                   onClick={() => handleSelectStore(loja.id)} 
+                                   className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition active:scale-95 flex justify-center items-center gap-2 text-xs"
+                                 >
+                                     <ShoppingCart size={15} /> Ver Cardápio & Pedir
+                                 </button>
+                               )}
                           </div>
                         );
                       })}
@@ -1020,8 +1095,6 @@ export default function StorefrontPage() {
                   </>
                 )}
             </div>
-          </>
-        )}
 
         {currentUser && (
           <div>
@@ -1304,87 +1377,183 @@ export default function StorefrontPage() {
                       ))}
                   </div>
                   
-                  <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-3 mb-5">
-                      <label className="block text-xs font-bold uppercase text-purple-900 dark:text-purple-300 mb-2">📍 Onde deseja receber seu pedido?</label>
-                      
-                      <div className="space-y-2">
-                          <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
-                              <input 
-                                  type="radio" 
-                                  name="addressMode" 
-                                  checked={addressMode === 'profile'} 
-                                  onChange={() => setAddressMode('profile')}
-                                  className="accent-purple-600"
-                              />
-                              <span>🏠 Endereço de Cadastro ({currentUser?.bairro || 'Casa'})</span>
-                          </label>
-
-                          <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
-                              <input 
-                                  type="radio" 
-                                  name="addressMode" 
-                                  checked={addressMode === 'gps'} 
-                                  onChange={() => {
-                                      setAddressMode('gps');
-                                      if (!gpsLocation) handleGetGpsLocation();
-                                  }}
-                                  className="accent-purple-600"
-                              />
-                              <div className="flex-1 flex justify-between items-center">
-                                  <span>📍 Usar GPS Atual (Rua / Praça)</span>
-                                  {isLocating ? (
-                                      <span className="text-[10px] text-purple-600 animate-pulse">Obtendo GPS...</span>
-                                  ) : (
-                                      <button 
-                                          type="button"
-                                          onClick={(e) => { e.preventDefault(); handleGetGpsLocation(); }}
-                                          className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded hover:bg-purple-200"
-                                      >
-                                          {gpsLocation ? '🔄 Atualizar GPS' : '📍 Obter GPS'}
-                                      </button>
-                                  )}
-                              </div>
-                          </label>
-                          {addressMode === 'gps' && gpsLocation && (
-                              <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 ml-6">
-                                  ✅ Posição capturada: Lat {gpsLocation.lat.toFixed(4)}, Lng {gpsLocation.lng.toFixed(4)}
-                              </p>
-                          )}
-
-                          <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
-                              <input 
-                                  type="radio" 
-                                  name="addressMode" 
-                                  checked={addressMode === 'custom'} 
-                                  onChange={() => setAddressMode('custom')}
-                                  className="accent-purple-600"
-                              />
-                              <span>➕ Outro Endereço / Ponto de Encontro</span>
-                          </label>
-
-                          {addressMode === 'custom' && (
-                              <div className="mt-2 space-y-2 ml-1">
-                                  <input 
-                                      type="text" 
-                                      placeholder="Digite a Rua, Bairro e Número..." 
-                                      value={customAddress}
-                                      onChange={e => setCustomAddress(e.target.value)}
-                                      className="w-full text-xs p-2 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium"
-                                  />
-                              </div>
-                          )}
-
-                          <div className="mt-2 pt-2 border-t border-purple-100 dark:border-purple-900/50">
-                              <input 
-                                  type="text" 
-                                  placeholder="Ponto de referência (ex: Na mesa da praça, Em frente à farmácia)" 
-                                  value={customReference}
-                                  onChange={e => setCustomReference(e.target.value)}
-                                  className="w-full text-xs p-2 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium"
-                              />
-                          </div>
+                  {!currentUser ? (
+                    <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-3.5 mb-5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">✨</span>
+                        <div>
+                          <p className="text-xs font-bold text-purple-900 dark:text-purple-200">Finalizar Cadastro & Entrega</p>
+                          <p className="text-[10px] text-purple-700 dark:text-purple-400">Preencha seus dados para receber o açaí e criar sua conta AçaíFood</p>
+                        </div>
                       </div>
-                  </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase mb-1">Seu Nome Completo *</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Maria dos Santos"
+                          value={guestName}
+                          onChange={e => setGuestName(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium text-zinc-800 dark:text-white"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase mb-1">WhatsApp / Celular *</label>
+                          <input
+                            type="tel"
+                            placeholder="(91) 99999-9999"
+                            value={guestPhone}
+                            onChange={e => setGuestPhone(e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium text-zinc-800 dark:text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase mb-1">CPF (opcional para Pix)</label>
+                          <input
+                            type="text"
+                            placeholder="000.000.000-00"
+                            value={guestCpf}
+                            onChange={e => setGuestCpf(e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium text-zinc-800 dark:text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase mb-1">E-mail de Acesso *</label>
+                          <input
+                            type="email"
+                            placeholder="seuemail@exemplo.com"
+                            value={guestEmail}
+                            onChange={e => setGuestEmail(e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium text-zinc-800 dark:text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase mb-1">Crie uma Senha *</label>
+                          <input
+                            type="password"
+                            placeholder="Mínimo 6 dígitos"
+                            value={guestPassword}
+                            onChange={e => setGuestPassword(e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium text-zinc-800 dark:text-white"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase mb-1">Endereço de Entrega (Rua, Bairro e Número) *</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Tv. Quintino Bocaiúva, 1200 - Nazaré"
+                          value={customAddress}
+                          onChange={e => setCustomAddress(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium text-zinc-800 dark:text-white"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase mb-1">Ponto de Referência</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Próximo à praça, Bloco B Apto 204"
+                          value={customReference}
+                          onChange={e => setCustomReference(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium text-zinc-800 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-3 mb-5">
+                        <label className="block text-xs font-bold uppercase text-purple-900 dark:text-purple-300 mb-2">📍 Onde deseja receber seu pedido?</label>
+                        
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
+                                <input 
+                                    type="radio" 
+                                    name="addressMode" 
+                                    checked={addressMode === 'profile'} 
+                                    onChange={() => setAddressMode('profile')}
+                                    className="accent-purple-600"
+                                />
+                                <span>🏠 Endereço de Cadastro ({currentUser?.bairro || 'Casa'})</span>
+                            </label>
+
+                            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
+                                <input 
+                                    type="radio" 
+                                    name="addressMode" 
+                                    checked={addressMode === 'gps'} 
+                                    onChange={() => {
+                                        setAddressMode('gps');
+                                        if (!gpsLocation) handleGetGpsLocation();
+                                    }}
+                                    className="accent-purple-600"
+                                />
+                                <div className="flex-1 flex justify-between items-center">
+                                    <span>📍 Usar GPS Atual (Rua / Praça)</span>
+                                    {isLocating ? (
+                                        <span className="text-[10px] text-purple-600 animate-pulse">Obtendo GPS...</span>
+                                    ) : (
+                                        <button 
+                                            type="button"
+                                            onClick={(e) => { e.preventDefault(); handleGetGpsLocation(); }}
+                                            className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded hover:bg-purple-200"
+                                        >
+                                            {gpsLocation ? '🔄 Atualizar GPS' : '📍 Obter GPS'}
+                                        </button>
+                                    )}
+                                </div>
+                            </label>
+                            {addressMode === 'gps' && gpsLocation && (
+                                <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 ml-6">
+                                    ✅ Posição capturada: Lat {gpsLocation.lat.toFixed(4)}, Lng {gpsLocation.lng.toFixed(4)}
+                                </p>
+                            )}
+
+                            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
+                                <input 
+                                    type="radio" 
+                                    name="addressMode" 
+                                    checked={addressMode === 'custom'} 
+                                    onChange={() => setAddressMode('custom')}
+                                    className="accent-purple-600"
+                                />
+                                <span>➕ Outro Endereço / Ponto de Encontro</span>
+                            </label>
+
+                            {addressMode === 'custom' && (
+                                <div className="mt-2 space-y-2 ml-1">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Digite a Rua, Bairro e Número..." 
+                                        value={customAddress}
+                                        onChange={e => setCustomAddress(e.target.value)}
+                                        className="w-full text-xs p-2 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium"
+                                    />
+                                </div>
+                            )}
+
+                            <div className="mt-2 pt-2 border-t border-purple-100 dark:border-purple-900/50">
+                                <input 
+                                    type="text" 
+                                    placeholder="Ponto de referência (ex: Na mesa da praça, Em frente à farmácia)" 
+                                    value={customReference}
+                                    onChange={e => setCustomReference(e.target.value)}
+                                    className="w-full text-xs p-2 rounded-lg border border-purple-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-purple-500 font-medium"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                  )}
 
                   <div className="space-y-3 mb-6 text-sm text-zinc-600 dark:text-zinc-400">
                       <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
@@ -1403,8 +1572,18 @@ export default function StorefrontPage() {
                   
                   <div className="flex gap-3 mt-4">
                       <button onClick={() => setCheckoutModalOpen(false)} className="flex-1 px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl active:scale-95 transition">Continuar Comprando</button>
-                      <button onClick={handleConfirmOrder} className="flex-1 px-4 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-lg hover:bg-purple-700 active:scale-95 transition flex items-center justify-center gap-2">
-                          <span className="text-lg">🛒</span> Pagar via Pix
+                      <button 
+                        onClick={handleConfirmOrder} 
+                        disabled={isRegisteringGuest}
+                        className="flex-1 px-4 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-lg hover:bg-purple-700 active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {isRegisteringGuest ? (
+                          <span>⏳ Criando conta & Gerando Pix...</span>
+                        ) : !currentUser ? (
+                          <><span>✨</span> Criar Conta & Pagar Pix</>
+                        ) : (
+                          <><span className="text-lg">🛒</span> Pagar via Pix</>
+                        )}
                       </button>
                   </div>
               </div>

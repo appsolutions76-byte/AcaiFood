@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
 import { PhotoPickerModal } from "@/components/PhotoPickerModal";
+import { StoreShareCard } from "@/components/StoreShareCard";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -810,6 +811,13 @@ export default function BatedeiraDashboard() {
           </div>
         )}
         
+        {/* Card de Divulgação e Cardápio Digital Próprio */}
+        <StoreShareCard 
+          storeId={currentUser.id} 
+          storeName={currentUser.name} 
+          role="loja" 
+        />
+
         {/* Banner Cofre Virtual & Pix Automático (Sempre Visível) */}
         <div className="bg-purple-900 text-white p-5 rounded-2xl shadow flex justify-between items-center border border-purple-800">
             <div>

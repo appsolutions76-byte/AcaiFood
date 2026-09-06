@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
 import { PhotoPickerModal } from "@/components/PhotoPickerModal";
+import { StoreShareCard } from "@/components/StoreShareCard";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -418,6 +419,13 @@ export default function FornecedorDashboard() {
             </p>
           </div>
         )}
+
+        {/* Card de Divulgação e Cardápio Digital Próprio */}
+        <StoreShareCard 
+          storeId={currentUser.id} 
+          storeName={currentUser.name} 
+          role="fornecedor" 
+        />
 
         {/* Banner Cofre Virtual & Pix Automático (Sempre Visível) */}
         <div className="bg-emerald-900 text-white p-5 rounded-2xl shadow flex justify-between items-center border border-emerald-800">
