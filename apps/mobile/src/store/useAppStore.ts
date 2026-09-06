@@ -113,6 +113,9 @@ export interface User {
   password?: string;
   status?: 'active' | 'paused' | 'blocked';
   pixKey?: string;
+  isFounderSubsidized?: boolean;
+  activationPaid?: boolean;
+  activationPaymentId?: string;
   products?: Product[];
 }
 
@@ -504,6 +507,10 @@ export const useAppStore = create<AppState>()(
             imagesB2B: sfMeta.imagesB2B || {},
             freteSubsidyPct: sf?.frete_subsidy_pct ?? 0,
             pixKey: userProfile.pix_key,
+            isFounderSubsidized: userProfile.is_founder_subsidized !== false && (userProfile.is_founder_subsidized === true || !!userProfile.asaas_wallet_id || !!userProfile.pix_key),
+            activationPaid: userProfile.activation_paid !== false,
+            activationPaymentId: userProfile.activation_payment_id,
+            asaasAccountId: userProfile.asaas_account_id,
             products: mapDbProducts(sf?.products),
             cpfCnpj: userProfile.cpf_cnpj
           };
@@ -941,6 +948,10 @@ export const useAppStore = create<AppState>()(
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
                         asaasWalletId: isValidAsaasWalletId(dbUser.asaas_wallet_id) ? dbUser.asaas_wallet_id : (isValidAsaasWalletId(dbUser.pix_key) ? dbUser.pix_key : undefined),
                         pixKey: dbUser.pix_key,
+                        isFounderSubsidized: dbUser.is_founder_subsidized !== false && (dbUser.is_founder_subsidized === true || !!dbUser.asaas_wallet_id || !!dbUser.pix_key),
+                        activationPaid: dbUser.activation_paid !== false,
+                        activationPaymentId: dbUser.activation_payment_id,
+                        asaasAccountId: dbUser.asaas_account_id,
                         products: mapDbProducts(sf?.products),
                         cpfCnpj: dbUser.cpf_cnpj
                     };
@@ -1010,6 +1021,10 @@ export const useAppStore = create<AppState>()(
                         asaasLinked: !!(dbUser.asaas_wallet_id || dbUser.pix_key),
                         asaasWalletId: isValidAsaasWalletId(dbUser.asaas_wallet_id) ? dbUser.asaas_wallet_id : (isValidAsaasWalletId(dbUser.pix_key) ? dbUser.pix_key : undefined),
                         pixKey: dbUser.pix_key,
+                        isFounderSubsidized: dbUser.is_founder_subsidized !== false && (dbUser.is_founder_subsidized === true || !!dbUser.asaas_wallet_id || !!dbUser.pix_key),
+                        activationPaid: dbUser.activation_paid !== false,
+                        activationPaymentId: dbUser.activation_payment_id,
+                        asaasAccountId: dbUser.asaas_account_id,
                         products: mapDbProducts(sf?.products),
                         cpfCnpj: dbUser.cpf_cnpj,
                         storefrontId: sf?.id,

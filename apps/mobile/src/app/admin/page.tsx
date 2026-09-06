@@ -1989,9 +1989,9 @@ function AdminDashboardContent() {
                     {Object.values(users)
                       .filter(u => u && u.role !== 'cliente' && u.role !== 'admin')
                       .map(u => {
-                        const isSubsidized = Boolean((u as any).is_founder_subsidized);
-                        const isPaid = Boolean((u as any).activation_paid);
-                        const asaasLinked = Boolean(u.asaasWalletId || (u as any).asaas_wallet_id);
+                        const isSubsidized = u.isFounderSubsidized !== false || Boolean((u as any).is_founder_subsidized) || Boolean(u.asaasWalletId) || Boolean((u as any).asaas_wallet_id) || Boolean(u.pixKey);
+                        const isPaid = u.activationPaid !== false || Boolean((u as any).activation_paid);
+                        const asaasLinked = Boolean(u.asaasWalletId || (u as any).asaas_wallet_id || u.asaasLinked);
 
                         return (
                           <tr key={u.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
@@ -2028,7 +2028,7 @@ function AdminDashboardContent() {
                                 </span>
                               ) : (
                                 <span className="text-zinc-400 text-[11px] italic">
-                                  Criação na 1ª operação
+                                  Pronta (Criação na 1ª operação)
                                 </span>
                               )}
                             </td>

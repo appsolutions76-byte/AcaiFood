@@ -36,33 +36,30 @@ export async function GET(request: Request) {
       await supabase
         .from('users')
         .update({ is_founder_subsidized: true, activation_paid: true })
-        .neq('role', 'cliente')
-        .neq('role', 'admin')
-        .is('activation_paid', null);
+        .not('role', 'in', '("cliente","admin","CUSTOMER","ADMIN")')
+        .or('is_founder_subsidized.is.null,activation_paid.is.null,is_founder_subsidized.eq.true');
 
       const { count: subCount } = await supabase
         .from('users')
         .select('id', { count: 'exact', head: true })
-        .neq('role', 'cliente')
-        .neq('role', 'admin')
-        .or('is_founder_subsidized.eq.true,asaas_wallet_id.not.is.null');
-      if (subCount !== null) subsidizedCount = subCount;
+        .not('role', 'in', '("cliente","admin","CUSTOMER","ADMIN")')
+        .or('is_founder_subsidized.eq.true,asaas_wallet_id.not.is.null,is_founder_subsidized.is.null');
+      if (subCount !== null && subCount !== undefined) subsidizedCount = subCount;
 
       const { count: pCount } = await supabase
         .from('users')
         .select('id', { count: 'exact', head: true })
         .eq('activation_paid', true)
         .eq('is_founder_subsidized', false);
-      if (pCount !== null) paidCount = pCount;
+      if (pCount !== null && pCount !== undefined) paidCount = pCount;
 
       const { count: pendCount } = await supabase
         .from('users')
         .select('id', { count: 'exact', head: true })
-        .neq('role', 'cliente')
-        .neq('role', 'admin')
+        .not('role', 'in', '("cliente","admin","CUSTOMER","ADMIN")')
         .eq('activation_paid', false)
         .eq('is_founder_subsidized', false);
-      if (pendCount !== null) pendingCount = pendCount;
+      if (pendCount !== null && pendCount !== undefined) pendingCount = pendCount;
     } catch (_e) {}
 
     return NextResponse.json({
