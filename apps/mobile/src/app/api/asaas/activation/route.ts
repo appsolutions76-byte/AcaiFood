@@ -19,16 +19,21 @@ export async function GET(request: Request) {
     let activationEnabled = true;
 
     try {
-      const { data: cfg } = await supabase
+      const { data: row } = await supabase
         .from('platform_settings')
         .select('*')
-        .eq('id', 'activation_config')
+        .limit(1)
         .maybeSingle();
 
-      if (cfg) {
-        if (cfg.activation_fee !== undefined) activationFee = Number(cfg.activation_fee);
-        if (cfg.free_quota !== undefined) freeQuota = Number(cfg.free_quota);
-        if (cfg.activation_enabled !== undefined) activationEnabled = Boolean(cfg.activation_enabled);
+      if (row?.asaas_platform_wallet_id) {
+        try {
+          const parsed = JSON.parse(row.asaas_platform_wallet_id);
+          if (parsed && typeof parsed === 'object') {
+            if (parsed.activationFee !== undefined) activationFee = Number(parsed.activationFee);
+            if (parsed.freeQuota !== undefined) freeQuota = Number(parsed.freeQuota);
+            if (parsed.activationEnabled !== undefined) activationEnabled = Boolean(parsed.activationEnabled);
+          }
+        } catch (_e) {}
       }
     } catch (_e) {}
 
@@ -127,16 +132,21 @@ export async function POST(request: Request) {
     let activationEnabled = true;
 
     try {
-      const { data: cfg } = await supabase
+      const { data: row } = await supabase
         .from('platform_settings')
         .select('*')
-        .eq('id', 'activation_config')
+        .limit(1)
         .maybeSingle();
 
-      if (cfg) {
-        if (cfg.activation_fee !== undefined) activationFee = Number(cfg.activation_fee);
-        if (cfg.free_quota !== undefined) freeQuota = Number(cfg.free_quota);
-        if (cfg.activation_enabled !== undefined) activationEnabled = Boolean(cfg.activation_enabled);
+      if (row?.asaas_platform_wallet_id) {
+        try {
+          const parsed = JSON.parse(row.asaas_platform_wallet_id);
+          if (parsed && typeof parsed === 'object') {
+            if (parsed.activationFee !== undefined) activationFee = Number(parsed.activationFee);
+            if (parsed.freeQuota !== undefined) freeQuota = Number(parsed.freeQuota);
+            if (parsed.activationEnabled !== undefined) activationEnabled = Boolean(parsed.activationEnabled);
+          }
+        } catch (_e) {}
       }
     } catch (_e) {}
 

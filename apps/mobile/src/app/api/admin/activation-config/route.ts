@@ -13,16 +13,21 @@ export async function GET(request: Request) {
     let activationEnabled = true;
 
     try {
-      const { data: cfg } = await supabase
+      const { data: row } = await supabase
         .from('platform_settings')
         .select('*')
-        .eq('id', 'activation_config')
+        .limit(1)
         .maybeSingle();
 
-      if (cfg) {
-        if (cfg.activation_fee !== undefined) activationFee = Number(cfg.activation_fee);
-        if (cfg.free_quota !== undefined) freeQuota = Number(cfg.free_quota);
-        if (cfg.activation_enabled !== undefined) activationEnabled = Boolean(cfg.activation_enabled);
+      if (row?.asaas_platform_wallet_id) {
+        try {
+          const parsed = JSON.parse(row.asaas_platform_wallet_id);
+          if (parsed && typeof parsed === 'object') {
+            if (parsed.activationFee !== undefined) activationFee = Number(parsed.activationFee);
+            if (parsed.freeQuota !== undefined) freeQuota = Number(parsed.freeQuota);
+            if (parsed.activationEnabled !== undefined) activationEnabled = Boolean(parsed.activationEnabled);
+          }
+        } catch (_e) {}
       }
     } catch (_e) {}
 
@@ -84,25 +89,46 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    const payload: any = {
-      id: 'activation_config',
-      updated_at: new Date().toISOString()
-    };
-    if (activationFee !== undefined) payload.activation_fee = Number(activationFee);
-    if (freeQuota !== undefined) payload.free_quota = Number(freeQuota);
-    if (activationEnabled !== undefined) payload.activation_enabled = Boolean(activationEnabled);
-
-    const { data, error } = await supabase
+    // Ler linha existente de platform_settings
+    const { data: firstRow } = await supabase
       .from('platform_settings')
-      .upsert(payload, { onConflict: 'id' })
-      .select()
+      .select('id, asaas_platform_wallet_id')
+      .limit(1)
       .maybeSingle();
 
-    if (error) throw error;
+    let currentCfg: any = {};
+    if (firstRow?.asaas_platform_wallet_id) {
+      try {
+        currentCfg = JSON.parse(firstRow.asaas_platform_wallet_id) || {};
+      } catch (_e) {}
+    }
+
+    const updatedCfg = {
+      ...currentCfg,
+      activationFee: activationFee !== undefined ? Number(activationFee) : (currentCfg.activationFee ?? 12.90),
+      freeQuota: freeQuota !== undefined ? Number(freeQuota) : (currentCfg.freeQuota ?? 50),
+      activationEnabled: activationEnabled !== undefined ? Boolean(activationEnabled) : (currentCfg.activationEnabled ?? true),
+      updatedAt: new Date().toISOString()
+    };
+
+    const serializedCfg = JSON.stringify(updatedCfg);
+
+    if (firstRow?.id) {
+      const { error: updErr } = await supabase
+        .from('platform_settings')
+        .update({ asaas_platform_wallet_id: serializedCfg })
+        .eq('id', firstRow.id);
+      if (updErr) throw updErr;
+    } else {
+      const { error: insErr } = await supabase
+        .from('platform_settings')
+        .insert({ asaas_platform_wallet_id: serializedCfg });
+      if (insErr) throw insErr;
+    }
 
     return NextResponse.json({
       success: true,
-      config: data
+      config: updatedCfg
     });
 
   } catch (error: any) {
