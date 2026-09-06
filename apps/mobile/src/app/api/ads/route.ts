@@ -7,19 +7,27 @@ export interface AdItem {
   id: string;
   title: string;
   advertiserName: string;
+  partnerName?: string;
+  partnerId?: string;
+  description?: string;
   mediaType: 'image' | 'video';
   mediaUrl: string;
   thumbnailUrl?: string;
   placement: 'home_banner' | 'home_story' | 'featured_store' | 'partner_b2b' | 'both' | 'banner' | 'story';
   targetType: 'store' | 'whatsapp' | 'url';
   targetValue: string;
+  targetUrl?: string;
   city?: string;
   isActive: boolean;
+  active?: boolean;
   viewsCount: number;
+  impressionsCount?: number;
   clicksCount: number;
   createdAt: string;
   startsAt?: string;
   endsAt?: string;
+  startDate?: string;
+  endDate?: string;
   pricePaid?: number;
 }
 
@@ -124,7 +132,19 @@ export async function GET(request: Request) {
       try {
         const parsed = JSON.parse(row.asaas_platform_wallet_id);
         if (parsed && Array.isArray(parsed.ads) && parsed.ads.length > 0) {
-          ads = parsed.ads;
+          const dbAds: AdItem[] = parsed.ads;
+          const activeBanners = dbAds.filter(a => 
+            (a.placement === 'home_banner' || a.placement === 'banner' || a.placement === 'both') && 
+            a.isActive !== false && (a as any).active !== false
+          );
+          
+          if (activeBanners.length < 3) {
+            const dbIds = new Set(dbAds.map(a => a.id));
+            const missingDefaults = DEFAULT_ADS.filter(d => !dbIds.has(d.id));
+            ads = [...dbAds, ...missingDefaults];
+          } else {
+            ads = dbAds;
+          }
         }
       } catch (_e) {}
     }
