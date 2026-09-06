@@ -4,7 +4,7 @@ import React, { useEffect, useState, useSyncExternalStore, Suspense } from "reac
 import Link from "next/link";
 import { ShoppingCart, BookOpen, MessageSquare } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAppStore, haversineKm, getRatesForCity } from "@/store/useAppStore";
+import { useAppStore, haversineKm, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PixModal } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -256,9 +256,7 @@ export default function StorefrontPage() {
     const loja = store.users?.[lojaId];
     if (!loja || !loja.lat || !currentUser?.lat) return { freteCliente: 0, dist: 0, subsidy: 0 };
     const dist = haversineKm(loja.lat, loja.lng!, currentUser!.lat, currentUser!.lng!);
-    const freteTotal = rates.courier_payment_mode === 'FIXED' 
-      ? (rates.courier_fixed_fee ?? 8) 
-      : dist * rates.b2c_km;
+    const freteTotal = calculateOrderFreight('B2C', dist, rates);
     const subsidy = loja.freteSubsidyPct || 0;
     const freteCliente = freteTotal * (1 - subsidy / 100);
     return { freteCliente, dist, subsidy };

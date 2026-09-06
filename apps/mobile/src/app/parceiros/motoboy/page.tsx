@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Bike, BookOpen } from "lucide-react";
-import { useAppStore, getRatesForCity, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
+import { useAppStore, getRatesForCity, calculateOrderFreight, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
@@ -91,12 +91,13 @@ export default function MotoboyDashboard() {
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const getMotoboyFee = (o: any) => {
-    const orderCity = o.cidadeOrigem || currentUser?.cidade || 'Belém';
+    if (o.taxas?.entregaMotorista && o.taxas.entregaMotorista > 0) {
+      return o.taxas.entregaMotorista;
+    }
+    const orderCity = o.cidadeOrigem || (o.lojaId && store.users[o.lojaId] ? store.users[o.lojaId]?.cidade : undefined) || currentUser?.cidade || 'Belém';
     const cityRates = getRatesForCity(orderCity, store.rates, store.cities) || rates;
     const dist = o.distancia || 1.0;
-    const totalFrete = (cityRates.courier_payment_mode === 'FIXED') 
-      ? (cityRates.courier_fixed_fee ?? 8.00) 
-      : dist * (cityRates.b2c_km || 2.00);
+    const totalFrete = calculateOrderFreight('B2C', dist, cityRates);
     const platPct = (cityRates.b2c_mot_plat ?? 15) / 100;
     return totalFrete * (1 - platPct);
   };

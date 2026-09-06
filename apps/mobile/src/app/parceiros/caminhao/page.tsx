@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Truck, BookOpen } from "lucide-react";
-import { useAppStore, getRatesForCity, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
+import { useAppStore, getRatesForCity, calculateOrderFreight, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
@@ -91,12 +91,13 @@ export default function CaminhaoDashboard() {
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const getDriverFee = (o: any) => {
-    const orderCity = o.cidadeOrigem || currentUser?.cidade || 'Belém';
+    if (o.taxas?.entregaMotorista && o.taxas.entregaMotorista > 0) {
+      return o.taxas.entregaMotorista;
+    }
+    const orderCity = o.cidadeOrigem || (o.origemId && store.users[o.origemId] ? store.users[o.origemId]?.cidade : undefined) || currentUser?.cidade || 'Belém';
     const cityRates = getRatesForCity(orderCity, store.rates, store.cities) || rates;
     const dist = o.distancia || 1.0;
-    const totalFrete = o.type === 'COLETA'
-      ? (cityRates.ecopoint_payment_mode === 'FIXED' ? (cityRates.ecopoint_fixed_fee ?? 50.00) : dist * (cityRates.col_km || 8.00))
-      : (cityRates.transporter_payment_mode === 'FIXED' ? (cityRates.transporter_fixed_fee ?? 150.00) : dist * (cityRates.b2b_km || 4.00));
+    const totalFrete = calculateOrderFreight(o.type || 'B2B', dist, cityRates);
     const platPct = ((o.type === 'COLETA' ? cityRates.col_mot_plat : cityRates.b2b_mot_plat) ?? 15) / 100;
     return totalFrete * (1 - platPct);
   };

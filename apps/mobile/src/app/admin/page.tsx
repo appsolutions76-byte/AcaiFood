@@ -8,7 +8,7 @@ import {
   Clock, CheckCircle, X, Eye, ArrowUpRight, Check, FileSpreadsheet,
   FileText, Layers, Phone, Navigation, ShieldCheck, DollarSign
 } from "lucide-react";
-import { useAppStore, Order, City, getRatesForCity } from "@/store/useAppStore";
+import { useAppStore, Order, City, getRatesForCity, calculateOrderFreight, calculateOrderTaxes } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -475,54 +475,14 @@ function AdminDashboardContent() {
 
 
   // 6. Cálculos de Dashboard
+  // 6. Cálculos de Dashboard
   const concluidos = orders.filter(o => o && (o.status === 'entregue' || o.status === 'arquivado'));
   
   const getDynamicTaxes = (o: Order) => {
-    let repasseLoja = 0, repasseForn = 0, repasseMoto = 0, platVenda = 0, platEntrega = 0, entregaTotal = 0;
-    if (!o) return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };
-    
-    // Resolve as taxas da cidade de origem do pedido
+    if (!o) return { repasseLoja: 0, repasseForn: 0, repasseMoto: 0, platVenda: 0, platEntrega: 0, entregaTotal: 0 };
     const orderCity = (o as any).cidadeOrigem || (o.lojaId && users[o.lojaId] ? users[o.lojaId]?.cidade : undefined);
     const activeRates = getRatesForCity(orderCity, rates, cities);
-
-    const dist = o.distancia || 0;
-    
-    if (o.type === 'B2C' || !o.type) {
-        entregaTotal = (activeRates.courier_payment_mode === 'FIXED') 
-          ? (activeRates.courier_fixed_fee ?? 6.00) 
-          : (o.taxas?.entregaTotal || dist * (activeRates.b2c_km || 2));
-        
-        const sub = (o.lojaId && users[o.lojaId] ? users[o.lojaId]?.freteSubsidyPct || 0 : 0) / 100;
-        const freteLoja = entregaTotal * sub;
-        
-        platVenda = (o.valor || 0) * ((activeRates.b2c_plat || 10) / 100);
-        platEntrega = entregaTotal * ((activeRates.b2c_mot_plat || 15) / 100);
-        
-        repasseLoja = (o.valor || 0) - platVenda - freteLoja;
-        repasseMoto = (o as any).driver_amount || (o.taxas?.entregaMotorista && activeRates.courier_payment_mode !== 'FIXED' ? o.taxas.entregaMotorista : (entregaTotal - platEntrega));
-    } else if (o.type === 'B2B') {
-        entregaTotal = (activeRates.transporter_payment_mode === 'FIXED') 
-          ? (activeRates.transporter_fixed_fee ?? 150) 
-          : (o.taxas?.entregaTotal || dist * (activeRates.b2b_km || 4));
-        
-        const sub = (o.fornecedorId && users[o.fornecedorId] ? users[o.fornecedorId]?.freteSubsidyPct || 0 : 0) / 100;
-        const freteForn = entregaTotal * sub;
-        
-        platVenda = (o.valor || 0) * ((activeRates.b2b_plat || 10) / 100);
-        platEntrega = entregaTotal * ((activeRates.b2b_mot_plat || 15) / 100);
-        
-        repasseForn = (o.valor || 0) - platVenda - freteForn;
-        repasseMoto = (o as any).driver_amount || (o.taxas?.entregaMotorista && activeRates.transporter_payment_mode !== 'FIXED' ? o.taxas.entregaMotorista : (entregaTotal - platEntrega));
-    } else if (o.type === 'COLETA') {
-        entregaTotal = (activeRates.ecopoint_payment_mode === 'FIXED') 
-          ? (activeRates.ecopoint_fixed_fee ?? 50) 
-          : (o.taxas?.entregaTotal || dist * (activeRates.col_km || 8));
-        
-        platEntrega = entregaTotal * ((activeRates.col_mot_plat || 15) / 100);
-        repasseMoto = (o as any).driver_amount || (o.taxas?.entregaMotorista && activeRates.ecopoint_payment_mode !== 'FIXED' ? o.taxas.entregaMotorista : (entregaTotal - platEntrega));
-    }
-    
-    return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };
+    return calculateOrderTaxes(o, activeRates, users);
   };
 
   const isMoto = (motId?: string | null) => { 
@@ -543,57 +503,29 @@ function AdminDashboardContent() {
     return roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb'))) || veicStr.includes('caminh') || veicStr.includes('caçamb'); 
   };
 
-  let totaisVendas = 0;
-  let totaisFretes = 0;
-  let fatLiqBatedeiras = 0;
-  let fatBrutoBatedeiras = 0;
-  let fatLiqMotos = 0;
-  let fatBrutoMotos = 0;
-  let fatLiqCaminhoes = 0;
-  let fatBrutoCaminhoes = 0;
-  let fatLiqFornecedores = 0;
-  let fatBrutoFornecedores = 0;
-  let movimentacaoTotal = 0;
-
-  concluidos.forEach(o => {
-      const dyn = getDynamicTaxes(o);
-      totaisVendas += dyn.platVenda || 0;
-      totaisFretes += dyn.platEntrega || 0;
-      movimentacaoTotal += (o.valor || 0) + (dyn.entregaTotal || 0);
-      
-      if (o.type === 'B2C') {
-          fatLiqBatedeiras += dyn.repasseLoja || 0;
-          fatBrutoBatedeiras += (o.valor || 0);
-      } else if (o.type === 'B2B') {
-          fatLiqFornecedores += dyn.repasseForn || 0;
-          fatBrutoFornecedores += (o.valor || 0);
-      }
-      
-      if (isMoto(o.motoristaId)) {
-          fatLiqMotos += dyn.repasseMoto || 0;
-          fatBrutoMotos += dyn.entregaTotal || 0;
-      } else if (isCaminhao(o.motoristaId)) {
-          fatLiqCaminhoes += dyn.repasseMoto || 0;
-          fatBrutoCaminhoes += dyn.entregaTotal || 0;
-      }
-  });
-
   const getFilteredLocalStats = (period: 'historical' | 'monthly' | 'daily') => {
-    let list = concluidos;
     const now = new Date();
-    if (period === 'daily') {
-      list = concluidos.filter(o => {
-        if (!o.createdAt) return false;
-        const d = new Date(o.createdAt);
+    
+    // Filtra os pedidos com base no período selecionado
+    const periodOrders = orders.filter(o => {
+      if (!o) return false;
+      if (period === 'historical') return true;
+      if (!o.createdAt) return false;
+      const d = new Date(o.createdAt);
+      if (isNaN(d.getTime())) return false;
+      if (period === 'daily') {
         return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      });
-    } else if (period === 'monthly') {
-      list = concluidos.filter(o => {
-        if (!o.createdAt) return false;
-        const d = new Date(o.createdAt);
+      }
+      if (period === 'monthly') {
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      });
-    }
+      }
+      return true;
+    });
+
+    const concluidosList = periodOrders.filter(o => o.status === 'entregue' || o.status === 'arquivado');
+    const aceitosList = periodOrders.filter(o => ['preparo', 'pronto', 'em_rota', 'aguardando_cliente', 'entregue', 'arquivado'].includes(o.status));
+    const canceladosList = periodOrders.filter(o => o.status === 'cancelado');
+    const emRotaList = periodOrders.filter(o => o.status === 'em_rota' || o.status === 'aguardando_cliente');
 
     let localVendas = 0, localFretes = 0, localMov = 0;
     let localBatBruto = 0, localBatLiq = 0;
@@ -601,13 +533,13 @@ function AdminDashboardContent() {
     let localMotBruto = 0, localMotLiq = 0;
     let localCamBruto = 0, localCamLiq = 0;
 
-    list.forEach(o => {
+    concluidosList.forEach(o => {
       const dyn = getDynamicTaxes(o);
       localVendas += dyn.platVenda || 0;
       localFretes += dyn.platEntrega || 0;
       localMov += (o.valor || 0) + (dyn.entregaTotal || 0);
 
-      if (o.type === 'B2C') {
+      if (o.type === 'B2C' || !o.type) {
         localBatBruto += o.valor || 0;
         localBatLiq += dyn.repasseLoja || 0;
       } else if (o.type === 'B2B') {
@@ -624,28 +556,12 @@ function AdminDashboardContent() {
       }
     });
 
-    const totalPedidosFiltered = period === 'historical' ? orders.length : list.length;
-    const aceitosFiltered = period === 'historical' 
-      ? orders.filter(o => o && ['preparo', 'em_rota', 'entregue'].includes(o.status)).length 
-      : list.filter(o => o && ['preparo', 'em_rota', 'entregue'].includes(o.status)).length;
-    const canceladosFiltered = period === 'historical'
-      ? orders.filter(o => o && o.status === 'cancelado').length
-      : orders.filter(o => {
-          if (o.status !== 'cancelado') return false;
-          if (!o.createdAt) return false;
-          const d = new Date(o.createdAt);
-          if (period === 'daily') {
-            return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-          } else {
-            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-          }
-        }).length;
-
     return {
-      ordersCount: totalPedidosFiltered,
-      aceitos: aceitosFiltered,
-      cancelados: canceladosFiltered,
-      concluidosCount: list.length,
+      ordersCount: periodOrders.length,
+      aceitos: aceitosList.length,
+      cancelados: canceladosList.length,
+      emRota: emRotaList.length,
+      concluidosCount: concluidosList.length,
       volume: localMov,
       appRev: localVendas + localFretes,
       fornBruto: localFornBruto,
@@ -660,33 +576,31 @@ function AdminDashboardContent() {
   };
 
   const localStats = getFilteredLocalStats(selectedPeriod);
-  const b = adminBalances?.[selectedPeriod];
-  const hasDbBalances = !!b && (b.updated_at !== undefined || b.total_orders !== undefined);
 
-  const currentOrdersCount = hasDbBalances ? (b.total_orders ?? 0) : localStats.ordersCount;
-  const currentConcluidosCount = hasDbBalances ? (b.total_orders ?? 0) : localStats.concluidosCount;
-  const currentAppRevenue = hasDbBalances ? (b.app_revenue ?? 0) : localStats.appRev;
-  const currentVolumeTotal = hasDbBalances ? (b.total_volume ?? 0) : localStats.volume;
+  const currentOrdersCount = localStats.ordersCount;
+  const currentConcluidosCount = localStats.concluidosCount;
+  const currentAppRevenue = localStats.appRev;
+  const currentVolumeTotal = localStats.volume;
   
-  const currentFornBruto = hasDbBalances ? (b.fornecedores_bruto ?? 0) : localStats.fornBruto;
-  const currentFornLiq = hasDbBalances ? (b.fornecedores_liquido ?? 0) : localStats.fornLiq;
+  const currentFornBruto = localStats.fornBruto;
+  const currentFornLiq = localStats.fornLiq;
   
-  const currentBatBruto = hasDbBalances ? (b.batedeiras_bruto ?? 0) : localStats.batBruto;
-  const currentBatLiq = hasDbBalances ? (b.batedeiras_liquido ?? 0) : localStats.batLiq;
+  const currentBatBruto = localStats.batBruto;
+  const currentBatLiq = localStats.batLiq;
   
-  const currentMotBruto = hasDbBalances ? (b.motoristas_bruto ?? 0) : localStats.motBruto;
-  const currentMotLiq = hasDbBalances ? (b.motoristas_liquido ?? 0) : localStats.motLiq;
+  const currentMotBruto = localStats.motBruto;
+  const currentMotLiq = localStats.motLiq;
   
-  const currentCamBruto = hasDbBalances ? (b.caminhoes_bruto ?? 0) : localStats.camBruto;
-  const currentCamLiq = hasDbBalances ? (b.caminhoes_liquido ?? 0) : localStats.camLiq;
+  const currentCamBruto = localStats.camBruto;
+  const currentCamLiq = localStats.camLiq;
 
   const totais = {
-      pedidos: currentOrdersCount,
-      aceitos: hasDbBalances && b.total_orders === 0 ? 0 : (selectedPeriod === 'historical' ? orders.filter(o => o && ['preparo', 'em_rota', 'entregue'].includes(o.status)).length : localStats.aceitos),
-      cancelados: hasDbBalances && b.total_orders === 0 ? 0 : (selectedPeriod === 'historical' ? orders.filter(o => o && o.status === 'cancelado').length : localStats.cancelados),
-      concluidos: currentConcluidosCount,
-      emRota: hasDbBalances && b.total_orders === 0 ? 0 : orders.filter(o => o && o.status === 'em_rota').length,
-      receitaVendas: currentAppRevenue,
+      pedidos: localStats.ordersCount,
+      aceitos: localStats.aceitos,
+      cancelados: localStats.cancelados,
+      concluidos: localStats.concluidosCount,
+      emRota: localStats.emRota,
+      receitaVendas: localStats.appRev,
       receitaFretes: 0
   };
 

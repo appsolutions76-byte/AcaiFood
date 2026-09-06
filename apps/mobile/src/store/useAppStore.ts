@@ -207,6 +207,89 @@ export function getRatesForCity(cityName?: string | null, globalRates?: any, cit
   return globalRates;
 }
 
+export function calculateOrderFreight(
+  type: 'B2C' | 'B2B' | 'COLETA' | string = 'B2C',
+  distanceKm: number = 0,
+  rates: any = {}
+): number {
+  const dist = Math.max(0, distanceKm || 0);
+  const oType = String(type || 'B2C').toUpperCase();
+
+  if (oType === 'B2C') {
+    if (rates?.courier_payment_mode === 'FIXED') {
+      const fixed = rates?.courier_fixed_fee ?? rates?.b2c_km;
+      return Number(fixed !== undefined && fixed !== null && Number(fixed) > 0 ? Number(fixed) : 6.00);
+    }
+    const perKm = Number(rates?.b2c_km ?? 2.00);
+    return Number((dist * perKm).toFixed(2));
+  }
+
+  if (oType === 'B2B') {
+    if (rates?.transporter_payment_mode === 'FIXED') {
+      const fixed = rates?.transporter_fixed_fee ?? rates?.b2b_km;
+      return Number(fixed !== undefined && fixed !== null && Number(fixed) > 0 ? Number(fixed) : 150.00);
+    }
+    const perKm = Number(rates?.b2b_km ?? 4.00);
+    return Number((dist * perKm).toFixed(2));
+  }
+
+  if (oType === 'COLETA') {
+    if (rates?.ecopoint_payment_mode === 'FIXED') {
+      const fixed = rates?.ecopoint_fixed_fee ?? rates?.col_valor ?? rates?.col_km;
+      return Number(fixed !== undefined && fixed !== null && Number(fixed) > 0 ? Number(fixed) : 50.00);
+    }
+    const perKm = Number(rates?.col_km ?? 8.00);
+    return Number((dist * perKm).toFixed(2));
+  }
+
+  return 0;
+}
+
+export function calculateOrderTaxes(order: Order, rates: any, storeUsers: Record<string, User> = {}) {
+  const oType = (order.type || 'B2C').toUpperCase();
+  const dist = order.distancia || 0;
+  
+  const entregaTotal = (order.taxas?.entregaTotal && Number(order.taxas.entregaTotal) > 0)
+    ? Number(order.taxas.entregaTotal)
+    : calculateOrderFreight(oType, dist, rates);
+
+  let repasseLoja = 0, repasseForn = 0, repasseMoto = 0, platVenda = 0, platEntrega = 0;
+
+  if (oType === 'B2C') {
+    const loja = order.lojaId ? storeUsers[order.lojaId] : null;
+    const subPct = Number(loja?.freteSubsidyPct ?? 0) / 100;
+    const freteLoja = entregaTotal * subPct;
+    
+    platVenda = (order.valor || 0) * (Number(rates?.b2c_plat ?? 10) / 100);
+    platEntrega = entregaTotal * (Number(rates?.b2c_mot_plat ?? 15) / 100);
+
+    repasseLoja = (order.valor || 0) - platVenda - freteLoja;
+    repasseMoto = (order as any).driver_amount || (order.taxas?.entregaMotorista && rates?.courier_payment_mode !== 'FIXED' ? order.taxas.entregaMotorista : (entregaTotal - platEntrega));
+  } else if (oType === 'B2B') {
+    const forn = order.fornecedorId ? storeUsers[order.fornecedorId] : null;
+    const subPct = Number(forn?.freteSubsidyPct ?? 0) / 100;
+    const freteForn = entregaTotal * subPct;
+
+    platVenda = (order.valor || 0) * (Number(rates?.b2b_plat ?? 10) / 100);
+    platEntrega = entregaTotal * (Number(rates?.b2b_mot_plat ?? 15) / 100);
+
+    repasseForn = (order.valor || 0) - platVenda - freteForn;
+    repasseMoto = (order as any).driver_amount || (order.taxas?.entregaMotorista && rates?.transporter_payment_mode !== 'FIXED' ? order.taxas.entregaMotorista : (entregaTotal - platEntrega));
+  } else if (oType === 'COLETA') {
+    platEntrega = entregaTotal * (Number(rates?.col_mot_plat ?? 15) / 100);
+    repasseMoto = (order as any).driver_amount || (order.taxas?.entregaMotorista && rates?.ecopoint_payment_mode !== 'FIXED' ? order.taxas.entregaMotorista : (entregaTotal - platEntrega));
+  }
+
+  return {
+    entregaTotal,
+    repasseLoja,
+    repasseForn,
+    repasseMoto,
+    platVenda,
+    platEntrega
+  };
+}
+
 interface AppState {
   cities: City[];
   rates: {
@@ -1708,24 +1791,7 @@ export const useAppStore = create<AppState>()(
         const userCity = currentUser.cidade || 'Belém';
         const cityRates = getRatesForCity(userCity, state.rates, state.cities);
 
-        const calcFrete = (t: string, d: number) => {
-          if (t === 'B2C') {
-            return (cityRates.courier_payment_mode === 'FIXED') 
-              ? (cityRates.courier_fixed_fee ?? 8.00) 
-              : d * cityRates.b2c_km;
-          }
-          if (t === 'B2B') {
-            return (cityRates.transporter_payment_mode === 'FIXED') 
-              ? (cityRates.transporter_fixed_fee ?? 150.00) 
-              : d * cityRates.b2b_km;
-          }
-          if (t === 'COLETA') {
-            return (cityRates.ecopoint_payment_mode === 'FIXED') 
-              ? (cityRates.ecopoint_fixed_fee ?? cityRates.col_valor ?? 50.00) 
-              : d * cityRates.col_km;
-          }
-          return 0;
-        };
+        const calcFrete = (t: string, d: number) => calculateOrderFreight(t, d, cityRates);
 
         const cartItems = state.cart.items;
         if (cartItems.length === 0 && tipo !== 'COLETA') {
