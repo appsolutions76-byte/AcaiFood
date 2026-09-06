@@ -552,9 +552,15 @@ function AdminDashboardContent() {
     }
     setIsSavingAd(true);
     try {
+      const isAct = adFormData.active !== false;
       const payload = {
-        ...(editingAd ? { id: editingAd.id } : {}),
-        ...adFormData
+        action: 'save',
+        ad: {
+          ...(editingAd ? { id: editingAd.id } : {}),
+          ...adFormData,
+          isActive: isAct,
+          active: isAct
+        }
       };
       const res = await fetch('/api/admin/ads', {
         method: 'POST',
@@ -582,12 +588,13 @@ function AdminDashboardContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...ad,
-          active: !ad.active
+          action: 'toggle',
+          adId: ad.id
         })
       });
       if (res.ok) {
-        showToast(ad.active ? "⏸️ Anúncio pausado!" : "▶️ Anúncio ativado!");
+        const currentlyActive = ad.isActive !== false && ad.active !== false;
+        showToast(currentlyActive ? "⏸️ Anúncio pausado!" : "▶️ Anúncio ativado!");
         fetchAds();
       }
     } catch (err: any) {
@@ -598,8 +605,13 @@ function AdminDashboardContent() {
   const handleDeleteAd = async (adId: string) => {
     if (!confirm("Tem certeza que deseja excluir este anúncio comercial?")) return;
     try {
-      const res = await fetch(`/api/admin/ads?id=${adId}`, {
-        method: 'DELETE'
+      const res = await fetch('/api/admin/ads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete',
+          adId
+        })
       });
       if (res.ok) {
         showToast("🗑️ Anúncio excluído com sucesso!");
@@ -2232,14 +2244,14 @@ function AdminDashboardContent() {
               <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
                 <p className="text-[10px] text-zinc-500 uppercase font-bold">Campanhas Ativas</p>
                 <p className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">
-                  {adsList.filter(a => a.active).length} <span className="text-xs text-zinc-400 font-normal">/ {adsList.length} total</span>
+                  {adsList.filter(a => a.isActive !== false && (a as any).active !== false).length} <span className="text-xs text-zinc-400 font-normal">/ {adsList.length} total</span>
                 </p>
               </div>
 
               <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
                 <p className="text-[10px] text-zinc-500 uppercase font-bold">Total de Impressões</p>
                 <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">
-                  {adsList.reduce((acc, a) => acc + (a.impressionsCount || 0), 0).toLocaleString('pt-BR')}
+                  {adsList.reduce((acc, a) => acc + (a.impressionsCount || a.viewsCount || 0), 0).toLocaleString('pt-BR')}
                 </p>
               </div>
 
@@ -2291,7 +2303,9 @@ function AdminDashboardContent() {
                     </thead>
                     <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                       {adsList.map(ad => {
-                        const ctr = ad.impressionsCount > 0 ? ((ad.clicksCount || 0) / ad.impressionsCount * 100).toFixed(1) : '0.0';
+                        const isAdActive = ad.isActive !== false && (ad as any).active !== false;
+                        const impressions = ad.impressionsCount || ad.viewsCount || 0;
+                        const ctr = impressions > 0 ? ((ad.clicksCount || 0) / impressions * 100).toFixed(1) : '0.0';
                         return (
                           <tr key={ad.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition">
                             <td className="p-3.5">
@@ -2314,15 +2328,15 @@ function AdminDashboardContent() {
                             </td>
                             <td className="p-3.5">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                ad.placement === 'story' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
-                                ad.placement === 'banner' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+                                ad.placement === 'story' || ad.placement === 'home_story' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
+                                ad.placement === 'banner' || ad.placement === 'home_banner' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
                                 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                               }`}>
-                                {ad.placement === 'story' ? '🟣 Stories' : ad.placement === 'banner' ? '🔵 Banner' : '🟢 Stories + Banner'}
+                                {ad.placement === 'story' || ad.placement === 'home_story' ? '🟣 Stories' : ad.placement === 'banner' || ad.placement === 'home_banner' ? '🔵 Banner' : '🟢 Stories + Banner'}
                               </span>
                             </td>
                             <td className="p-3.5 text-zinc-600 dark:text-zinc-400 font-medium">
-                              {ad.city === 'all' || !ad.city ? 'Todas as Cidades' : ad.city}
+                              {ad.city === 'all' || ad.city === 'ALL' || !ad.city ? 'Todas as Cidades' : ad.city}
                             </td>
                             <td className="p-3.5 text-[11px] text-zinc-500 whitespace-nowrap">
                               {ad.startDate ? new Date(ad.startDate).toLocaleDateString('pt-BR') : '---'} até {ad.endDate ? new Date(ad.endDate).toLocaleDateString('pt-BR') : '---'}
@@ -2332,7 +2346,7 @@ function AdminDashboardContent() {
                             </td>
                             <td className="p-3.5">
                               <div className="space-y-0.5">
-                                <p className="text-zinc-700 dark:text-zinc-300 font-bold">👁️ {ad.impressionsCount || 0} views</p>
+                                <p className="text-zinc-700 dark:text-zinc-300 font-bold">👁️ {impressions} views</p>
                                 <p className="text-[10px] text-zinc-500">🖱️ {ad.clicksCount || 0} cliques ({ctr}% CTR)</p>
                               </div>
                             </td>
@@ -2340,12 +2354,12 @@ function AdminDashboardContent() {
                               <button
                                 onClick={() => handleToggleAdStatus(ad)}
                                 className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
-                                  ad.active 
+                                  isAdActive 
                                     ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300' 
                                     : 'bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400'
                                 }`}
                               >
-                                {ad.active ? '🟢 Ativo' : '⏸️ Pausado'}
+                                {isAdActive ? '🟢 Ativo' : '⏸️ Pausado'}
                               </button>
                             </td>
                             <td className="p-3.5 text-right whitespace-nowrap">
@@ -2360,13 +2374,13 @@ function AdminDashboardContent() {
                                       description: ad.description || '',
                                       mediaType: ad.mediaType || 'image',
                                       mediaUrl: ad.mediaUrl || '',
-                                      targetUrl: ad.targetUrl || '',
+                                      targetUrl: ad.targetUrl || ad.targetValue || '',
                                       placement: ad.placement || 'both',
                                       city: ad.city || 'all',
-                                      startDate: ad.startDate || new Date().toISOString().slice(0, 10),
-                                      endDate: ad.endDate || new Date().toISOString().slice(0, 10),
+                                      startDate: ad.startDate || ad.startsAt || new Date().toISOString().slice(0, 10),
+                                      endDate: ad.endDate || ad.endsAt || new Date().toISOString().slice(0, 10),
                                       pricePaid: ad.pricePaid || 0,
-                                      active: ad.active !== false
+                                      active: isAdActive
                                     });
                                     setAdModalOpen(true);
                                   }}

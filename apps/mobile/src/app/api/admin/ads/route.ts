@@ -19,10 +19,16 @@ export async function GET(request: Request) {
     if (row?.asaas_platform_wallet_id) {
       try {
         const parsed = JSON.parse(row.asaas_platform_wallet_id);
-        if (parsed && Array.isArray(parsed.ads)) {
+        if (parsed && Array.isArray(parsed.ads) && parsed.ads.length > 0) {
           ads = parsed.ads;
         }
       } catch (_e) {}
+    }
+
+    // Se ainda não houver anúncios salvos no banco, inicializa com DEFAULT_ADS
+    if (ads.length === 0) {
+      const { DEFAULT_ADS } = await import('@/app/api/ads/route');
+      ads = DEFAULT_ADS;
     }
 
     return NextResponse.json({
@@ -61,17 +67,21 @@ export async function POST(request: Request) {
       } catch (_e) {}
     }
 
-    let ads: AdItem[] = Array.isArray(currentCfg.ads) ? currentCfg.ads : [];
+    const { DEFAULT_ADS } = await import('@/app/api/ads/route');
+    let ads: AdItem[] = Array.isArray(currentCfg.ads) && currentCfg.ads.length > 0 ? currentCfg.ads : [...DEFAULT_ADS];
 
     if (action === 'save' && ad) {
       const existingIdx = ads.findIndex(a => a.id === ad.id);
+      const isAct = ad.active !== false && ad.isActive !== false;
       const newAd: AdItem = {
         ...ad,
         id: ad.id || `ad-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        isActive: isAct,
         viewsCount: ad.viewsCount || 0,
         clicksCount: ad.clicksCount || 0,
         createdAt: ad.createdAt || new Date().toISOString()
       };
+      (newAd as any).active = isAct;
 
       if (existingIdx >= 0) {
         ads[existingIdx] = newAd;
@@ -81,7 +91,13 @@ export async function POST(request: Request) {
     } else if (action === 'delete' && adId) {
       ads = ads.filter(a => a.id !== adId);
     } else if (action === 'toggle' && adId) {
-      ads = ads.map(a => a.id === adId ? { ...a, isActive: !a.isActive } : a);
+      ads = ads.map(a => {
+        if (a.id === adId) {
+          const nextVal = !(a.isActive !== false && (a as any).active !== false);
+          return { ...a, isActive: nextVal, active: nextVal };
+        }
+        return a;
+      });
     }
 
     currentCfg.ads = ads;

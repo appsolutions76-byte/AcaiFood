@@ -23,7 +23,7 @@ export interface AdItem {
   pricePaid?: number;
 }
 
-const DEFAULT_ADS: AdItem[] = [
+export const DEFAULT_ADS: AdItem[] = [
   {
     id: 'ad-default-1',
     title: 'Açaí Puro da Amazônia - Direto da Batedeira',
@@ -129,7 +129,7 @@ export async function GET(request: Request) {
       } catch (_e) {}
     }
 
-    let filtered = ads.filter(a => a.isActive !== false);
+    let filtered = ads.filter(a => a.isActive !== false && (a as any).active !== false);
 
     if (city && city !== 'ALL' && city !== 'all') {
       filtered = filtered.filter(a => !a.city || a.city === 'ALL' || a.city === 'all' || a.city.toLowerCase() === city.toLowerCase());
