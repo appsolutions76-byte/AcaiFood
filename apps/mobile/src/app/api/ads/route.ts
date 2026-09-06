@@ -10,7 +10,7 @@ export interface AdItem {
   mediaType: 'image' | 'video';
   mediaUrl: string;
   thumbnailUrl?: string;
-  placement: 'home_banner' | 'home_story' | 'featured_store' | 'partner_b2b';
+  placement: 'home_banner' | 'home_story' | 'featured_store' | 'partner_b2b' | 'both' | 'banner' | 'story';
   targetType: 'store' | 'whatsapp' | 'url';
   targetValue: string;
   city?: string;
@@ -20,6 +20,7 @@ export interface AdItem {
   createdAt: string;
   startsAt?: string;
   endsAt?: string;
+  pricePaid?: number;
 }
 
 const DEFAULT_ADS: AdItem[] = [
@@ -30,12 +31,44 @@ const DEFAULT_ADS: AdItem[] = [
     mediaType: 'image',
     mediaUrl: '/banner.png?v=4',
     placement: 'home_banner',
-    targetType: 'store',
-    targetValue: '',
+    targetType: 'url',
+    targetValue: 'https://www.acaifood.app.br/',
     city: 'ALL',
     isActive: true,
     viewsCount: 142,
     clicksCount: 28,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'ad-banner-2',
+    title: 'Açaí Grosso Tradicional & Batido na Hora',
+    advertiserName: 'Ponto do Açaí',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=1200&q=80',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=200&q=60',
+    placement: 'home_banner',
+    targetType: 'store',
+    targetValue: 'ponto_do_acai',
+    city: 'ALL',
+    isActive: true,
+    viewsCount: 120,
+    clicksCount: 34,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'ad-banner-3',
+    title: 'Açaí Completo com Peixe Frito e Farinha de Bragança',
+    advertiserName: 'Churrasco do B10',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&q=80',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&q=60',
+    placement: 'home_banner',
+    targetType: 'store',
+    targetValue: 'churrasco_b10',
+    city: 'ALL',
+    isActive: true,
+    viewsCount: 105,
+    clicksCount: 22,
     createdAt: new Date().toISOString()
   },
   {
@@ -47,7 +80,7 @@ const DEFAULT_ADS: AdItem[] = [
     thumbnailUrl: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=200&q=60',
     placement: 'home_story',
     targetType: 'store',
-    targetValue: '',
+    targetValue: 'ponto_do_acai',
     city: 'ALL',
     isActive: true,
     viewsCount: 95,
@@ -63,7 +96,7 @@ const DEFAULT_ADS: AdItem[] = [
     thumbnailUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&q=60',
     placement: 'home_story',
     targetType: 'store',
-    targetValue: '',
+    targetValue: 'churrasco_b10',
     city: 'ALL',
     isActive: true,
     viewsCount: 88,
@@ -98,12 +131,18 @@ export async function GET(request: Request) {
 
     let filtered = ads.filter(a => a.isActive !== false);
 
-    if (city && city !== 'ALL') {
-      filtered = filtered.filter(a => !a.city || a.city === 'ALL' || a.city.toLowerCase() === city.toLowerCase());
+    if (city && city !== 'ALL' && city !== 'all') {
+      filtered = filtered.filter(a => !a.city || a.city === 'ALL' || a.city === 'all' || a.city.toLowerCase() === city.toLowerCase());
     }
 
     if (placement) {
-      filtered = filtered.filter(a => a.placement === placement);
+      filtered = filtered.filter(a => {
+        const p = a.placement;
+        if (!p || p === 'both') return true;
+        if (placement === 'home_banner') return p === 'home_banner' || p === 'banner';
+        if (placement === 'home_story') return p === 'home_story' || p === 'story';
+        return p === placement;
+      });
     }
 
     return NextResponse.json({

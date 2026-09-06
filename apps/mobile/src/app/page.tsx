@@ -84,6 +84,14 @@ export default function StorefrontPage() {
   const [selectedBairro, setSelectedBairro] = useState<string>('all');
   const [visibleStoreLimit, setVisibleStoreLimit] = useState<number>(12);
 
+  useEffect(() => {
+    if (selectedStoreId && store.users?.[selectedStoreId]) {
+      document.title = `${store.users[selectedStoreId].name} - AçaíFood Oficial`;
+    } else {
+      document.title = 'AçaíFood - O Marketplace Definitivo do Açaí';
+    }
+  }, [selectedStoreId, store.users]);
+
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
@@ -516,7 +524,14 @@ export default function StorefrontPage() {
         <div className="flex justify-between items-center max-w-5xl mx-auto">
           <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
             <span className="text-2xl">🥣</span>
-            <h1 className="text-xl font-bold">AçaíFood</h1>
+            <div>
+              <h1 className="text-xl font-bold leading-tight">AçaíFood</h1>
+              {selectedStoreId && store.users?.[selectedStoreId] && (
+                <p className="text-[10px] text-purple-600 dark:text-purple-400 font-black uppercase tracking-wide">
+                  🏪 {store.users[selectedStoreId].name}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex gap-2 items-center">
              <button onClick={() => setManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">
@@ -559,8 +574,20 @@ export default function StorefrontPage() {
         )}
 
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 text-center">
-            <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">Bem-vindo(a) ao AçaíFood!</h2>
-            <p className="text-zinc-500 dark:text-zinc-400">O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</p>
+            <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-2">
+              {selectedStoreId && store.users?.[selectedStoreId] ? (
+                <>Bem-vindo(a) à {store.users[selectedStoreId].name}!</>
+              ) : (
+                <>Bem-vindo(a) ao AçaíFood!</>
+              )}
+            </h2>
+            <p className="text-zinc-500 dark:text-zinc-400">
+              {selectedStoreId && store.users?.[selectedStoreId] ? (
+                <>Cardápio oficial no AçaíFood • Entregas rápidas e calculadas por GPS</>
+              ) : (
+                <>O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.</>
+              )}
+            </p>
             {currentUser ? (
               <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
                 <span className="text-xs bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shadow-2xs">
@@ -592,7 +619,10 @@ export default function StorefrontPage() {
 
         {/* CARROSSEL DE BANNERS COMERCIAIS */}
         {!selectedStoreId && (
-          <AdBannerCarousel />
+          <AdBannerCarousel 
+            city={currentUser?.cidade} 
+            onSelectStore={(id) => setSelectedStoreId(id)} 
+          />
         )}
 
         <div>

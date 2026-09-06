@@ -23,15 +23,15 @@ export function StoreShareCard({ storeId, storeName, role }: StoreShareCardProps
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } else {
-      prompt("Copie seu link abaixo:", shareUrl);
+      prompt(`Copie o link de ${storeName} no AçaíFood abaixo:`, shareUrl);
     }
   };
 
   const handleShareWhatsApp = () => {
     const isSupplier = role === 'fornecedor';
     const text = isSupplier
-      ? `🏭 Conheça nosso catálogo de frutos e insumos no AçaíFood! Peça direto pelo nosso link exclusivo:\n\n${shareUrl}`
-      : `🥣 Peça nosso açaí fresquinho com entrega rápida pelo nosso cardápio oficial no AçaíFood! Acesse agora:\n\n${shareUrl}`;
+      ? `🏭 Conheça o catálogo oficial de frutos e insumos de *${storeName}* no AçaíFood! Peça direto pelo nosso link:\n\n${shareUrl}`
+      : `🥣 Peça o açaí fresquinho de *${storeName}* no AçaíFood! Peça direto pelo nosso cardápio oficial:\n\n${shareUrl}`;
     
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
@@ -45,16 +45,22 @@ export function StoreShareCard({ storeId, storeName, role }: StoreShareCardProps
               <span className="p-2 bg-purple-600/30 text-purple-400 rounded-xl border border-purple-500/40">
                 <Share2 size={18} />
               </span>
-              <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-                🚀 Seu Cardápio Digital & Link de Divulgação
-              </h3>
+              <div>
+                <h3 className="font-bold text-base text-zinc-900 dark:text-white">
+                  🚀 Cardápio de {storeName} • AçaíFood
+                </h3>
+                <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Link de Divulgação Oficial</span>
+              </div>
             </div>
             <p className="text-xs text-zinc-400">
               Compartilhe seu link exclusivo na bio do Instagram, WhatsApp e redes sociais. Os clientes entram direto na sua loja e sua conta é criada automaticamente ao comprar!
             </p>
-            <div className="pt-2">
-              <span className="text-[11px] font-mono text-purple-300 bg-purple-950/60 px-3 py-1.5 rounded-lg border border-purple-800/50 inline-block break-all select-all">
+            <div className="pt-2 flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-mono text-purple-300 bg-purple-950/60 px-3 py-1.5 rounded-lg border border-purple-800/50 inline-block break-all select-all font-bold">
                 {shareUrl}
+              </span>
+              <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 px-2 py-1 rounded-md font-bold">
+                🏪 {storeName}
               </span>
             </div>
           </div>
