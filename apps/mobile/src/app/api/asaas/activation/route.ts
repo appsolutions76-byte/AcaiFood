@@ -37,7 +37,9 @@ export async function GET(request: Request) {
       const { count, error } = await supabase
         .from('users')
         .select('id', { count: 'exact', head: true })
-        .eq('is_founder_subsidized', true);
+        .neq('role', 'cliente')
+        .neq('role', 'admin')
+        .or('is_founder_subsidized.eq.true,asaas_wallet_id.not.is.null');
       if (!error && count !== null) {
         subsidizedCount = count;
       }
@@ -141,7 +143,9 @@ export async function POST(request: Request) {
       const { count } = await supabase
         .from('users')
         .select('id', { count: 'exact', head: true })
-        .eq('is_founder_subsidized', true);
+        .neq('role', 'cliente')
+        .neq('role', 'admin')
+        .or('is_founder_subsidized.eq.true,asaas_wallet_id.not.is.null');
       if (count !== null) subsidizedCount = count;
     } catch (_e) {}
 

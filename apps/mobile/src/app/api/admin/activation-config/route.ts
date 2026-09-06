@@ -26,16 +26,26 @@ export async function GET(request: Request) {
       }
     } catch (_e) {}
 
-    // Estatísticas
+    // Contar parceiros fundadores (todos os parceiros existentes na plataforma exceto cliente/admin)
     let subsidizedCount = 0;
     let paidCount = 0;
     let pendingCount = 0;
 
     try {
+      // Auto-regularizar parceiros existentes para is_founder_subsidized = true e activation_paid = true
+      await supabase
+        .from('users')
+        .update({ is_founder_subsidized: true, activation_paid: true })
+        .neq('role', 'cliente')
+        .neq('role', 'admin')
+        .is('activation_paid', null);
+
       const { count: subCount } = await supabase
         .from('users')
         .select('id', { count: 'exact', head: true })
-        .eq('is_founder_subsidized', true);
+        .neq('role', 'cliente')
+        .neq('role', 'admin')
+        .or('is_founder_subsidized.eq.true,asaas_wallet_id.not.is.null');
       if (subCount !== null) subsidizedCount = subCount;
 
       const { count: pCount } = await supabase
@@ -50,8 +60,8 @@ export async function GET(request: Request) {
         .select('id', { count: 'exact', head: true })
         .neq('role', 'cliente')
         .neq('role', 'admin')
-        .or('activation_paid.is.null,activation_paid.eq.false')
-        .or('is_founder_subsidized.is.null,is_founder_subsidized.eq.false');
+        .eq('activation_paid', false)
+        .eq('is_founder_subsidized', false);
       if (pendCount !== null) pendingCount = pendCount;
     } catch (_e) {}
 
