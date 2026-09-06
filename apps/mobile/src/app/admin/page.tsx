@@ -477,30 +477,39 @@ function AdminDashboardContent() {
 
     const dist = o.distancia || 0;
     
-    if (o.type === 'B2C') {
-        entregaTotal = o.taxas?.entregaTotal || (activeRates.courier_payment_mode === 'FIXED' ? (activeRates.courier_fixed_fee ?? 8) : dist * (activeRates.b2c_km || 2));
+    if (o.type === 'B2C' || !o.type) {
+        entregaTotal = (activeRates.courier_payment_mode === 'FIXED') 
+          ? (activeRates.courier_fixed_fee ?? 6.00) 
+          : (o.taxas?.entregaTotal || dist * (activeRates.b2c_km || 2));
+        
         const sub = (o.lojaId && users[o.lojaId] ? users[o.lojaId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteLoja = entregaTotal * sub;
         
         platVenda = (o.valor || 0) * ((activeRates.b2c_plat || 10) / 100);
-        platEntrega = entregaTotal * ((activeRates.b2c_mot_plat || 10) / 100);
+        platEntrega = entregaTotal * ((activeRates.b2c_mot_plat || 15) / 100);
         
         repasseLoja = (o.valor || 0) - platVenda - freteLoja;
-        repasseMoto = entregaTotal - platEntrega;
+        repasseMoto = (o as any).driver_amount || (o.taxas?.entregaMotorista && activeRates.courier_payment_mode !== 'FIXED' ? o.taxas.entregaMotorista : (entregaTotal - platEntrega));
     } else if (o.type === 'B2B') {
-        entregaTotal = o.taxas?.entregaTotal || (activeRates.transporter_payment_mode === 'FIXED' ? (activeRates.transporter_fixed_fee ?? 150) : dist * (activeRates.b2b_km || 4));
+        entregaTotal = (activeRates.transporter_payment_mode === 'FIXED') 
+          ? (activeRates.transporter_fixed_fee ?? 150) 
+          : (o.taxas?.entregaTotal || dist * (activeRates.b2b_km || 4));
+        
         const sub = (o.fornecedorId && users[o.fornecedorId] ? users[o.fornecedorId]?.freteSubsidyPct || 0 : 0) / 100;
         const freteForn = entregaTotal * sub;
         
         platVenda = (o.valor || 0) * ((activeRates.b2b_plat || 10) / 100);
-        platEntrega = entregaTotal * ((activeRates.b2b_mot_plat || 10) / 100);
+        platEntrega = entregaTotal * ((activeRates.b2b_mot_plat || 15) / 100);
         
         repasseForn = (o.valor || 0) - platVenda - freteForn;
-        repasseMoto = entregaTotal - platEntrega;
+        repasseMoto = (o as any).driver_amount || (o.taxas?.entregaMotorista && activeRates.transporter_payment_mode !== 'FIXED' ? o.taxas.entregaMotorista : (entregaTotal - platEntrega));
     } else if (o.type === 'COLETA') {
-        entregaTotal = o.taxas?.entregaTotal || (activeRates.ecopoint_payment_mode === 'FIXED' ? (activeRates.ecopoint_fixed_fee ?? 50) : dist * (activeRates.col_km || 8));
-        platEntrega = entregaTotal * ((activeRates.col_mot_plat || 10) / 100);
-        repasseMoto = entregaTotal - platEntrega;
+        entregaTotal = (activeRates.ecopoint_payment_mode === 'FIXED') 
+          ? (activeRates.ecopoint_fixed_fee ?? 50) 
+          : (o.taxas?.entregaTotal || dist * (activeRates.col_km || 8));
+        
+        platEntrega = entregaTotal * ((activeRates.col_mot_plat || 15) / 100);
+        repasseMoto = (o as any).driver_amount || (o.taxas?.entregaMotorista && activeRates.ecopoint_payment_mode !== 'FIXED' ? o.taxas.entregaMotorista : (entregaTotal - platEntrega));
     }
     
     return { repasseLoja, repasseForn, repasseMoto, platVenda, platEntrega, entregaTotal };
