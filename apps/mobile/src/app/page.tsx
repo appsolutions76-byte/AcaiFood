@@ -11,7 +11,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
 import { AdBannerCarousel } from "@/components/AdBannerCarousel";
-import { AdStoriesRow } from "@/components/AdStoriesRow";
+import { SupportChatButton } from "@/components/SupportChatButton";
 import { validateCpfCnpjDigits } from "@/lib/pix";
 
 const emptySubscribe = () => () => {};
@@ -1740,6 +1740,9 @@ export default function StorefrontPage() {
           otherParticipantRole={chatModalData.otherRole}
         />
       )}
+
+      {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
+      <SupportChatButton currentUser={currentUser} />
 
       <footer className="text-center py-6 px-4 text-xs text-zinc-500 dark:text-zinc-400 border-t border-zinc-200 dark:border-zinc-800 mt-12 mb-8">
         <p className="font-semibold text-purple-700 dark:text-purple-400">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>

@@ -14,6 +14,7 @@ import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminManualModal } from "@/components/AdminManualModal";
 import { IncidentReportSection } from "@/components/IncidentReportSection";
+import { AdminSupportSection } from "@/components/admin/AdminSupportSection";
 
 const emptySubscribe = () => () => {};
 
@@ -84,7 +85,7 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte'>('dashboard');
   const [activationConfig, setActivationConfig] = useState<{
     activationFee: number;
     freeQuota: number;
@@ -1263,6 +1264,9 @@ function AdminDashboardContent() {
                 {adsList.filter(a => a.isActive !== false && (a as any).active !== false).length}
               </span>
             )}
+          </button>
+          <button onClick={() => setActiveTab('suporte')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'suporte' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
+            <span>🎧 Atendimento & Suporte</span>
           </button>
           <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
           <button onClick={() => setActiveTab('ocorrencias')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📋 Ocorrências & Auditoria</button>
@@ -2456,6 +2460,12 @@ function AdminDashboardContent() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'suporte' && (
+          <div className="animate-in fade-in zoom-in-95 duration-200">
+            <AdminSupportSection />
           </div>
         )}
 

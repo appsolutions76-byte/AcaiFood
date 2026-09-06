@@ -8,6 +8,7 @@ import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
+import { SupportChatButton } from "@/components/SupportChatButton";
 import { supabase } from "@/lib/supabase";
 
 const emptySubscribe = () => () => {};
@@ -589,6 +590,9 @@ export default function MotoboyDashboard() {
           otherParticipantRole={chatModalData.otherRole}
         />
       )}
+
+      {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
+      <SupportChatButton currentUser={currentUser} />
     </div>
   );
 }

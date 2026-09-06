@@ -11,6 +11,7 @@ import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
 import { PhotoPickerModal } from "@/components/PhotoPickerModal";
 import { StoreShareCard } from "@/components/StoreShareCard";
+import { SupportChatButton } from "@/components/SupportChatButton";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -1190,6 +1191,9 @@ export default function FornecedorDashboard() {
           setPhotoModalData(prev => ({ ...prev, open: false }));
         }}
       />
+
+      {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
+      <SupportChatButton currentUser={currentUser} />
     </div>
   );
 }
