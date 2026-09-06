@@ -574,13 +574,6 @@ export default function StorefrontPage() {
 
       <main className="p-3 sm:p-5 max-w-7xl mx-auto space-y-5">
         
-        {/* STORIES DE ANÚNCIOS / PARCEIROS */}
-        {!selectedStoreId && (
-          <div className="pt-1">
-            <AdStoriesRow />
-          </div>
-        )}
-
         {/* HERO COMPACTO & BARRA DE LOCALIZAÇÃO INTELIGENTE */}
         <div className="bg-gradient-to-r from-purple-900/90 via-zinc-900 to-purple-950 text-white p-4 sm:p-5 rounded-2xl shadow-md border border-purple-500/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="min-w-0">
