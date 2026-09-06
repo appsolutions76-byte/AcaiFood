@@ -34,14 +34,16 @@ export async function GET(request: Request) {
 
     let subsidizedCount = 0;
     try {
-      const { count, error } = await supabase
+      const { data: allUsers } = await supabase
         .from('users')
-        .select('id', { count: 'exact', head: true })
-        .neq('role', 'cliente')
-        .neq('role', 'admin')
-        .or('is_founder_subsidized.eq.true,asaas_wallet_id.not.is.null');
-      if (!error && count !== null) {
-        subsidizedCount = count;
+        .select('id, role, is_founder_subsidized, activation_paid, asaas_wallet_id, pix_key');
+
+      if (allUsers && Array.isArray(allUsers)) {
+        const partners = allUsers.filter(u => {
+          const r = String(u.role || '').toLowerCase();
+          return r !== 'cliente' && r !== 'admin' && r !== 'customer';
+        });
+        subsidizedCount = partners.filter(u => u.is_founder_subsidized !== false).length;
       }
     } catch (_e) {}
 
@@ -140,13 +142,17 @@ export async function POST(request: Request) {
 
     let subsidizedCount = 0;
     try {
-      const { count } = await supabase
+      const { data: allUsers } = await supabase
         .from('users')
-        .select('id', { count: 'exact', head: true })
-        .neq('role', 'cliente')
-        .neq('role', 'admin')
-        .or('is_founder_subsidized.eq.true,asaas_wallet_id.not.is.null');
-      if (count !== null) subsidizedCount = count;
+        .select('id, role, is_founder_subsidized, activation_paid, asaas_wallet_id, pix_key');
+
+      if (allUsers && Array.isArray(allUsers)) {
+        const partners = allUsers.filter(u => {
+          const r = String(u.role || '').toLowerCase();
+          return r !== 'cliente' && r !== 'admin' && r !== 'customer';
+        });
+        subsidizedCount = partners.filter(u => u.is_founder_subsidized !== false).length;
+      }
     } catch (_e) {}
 
     const freeSlotsRemaining = Math.max(0, freeQuota - subsidizedCount);

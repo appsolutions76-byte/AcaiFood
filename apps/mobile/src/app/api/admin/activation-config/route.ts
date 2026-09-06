@@ -36,30 +36,25 @@ export async function GET(request: Request) {
       await supabase
         .from('users')
         .update({ is_founder_subsidized: true, activation_paid: true })
-        .not('role', 'in', '("cliente","admin","CUSTOMER","ADMIN")')
-        .or('is_founder_subsidized.is.null,activation_paid.is.null,is_founder_subsidized.eq.true');
+        .neq('role', 'cliente')
+        .neq('role', 'admin')
+        .neq('role', 'CUSTOMER')
+        .neq('role', 'ADMIN');
 
-      const { count: subCount } = await supabase
+      const { data: allUsers } = await supabase
         .from('users')
-        .select('id', { count: 'exact', head: true })
-        .not('role', 'in', '("cliente","admin","CUSTOMER","ADMIN")')
-        .or('is_founder_subsidized.eq.true,asaas_wallet_id.not.is.null,is_founder_subsidized.is.null');
-      if (subCount !== null && subCount !== undefined) subsidizedCount = subCount;
+        .select('id, role, is_founder_subsidized, activation_paid, asaas_wallet_id, pix_key');
 
-      const { count: pCount } = await supabase
-        .from('users')
-        .select('id', { count: 'exact', head: true })
-        .eq('activation_paid', true)
-        .eq('is_founder_subsidized', false);
-      if (pCount !== null && pCount !== undefined) paidCount = pCount;
+      if (allUsers && Array.isArray(allUsers)) {
+        const partners = allUsers.filter(u => {
+          const r = String(u.role || '').toLowerCase();
+          return r !== 'cliente' && r !== 'admin' && r !== 'customer';
+        });
 
-      const { count: pendCount } = await supabase
-        .from('users')
-        .select('id', { count: 'exact', head: true })
-        .not('role', 'in', '("cliente","admin","CUSTOMER","ADMIN")')
-        .eq('activation_paid', false)
-        .eq('is_founder_subsidized', false);
-      if (pendCount !== null && pendCount !== undefined) pendingCount = pendCount;
+        subsidizedCount = partners.filter(u => u.is_founder_subsidized !== false).length;
+        paidCount = partners.filter(u => u.activation_paid === true && u.is_founder_subsidized === false).length;
+        pendingCount = partners.filter(u => u.activation_paid === false && u.is_founder_subsidized === false).length;
+      }
     } catch (_e) {}
 
     return NextResponse.json({

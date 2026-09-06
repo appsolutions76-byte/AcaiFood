@@ -560,6 +560,19 @@ function AdminDashboardContent() {
     return c.name.toLowerCase().includes(citySearchText.toLowerCase().trim());
   });
 
+  const partnerList = useMemo(() => {
+    return Object.values(users).filter(u => u && u.role !== 'cliente' && u.role !== 'admin');
+  }, [users]);
+
+  const subsidizedPartnersCount = useMemo(() => {
+    const fromUsers = partnerList.filter(u => u.isFounderSubsidized !== false).length;
+    return Math.max(activationConfig.subsidizedCount, fromUsers);
+  }, [partnerList, activationConfig.subsidizedCount]);
+
+  const freeSlotsLeft = useMemo(() => {
+    return Math.max(0, activationConfig.freeQuota - subsidizedPartnersCount);
+  }, [activationConfig.freeQuota, subsidizedPartnersCount]);
+
 
 
   // 6. Cálculos de Dashboard
@@ -1063,7 +1076,7 @@ function AdminDashboardContent() {
           <button onClick={() => setActiveTab('ativacoes')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'ativacoes' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
             <span>🛡️ Ativação de Parceiros</span>
             <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full font-black">
-              {activationConfig.subsidizedCount}/{activationConfig.freeQuota}
+              {subsidizedPartnersCount}/{activationConfig.freeQuota}
             </span>
           </button>
           <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
@@ -1867,20 +1880,20 @@ function AdminDashboardContent() {
               <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
                 <p className="text-zinc-500 dark:text-zinc-400 text-xs uppercase font-bold">🎁 Vagas Fundador Usadas</p>
                 <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-black text-purple-600 dark:text-purple-400">{activationConfig.subsidizedCount}</span>
+                  <span className="text-2xl font-black text-purple-600 dark:text-purple-400">{subsidizedPartnersCount}</span>
                   <span className="text-xs text-zinc-500">de {activationConfig.freeQuota} vagas</span>
                 </div>
                 <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full mt-3 overflow-hidden">
                   <div 
                     className="bg-purple-600 h-full rounded-full transition-all"
-                    style={{ width: `${Math.min(100, (activationConfig.subsidizedCount / Math.max(1, activationConfig.freeQuota)) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (subsidizedPartnersCount / Math.max(1, activationConfig.freeQuota)) * 100)}%` }}
                   />
                 </div>
               </div>
 
               <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
                 <p className="text-zinc-500 dark:text-zinc-400 text-xs uppercase font-bold">✨ Vagas Gratuitas Restantes</p>
-                <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{activationConfig.freeSlotsRemaining}</p>
+                <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{freeSlotsLeft}</p>
                 <p className="text-[11px] text-zinc-500 mt-1">Isenção para os próximos cadastros</p>
               </div>
 
@@ -1969,7 +1982,7 @@ function AdminDashboardContent() {
                   👥 Fila de Homologação e Ativação de Parceiros
                 </h3>
                 <span className="text-xs text-zinc-500 font-medium">
-                  {Object.values(users).filter(u => u && u.role !== 'cliente' && u.role !== 'admin').length} parceiros cadastrados
+                  {partnerList.length} parceiros cadastrados
                 </span>
               </div>
 
@@ -1986,9 +1999,7 @@ function AdminDashboardContent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {Object.values(users)
-                      .filter(u => u && u.role !== 'cliente' && u.role !== 'admin')
-                      .map(u => {
+                    {partnerList.map(u => {
                         const isSubsidized = u.isFounderSubsidized !== false || Boolean((u as any).is_founder_subsidized) || Boolean(u.asaasWalletId) || Boolean((u as any).asaas_wallet_id) || Boolean(u.pixKey);
                         const isPaid = u.activationPaid !== false || Boolean((u as any).activation_paid);
                         const asaasLinked = Boolean(u.asaasWalletId || (u as any).asaas_wallet_id || u.asaasLinked);
