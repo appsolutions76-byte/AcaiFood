@@ -30,11 +30,13 @@ export function StoreShareCard({ storeId, storeName, role }: StoreShareCardProps
   const handleShareWhatsApp = () => {
     const isSupplier = role === 'fornecedor';
     const text = isSupplier
-      ? `🏭 Conheça o catálogo oficial de frutos e insumos de *${storeName}* no AçaíFood! Peça direto pelo nosso link:\n\n${shareUrl}`
-      : `🥣 Peça o açaí fresquinho de *${storeName}* no AçaíFood! Peça direto pelo nosso cardápio oficial:\n\n${shareUrl}`;
+      ? `🏭 Conheça o catálogo oficial de frutos e insumos de *${storeName}* no AçaíFood! Faça seu pedido direto pelo nosso link:\n\n${shareUrl}`
+      : `🥣 Faça seu pedido em *${storeName}* no AçaíFood! Acesse nosso cardápio oficial:\n\n${shareUrl}`;
     
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
+
+  const isSupplier = role === 'fornecedor';
 
   return (
     <>
@@ -47,20 +49,20 @@ export function StoreShareCard({ storeId, storeName, role }: StoreShareCardProps
               </span>
               <div>
                 <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-                  🚀 Cardápio de {storeName} • AçaíFood
+                  🚀 {isSupplier ? 'Catálogo de Fornecedor' : 'Cardápio'} de {storeName} • AçaíFood
                 </h3>
                 <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Link de Divulgação Oficial</span>
               </div>
             </div>
             <p className="text-xs text-zinc-400">
-              Compartilhe seu link exclusivo na bio do Instagram, WhatsApp e redes sociais. Os clientes entram direto na sua loja e sua conta é criada automaticamente ao comprar!
+              Compartilhe seu link exclusivo na bio do Instagram, WhatsApp e redes sociais. Os clientes e parceiros entram direto na sua loja e fazem pedidos imediatos!
             </p>
             <div className="pt-2 flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-mono text-purple-300 bg-purple-950/60 px-3 py-1.5 rounded-lg border border-purple-800/50 inline-block break-all select-all font-bold">
                 {shareUrl}
               </span>
               <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 px-2 py-1 rounded-md font-bold">
-                🏪 {storeName}
+                {isSupplier ? '🏭' : '🏪'} {storeName}
               </span>
             </div>
           </div>

@@ -1777,11 +1777,11 @@ export const useAppStore = create<AppState>()(
         }
 
         // REVALIDAÇÃO PRÉ-CHECKOUT DIRETA NO SUPABASE (Regras 11 e 12)
-        if (tipo === 'B2C' && targetId && state.cart.items.length > 0) {
+        if ((tipo === 'B2C' || tipo === 'B2B') && targetId && state.cart.items.length > 0) {
           try {
             const { data: sfData } = await supabase
               .from('storefronts')
-              .select('id, partner_id, price_b2c_popular, price_b2c_medio, price_b2c_grosso, frete_subsidy_pct, products(id, name, price)')
+              .select('id, partner_id, price_b2c_popular, price_b2c_medio, price_b2c_grosso, price_b2c_branco, price_b2b, frete_subsidy_pct, products(id, name, price)')
               .or(`id.eq.${targetId},partner_id.eq.${targetId}`)
               .maybeSingle();
 
@@ -1792,6 +1792,8 @@ export const useAppStore = create<AppState>()(
                 if (item.id === 'popular') currentDbPrice = sfData.price_b2c_popular ?? item.price;
                 else if (item.id === 'medio') currentDbPrice = sfData.price_b2c_medio ?? item.price;
                 else if (item.id === 'grosso') currentDbPrice = sfData.price_b2c_grosso ?? item.price;
+                else if (item.id === 'branco') currentDbPrice = (sfData as any).price_b2c_branco ?? item.price;
+                else if (item.id === 'lata') currentDbPrice = (sfData as any).price_b2b ?? item.price;
                 else {
                   const dbProd = (sfData.products || []).find((p: any) => p.id === item.id);
                   if (dbProd) currentDbPrice = dbProd.price;
