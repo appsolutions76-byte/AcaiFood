@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Store, Printer, BookOpen } from "lucide-react";
+import { Store, Printer, BookOpen, ShoppingCart } from "lucide-react";
 import { useAppStore, haversineKm, getRatesForCity, generateUUID, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { supabase } from "@/lib/supabase";
@@ -81,8 +81,9 @@ export default function BatedeiraDashboard() {
   } | null>(null);
   const [b2bCheckoutModalOpen, setB2bCheckoutModalOpen] = useState(false);
   const [b2bSearchQuery, setB2bSearchQuery] = useState('');
-  const [b2bSortFilter, setB2bSortFilter] = useState<'all' | 'lowest_price' | 'nearest' | 'has_stock' | 'subsidy'>('all');
-  const [b2bVisibleLimit, setB2bVisibleLimit] = useState(10);
+  const [b2bSortFilter, setB2bSortFilter] = useState<'all' | 'open' | 'lowest_price' | 'nearest' | 'has_stock' | 'subsidy'>('all');
+  const [b2bVisibleLimit, setB2bVisibleLimit] = useState(12);
+  const [selectedFornecedorId, setSelectedFornecedorId] = useState<string | null>(null);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
@@ -349,12 +350,17 @@ export default function BatedeiraDashboard() {
   const meusPedidos = [...batedeiraActiveOrders, ...batedeiraHistoryOrders];
   const allFornecedores = Object.values(store.users || {})
     .filter(u => {
-      if (u.role !== 'fornecedor' || u.status === 'paused' || u.status === 'blocked') return false;
+      if (u.role !== 'fornecedor' || u.status === 'blocked') return false;
       if (!u.cidade || !currentUser.cidade) return true; // Se alguma das partes estiver sem cidade, mostra mesmo assim para evitar sumiço
       const c1 = u.cidade.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
       const c2 = currentUser.cidade.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
       return c1 === c2;
     });
+
+  const countAllFornecedores = allFornecedores.length;
+  const countOpenFornecedores = allFornecedores.filter(u => u.status !== 'paused').length;
+  const countSubsidizedFornecedores = allFornecedores.filter(u => (u.freteSubsidyPct || 0) > 0).length;
+  const countStockFornecedores = allFornecedores.filter(u => u.availabilityB2B?.lata !== false || (u.products || []).some(p => p.isAvailable !== false)).length;
 
   const filteredFornecedores = allFornecedores
     .filter(forn => {
@@ -367,6 +373,9 @@ export default function BatedeiraDashboard() {
       return name.includes(q) || bairro.includes(q) || cidade.includes(q) || productsMatch;
     })
     .filter(forn => {
+      if (b2bSortFilter === 'open') {
+        return forn.status !== 'paused';
+      }
       if (b2bSortFilter === 'has_stock') {
         return forn.availabilityB2B?.lata !== false || (forn.products || []).some(p => p.isAvailable !== false);
       }
@@ -376,6 +385,10 @@ export default function BatedeiraDashboard() {
       return true;
     })
     .sort((a, b) => {
+      const aOpen = a.status !== 'paused' ? 1 : 0;
+      const bOpen = b.status !== 'paused' ? 1 : 0;
+      if (aOpen !== bOpen) return bOpen - aOpen;
+
       const distA = (a.lat && currentUser.lat) ? haversineKm(a.lat, a.lng!, currentUser.lat, currentUser.lng!) : 999;
       const distB = (b.lat && currentUser.lat) ? haversineKm(b.lat, b.lng!, currentUser.lat, currentUser.lng!) : 999;
 
@@ -1253,7 +1266,7 @@ export default function BatedeiraDashboard() {
         {activeTab === 'abastecimento' && (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
             {/* Header com Contexto */}
-            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 rounded-2xl p-5 text-white shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="bg-gradient-to-r from-emerald-900 via-zinc-900 to-teal-950 rounded-2xl p-5 text-white shadow-lg border border-emerald-500/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🌿</span>
@@ -1275,376 +1288,469 @@ export default function BatedeiraDashboard() {
               </div>
             </div>
 
-            {/* Barra de Busca & Filtros Rápidos B2B */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm space-y-3">
-              <div className="relative flex items-center">
-                <span className="absolute left-3.5 text-zinc-400 text-base">🔍</span>
-                <input
-                  type="text"
-                  placeholder="Buscar fornecedor por nome, bairro, cidade ou insumos..."
-                  value={b2bSearchQuery}
-                  onChange={(e) => {
-                    setB2bSearchQuery(e.target.value);
-                    setB2bVisibleLimit(10);
-                  }}
-                  className="w-full pl-10 pr-10 py-2.5 bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                />
-                {b2bSearchQuery && (
-                  <button
-                    onClick={() => {
-                      setB2bSearchQuery('');
-                      setB2bVisibleLimit(10);
-                    }}
-                    className="absolute right-3 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 text-xs"
-                    title="Limpar busca"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+            {selectedFornecedorId && store.users?.[selectedFornecedorId] ? (() => {
+              const selForn = store.users[selectedFornecedorId];
+              const { freteTotal, freteLoja, subsidy, dist } = calcFreteB2B(selForn.id);
+              const isCartForn = cart.storeId === selForn.id && b2bCartItems.length > 0;
+              const isPaused = selForn.status === 'paused';
+              const defaultB2BImage = 'https://images.unsplash.com/photo-1628557044797-f21a177c37ec?auto=format&fit=crop&w=400&q=80';
 
-              {/* Chips de Filtragem e Ordenação B2B */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs scrollbar-none">
-                <button
-                  onClick={() => { setB2bSortFilter('all'); setB2bVisibleLimit(10); }}
-                  className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all border ${
-                    b2bSortFilter === 'all'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200'
-                  }`}
-                >
-                  🏢 Todos ({allFornecedores.length})
-                </button>
-                <button
-                  onClick={() => { setB2bSortFilter('lowest_price'); setB2bVisibleLimit(10); }}
-                  className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all border ${
-                    b2bSortFilter === 'lowest_price'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200'
-                  }`}
-                >
-                  💲 Menor Preço da Lata
-                </button>
-                <button
-                  onClick={() => { setB2bSortFilter('nearest'); setB2bVisibleLimit(10); }}
-                  className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all border ${
-                    b2bSortFilter === 'nearest'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200'
-                  }`}
-                >
-                  📍 Mais Próximos
-                </button>
-                <button
-                  onClick={() => { setB2bSortFilter('has_stock'); setB2bVisibleLimit(10); }}
-                  className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all border ${
-                    b2bSortFilter === 'has_stock'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200'
-                  }`}
-                >
-                  📦 Com Fruto Disponível
-                </button>
-                <button
-                  onClick={() => { setB2bSortFilter('subsidy'); setB2bVisibleLimit(10); }}
-                  className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all border ${
-                    b2bSortFilter === 'subsidy'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200'
-                  }`}
-                >
-                  🚚 Com Subsídio de Frete
-                </button>
-              </div>
-
-              {(b2bSearchQuery || b2bSortFilter !== 'all') && (
-                <div className="text-xs text-zinc-500 flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800">
-                  <span>Encontrado(s): <strong>{filteredFornecedores.length}</strong> fornecedor(es)</span>
-                  <button
-                    onClick={() => {
-                      setB2bSearchQuery('');
-                      setB2bSortFilter('all');
-                      setB2bVisibleLimit(10);
-                    }}
-                    className="text-emerald-600 hover:underline font-bold"
-                  >
-                    Limpar filtros
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Grid de Fornecedores */}
-            {filteredFornecedores.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-10 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 text-center shadow-sm">
-                <span className="text-4xl mb-3 opacity-60">🏭</span>
-                <p className="text-zinc-700 dark:text-zinc-300 font-bold text-base">
-                  {b2bSearchQuery ? `Nenhum fornecedor encontrado para "${b2bSearchQuery}"` : 'Nenhum fornecedor ativo na sua região no momento'}
-                </p>
-                <p className="text-zinc-500 text-xs mt-1">
-                  {b2bSearchQuery ? 'Tente buscar por outro termo ou limpe os filtros aplicados.' : 'Assim que novos produtores ou entrepostos se cadastrarem na sua cidade, eles aparecerão aqui automaticamente.'}
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6">
-                {displayedFornecedores.map(forn => {
-                  const lat1 = Number(forn?.lat || 0);
-                  const lon1 = Number(forn?.lng || 0);
-                  const lat2 = Number(currentUser?.lat || 0);
-                  const lon2 = Number(currentUser?.lng || 0);
-                  const dist = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) ? haversineKm(lat1, lon1, lat2, lon2) : 3.0;
-                  const freteTotal = (rates.transporter_payment_mode === 'FIXED') ? (rates.transporter_fixed_fee ?? 150.00) : dist * rates.b2b_km;
-                  const subsidy = forn.freteSubsidyPct || 0;
-                  const freteLoja = freteTotal * (1 - subsidy / 100);
-
-                  const defaultB2BImage = 'https://images.unsplash.com/photo-1628557044797-f21a177c37ec?auto=format&fit=crop&w=400&q=80';
-
-                  return (
-                    <div 
-                      key={forn.id} 
-                      className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-4"
-                    >
-                      {/* Topo do Card: Informações do Fornecedor */}
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-zinc-100 dark:border-zinc-800">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center text-2xl shadow-inner shrink-0">
-                            {forn.icon || '🏭'}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-extrabold text-base text-zinc-900 dark:text-white flex items-center gap-1.5">
-                                {forn.name}
-                              </h4>
-                              <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold uppercase">
-                                Fornecedor
-                              </span>
-                              <span className="text-[10px] bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2 py-0.5 rounded-full font-bold">
-                                🌿 Fruto Fresco do Dia
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-500 flex-wrap">
-                              <span>📍 {forn.bairro ? `${forn.bairro}, ` : ''}{forn.cidade || 'Região'}</span>
-                              <span className="text-amber-500 font-bold">★ 4.9 (Pontualidade 99%)</span>
-                              <span className="text-zinc-400">•</span>
-                              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">⏱️ Chegada em ~{Math.max(25, Math.min(90, 20 + Math.round(dist * 3)))} min</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
-                          {subsidy > 0 && (
-                            <span className="text-[11px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-sm">
-                              🚚 Fornecedor paga {subsidy}% do frete
-                            </span>
-                          )}
-                          <button 
-                            onClick={() => {
-                              setMapModal({
-                                open: true,
-                                origem: { lat: forn?.lat || 0, lng: forn?.lng || 0, name: forn?.name || 'Fornecedor' },
-                                destino: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser?.name || 'Sua Loja' },
-                                motorista: null
-                              });
-                            }} 
-                            className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1 shadow-sm"
-                          >
-                            🗺️ Rota: {dist.toFixed(1)} km
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Info de Frete */}
-                      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/80 flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs gap-2 text-zinc-600 dark:text-zinc-400">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">🚚 Frete do Caminhão/Caçamba:</span>
-                          <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteLoja)}</span>
-                          {subsidy > 0 && (
-                            <span className="text-[10px] text-orange-600 dark:text-orange-400 font-bold">
-                              (Economia de {formatMoney(freteTotal * (subsidy / 100))})
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[11px] text-zinc-500 italic">Preço do frete compartilhado por viagem</span>
-                      </div>
-
-                      {/* Banner se houver produtos deste fornecedor no carrinho */}
-                      {cart.storeId === forn.id && b2bCartItems.length > 0 && (
-                        <div className="bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 p-3 rounded-xl flex items-center justify-between gap-2 text-xs">
-                          <span className="font-bold text-emerald-900 dark:text-emerald-300">
-                            🛒 Você tem {b2bCartTotalQuantity} item(ns) no carrinho deste fornecedor ({formatMoney(b2bCartItemsTotal)})
-                          </span>
-                          <button 
-                            onClick={() => setB2bCheckoutModalOpen(true)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3 py-1.5 rounded-lg transition shadow-sm shrink-0"
-                          >
-                            Ver Carrinho 🛍️
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Grade de Produtos do Fornecedor (Apresentação idêntica ao Catálogo) */}
+              return (
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-emerald-200 dark:border-emerald-900/40 mb-6">
+                  {/* Topo do Fornecedor Selecionado */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-4xl bg-emerald-50 dark:bg-emerald-950/50 p-2 rounded-2xl border border-emerald-200 dark:border-emerald-800/50">
+                        {selForn.icon || '🏭'}
+                      </span>
                       <div>
-                        <p className="text-xs font-extrabold uppercase text-zinc-500 mb-3 tracking-wider flex items-center gap-1.5">
-                          🧺 Itens e Matéria-Prima Disponíveis:
-                        </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* Item Base: Paneiro / Lata de Açaí */}
-                          {(() => {
-                            const isLataAvail = forn.availabilityB2B?.lata !== false;
-                            const lataPhoto = forn.imagesB2B?.lata || defaultB2BImage;
-                            return (
-                              <div className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
-                                isLataAvail
-                                  ? 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-700'
-                                  : 'border-zinc-200 dark:border-zinc-800 bg-zinc-100/80 dark:bg-zinc-950 opacity-60'
-                              }`}>
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-13 h-13 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 overflow-hidden shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shadow-inner">
-                                    <img 
-                                      src={lataPhoto} 
-                                      alt="Lata de Açaí In Natura" 
-                                      className="w-full h-full object-cover" 
-                                    />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <p className="font-extrabold text-zinc-800 dark:text-white text-sm truncate">
-                                        Paneiro / Lata de Açaí
-                                      </p>
-                                      {!isLataAvail && (
-                                        <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">
-                                          Esgotado
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="text-[11px] text-zinc-500">Frutos in natura (aprox. 14kg)</p>
-                                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold mt-0.5">
-                                      {formatMoney(forn.priceB2B || 0)} <span className="text-[10px] font-normal text-zinc-500">/ lata</span>
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {isLataAvail ? (
-                                  <button 
-                                    onClick={() => {
-                                      if (cart.storeId && cart.storeId !== forn.id && cart.items.length > 0) {
-                                        const fornAtualNome = store.users?.[cart.storeId]?.name || 'outro fornecedor';
-                                        if (!confirm(`⚠️ Seu carrinho possui itens do fornecedor "${fornAtualNome}". Você só pode comprar de um fornecedor por vez.\n\nDeseja limpar o carrinho anterior e adicionar os itens de "${forn.name}"?`)) {
-                                          return;
-                                        }
-                                        clearCart();
-                                      }
-                                      setProductSelectModalB2B({
-                                        open: true,
-                                        fornId: forn.id,
-                                        productId: 'base',
-                                        name: 'Paneiro / Lata de Açaí (In Natura)',
-                                        price: forn.priceB2B || 140,
-                                        imageUrl: lataPhoto,
-                                        quantity: 1
-                                      });
-                                    }}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow active:scale-95 shrink-0 flex items-center gap-1"
-                                  >
-                                    + Adicionar
-                                  </button>
-                                ) : (
-                                  <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
-                                    Esgotado
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })()}
-
-                          {/* Itens Extras B2B do Fornecedor */}
-                          {forn.products && forn.products.map(p => {
-                            const isAvail = p.isAvailable !== false;
-                            return (
-                              <div 
-                                key={p.id} 
-                                className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
-                                  isAvail 
-                                    ? 'bg-white dark:bg-zinc-900/90 border-zinc-200 dark:border-zinc-800 shadow-sm hover:border-emerald-300' 
-                                    : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
-                                }`}
-                              >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
-                                    {p.imageUrl ? (
-                                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <span className="text-2xl">📦</span>
-                                    )}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <p className="font-extrabold text-zinc-800 dark:text-white text-sm truncate">{p.name}</p>
-                                      {!isAvail && (
-                                        <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">
-                                          Esgotado
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold mt-0.5">
-                                      {formatMoney(p.price)}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {isAvail ? (
-                                  <button 
-                                    onClick={() => {
-                                      if (cart.storeId && cart.storeId !== forn.id && cart.items.length > 0) {
-                                        const fornAtualNome = store.users?.[cart.storeId]?.name || 'outro fornecedor';
-                                        if (!confirm(`⚠️ Seu carrinho possui itens do fornecedor "${fornAtualNome}". Você só pode comprar de um fornecedor por vez.\n\nDeseja limpar o carrinho anterior e adicionar os itens de "${forn.name}"?`)) {
-                                          return;
-                                        }
-                                        clearCart();
-                                      }
-                                      setProductSelectModalB2B({
-                                        open: true,
-                                        fornId: forn.id,
-                                        productId: p.id,
-                                        name: p.name,
-                                        price: p.price,
-                                        imageUrl: p.imageUrl,
-                                        quantity: 1
-                                      });
-                                    }}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow active:scale-95 shrink-0 flex items-center gap-1"
-                                  >
-                                    + Adicionar
-                                  </button>
-                                ) : (
-                                  <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
-                                    Esgotado
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+                            🏭 Fornecedor Selecionado
+                          </span>
+                          <span className="text-[10px] bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2 py-0.5 rounded-full font-bold">
+                            🌿 Fruto Fresco do Dia
+                          </span>
                         </div>
+                        <h3 className="text-xl font-extrabold text-zinc-900 dark:text-white leading-tight mt-0.5">
+                          {selForn.name}
+                        </h3>
+                        <p className="text-xs text-zinc-500">
+                          📍 Bairro: {selForn.bairro || 'Central'} • {selForn.cidade || currentUser?.cidade || 'Região'} ★ 4.9
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
 
-            {filteredFornecedores.length > b2bVisibleLimit && (
-              <div className="flex flex-col items-center justify-center pt-2">
-                <button
-                  onClick={() => setB2bVisibleLimit(prev => prev + 10)}
-                  className="w-full sm:w-auto px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <span>🌿 Carregar Mais Fornecedores (+10)</span>
-                  <span className="text-xs bg-emerald-700 px-2 py-0.5 rounded-full font-semibold">
-                    Exibindo {displayedFornecedores.length} de {filteredFornecedores.length}
-                  </span>
-                </button>
-              </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                      <button 
+                        onClick={() => {
+                          setMapModal({
+                            open: true,
+                            origem: { lat: selForn?.lat || 0, lng: selForn?.lng || 0, name: selForn.name || 'Fornecedor' },
+                            destino: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser.name || 'Sua Loja' },
+                            motorista: null
+                          });
+                        }} 
+                        className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-2 rounded-xl transition border border-blue-200 dark:border-blue-800 flex items-center gap-1 shadow-xs"
+                      >
+                        🗺️ Rota: {dist.toFixed(1)} km
+                      </button>
+
+                      <button 
+                        onClick={() => setSelectedFornecedorId(null)}
+                        className="text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 hover:dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-xl transition cursor-pointer"
+                      >
+                        ⬅️ Ver Todos os Fornecedores
+                      </button>
+                    </div>
+                  </div>
+
+                  {isPaused && (
+                    <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 p-3.5 rounded-xl mb-4 flex items-center gap-2.5 text-red-700 dark:text-red-300 text-xs font-bold shadow-xs">
+                      <span className="text-base">⛔</span>
+                      <span>Este fornecedor está <strong>fechado/pausado no momento</strong> e não está recebendo pedidos de abastecimento.</span>
+                    </div>
+                  )}
+
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl mb-4 border border-emerald-100 dark:border-emerald-900/30 flex justify-between items-center text-xs text-emerald-900 dark:text-emerald-300 font-medium">
+                    <span>Frete Caminhão/Caçamba: <strong>{formatMoney(freteLoja)}</strong></span>
+                    {subsidy > 0 && <span className="bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded text-[10px] uppercase">Fornecedor Paga {subsidy}%</span>}
+                  </div>
+
+                  {isCartForn && (
+                    <div className="bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 p-3 rounded-xl flex items-center justify-between gap-2 text-xs font-bold mb-4">
+                      <span className="text-emerald-900 dark:text-emerald-300">
+                        🛒 Você tem {b2bCartTotalQuantity} item(ns) no carrinho deste fornecedor ({formatMoney(b2bCartItemsTotal)})
+                      </span>
+                      <button 
+                        onClick={() => setB2bCheckoutModalOpen(true)} 
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3.5 py-1.5 rounded-lg shadow transition shrink-0"
+                      >
+                        Finalizar Pedido B2B
+                      </button>
+                    </div>
+                  )}
+
+                  <h4 className="font-bold text-sm text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    📦 Catálogo de Matéria-Prima & Insumos
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    {/* LATA DE AÇAÍ FRUTO (14KG) */}
+                    {(() => {
+                      const isLataAvail = selForn.availabilityB2B?.lata !== false;
+                      const lataPhoto = selForn.imagesB2B?.lata || defaultB2BImage;
+                      const priceLata = selForn.priceB2B || 140;
+                      return (
+                        <div className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
+                          isLataAvail 
+                            ? 'bg-white dark:bg-zinc-900 border-emerald-200 dark:border-emerald-800 shadow-sm' 
+                            : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
+                        }`}>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-14 h-14 rounded-xl bg-emerald-100 dark:bg-emerald-950 overflow-hidden shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
+                              <img src={lataPhoto} alt="Lata de Açaí Fruto" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">Paneiro / Lata de Açaí Fruto (14kg)</p>
+                                {!isLataAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
+                              </div>
+                              <p className="text-[11px] text-zinc-500 font-medium">Frutos in natura em caroço</p>
+                              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-black">{formatMoney(priceLata)} <span className="text-[10px] font-normal text-zinc-500">/ lata</span></p>
+                            </div>
+                          </div>
+                          {isLataAvail ? (
+                            <button 
+                              onClick={() => {
+                                if (cart.storeId && cart.storeId !== selForn.id && cart.items.length > 0) {
+                                  const fornAtualNome = store.users?.[cart.storeId]?.name || 'outro fornecedor';
+                                  if (!confirm(`⚠️ Seu carrinho possui itens do fornecedor "${fornAtualNome}". Você só pode comprar de um fornecedor por vez.\n\nDeseja limpar o carrinho anterior e adicionar os itens de "${selForn.name}"?`)) {
+                                    return;
+                                  }
+                                  clearCart();
+                                }
+                                setProductSelectModalB2B({
+                                  open: true,
+                                  fornId: selForn.id,
+                                  productId: 'base',
+                                  name: 'Paneiro / Lata de Açaí (In Natura)',
+                                  price: priceLata,
+                                  imageUrl: lataPhoto,
+                                  quantity: 1
+                                });
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow shrink-0 active:scale-95"
+                            >
+                              + Adicionar
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2 py-1.5 rounded-lg shrink-0">
+                              Esgotado
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* PRODUTOS EXTRAS */}
+                    {selForn.products && selForn.products.map(p => {
+                      const isAvail = p.isAvailable !== false;
+                      return (
+                        <div key={p.id} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
+                          isAvail 
+                            ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' 
+                            : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
+                        }`}>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-14 h-14 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                              {p.imageUrl ? (
+                                <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-2xl">📦</span>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{p.name}</p>
+                                {!isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
+                              </div>
+                              <p className="text-[11px] text-zinc-500 font-medium">Insumo / Produto B2B</p>
+                              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-black">{formatMoney(p.price)}</p>
+                            </div>
+                          </div>
+                          {isAvail ? (
+                            <button 
+                              onClick={() => {
+                                if (cart.storeId && cart.storeId !== selForn.id && cart.items.length > 0) {
+                                  const fornAtualNome = store.users?.[cart.storeId]?.name || 'outro fornecedor';
+                                  if (!confirm(`⚠️ Seu carrinho possui itens do fornecedor "${fornAtualNome}". Você só pode comprar de um fornecedor por vez.\n\nDeseja limpar o carrinho anterior e adicionar os itens de "${selForn.name}"?`)) {
+                                    return;
+                                  }
+                                  clearCart();
+                                }
+                                setProductSelectModalB2B({
+                                  open: true,
+                                  fornId: selForn.id,
+                                  productId: p.id,
+                                  name: p.name,
+                                  price: p.price,
+                                  imageUrl: p.imageUrl,
+                                  quantity: 1
+                                });
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow shrink-0 active:scale-95"
+                            >
+                              + Adicionar
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2 py-1.5 rounded-lg shrink-0">
+                              Esgotado
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })() : (
+              <>
+                {/* Barra de Busca & Filtros Rápidos B2B */}
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm space-y-3">
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3.5 text-zinc-400 text-base">🔍</span>
+                    <input
+                      type="text"
+                      placeholder="Buscar fornecedor por nome, bairro, cidade ou insumos..."
+                      value={b2bSearchQuery}
+                      onChange={(e) => {
+                        setB2bSearchQuery(e.target.value);
+                        setB2bVisibleLimit(12);
+                      }}
+                      className="w-full pl-10 pr-10 py-2.5 bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                    {b2bSearchQuery && (
+                      <button
+                        onClick={() => {
+                          setB2bSearchQuery('');
+                          setB2bVisibleLimit(12);
+                        }}
+                        className="absolute right-3 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 text-xs"
+                        title="Limpar busca"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Chips de Filtragem e Ordenação B2B */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs scrollbar-none">
+                    <button
+                      onClick={() => { setB2bSortFilter('all'); setB2bVisibleLimit(12); }}
+                      className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all border ${
+                        b2bSortFilter === 'all'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                      }`}
+                    >
+                      🏢 Todos ({countAllFornecedores})
+                    </button>
+                    <button
+                      onClick={() => { setB2bSortFilter('open'); setB2bVisibleLimit(12); }}
+                      className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all border ${
+                        b2bSortFilter === 'open'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                      }`}
+                    >
+                      🟢 Abertos Agora ({countOpenFornecedores})
+                    </button>
+                    <button
+                      onClick={() => { setB2bSortFilter('lowest_price'); setB2bVisibleLimit(12); }}
+                      className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all border ${
+                        b2bSortFilter === 'lowest_price'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                      }`}
+                    >
+                      💲 Menor Preço da Lata
+                    </button>
+                    <button
+                      onClick={() => { setB2bSortFilter('nearest'); setB2bVisibleLimit(12); }}
+                      className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all border ${
+                        b2bSortFilter === 'nearest'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                      }`}
+                    >
+                      📍 Mais Próximos
+                    </button>
+                    <button
+                      onClick={() => { setB2bSortFilter('subsidy'); setB2bVisibleLimit(12); }}
+                      className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all border ${
+                        b2bSortFilter === 'subsidy'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                      }`}
+                    >
+                      ⚡ Frete Promocional ({countSubsidizedFornecedores})
+                    </button>
+                    <button
+                      onClick={() => { setB2bSortFilter('has_stock'); setB2bVisibleLimit(12); }}
+                      className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all border ${
+                        b2bSortFilter === 'has_stock'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                      }`}
+                    >
+                      📦 Com Fruto Disponível ({countStockFornecedores})
+                    </button>
+                  </div>
+
+                  {(b2bSearchQuery || b2bSortFilter !== 'all') && (
+                    <div className="text-xs text-zinc-500 flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                      <span>Encontrado(s): <strong>{filteredFornecedores.length}</strong> fornecedor(es)</span>
+                      <button
+                        onClick={() => {
+                          setB2bSearchQuery('');
+                          setB2bSortFilter('all');
+                          setB2bVisibleLimit(12);
+                        }}
+                        className="text-emerald-600 hover:underline font-bold"
+                      >
+                        Limpar filtros
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Grade de Cards Responsiva dos Fornecedores (4 Colunas) */}
+                {filteredFornecedores.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-10 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 text-center shadow-sm">
+                    <span className="text-4xl mb-3 opacity-60">🏭</span>
+                    <p className="text-zinc-700 dark:text-zinc-300 font-bold text-base">
+                      {b2bSearchQuery ? `Nenhum fornecedor encontrado para "${b2bSearchQuery}"` : 'Nenhum fornecedor ativo na sua região no momento'}
+                    </p>
+                    <p className="text-zinc-500 text-xs mt-1">
+                      {b2bSearchQuery ? 'Tente buscar por outro termo ou limpe os filtros aplicados.' : 'Assim que novos produtores ou entrepostos se cadastrarem na sua cidade, eles aparecerão aqui automaticamente.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+                    {displayedFornecedores.map(forn => {
+                      const { freteTotal, freteLoja, subsidy, dist } = calcFreteB2B(forn.id);
+                      const isSelectedForn = cart.storeId === forn.id && b2bCartItems.length > 0;
+                      const isFornPaused = forn.status === 'paused';
+                      const minTime = Math.max(20, Math.min(60, 20 + Math.round(dist * 3)));
+                      const maxTime = Math.max(35, Math.min(85, 35 + Math.round(dist * 3)));
+
+                      return (
+                        <div 
+                          key={forn.id} 
+                          className={`group bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl shadow-xs border transition-all duration-200 hover:shadow-lg flex flex-col justify-between gap-3 relative overflow-hidden ${
+                            isSelectedForn 
+                              ? 'border-emerald-500 ring-2 ring-emerald-500/30' 
+                              : 'border-zinc-200/90 dark:border-zinc-800/90 hover:border-emerald-400 dark:hover:border-emerald-600'
+                          } ${isFornPaused ? 'opacity-70 bg-zinc-50/90 dark:bg-zinc-950/70' : ''}`}
+                        >
+                          {isSelectedForn && (
+                            <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-bl-lg shadow-xs">
+                              No Carrinho ({b2bCartTotalQuantity})
+                            </div>
+                          )}
+
+                          <div>
+                            {/* TOPO DO CARD: ÍCONE, NOME E DISTÂNCIA */}
+                            <div className="flex items-start justify-between gap-2.5 mb-2.5">
+                              <div className="flex items-start gap-2.5 min-w-0">
+                                <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/70 shrink-0 border border-emerald-100 dark:border-emerald-900/40 flex items-center justify-center text-2xl shadow-xs group-hover:scale-105 transition">
+                                  {forn.icon || '🏭'}
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="font-extrabold text-zinc-900 dark:text-white text-sm sm:text-base leading-snug truncate" title={forn.name}>
+                                    {forn.name}
+                                  </h4>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-0.5">
+                                    <span className="truncate">📍 {forn.bairro || 'Centro'}</span>
+                                    <span className="text-amber-500 font-bold shrink-0">★ 4.9</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <button 
+                                onClick={() => {
+                                  setMapModal({
+                                    open: true,
+                                    origem: { lat: forn?.lat || 0, lng: forn?.lng || 0, name: forn.name || 'Fornecedor' },
+                                    destino: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser.name || 'Sua Loja' },
+                                    motorista: null
+                                  });
+                                }} 
+                                className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2 py-1 rounded-xl shrink-0 transition flex items-center gap-1 border border-blue-200/80 dark:border-blue-800/80 shadow-xs"
+                                title="Ver rota no mapa"
+                              >
+                                🗺️ {dist.toFixed(1)} km
+                              </button>
+                            </div>
+
+                            {/* BADGES DE STATUS & SUBSÍDIO */}
+                            <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
+                              {isFornPaused ? (
+                                <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md">🔴 Fechado</span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">🟢 Aberto</span>
+                              )}
+                              {subsidy > 0 && (
+                                <span className="text-[10px] font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900/40 px-2 py-0.5 rounded-md">⚡ Frete -{subsidy}%</span>
+                              )}
+                              <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">⏱️ {minTime}-{maxTime} min</span>
+                            </div>
+
+                            {/* BOX DE PREÇOS */}
+                            <div className="bg-zinc-50 dark:bg-zinc-950/70 p-2.5 rounded-xl flex flex-col gap-1 text-xs mb-2.5 border border-zinc-100 dark:border-zinc-800/80">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-zinc-500 font-medium">Lata Açaí (14kg):</span>
+                                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                                  {formatMoney(forn.priceB2B || 140)} <span className="text-[10px] text-zinc-400 font-normal">/lata</span>
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center text-[11px]">
+                                <span className="text-zinc-500">Frete Caminhão:</span>
+                                <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteLoja)}</span>
+                              </div>
+                            </div>
+
+                            {/* TAGS DE PRODUTOS DISPONÍVEIS */}
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className="text-[9px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 px-1.5 py-0.5 rounded font-bold">
+                                🌴 Lata Fruto (14kg)
+                              </span>
+                              {forn.products && forn.products.length > 0 && (
+                                <span className="text-[9px] bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/40 px-1.5 py-0.5 rounded font-bold">
+                                  📦 +{forn.products.length} Insumo(s)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* BOTÃO DE AÇÃO */}
+                          {isFornPaused ? (
+                            <button 
+                              onClick={() => alert(`⚠️ O fornecedor "${forn.name}" está fechado no momento e não está aceitando pedidos agora.`)}
+                              className="w-full mt-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700/60 text-zinc-400 dark:text-zinc-500 font-bold py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700/60 transition flex justify-center items-center gap-1.5 text-xs"
+                            >
+                              ⛔ Fechado no Momento
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => setSelectedFornecedorId(forn.id)} 
+                              className="w-full mt-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold py-2.5 px-3 rounded-xl shadow-sm transition-all duration-150 active:scale-98 flex justify-center items-center gap-1.5 text-xs cursor-pointer"
+                            >
+                              <ShoppingCart size={14} /> Ver Catálogo & Pedir
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* BOTÃO CARREGAR MAIS (+12) */}
+                {filteredFornecedores.length > b2bVisibleLimit && (
+                  <div className="flex flex-col items-center justify-center pt-4 pb-2 gap-2">
+                    <p className="text-xs text-zinc-500">
+                      Exibindo <strong>{displayedFornecedores.length}</strong> de <strong>{filteredFornecedores.length}</strong> fornecedores
+                    </p>
+                    <button
+                      onClick={() => setB2bVisibleLimit(prev => prev + 12)}
+                      className="px-6 py-2.5 bg-white dark:bg-zinc-900 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl text-xs font-extrabold transition shadow-sm active:scale-95 cursor-pointer"
+                    >
+                      ➕ Carregar Mais Fornecedores (+12)
+                    </button>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Lista de Pedidos de Abastecimento B2B */}
