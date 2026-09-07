@@ -30,7 +30,7 @@ export function StoreShareCard({ storeId, storeName, role }: StoreShareCardProps
   const handleShareWhatsApp = () => {
     const isSupplier = role === 'fornecedor';
     const text = isSupplier
-      ? `🏭 Conheça o catálogo oficial de frutos e insumos de *${storeName}* no AçaíFood! Faça seu pedido direto pelo nosso link:\n\n${shareUrl}`
+      ? `🏭 Faça seu pedido em *${storeName}* no AçaíFood! Acesse nosso catálogo oficial de frutos e insumos:\n\n${shareUrl}`
       : `🥣 Faça seu pedido em *${storeName}* no AçaíFood! Acesse nosso cardápio oficial:\n\n${shareUrl}`;
     
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
