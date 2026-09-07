@@ -254,7 +254,30 @@ export default function MotoboyDashboard() {
         )}
         <div className="bg-zinc-800 dark:bg-zinc-900 text-white p-5 rounded-xl shadow flex justify-between items-center border border-zinc-700 dark:border-zinc-800">
             <div>
-                <h2 className="text-xl font-bold">{currentUser.icon} {currentUser.name} ({currentUser.veiculo})</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-bold">{currentUser.icon} {currentUser.name} ({currentUser.veiculo})</h2>
+                  <button
+                    onClick={async () => {
+                      const newName = prompt("Digite seu novo nome / apelido de motorista:", currentUser.name);
+                      if (newName === null) return;
+                      const clean = newName.trim();
+                      if (!clean) {
+                        alert("O nome não pode ficar em branco.");
+                        return;
+                      }
+                      try {
+                        await store.updateUserName(currentUser.id, clean);
+                        alert(`✅ Nome alterado para "${clean}" com sucesso!`);
+                      } catch (err: any) {
+                        alert("Erro ao alterar nome: " + (err?.message || "Tente novamente."));
+                      }
+                    }}
+                    className="text-[11px] bg-zinc-700 hover:bg-zinc-600 text-zinc-200 hover:text-white px-2 py-0.5 rounded-lg border border-zinc-600 transition shadow flex items-center gap-1 active:scale-95"
+                    title="Editar seu nome"
+                  >
+                    ✏️ Trocar Nome
+                  </button>
+                </div>
                 <p className="text-zinc-400 text-xs mt-1">📍 Base: {currentUser.bairro}</p>
                 <div className="mt-2">
                   <button 

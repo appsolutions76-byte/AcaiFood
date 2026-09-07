@@ -431,7 +431,30 @@ export default function FornecedorDashboard() {
         {/* Banner Cofre Virtual & Pix Automático (Sempre Visível) */}
         <div className="bg-emerald-900 text-white p-5 rounded-2xl shadow flex justify-between items-center border border-emerald-800">
             <div>
-                <h2 className="text-xl font-bold">🏭 {currentUser.name}</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-bold">🏭 {currentUser.name}</h2>
+                  <button
+                    onClick={async () => {
+                      const newName = prompt("Digite o novo nome do seu Estabelecimento / Fornecedor:", currentUser.name);
+                      if (newName === null) return;
+                      const clean = newName.trim();
+                      if (!clean) {
+                        alert("O nome não pode ficar em branco.");
+                        return;
+                      }
+                      try {
+                        await store.updateUserName(currentUser.id, clean);
+                        alert(`✅ Nome alterado para "${clean}" com sucesso!`);
+                      } catch (err: any) {
+                        alert("Erro ao alterar nome: " + (err?.message || "Tente novamente."));
+                      }
+                    }}
+                    className="text-[11px] bg-emerald-800/90 hover:bg-emerald-700 text-emerald-200 hover:text-white px-2 py-0.5 rounded-lg border border-emerald-600 transition shadow flex items-center gap-1 active:scale-95"
+                    title="Editar nome do seu estabelecimento"
+                  >
+                    ✏️ Trocar Nome
+                  </button>
+                </div>
                 <p className="text-emerald-300 text-xs mt-1">📍 Bairro: {currentUser.bairro || 'Central'}</p>
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <button 

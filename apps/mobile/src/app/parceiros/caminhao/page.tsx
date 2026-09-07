@@ -251,7 +251,30 @@ export default function CaminhaoDashboard() {
         {activeTab === 'geral' && (
         <div className="bg-blue-950 text-white p-5 rounded-xl shadow flex justify-between items-center border border-blue-900 animate-in fade-in zoom-in-95 duration-300">
             <div>
-                <h2 className="text-xl font-bold">{currentUser.icon} {currentUser.name} ({currentUser.veiculo})</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-bold">{currentUser.icon} {currentUser.name} ({currentUser.veiculo})</h2>
+                  <button
+                    onClick={async () => {
+                      const newName = prompt("Digite seu novo nome / identificação do caminhão:", currentUser.name);
+                      if (newName === null) return;
+                      const clean = newName.trim();
+                      if (!clean) {
+                        alert("O nome não pode ficar em branco.");
+                        return;
+                      }
+                      try {
+                        await store.updateUserName(currentUser.id, clean);
+                        alert(`✅ Nome alterado para "${clean}" com sucesso!`);
+                      } catch (err: any) {
+                        alert("Erro ao alterar nome: " + (err?.message || "Tente novamente."));
+                      }
+                    }}
+                    className="text-[11px] bg-blue-900 hover:bg-blue-800 text-blue-200 hover:text-white px-2 py-0.5 rounded-lg border border-blue-700 transition shadow flex items-center gap-1 active:scale-95"
+                    title="Editar seu nome"
+                  >
+                    ✏️ Trocar Nome
+                  </button>
+                </div>
                 <p className="text-blue-300 text-xs mt-1">📍 Base: {currentUser.bairro}</p>
                 <div className="mt-2">
                   <button 

@@ -350,6 +350,7 @@ interface AppState {
   setupRealtime: (userId: string) => void;
   clearData: () => Promise<void>;
   updateUserPixKey: (userId: string, pixKey: string) => Promise<void>;
+  updateUserName: (userId: string, name: string) => Promise<void>;
   markPayoutDone: (orderIds: string[], role: 'seller' | 'driver') => Promise<void>;
 
   // Cidades
@@ -2854,6 +2855,45 @@ export const useAppStore = create<AppState>()(
             }));
          } catch (e: any) {
             console.error("Erro ao atualizar Chave Pix:", e);
+            throw e;
+         }
+      },
+
+      updateUserName: async (userId: string, name: string) => {
+         const cleanName = name.trim();
+         if (!cleanName) return;
+         try {
+            // 1. Atualizar tabela users
+            const { error: userErr } = await supabase.from('users').update({ name: cleanName }).eq('id', userId);
+            if (userErr) console.warn("Erro ao atualizar nome na tabela users:", userErr);
+
+            // 2. Atualizar tabela storefronts
+            const { error: sfErr } = await supabase.from('storefronts').update({ store_name: cleanName }).eq('partner_id', userId);
+            if (sfErr) console.warn("Aviso ao atualizar store_name em storefronts:", sfErr);
+
+            set((state) => {
+               const currentUser = state.currentUser;
+               const isCurrent = currentUser?.id === userId;
+               const user = state.users[userId];
+               const updatedCurrentUser = isCurrent && currentUser ? { 
+                  ...currentUser, 
+                  name: cleanName,
+                  storefronts: (currentUser as any).storefronts?.map((sf: any) => ({ ...sf, store_name: cleanName })) || (currentUser as any).storefronts
+               } : currentUser;
+
+               const updatedUser = user ? {
+                  ...user,
+                  name: cleanName,
+                  storefronts: (user as any).storefronts?.map((sf: any) => ({ ...sf, store_name: cleanName })) || (user as any).storefronts
+               } : undefined;
+
+               return {
+                  currentUser: updatedCurrentUser,
+                  users: updatedUser ? { ...state.users, [userId]: updatedUser } : state.users
+               };
+            });
+         } catch (e: any) {
+            console.error("Erro ao atualizar nome do estabelecimento:", e);
             throw e;
          }
       },
