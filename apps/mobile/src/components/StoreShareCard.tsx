@@ -28,11 +28,7 @@ export function StoreShareCard({ storeId, storeName, role }: StoreShareCardProps
   };
 
   const handleShareWhatsApp = () => {
-    const isSupplier = role === 'fornecedor';
-    const text = isSupplier
-      ? `🏭 Faça seu pedido em *${storeName}* no AçaíFood! Acesse nosso catálogo oficial de frutos e insumos:\n\n${shareUrl}`
-      : `🥣 Faça seu pedido em *${storeName}* no AçaíFood! Acesse nosso cardápio oficial:\n\n${shareUrl}`;
-    
+    const text = `🥣 Faça seu pedido em *${storeName}* no AçaíFood! Acesse nosso cardápio oficial:\n\n${shareUrl}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -49,7 +45,7 @@ export function StoreShareCard({ storeId, storeName, role }: StoreShareCardProps
               </span>
               <div>
                 <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-                  🚀 {isSupplier ? 'Catálogo de Fornecedor' : 'Cardápio'} de {storeName} • AçaíFood
+                  🚀 Cardápio de {storeName} • AçaíFood
                 </h3>
                 <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Link de Divulgação Oficial</span>
               </div>
