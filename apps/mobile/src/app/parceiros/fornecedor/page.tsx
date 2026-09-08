@@ -711,7 +711,7 @@ export default function FornecedorDashboard() {
               </div>
 
               <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 mt-2">
-                {currentUser?.products?.map(p => {
+                {[...(currentUser?.products || [])].sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map(p => {
                   const isAvail = p.isAvailable !== false;
                   return (
                     <li key={p.id} className="flex justify-between items-center py-2.5 gap-2">

@@ -1226,9 +1226,9 @@ export default function BatedeiraDashboard() {
                 </button>
               </div>
 
-              {/* Lista de Extras */}
+              {/* Lista de Extras (Disponíveis Primeiro, Esgotados ao Final) */}
               <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-60 overflow-y-auto">
-                {currentUser?.products?.map(p => {
+                {[...(currentUser?.products || [])].sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map(p => {
                   const isAvail = p.isAvailable !== false;
                   return (
                     <li key={p.id} className="flex justify-between items-center py-2.5 gap-2">
@@ -1456,8 +1456,8 @@ export default function BatedeiraDashboard() {
                       );
                     })()}
 
-                    {/* PRODUTOS EXTRAS */}
-                    {selForn.products && selForn.products.map(p => {
+                    {/* PRODUTOS EXTRAS (DISPONÍVEIS PRIMEIRO, ESGOTADOS AO FINAL) */}
+                    {selForn.products && [...selForn.products].sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map(p => {
                       const isAvail = p.isAvailable !== false;
                       return (
                         <div key={p.id} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
