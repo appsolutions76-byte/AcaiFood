@@ -242,7 +242,22 @@ export async function POST(request: Request) {
           })
         });
         const newCustData = await createCustRes.json();
-        customerId = newCustData.id;
+        if (newCustData?.id) {
+          customerId = newCustData.id;
+        } else if (cleanCpf) {
+          // Fallback de resiliência: se o Asaas recusou por CPF/CNPJ de teste, tenta criar sem o documento
+          const retryCustRes = await fetch(`${ASAAS_URL}/customers`, {
+            method: 'POST',
+            headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name || 'Parceiro AçaíFood',
+              email: emailToSearch,
+              mobilePhone: cleanPhone || undefined
+            })
+          });
+          const retryData = await retryCustRes.json();
+          customerId = retryData?.id || '';
+        }
       }
     } catch (_err) {
       console.warn('Aviso ao buscar/criar cliente Asaas para ativação:', _err);
