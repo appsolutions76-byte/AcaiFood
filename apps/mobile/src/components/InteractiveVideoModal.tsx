@@ -5,11 +5,12 @@ import {
   Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2, 
   Minimize2, X, Store, Smartphone, Truck, Bike, CheckCircle2, 
   Printer, ArrowRight, ChevronRight, ChevronLeft,
-  MapPin, QrCode, Navigation, ShieldCheck
+  MapPin, QrCode, Navigation, ShieldCheck, Recycle, Trash2,
+  Sparkles, Layers
 } from "lucide-react";
 import Link from "next/link";
 
-export type VideoId = 'batedeira' | 'cliente' | 'motoboy' | 'caminhao' | 'b2b';
+export type VideoId = 'ciclo_completo' | 'motoboy' | 'caminhao' | 'batedeira' | 'cliente' | 'b2b';
 
 export interface VideoItem {
   id: VideoId;
@@ -25,6 +26,18 @@ export interface VideoItem {
 }
 
 export const VIDEO_CATALOG: VideoItem[] = [
+  {
+    id: 'ciclo_completo',
+    title: 'O Ciclo Completo: Do Fruto à Tigela e ao Descarte do Caroço',
+    badge: '🎬 Super Demonstração • Ciclo Completo',
+    role: 'O Ecossistema Completo do Açaí',
+    durationSeconds: 90,
+    description: 'Veja todo o processo integrado: cliente pede, batedeira imprime cupom, motoboy entrega com PIN, batedeira compra frutos com caminhão B2B, e a caçamba recolhe o caroço residual!',
+    ctaText: 'Fazer Parte do AçaíFood',
+    ctaLink: '/parceiros',
+    colorScheme: 'purple',
+    videoUrl: '/videos/ciclo_completo.mp4'
+  },
   {
     id: 'motoboy',
     title: 'No Motoboy: Corrida GPS, PIN Seguro e Saque PIX',
@@ -94,7 +107,7 @@ interface InteractiveVideoModalProps {
 }
 
 export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: InteractiveVideoModalProps) {
-  const [currentVideoId, setCurrentVideoId] = useState<VideoId>('motoboy');
+  const [currentVideoId, setCurrentVideoId] = useState<VideoId>('ciclo_completo');
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -116,7 +129,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
   const activeVideo = VIDEO_CATALOG.find(v => v.id === currentVideoId) || VIDEO_CATALOG[0];
 
   // Web Audio synthesizer for realistic app feedback sound effects
-  const playSoundEffect = (type: 'order_bell' | 'printer' | 'pix_success' | 'truck_gear' | 'moto_horn' | 'truck_horn') => {
+  const playSoundEffect = (type: 'order_bell' | 'printer' | 'pix_success' | 'truck_gear' | 'moto_horn' | 'truck_horn' | 'cacamba') => {
     if (isMuted) return;
     try {
       if (!audioContextRef.current) {
@@ -154,7 +167,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
         osc2.start(now + 0.15);
         osc2.stop(now + 0.6);
       } else if (type === 'printer') {
-        // Thermal printer stepping sound
         for (let i = 0; i < 4; i++) {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -168,7 +180,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
           osc.stop(now + i * 0.08 + 0.06);
         }
       } else if (type === 'pix_success') {
-        // Happy ascending chord
         [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -194,7 +205,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
         osc.start(now);
         osc.stop(now + 0.4);
       } else if (type === 'moto_horn') {
-        // Motorcycle horn beep beep
         for (let i = 0; i < 2; i++) {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -208,7 +218,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
           osc.stop(now + i * 0.12 + 0.08);
         }
       } else if (type === 'truck_horn') {
-        // Deep air horn
         [185, 233].forEach((freq) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -221,9 +230,22 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
           osc.start(now);
           osc.stop(now + 0.55);
         });
+      } else if (type === 'cacamba') {
+        // Hydraulic mechanical rumble sound
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(130, now);
+        osc.frequency.linearRampToValueAtTime(185, now + 0.35);
+        gain.gain.setValueAtTime(0.13, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.5);
       }
     } catch {
-      // Audio context might be restricted before interaction
+      // Audio context may be suspended before user action
     }
   };
 
@@ -253,7 +275,28 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
 
     let currentSceneIdx = 0;
 
-    if (currentVideoId === 'motoboy') {
+    if (currentVideoId === 'ciclo_completo') {
+      if (currentTime < 14) currentSceneIdx = 0;
+      else if (currentTime < 26) currentSceneIdx = 1;
+      else if (currentTime < 38) currentSceneIdx = 2;
+      else if (currentTime < 50) currentSceneIdx = 3;
+      else if (currentTime < 62) currentSceneIdx = 4;
+      else if (currentTime < 74) currentSceneIdx = 5;
+      else if (currentTime < 83) currentSceneIdx = 6;
+      else currentSceneIdx = 7;
+
+      if (currentSceneIdx !== lastSoundSceneRef.current) {
+        lastSoundSceneRef.current = currentSceneIdx;
+        if (currentSceneIdx === 0) playSoundEffect('pix_success');
+        else if (currentSceneIdx === 1) playSoundEffect('printer');
+        else if (currentSceneIdx === 2) playSoundEffect('moto_horn');
+        else if (currentSceneIdx === 3) playSoundEffect('pix_success');
+        else if (currentSceneIdx === 4) playSoundEffect('order_bell');
+        else if (currentSceneIdx === 5) playSoundEffect('truck_horn');
+        else if (currentSceneIdx === 6) playSoundEffect('cacamba');
+        else if (currentSceneIdx === 7) playSoundEffect('pix_success');
+      }
+    } else if (currentVideoId === 'motoboy') {
       if (currentTime < 9) currentSceneIdx = 0;
       else if (currentTime < 18) currentSceneIdx = 1;
       else if (currentTime < 28) currentSceneIdx = 2;
@@ -392,7 +435,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
             <span className="text-xs font-black text-white flex items-center gap-1.5 uppercase tracking-wider">
               {activeVideo.badge}
             </span>
-            <span className="text-[11px] text-zinc-400 hidden sm:inline">• Demonstração de Transporte & Operação</span>
+            <span className="text-[11px] text-zinc-400 hidden sm:inline">• Demonstração Interativa</span>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
@@ -423,10 +466,10 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
         </div>
 
         {/* VIDEO DISPLAY STAGE */}
-        <div className="relative flex-1 bg-gradient-to-b from-zinc-950 via-purple-950/20 to-zinc-950 min-h-[400px] sm:min-h-[480px] flex items-center justify-center p-3 sm:p-6 overflow-hidden">
+        <div className="relative flex-1 bg-gradient-to-b from-zinc-950 via-purple-950/20 to-zinc-950 min-h-[400px] sm:min-h-[490px] flex items-center justify-center p-3 sm:p-6 overflow-hidden">
           
           {/* SIMULATED HIGH-FIDELITY INTERACTIVE VIDEO SCREEN */}
-          <div className="w-full max-w-sm sm:max-w-md mx-auto aspect-[9/16] max-h-[500px] bg-zinc-900 border-4 border-zinc-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col select-none ring-1 ring-purple-500/20">
+          <div className="w-full max-w-sm sm:max-w-md mx-auto aspect-[9/16] max-h-[510px] bg-zinc-900 border-4 border-zinc-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col select-none ring-1 ring-purple-500/20">
             
             {/* Phone Notch */}
             <div className="h-6 bg-zinc-950 flex items-center justify-center relative shrink-0">
@@ -437,7 +480,205 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
             {/* Simulated Phone Screen Content */}
             <div className="flex-1 bg-zinc-950 p-4 flex flex-col justify-between overflow-hidden relative">
               
-              {/* VIDEO 1: MOTOBOY FLOW */}
+              {/* VIDEO MASTER: CICLO COMPLETO DO ECOSSISTEMA */}
+              {currentVideoId === 'ciclo_completo' && (
+                <div className="h-full flex flex-col justify-between py-2">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center border-b border-purple-900/40 pb-2">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="text-amber-400" size={16} />
+                        <span className="text-xs font-black text-white">AçaíFood: O Ciclo Total</span>
+                      </div>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-500/30 flex items-center gap-1">
+                        Cadeia Completa
+                      </span>
+                    </div>
+
+                    {/* Step indicator box */}
+                    <div className="bg-gradient-to-r from-purple-950/80 to-zinc-900 border border-purple-500/40 rounded-xl p-2.5">
+                      <div className="text-[10px] font-black text-amber-300 uppercase tracking-wide flex items-center gap-1">
+                        <span>
+                          {currentTime < 14 && "Passo 1/8: Cliente Faz Pedido"}
+                          {currentTime >= 14 && currentTime < 26 && "Passo 2/8: Loja Aceita & Imprime"}
+                          {currentTime >= 26 && currentTime < 38 && "Passo 3/8: Motoboy Coleta na Loja"}
+                          {currentTime >= 38 && currentTime < 50 && "Passo 4/8: Entrega Portão com PIN"}
+                          {currentTime >= 50 && currentTime < 62 && "Passo 5/8: Loja Compra Frutos B2B"}
+                          {currentTime >= 62 && currentTime < 74 && "Passo 6/8: Caminhão Entrega Carga"}
+                          {currentTime >= 74 && currentTime < 83 && "Passo 7/8: Chamando Coleta do Caroço"}
+                          {currentTime >= 83 && "Passo 8/8: Caçamba Retira o Caroço"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white font-bold mt-0.5 leading-tight">
+                        {currentTime < 14 && "📱 Cliente escolhe açaí artesanal e paga com PIX automático."}
+                        {currentTime >= 14 && currentTime < 26 && "🖨️ Batedeira aceita com 1 toque e impressora térmica emite a comanda."}
+                        {currentTime >= 26 && currentTime < 38 && "🏍️ Alerta toca no motoboy, que pilota até a loja e retira a bag térmica."}
+                        {currentTime >= 38 && currentTime < 50 && "🔑 Cliente digita o PIN [4821]. Pedido entregue e motoboy pago!"}
+                        {currentTime >= 50 && currentTime < 62 && "🍇 Batedeira compra 50 latas de fruto direto do produtor ribeirinho."}
+                        {currentTime >= 62 && currentTime < 74 && "🚚 Caminhão pesado carrega romaneio e descarrega as latas na doca."}
+                        {currentTime >= 74 && currentTime < 83 && "♻️ Batedeira aciona o botão 'Solicitar Coleta de Caroço residual'."}
+                        {currentTime >= 83 && "🚜 Caçamba aceita a ordem e recolhe os caroços para reciclagem e biomassa!"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Middle Animated Stage: Ciclo Completo */}
+                  <div className="my-auto space-y-3">
+                    
+                    {/* 1. Cliente */}
+                    {currentTime < 14 && (
+                      <div className="bg-zinc-900 border border-pink-500/50 rounded-2xl p-3.5 space-y-2 animate-in fade-in">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-pink-300 font-bold">1. Cliente Pedindo:</span>
+                          <span className="text-[10px] text-zinc-400">Cardápio GPS</span>
+                        </div>
+                        <div className="bg-zinc-950 p-2.5 rounded-xl space-y-1 text-xs">
+                          <div className="flex justify-between text-white font-bold">
+                            <span>1L Açaí Grosso + Farinha</span>
+                            <span className="text-emerald-400">R$ 28,00</span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400">Entrega: Rua dos Açaizeiros • 1.4km</div>
+                          <div className="flex items-center gap-1 text-[11px] text-emerald-400 pt-1 font-mono">
+                            <CheckCircle2 size={12} /> PIX Aprovado via Asaas
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 2. Loja & Impressora */}
+                    {currentTime >= 14 && currentTime < 26 && (
+                      <div className="bg-zinc-900 border border-purple-500/50 rounded-2xl p-3.5 space-y-2 animate-in fade-in">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-purple-300 font-bold">2. Batedeira Operando:</span>
+                          <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-bold">Preparando</span>
+                        </div>
+                        <div className="bg-amber-100 text-zinc-950 p-2.5 rounded-xl font-mono text-[10px] space-y-0.5 shadow">
+                          <div className="font-bold text-center border-b border-zinc-400 pb-0.5">*** AÇAÍFOOD COMANDA ***</div>
+                          <div>PEDIDO: #1084 • CLIENTE: Carlos E.</div>
+                          <div className="font-bold">ITEM: 1L Açaí Grosso + Farinha</div>
+                          <div className="text-purple-900 font-bold">PIN SEGURANÇA: [ 4 8 2 1 ]</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3. Motoboy */}
+                    {currentTime >= 26 && currentTime < 38 && (
+                      <div className="bg-zinc-900 border border-amber-500/50 rounded-2xl p-3.5 space-y-2 animate-in fade-in">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-amber-300 font-bold flex items-center gap-1">
+                            <Bike size={14} /> 3. Chamando Motoboy:
+                          </span>
+                          <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-bold">Retirada</span>
+                        </div>
+                        <div className="bg-zinc-950 p-2.5 rounded-xl space-y-1.5 text-xs">
+                          <div className="text-white font-bold">Marcos Motoboy Aceitou a Corrida</div>
+                          <div className="text-[11px] text-zinc-300">Chegou na batedeira • Bag lacrada</div>
+                          <div className="text-[11px] font-bold text-emerald-400">Frete Líquido: R$ 8,50</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 4. Entrega PIN */}
+                    {currentTime >= 38 && currentTime < 50 && (
+                      <div className="bg-emerald-950/70 border border-emerald-500/60 rounded-2xl p-4 text-center space-y-2 animate-in fade-in">
+                        <div className="flex items-center justify-center gap-1.5 text-emerald-300 text-xs font-black">
+                          <ShieldCheck size={18} /> 4. PIN Validado no Portão!
+                        </div>
+                        <div className="bg-zinc-950 p-2 rounded-xl text-xl font-mono font-black text-white tracking-widest">
+                          4 8 2 1
+                        </div>
+                        <p className="text-[11px] text-emerald-200">
+                          Cliente recebeu o açaí geladinho e motoboy recebeu o dinheiro na conta!
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 5. Loja Compra Frutos B2B */}
+                    {currentTime >= 50 && currentTime < 62 && (
+                      <div className="bg-zinc-900 border border-purple-500/50 rounded-2xl p-3.5 space-y-2 animate-in fade-in">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-purple-300 font-bold">5. Reposição de Matéria-Prima:</span>
+                          <span className="text-[10px] text-amber-400 font-bold">Mercado B2B</span>
+                        </div>
+                        <div className="bg-zinc-950 p-2.5 rounded-xl space-y-1 text-xs">
+                          <div className="text-white font-bold">50 Latas de Açaí Chumbinho (700 kg)</div>
+                          <div className="text-[10px] text-zinc-400">Fornecedor: Produtor Ribeirinho • Igarapé-Miri</div>
+                          <div className="text-[11px] text-emerald-400 font-bold">Pagamento Seguro em Escrow</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 6. Caminhão B2B */}
+                    {currentTime >= 62 && currentTime < 74 && (
+                      <div className="bg-zinc-900 border border-blue-500/50 rounded-2xl p-3.5 space-y-2 animate-in fade-in">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-blue-300 font-bold flex items-center gap-1">
+                            <Truck size={14} /> 6. Caminhão em Rota:
+                          </span>
+                          <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-bold">Carga Pesada</span>
+                        </div>
+                        <div className="bg-zinc-950 p-2.5 rounded-xl space-y-1 text-xs">
+                          <div className="text-white font-bold">Transporte Rodoviário: 45 km</div>
+                          <div className="text-[11px] text-zinc-400">Descarregando 50 latas na doca da batedeira</div>
+                          <div className="text-[11px] font-bold text-emerald-400">Frete Pesado: R$ 280,00 Pago</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 7. Chamar Caçamba para o Caroço */}
+                    {currentTime >= 74 && currentTime < 83 && (
+                      <div className="bg-zinc-900 border border-amber-500/50 rounded-2xl p-3.5 space-y-2 animate-in fade-in">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-amber-300 font-bold flex items-center gap-1">
+                            <Recycle size={14} /> 7. Descarte do Caroço de Açaí:
+                          </span>
+                          <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-bold">Coleta</span>
+                        </div>
+                        <div className="bg-zinc-950 p-2.5 rounded-xl space-y-1.5 text-xs text-center">
+                          <div className="text-white font-bold">Batedeira aciona: "Chamar Caçamba"</div>
+                          <div className="text-[11px] text-zinc-300">Volume: 35 sacas de caroço batido</div>
+                          <button className="w-full bg-amber-600 text-white font-bold py-1.5 rounded-lg text-xs animate-pulse">
+                            🚚 Ordem de Caçamba Disparada
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 8. Caçamba Aceita e Conclui o Ciclo */}
+                    {currentTime >= 83 && (
+                      <div className="bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border-2 border-emerald-400 rounded-2xl p-4 text-center space-y-2 animate-in fade-in">
+                        <div className="flex items-center justify-center gap-1.5 text-emerald-300 text-xs font-black uppercase">
+                          <CheckCircle2 size={20} /> 8. Caçamba Recolheu o Caroço!
+                        </div>
+                        <div className="text-xs text-white font-bold">
+                          Pátio da Batedeira 100% Limpo e Regularizado
+                        </div>
+                        <p className="text-[10px] text-zinc-300">
+                          Caroços encaminhados para queima sustentável e biomassa. Ciclo ecológico completo!
+                        </p>
+                      </div>
+                    )}
+
+                  </div>
+
+                  {/* Chapter fast scrub buttons */}
+                  <div className="grid grid-cols-4 gap-1 text-[9px] pt-1">
+                    <button onClick={() => setCurrentTime(0)} className={`p-1 rounded text-center truncate ${currentTime < 26 ? 'bg-purple-600 text-white font-bold' : 'bg-zinc-900 text-zinc-400'}`}>
+                      1. Cliente
+                    </button>
+                    <button onClick={() => setCurrentTime(26)} className={`p-1 rounded text-center truncate ${currentTime >= 26 && currentTime < 50 ? 'bg-amber-600 text-white font-bold' : 'bg-zinc-900 text-zinc-400'}`}>
+                      2. Motoboy
+                    </button>
+                    <button onClick={() => setCurrentTime(50)} className={`p-1 rounded text-center truncate ${currentTime >= 50 && currentTime < 74 ? 'bg-blue-600 text-white font-bold' : 'bg-zinc-900 text-zinc-400'}`}>
+                      3. Caminhão
+                    </button>
+                    <button onClick={() => setCurrentTime(74)} className={`p-1 rounded text-center truncate ${currentTime >= 74 ? 'bg-emerald-600 text-white font-bold' : 'bg-zinc-900 text-zinc-400'}`}>
+                      4. Caçamba
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* VIDEO 2: MOTOBOY FLOW */}
               {currentVideoId === 'motoboy' && (
                 <div className="h-full flex flex-col justify-between py-2">
                   <div className="space-y-2">
@@ -467,7 +708,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                     </div>
                   </div>
 
-                  {/* Middle Animated Stage: Motoboy */}
                   <div className="my-auto space-y-3">
                     {currentTime < 9 && (
                       <div className="bg-gradient-to-r from-amber-950/90 to-yellow-950/90 border-2 border-amber-500 rounded-2xl p-4 shadow-xl text-center space-y-2 animate-bounce">
@@ -513,7 +753,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                           <span className="text-[10px] text-amber-400 font-bold">2 min restantes</span>
                         </div>
                         <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-1.5 text-xs">
-                          <div className="text-zinc-400 text-[11px]">Destino Final:</div>
+                          <div className="text-zinc-400 text-[10px]">Destino Final:</div>
                           <div className="text-white font-bold">Rua dos Açaizeiros, 120 • Casa A</div>
                           <div className="text-[11px] text-zinc-400">Cliente: Carlos Eduardo</div>
                         </div>
@@ -547,7 +787,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                 </div>
               )}
 
-              {/* VIDEO 2: CAMINHAO FLOW */}
+              {/* VIDEO 3: CAMINHAO FLOW */}
               {currentVideoId === 'caminhao' && (
                 <div className="h-full flex flex-col justify-between py-2">
                   <div className="space-y-2">
@@ -577,7 +817,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                     </div>
                   </div>
 
-                  {/* Middle Animated Stage: Caminhão */}
                   <div className="my-auto space-y-3">
                     {currentTime < 10 && (
                       <div className="bg-gradient-to-r from-blue-950/90 to-cyan-950/90 border-2 border-blue-500 rounded-2xl p-4 shadow-xl text-center space-y-2 animate-bounce">
@@ -663,7 +902,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                 </div>
               )}
 
-              {/* VIDEO 3: BATEDEIRA FLOW */}
+              {/* VIDEO 4: BATEDEIRA FLOW */}
               {currentVideoId === 'batedeira' && (
                 <div className="h-full flex flex-col justify-between py-2">
                   <div className="space-y-2">
@@ -693,7 +932,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                     </div>
                   </div>
 
-                  {/* Middle Animated Stage: Batedeira */}
                   <div className="my-auto space-y-3">
                     {currentTime < 10 && (
                       <div className="bg-gradient-to-r from-purple-900/80 to-pink-900/80 border border-purple-400 rounded-2xl p-4 shadow-xl text-center space-y-2 animate-bounce">
@@ -776,7 +1014,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                 </div>
               )}
 
-              {/* VIDEO 4: CLIENTE FLOW */}
+              {/* VIDEO 5: CLIENTE FLOW */}
               {currentVideoId === 'cliente' && (
                 <div className="h-full flex flex-col justify-between py-2">
                   <div className="space-y-2">
@@ -806,7 +1044,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                     </div>
                   </div>
 
-                  {/* Middle Animated Stage: Cliente */}
                   <div className="my-auto space-y-3">
                     {currentTime < 9 && (
                       <div className="bg-zinc-900 border border-pink-700/50 rounded-2xl p-3.5 space-y-2">
@@ -895,7 +1132,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                 </div>
               )}
 
-              {/* VIDEO 5: B2B PRODUTOR FLOW */}
+              {/* VIDEO 6: B2B PRODUTOR FLOW */}
               {currentVideoId === 'b2b' && (
                 <div className="h-full flex flex-col justify-between py-2">
                   <div className="space-y-2">
@@ -925,7 +1162,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                     </div>
                   </div>
 
-                  {/* Middle Animated Stage: B2B */}
                   <div className="my-auto space-y-3">
                     {currentTime < 12 && (
                       <div className="bg-zinc-900 border border-emerald-700/50 rounded-2xl p-3.5 space-y-2">
@@ -1110,6 +1346,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                       : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                   }`}
                 >
+                  {vid.id === 'ciclo_completo' && <span>🎬 Ciclo Completo</span>}
                   {vid.id === 'motoboy' && <span>🏍️ Motoboy</span>}
                   {vid.id === 'caminhao' && <span>🚚 Caminhão</span>}
                   {vid.id === 'batedeira' && <span>🏪 Batedeira</span>}

@@ -126,11 +126,11 @@ export default function LandingPage() {
             </Link>
 
             <button
-              onClick={() => handleOpenVideo('batedeira')}
+              onClick={() => handleOpenVideo('ciclo_completo')}
               className="w-full sm:w-auto bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/40 font-bold px-5 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-base transition-all active:scale-95 shadow-lg"
             >
               <Play size={18} className="text-purple-400 fill-purple-400" />
-              <span>Ver em Vídeo</span>
+              <span>Ver Ciclo Completo (Vídeo)</span>
             </button>
 
             <Link
@@ -168,8 +168,56 @@ export default function LandingPage() {
             <span className="text-purple-400 text-xs font-black uppercase tracking-wider">Como Funciona na Prática</span>
             <h2 className="text-2xl sm:text-4xl font-black text-white">Veja a Operação e os Transportes em Vídeo</h2>
             <p className="text-zinc-400 text-sm">
-              Assista como funciona a rotina dos clientes, das batedeiras e da nossa malha logística de <strong>Moto Entrega Express</strong> e <strong>Caminhão de Carga Pesada</strong>.
+              Assista como funciona a rotina dos clientes, das batedeiras e da nossa malha logística de <strong>Moto Entrega Express</strong>, <strong>Caminhão de Carga Pesada</strong> e <strong>Coleta de Caroço por Caçamba</strong>.
             </p>
+          </div>
+
+          {/* DESTAQUE MASTER: VÍDEO DO FLUXO COMPLETO */}
+          <div 
+            role="button"
+            tabIndex={0}
+            onClick={() => handleOpenVideo('ciclo_completo')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('ciclo_completo'); }}
+            className="relative bg-gradient-to-r from-purple-950 via-zinc-900 to-amber-950 border-2 border-purple-500/60 hover:border-purple-400 rounded-3xl p-6 sm:p-8 shadow-2xl cursor-pointer group transition-all duration-300 hover:shadow-purple-900/50 active:scale-[0.99] overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="space-y-3 text-center md:text-left max-w-2xl">
+                <div className="inline-flex items-center gap-2 bg-purple-600/30 border border-purple-400/40 px-3 py-1 rounded-full text-purple-200 text-xs font-black uppercase tracking-wider">
+                  <Sparkles size={14} className="text-amber-400" />
+                  <span>Vídeo Principal • Ciclo Completo (1:30)</span>
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-black text-white group-hover:text-purple-300 transition-colors">
+                  Da Colheita à Tigela e ao Descarte do Caroço
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
+                  Assista em um só vídeo todo o ciclo integrado: o cliente pede, a loja imprime a comanda, o motoboy retira e entrega com PIN, a loja compra latas de açaí com frete pesado de caminhão, e a caçamba recolhe o caroço residual!
+                </p>
+                
+                {/* Fluxo visual em linha */}
+                <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-2 text-[11px] font-bold text-zinc-300">
+                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🥣 Cliente Pede</span>
+                  <span>➔</span>
+                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🏪 Loja Imprime</span>
+                  <span>➔</span>
+                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🏍️ Moto Entrega</span>
+                  <span>➔</span>
+                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🚚 Caminhão B2B</span>
+                  <span>➔</span>
+                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🚜 Caçamba Caroço</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center gap-2 shrink-0">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 border-2 border-purple-300 flex items-center justify-center text-white shadow-2xl group-hover:scale-110 transition-transform animate-pulse">
+                  <Play size={32} className="translate-x-0.5 fill-white" />
+                </div>
+                <span className="text-xs font-black text-purple-300 uppercase tracking-wider">
+                  Rodar Vídeo Completo
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* FILTRO DE CATEGORIAS DE VÍDEO */}
@@ -182,7 +230,17 @@ export default function LandingPage() {
                   : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
               }`}
             >
-              Todos os Vídeos (5)
+              Todos os Vídeos (6)
+            </button>
+            <button
+              onClick={() => setVideoFilter('ciclo_completo' as any)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                (videoFilter as string) === 'ciclo_completo'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'bg-zinc-900 text-purple-300 hover:text-white border border-purple-800/40'
+              }`}
+            >
+              <Sparkles size={13} /> Ciclo Completo
             </button>
             <button
               onClick={() => setVideoFilter('transportes')}
@@ -238,6 +296,49 @@ export default function LandingPage() {
 
           {/* CARDS DE VÍDEOS OPERACIONAIS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            {/* VÍDEO MASTER: CICLO COMPLETO DO ECOSSISTEMA */}
+            {(videoFilter === 'todos' || (videoFilter as string) === 'ciclo_completo') && (
+              <div 
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenVideo('ciclo_completo')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('ciclo_completo'); }}
+                className="bg-gradient-to-b from-purple-950 via-zinc-900 to-zinc-950 border-2 border-purple-500 hover:border-pink-400 rounded-3xl overflow-hidden shadow-2xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-purple-900/50 active:scale-[0.98] relative"
+              >
+                <div className="absolute top-3 right-3 z-20 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
+                  <Sparkles size={11} /> Master • 8 Etapas
+                </div>
+                <div className="relative aspect-[9/16] bg-purple-950/70 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-purple-950/60 to-transparent opacity-90" />
+                  <div className="relative z-10 space-y-3">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 border-2 border-purple-200 flex items-center justify-center text-white shadow-xl group-hover:scale-110 transition-all mx-auto animate-pulse">
+                      <Play size={26} className="translate-x-0.5 fill-white text-white" />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="inline-block bg-purple-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
+                        ▶ Vídeo Completo • 1:30
+                      </span>
+                      <span className="text-[10px] text-pink-300 font-bold">
+                        Cliente ➔ Loja ➔ Moto ➔ Caminhão ➔ Caçamba
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black text-white group-hover:text-pink-300 transition-colors">
+                      O Ciclo Completo de Ponta a Ponta
+                    </h3>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      Acompanhe o pedido do açaí, impressão da comanda, entrega por moto, compra de fruto ribeirinho em caminhão e caçamba de caroço!
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/40 group-hover:bg-zinc-900 transition-colors">
+                  <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                    <Sparkles size={15} className="text-pink-400" /> Cadeia Total Integrada
+                  </span>
+                  <span className="text-[11px] text-pink-400 font-bold underline">Rodar Tudo →</span>
+                </div>
+              </div>
+            )}
             
             {/* VÍDEO TRANSPORTE 1: MOTOBOY */}
             {(videoFilter === 'todos' || videoFilter === 'transportes' || videoFilter === 'motoboy') && (
