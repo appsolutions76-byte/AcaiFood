@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-export type VideoId = 'ciclo_completo' | 'motoboy' | 'caminhao' | 'batedeira' | 'cliente' | 'b2b';
+export type VideoId = 'ciclo_animado' | 'ciclo_completo' | 'motoboy' | 'caminhao' | 'batedeira' | 'cliente' | 'b2b';
 
 export interface VideoItem {
   id: VideoId;
@@ -26,6 +26,18 @@ export interface VideoItem {
 }
 
 export const VIDEO_CATALOG: VideoItem[] = [
+  {
+    id: 'ciclo_animado',
+    title: 'Animação AçaíFood: Personagens & Vozes do Ecossistema',
+    badge: '🎭 Vídeo Animado • Personagens & Áudio',
+    role: 'A História Viva do Açaí',
+    durationSeconds: 88,
+    description: 'Animação completa com personagens vivos, balões de fala e narração com áudio: Carlos (Cliente), Seu Manoel (Batedeira), Marcos (Motoboy), Tião (Caminhoneiro), Zé Ribeirinho (Produtor) e Beto (Caçamba)!',
+    ctaText: 'Fazer Parte da História',
+    ctaLink: '/parceiros',
+    colorScheme: 'purple',
+    videoUrl: '/videos/ciclo_animado.mp4'
+  },
   {
     id: 'ciclo_completo',
     title: 'O Ciclo Completo: Do Fruto à Tigela e ao Descarte do Caroço',
@@ -128,8 +140,25 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
 
   const activeVideo = VIDEO_CATALOG.find(v => v.id === currentVideoId) || VIDEO_CATALOG[0];
 
+  // Text-to-Speech narration for animated characters
+  const speakNarration = (text: string) => {
+    if (isMuted || typeof window === 'undefined') return;
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 1.05;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch {
+      // Speech synthesis fallback
+    }
+  };
+
   // Web Audio synthesizer for realistic app feedback sound effects
-  const playSoundEffect = (type: 'order_bell' | 'printer' | 'pix_success' | 'truck_gear' | 'moto_horn' | 'truck_horn' | 'cacamba') => {
+  const playSoundEffect = (type: 'order_bell' | 'printer' | 'pix_success' | 'truck_gear' | 'moto_horn' | 'truck_horn' | 'cacamba' | 'character_pop') => {
     if (isMuted) return;
     try {
       if (!audioContextRef.current) {
@@ -143,7 +172,19 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
 
       const now = ctx.currentTime;
 
-      if (type === 'order_bell') {
+      if (type === 'character_pop') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(780, now + 0.12);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'order_bell') {
         // Double ding bell sound
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
@@ -275,7 +316,50 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
 
     let currentSceneIdx = 0;
 
-    if (currentVideoId === 'ciclo_completo') {
+    if (currentVideoId === 'ciclo_animado') {
+      if (currentTime < 14) currentSceneIdx = 0;
+      else if (currentTime < 26) currentSceneIdx = 1;
+      else if (currentTime < 38) currentSceneIdx = 2;
+      else if (currentTime < 50) currentSceneIdx = 3;
+      else if (currentTime < 62) currentSceneIdx = 4;
+      else if (currentTime < 68) currentSceneIdx = 5;
+      else if (currentTime < 74) currentSceneIdx = 6;
+      else if (currentTime < 81) currentSceneIdx = 7;
+      else currentSceneIdx = 8;
+
+      if (currentSceneIdx !== lastSoundSceneRef.current) {
+        lastSoundSceneRef.current = currentSceneIdx;
+        playSoundEffect('character_pop');
+        if (currentSceneIdx === 0) {
+          setTimeout(() => playSoundEffect('pix_success'), 200);
+          speakNarration("Carlos pede açaí grosso pelo aplicativo e paga no PIX.");
+        } else if (currentSceneIdx === 1) {
+          setTimeout(() => playSoundEffect('printer'), 200);
+          speakNarration("Seu Manoel da batedeira aceita e imprime a comanda na hora.");
+        } else if (currentSceneIdx === 2) {
+          setTimeout(() => playSoundEffect('moto_horn'), 200);
+          speakNarration("Marcos motoboy chega na loja e retira a embalagem térmica.");
+        } else if (currentSceneIdx === 3) {
+          setTimeout(() => playSoundEffect('pix_success'), 200);
+          speakNarration("No portão, Carlos informa o PIN quatro oito dois um.");
+        } else if (currentSceneIdx === 4) {
+          setTimeout(() => playSoundEffect('order_bell'), 200);
+          speakNarration("Seu Manoel compra frutos do Zé Ribeirinho com pagamento protegido.");
+        } else if (currentSceneIdx === 5) {
+          setTimeout(() => playSoundEffect('truck_horn'), 200);
+          speakNarration("Tião caminhoneiro encosta na doca e pede o PIN da loja.");
+        } else if (currentSceneIdx === 6) {
+          setTimeout(() => playSoundEffect('pix_success'), 200);
+          speakNarration("PIN nove três cinco quatro validado. Frete liberado para o Tião.");
+        } else if (currentSceneIdx === 7) {
+          setTimeout(() => playSoundEffect('order_bell'), 200);
+          speakNarration("Seu Manoel aciona a caçamba para retirar o caroço de açaí.");
+        } else if (currentSceneIdx === 8) {
+          setTimeout(() => playSoundEffect('cacamba'), 200);
+          speakNarration("Beto da caçamba recolhe o caroço para biomassa. Pátio limpo!");
+        }
+      }
+    } else if (currentVideoId === 'ciclo_completo') {
       if (currentTime < 14) currentSceneIdx = 0;
       else if (currentTime < 26) currentSceneIdx = 1;
       else if (currentTime < 38) currentSceneIdx = 2;
@@ -482,6 +566,302 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
             {/* Simulated Phone Screen Content */}
             <div className="flex-1 bg-zinc-950 p-4 flex flex-col justify-between overflow-hidden relative">
               
+              {/* VIDEO 0: CICLO ANIMADO COM PERSONAGENS E ÁUDIO */}
+              {currentVideoId === 'ciclo_animado' && (
+                <div className="h-full flex flex-col justify-between py-1">
+                  
+                  {/* Header do Episódio Animado */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center border-b border-purple-900/40 pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base animate-bounce">🎭</span>
+                        <span className="text-xs font-black text-white">Turma do AçaíFood: Ciclo Vivo</span>
+                      </div>
+                      <span className="text-[10px] bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black px-2 py-0.5 rounded-full shadow flex items-center gap-1">
+                        <Sparkles size={10} /> Personagens & Voz
+                      </span>
+                    </div>
+
+                    {/* Banner do Ato com Personagem Ativo */}
+                    <div className="bg-gradient-to-r from-purple-950 via-zinc-900 to-zinc-950 border border-purple-500/50 rounded-xl p-2 shadow-inner flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-pink-400">
+                          {currentTime < 14 && "Ato 1 • Carlos (O Cliente)"}
+                          {currentTime >= 14 && currentTime < 26 && "Ato 2 • Seu Manoel (Batedeira)"}
+                          {currentTime >= 26 && currentTime < 38 && "Ato 3 • Marcos (O Motoboy)"}
+                          {currentTime >= 38 && currentTime < 50 && "Ato 4 • Carlos & Marcos (PIN Seguro)"}
+                          {currentTime >= 50 && currentTime < 62 && "Ato 5 • Zé Ribeirinho & Seu Manoel"}
+                          {currentTime >= 62 && currentTime < 68 && "Ato 6 • Tião Caminhoneiro na Doca"}
+                          {currentTime >= 68 && currentTime < 74 && "Ato 6B • PIN da Doca Validado!"}
+                          {currentTime >= 74 && currentTime < 81 && "Ato 7 • Seu Manoel & A Caçamba"}
+                          {currentTime >= 81 && "Ato 8 • Beto (Motorista da Caçamba)"}
+                        </span>
+                        <p className="text-[11px] text-white font-bold leading-tight">
+                          {currentTime < 14 && "😋 'Hum, que vontade de um açaí grosso com farinha d'água!'"}
+                          {currentTime >= 14 && currentTime < 26 && "👨‍🍳 'Pedido aprovado no Asaas! Comanda impressa!'"}
+                          {currentTime >= 26 && currentTime < 38 && "🏍️ 'Cheguei na loja, bag pronta e lacrada na mão!'"}
+                          {currentTime >= 38 && currentTime < 50 && "🔑 'Meu PIN é 4821!' ➔ 'Entrega liberada, valeu!'"}
+                          {currentTime >= 50 && currentTime < 62 && "🌿 'Comprei 50 latas do Zé Ribeirinho em custódia!'"}
+                          {currentTime >= 62 && currentTime < 68 && "🚚 'Opa Seu Manoel, cheguei com a carga! Qual o PIN?'"}
+                          {currentTime >= 68 && currentTime < 74 && "🔐 'PIN 9354 validado!' ➔ Frete de R$ 280,00 no bolso!"}
+                          {currentTime >= 74 && currentTime < 81 && "♻️ 'Hora de dar destino ecológico ao caroço batido!'"}
+                          {currentTime >= 81 && "🚜 'Pátio limpo e caroço levado pra queima sustentável!'"}
+                        </p>
+                      </div>
+
+                      {/* Avatar dinâmico do personagem ativo */}
+                      <div className="w-11 h-11 rounded-2xl bg-purple-900/60 border border-purple-400/50 flex items-center justify-center text-2xl shadow-lg shrink-0 animate-pulse">
+                        {currentTime < 14 && "🧑‍💻"}
+                        {currentTime >= 14 && currentTime < 26 && "👨‍🍳"}
+                        {currentTime >= 26 && currentTime < 38 && "🏍️"}
+                        {currentTime >= 38 && currentTime < 50 && "🤝"}
+                        {currentTime >= 50 && currentTime < 62 && "🛶"}
+                        {currentTime >= 62 && currentTime < 74 && "🚚"}
+                        {currentTime >= 74 && currentTime < 81 && "♻️"}
+                        {currentTime >= 81 && "🚜"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PALCO CENTRAL ANIMADO: CENÁRIOS E DIÁLOGOS */}
+                  <div className="my-auto space-y-2.5">
+                    
+                    {/* ATO 1: CARLOS PEDE AÇAÍ */}
+                    {currentTime < 14 && (
+                      <div className="space-y-2 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 h-12 rounded-2xl bg-pink-600 border-2 border-pink-300 flex items-center justify-center text-2xl shadow-lg animate-bounce">
+                            🧑‍💻
+                          </div>
+                          <div className="bg-pink-950/80 border border-pink-500/50 p-2.5 rounded-2xl rounded-tl-none shadow text-xs text-white max-w-[220px]">
+                            <span className="font-black text-pink-300 block text-[10px]">Carlos (Cliente Sedento):</span>
+                            "Vou pedir 1 Litro de Açaí Grosso com farinha de Bragança pelo AçaíFood!"
+                          </div>
+                        </div>
+
+                        {/* Celular do Carlos */}
+                        <div className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl space-y-1.5 text-xs">
+                          <div className="flex justify-between items-center text-white font-bold">
+                            <span className="flex items-center gap-1 text-pink-400">🥣 1L Grosso + Farinha</span>
+                            <span className="text-emerald-400 font-mono">R$ 28,00</span>
+                          </div>
+                          <div className="flex justify-between items-center bg-zinc-950 p-2 rounded-xl text-[10px]">
+                            <span className="text-zinc-400">Pagamento: PIX Automático</span>
+                            <span className="text-emerald-400 font-bold flex items-center gap-1">
+                              <CheckCircle2 size={11} /> Confirmado
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ATO 2: SEU MANOEL NA BATEDEIRA */}
+                    {currentTime >= 14 && currentTime < 26 && (
+                      <div className="space-y-2 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 h-12 rounded-2xl bg-purple-600 border-2 border-purple-300 flex items-center justify-center text-2xl shadow-lg animate-bounce">
+                            👨‍🍳
+                          </div>
+                          <div className="bg-purple-950/80 border border-purple-500/50 p-2.5 rounded-2xl rounded-tl-none shadow text-xs text-white max-w-[230px]">
+                            <span className="font-black text-purple-300 block text-[10px]">Seu Manoel (Batedor Raiz):</span>
+                            "Ding-dong! Pedido do Carlos apitou aqui. Já apertei 'Aceitar' e o cupom já tá saindo na térmica!"
+                          </div>
+                        </div>
+
+                        {/* Impressora saindo cupom */}
+                        <div className="bg-amber-100 text-zinc-950 p-2.5 rounded-xl font-mono text-[10px] space-y-0.5 shadow border-l-4 border-purple-600 animate-pulse">
+                          <div className="font-black text-center border-b border-zinc-400 pb-0.5">🏪 BATEDEIRA DO MANOEL</div>
+                          <div className="flex justify-between"><span>PEDIDO #1084</span><span>Carlos E.</span></div>
+                          <div className="font-bold text-purple-900">1L AÇAÍ GROSSO C/ FARINHA</div>
+                          <div className="bg-zinc-900 text-yellow-300 p-1 rounded font-black text-center mt-1">
+                            🔐 PIN CLIENTE: [ 4 8 2 1 ]
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ATO 3: MARCOS MOTOBOY CHEGA */}
+                    {currentTime >= 26 && currentTime < 38 && (
+                      <div className="space-y-2 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 h-12 rounded-2xl bg-amber-600 border-2 border-amber-300 flex items-center justify-center text-2xl shadow-lg animate-bounce">
+                            🏍️
+                          </div>
+                          <div className="bg-amber-950/80 border border-amber-500/50 p-2.5 rounded-2xl rounded-tl-none shadow text-xs text-white max-w-[230px]">
+                            <span className="font-black text-amber-300 block text-[10px]">Marcos (Motoboy Veloz):</span>
+                            "Buzinei! Cheguei na loja do Seu Manoel num instante. Bag térmica estalada e pronta pra entrega!"
+                          </div>
+                        </div>
+
+                        <div className="bg-zinc-900 border border-amber-500/40 p-2.5 rounded-2xl space-y-1 text-xs">
+                          <div className="flex justify-between items-center text-zinc-200">
+                            <span>Destino: Rua dos Açaizeiros</span>
+                            <span className="text-amber-400 font-bold">1.4 km (GPS)</span>
+                          </div>
+                          <div className="bg-zinc-950 p-2 rounded-xl flex justify-between items-center text-[11px]">
+                            <span className="text-zinc-400">Frete Líquido do Marcos:</span>
+                            <span className="text-emerald-400 font-black">+ R$ 8,50</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ATO 4: CARLOS E MARCOS NO PORTÃO (PIN SEGURO) */}
+                    {currentTime >= 38 && currentTime < 50 && (
+                      <div className="space-y-2 animate-in fade-in duration-300">
+                        <div className="flex items-center justify-center gap-3">
+                          <div className="w-11 h-11 rounded-2xl bg-pink-600 border border-pink-300 flex items-center justify-center text-xl">
+                            🧑‍💻
+                          </div>
+                          <span className="text-xl font-black text-amber-400">🤝</span>
+                          <div className="w-11 h-11 rounded-2xl bg-amber-600 border border-amber-300 flex items-center justify-center text-xl">
+                            🏍️
+                          </div>
+                        </div>
+
+                        <div className="bg-zinc-900 border border-emerald-500/60 p-3 rounded-2xl space-y-1.5 text-center">
+                          <span className="text-[10px] text-zinc-400 block font-bold">Carlos passa o código ao Marcos:</span>
+                          <div className="text-2xl font-mono font-black text-emerald-400 tracking-widest bg-zinc-950 py-1.5 rounded-xl border border-emerald-500/40">
+                            4 8 2 1
+                          </div>
+                          <p className="text-[11px] text-zinc-200 font-bold">
+                            ✅ PIN Aprovado! Carlos toma açaí gelado e Marcos recebe o PIX instantâneo!
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ATO 5: SEU MANOEL COMPRA DO ZÉ RIBEIRINHO */}
+                    {currentTime >= 50 && currentTime < 62 && (
+                      <div className="space-y-2 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-600 border-2 border-emerald-300 flex items-center justify-center text-2xl shadow-lg animate-bounce">
+                            🛶
+                          </div>
+                          <div className="bg-emerald-950/80 border border-emerald-500/50 p-2.5 rounded-2xl rounded-tl-none shadow text-xs text-white max-w-[230px]">
+                            <span className="font-black text-emerald-300 block text-[10px]">Zé Ribeirinho (Produtor do Fruto):</span>
+                            "Colhi 50 latas de açaí chumbinho graúdo nas ilhas! O Manoel já comprou tudo no B2B com escrow!"
+                          </div>
+                        </div>
+
+                        <div className="bg-zinc-900 border border-purple-500/40 p-2.5 rounded-2xl space-y-1.5 text-xs">
+                          <div className="flex justify-between items-center text-white font-bold">
+                            <span>Lote #8942: 50 Latas (700 kg)</span>
+                            <span className="text-emerald-400">Escrow Protegido</span>
+                          </div>
+                          <div className="bg-purple-950/60 p-2 rounded-xl flex justify-between items-center text-[10px]">
+                            <span className="text-purple-300 font-bold">🔑 PIN da Loja do Seu Manoel:</span>
+                            <span className="font-mono font-black text-white bg-zinc-900 px-2 py-0.5 rounded border border-purple-500">9 3 5 4</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ATO 6: TIÃO CAMINHONEIRO NA DOCA & VALIDAÇÃO DO PIN */}
+                    {currentTime >= 62 && currentTime < 74 && (
+                      <div className="space-y-2 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 h-12 rounded-2xl bg-blue-600 border-2 border-blue-300 flex items-center justify-center text-2xl shadow-lg animate-bounce">
+                            🚚
+                          </div>
+                          <div className="bg-blue-950/80 border border-blue-500/50 p-2.5 rounded-2xl rounded-tl-none shadow text-xs text-white max-w-[230px]">
+                            <span className="font-black text-blue-300 block text-[10px]">Tião (Caminhoneiro da Carga):</span>
+                            {currentTime < 68 
+                              ? "'Encostei o bruto na doca do Seu Manoel! Me passa o PIN pra descarregar as 50 latas!'" 
+                              : "'Opa, digitou 9354 e deu certinho! Carga conferida e R$ 280 de frete no meu bolso!'"}
+                          </div>
+                        </div>
+
+                        <div className="bg-zinc-900 border-2 border-blue-400 p-2.5 rounded-2xl text-center space-y-1 text-xs">
+                          {currentTime < 68 ? (
+                            <div className="space-y-1">
+                              <span className="text-[10px] text-amber-300 font-bold">Seu Manoel informa o PIN da loja:</span>
+                              <div className="text-xl font-mono font-black text-amber-300 tracking-widest animate-pulse">
+                                [ 9 3 5 4 ]
+                              </div>
+                              <span className="text-[10px] text-zinc-400">Tião digitando na doca...</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <span className="text-emerald-400 font-black text-xs flex items-center justify-center gap-1">
+                                <ShieldCheck size={14} /> PIN 9354 CONFIRMADO!
+                              </span>
+                              <div className="bg-zinc-950 p-1.5 rounded-xl text-emerald-300 font-mono font-black text-sm">
+                                Frete Pesado: + R$ 280,00 Liquidado
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ATO 7: SEU MANOEL CHAMA A CAÇAMBA */}
+                    {currentTime >= 74 && currentTime < 81 && (
+                      <div className="space-y-2 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 h-12 rounded-2xl bg-purple-600 border-2 border-purple-300 flex items-center justify-center text-2xl shadow-lg animate-bounce">
+                            👨‍🍳
+                          </div>
+                          <div className="bg-purple-950/80 border border-purple-500/50 p-2.5 rounded-2xl rounded-tl-none shadow text-xs text-white max-w-[230px]">
+                            <span className="font-black text-purple-300 block text-[10px]">Seu Manoel:</span>
+                            "Bati o açaí todo, agora sobraram 35 sacas de caroço. Não deixo nada acumular: chamei a caçamba no app!"
+                          </div>
+                        </div>
+
+                        <div className="bg-zinc-900 border border-amber-500/40 p-2.5 rounded-2xl text-center space-y-1 text-xs">
+                          <span className="text-amber-300 font-bold block text-[11px]">♻️ Solicitação de Coleta de Resíduo</span>
+                          <div className="bg-amber-600 text-white font-black py-1.5 rounded-xl text-xs animate-pulse">
+                            🚜 Ordem de Caçamba Disparada via GPS
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ATO 8: BETO DA CAÇAMBA ENCERRA O CICLO */}
+                    {currentTime >= 81 && (
+                      <div className="space-y-2 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 h-12 rounded-2xl bg-teal-600 border-2 border-teal-300 flex items-center justify-center text-2xl shadow-lg animate-bounce">
+                            🚜
+                          </div>
+                          <div className="bg-teal-950/80 border border-teal-500/50 p-2.5 rounded-2xl rounded-tl-none shadow text-xs text-white max-w-[230px]">
+                            <span className="font-black text-teal-300 block text-[10px]">Beto (Motorista da Caçamba):</span>
+                            "Aceitei a ordem! Caçamba cheia, caroços encaminhados pra olaria e biomassa. Pátio 100% limpo!"
+                          </div>
+                        </div>
+
+                        <div className="bg-gradient-to-r from-emerald-950/90 to-teal-950/90 border-2 border-emerald-400 p-3 rounded-2xl text-center space-y-1">
+                          <span className="text-xs font-black text-emerald-300 uppercase flex items-center justify-center gap-1">
+                            <CheckCircle2 size={16} /> Ecossistema Sustentável Completo!
+                          </span>
+                          <p className="text-[10px] text-zinc-300">
+                            Do Ribeirinho à Tigela e da Tigela à Reciclagem do Caroço.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+
+                  {/* Scrub de Personagens / Capítulos Rápidos */}
+                  <div className="grid grid-cols-4 gap-1 text-[8px] pt-1">
+                    <button onClick={() => setCurrentTime(0)} className={`p-1 rounded text-center truncate ${currentTime < 26 ? 'bg-pink-600 text-white font-black' : 'bg-zinc-900 text-zinc-400'}`}>
+                      1. Carlos & Manoel
+                    </button>
+                    <button onClick={() => setCurrentTime(26)} className={`p-1 rounded text-center truncate ${currentTime >= 26 && currentTime < 50 ? 'bg-amber-600 text-white font-black' : 'bg-zinc-900 text-zinc-400'}`}>
+                      2. Marcos Motoboy
+                    </button>
+                    <button onClick={() => setCurrentTime(50)} className={`p-1 rounded text-center truncate ${currentTime >= 50 && currentTime < 74 ? 'bg-blue-600 text-white font-black' : 'bg-zinc-900 text-zinc-400'}`}>
+                      3. Zé & Tião Caminhão
+                    </button>
+                    <button onClick={() => setCurrentTime(74)} className={`p-1 rounded text-center truncate ${currentTime >= 74 ? 'bg-teal-600 text-white font-black' : 'bg-zinc-900 text-zinc-400'}`}>
+                      4. Beto Caçamba
+                    </button>
+                  </div>
+
+                </div>
+              )}
+
               {/* VIDEO MASTER: CICLO COMPLETO DO ECOSSISTEMA */}
               {currentVideoId === 'ciclo_completo' && (
                 <div className="h-full flex flex-col justify-between py-2">
@@ -1382,6 +1762,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                       : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                   }`}
                 >
+                  {vid.id === 'ciclo_animado' && <span>🎭 Vídeo Animado (Voz)</span>}
                   {vid.id === 'ciclo_completo' && <span>🎬 Ciclo Completo</span>}
                   {vid.id === 'motoboy' && <span>🏍️ Motoboy</span>}
                   {vid.id === 'caminhao' && <span>🚚 Caminhão</span>}

@@ -126,11 +126,19 @@ export default function LandingPage() {
             </Link>
 
             <button
+              onClick={() => handleOpenVideo('ciclo_animado')}
+              className="w-full sm:w-auto bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-black px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-base transition-all active:scale-95 shadow-xl shadow-pink-900/40"
+            >
+              <Play size={18} className="fill-white text-white" />
+              <span>Ver Vídeo Animado (Voz)</span>
+            </button>
+
+            <button
               onClick={() => handleOpenVideo('ciclo_completo')}
               className="w-full sm:w-auto bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/40 font-bold px-5 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-base transition-all active:scale-95 shadow-lg"
             >
               <Play size={18} className="text-purple-400 fill-purple-400" />
-              <span>Ver Ciclo Completo (Vídeo)</span>
+              <span>Ciclo Simulado (App)</span>
             </button>
 
             <Link
@@ -230,7 +238,17 @@ export default function LandingPage() {
                   : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
               }`}
             >
-              Todos os Vídeos (6)
+              Todos os Vídeos (7)
+            </button>
+            <button
+              onClick={() => setVideoFilter('ciclo_animado' as any)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                (videoFilter as string) === 'ciclo_animado'
+                  ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg'
+                  : 'bg-zinc-900 text-pink-300 hover:text-white border border-pink-800/40'
+              }`}
+            >
+              <span>🎭 Vídeo Animado (Voz)</span>
             </button>
             <button
               onClick={() => setVideoFilter('ciclo_completo' as any)}
@@ -240,7 +258,7 @@ export default function LandingPage() {
                   : 'bg-zinc-900 text-purple-300 hover:text-white border border-purple-800/40'
               }`}
             >
-              <Sparkles size={13} /> Ciclo Completo
+              <Sparkles size={13} /> Ciclo Simulado
             </button>
             <button
               onClick={() => setVideoFilter('transportes')}
@@ -296,6 +314,62 @@ export default function LandingPage() {
 
           {/* CARDS DE VÍDEOS OPERACIONAIS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            {/* VÍDEO 0: CICLO ANIMADO COM PERSONAGENS E ÁUDIO */}
+            {(videoFilter === 'todos' || (videoFilter as string) === 'ciclo_animado') && (
+              <div 
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenVideo('ciclo_animado')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('ciclo_animado'); }}
+                className="bg-gradient-to-b from-pink-950 via-purple-950 to-zinc-950 border-2 border-pink-500 hover:border-amber-300 rounded-3xl overflow-hidden shadow-2xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-pink-900/60 active:scale-[0.98] relative ring-1 ring-pink-400/40"
+              >
+                <div className="absolute top-3 right-3 z-20 bg-gradient-to-r from-pink-600 to-amber-500 text-white text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1">
+                  <span>🎭 Animado • Voz & Áudio</span>
+                </div>
+                <div className="relative aspect-[9/16] bg-pink-950/60 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-pink-950/70 to-transparent opacity-90" />
+                  
+                  {/* Avatares dos personagens voando */}
+                  <div className="relative z-10 space-y-3">
+                    <div className="flex items-center justify-center -space-x-2 mb-1">
+                      <div className="w-10 h-10 rounded-full bg-pink-600 border-2 border-white flex items-center justify-center text-lg shadow">🧑‍💻</div>
+                      <div className="w-10 h-10 rounded-full bg-purple-600 border-2 border-white flex items-center justify-center text-lg shadow">👨‍🍳</div>
+                      <div className="w-10 h-10 rounded-full bg-amber-600 border-2 border-white flex items-center justify-center text-lg shadow">🏍️</div>
+                      <div className="w-10 h-10 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center text-lg shadow">🚚</div>
+                      <div className="w-10 h-10 rounded-full bg-teal-600 border-2 border-white flex items-center justify-center text-lg shadow">🚜</div>
+                    </div>
+
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-pink-500 to-amber-400 border-2 border-white flex items-center justify-center text-zinc-950 shadow-2xl group-hover:scale-110 transition-all mx-auto animate-pulse">
+                      <Play size={28} className="translate-x-0.5 fill-zinc-950 text-zinc-950" />
+                    </div>
+                    
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="inline-block bg-pink-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
+                        ▶ Vídeo Animado • 1:28
+                      </span>
+                      <span className="text-[10px] text-amber-300 font-black">
+                        Com Vozes, Balões & Som Real
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-black text-white group-hover:text-pink-300 transition-colors">
+                      História Animada: Turma do AçaíFood
+                    </h3>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      Conheça o Carlos, Seu Manoel, Marcos Motoboy, Tião Caminhoneiro e Beto da Caçamba em uma divertida animação falada com PIN duplo!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-pink-900/40 group-hover:bg-zinc-900 transition-colors">
+                  <span className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
+                    <span>🎭 Personagens & Áudio</span>
+                  </span>
+                  <span className="text-[11px] text-pink-400 font-black underline">Assistir Animação →</span>
+                </div>
+              </div>
+            )}
 
             {/* VÍDEO MASTER: CICLO COMPLETO DO ECOSSISTEMA */}
             {(videoFilter === 'todos' || (videoFilter as string) === 'ciclo_completo') && (
