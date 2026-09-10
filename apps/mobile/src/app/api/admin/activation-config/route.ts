@@ -47,7 +47,7 @@ export async function GET(request: Request) {
           return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
         });
 
-        subsidizedCount = partners.length;
+        subsidizedCount = Math.min(partners.length, freeQuota);
         paidCount = partners.filter(u => Boolean(u.asaas_wallet_id)).length;
         pendingCount = partners.filter(u => !u.asaas_wallet_id).length;
       }

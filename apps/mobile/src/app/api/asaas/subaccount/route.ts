@@ -30,6 +30,51 @@ export async function POST(request: Request) {
 
     const userState = String(estado || uf || 'PA').trim().toUpperCase();
 
+    // TRAVA DE SEGURANÇA E CUSTO:
+    // Garante que novos parceiros além da cota de vagas fundadoras não criem subcontas Asaas sem pagar a taxa de ativação
+    const { getSupabaseAdmin } = await import('@/lib/supabaseAdmin');
+    const supabase = getSupabaseAdmin();
+
+    const callerRole = String(auth.profile?.role || '').toUpperCase();
+    const isAdmin = callerRole === 'ADMIN' || auth.profile?.role === 'admin';
+
+    if (!isAdmin) {
+      let freeQuota = 8;
+      let activationEnabled = true;
+      try {
+        const { data: row } = await supabase.from('platform_settings').select('*').limit(1).maybeSingle();
+        if (row?.asaas_platform_wallet_id) {
+          const parsed = JSON.parse(row.asaas_platform_wallet_id);
+          if (parsed?.freeQuota !== undefined) freeQuota = Number(parsed.freeQuota);
+          if (parsed?.activationEnabled !== undefined) activationEnabled = Boolean(parsed.activationEnabled);
+        }
+      } catch (_e) {}
+
+      if (activationEnabled) {
+        const { data: allUsers } = await supabase
+          .from('users')
+          .select('id, role, created_at, status, asaas_wallet_id')
+          .order('created_at', { ascending: true });
+
+        const partners = (allUsers || []).filter(u => {
+          const r = String(u.role || '').toLowerCase();
+          return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
+        });
+
+        const founderIds = partners.slice(0, freeQuota).map(p => p.id);
+        const isFounder = founderIds.includes(userId);
+        const targetUser = partners.find(p => p.id === userId);
+        const isActivated = targetUser?.status === 'active' || Boolean(targetUser?.asaas_wallet_id);
+
+        if (!isFounder && !isActivated) {
+          return NextResponse.json(
+            { error: 'Taxa de homologação Asaas pendente. As vagas de fundador foram preenchidas. Conclua o pagamento Pix da taxa de homologação bancária para vincular sua subconta Asaas.' },
+            { status: 402 }
+          );
+        }
+      }
+    }
+
     const { getAsaasApiKey } = await import('@/lib/asaasConfig');
     const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
@@ -109,11 +154,6 @@ export async function POST(request: Request) {
     }
 
     // Salva no banco de dados Supabase via Service Role garantindo integridade
-    const { getSupabaseAdmin } = await import('@/lib/supabaseAdmin');
-    const supabase = getSupabaseAdmin();
-
-    const callerRole = String(auth.profile?.role || '').toUpperCase();
-    const isAdmin = callerRole === 'ADMIN' || auth.profile?.role === 'admin';
     const callerId = auth.user?.id || auth.profile?.id;
 
     if (!isAdmin && callerId !== userId) {

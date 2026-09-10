@@ -27,6 +27,12 @@ export default function LoginPage() {
       const roleStr = String(user?.role || '').toLowerCase();
       const veicStr = String(user?.veiculo || '').toLowerCase();
 
+      // Se for parceiro com homologação/ativação pendente, redireciona para a tela de pagamento Pix
+      if (roleStr !== 'cliente' && roleStr !== 'admin' && (user?.status as any) === 'pending_activation') {
+        router.push(`/cadastro?pendingUserId=${user?.id}&step=2`);
+        return;
+      }
+
       if (roleStr === 'admin') router.push('/admin');
       else if (roleStr === 'loja') router.push('/parceiros/batedeira');
       else if (roleStr === 'fornecedor') router.push('/parceiros/fornecedor');

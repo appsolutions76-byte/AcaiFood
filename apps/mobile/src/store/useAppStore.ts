@@ -624,6 +624,23 @@ export const useAppStore = create<AppState>()(
 
         const cleanedCpfCnpj = newUser.cpfCnpj ? newUser.cpfCnpj.replace(/\D/g, '') : null;
 
+        // Trava de Vagas e Custo: Novos parceiros cadastrados após o esgotamento das vagas gratuitas entram como pending_activation
+        let initialStatus: 'active' | 'pending_activation' = 'active';
+        let isFreePartner = true;
+
+        if (dbRole !== 'CLIENT') {
+          try {
+            const actRes = await fetch('/api/asaas/activation');
+            if (actRes.ok) {
+              const actInfo = await actRes.json();
+              if (actInfo.activationEnabled && actInfo.freeSlotsRemaining <= 0) {
+                initialStatus = 'pending_activation';
+                isFreePartner = false;
+              }
+            }
+          } catch (_e) {}
+        }
+
         const insertPayload: any = {
           id: newUser.id,
           role: dbRole,
@@ -638,7 +655,7 @@ export const useAppStore = create<AppState>()(
           vehicle_type: vehicleType,
           pix_key: newUser.pixKey,
           cpf_cnpj: cleanedCpfCnpj,
-          status: 'active',
+          status: initialStatus,
           split_enabled: dbRole !== 'CLIENT'
         };
 
@@ -669,62 +686,64 @@ export const useAppStore = create<AppState>()(
                 price_b2c_grosso: newUser.priceB2C?.grosso
             });
 
-            // Cria sub-conta Asaas automaticamente para receber splits
-            try {
-              let walletId = '';
+            // Cria sub-conta Asaas para receber splits (somente para parceiros fundadores gratuitos)
+            if (isFreePartner) {
               try {
-                const { data: asaasData } = await supabase.functions.invoke('asaas-create-subaccount', {
-                  body: {
-                    userId:   newUser.id,
-                    name:     newUser.name,
-                    email:    newUser.email,
-                    cpfCnpj:  newUser.cpfCnpj,
-                    phone:    newUser.telefone,
-                    endereco: newUser.endereco,
-                    bairro:   newUser.bairro,
-                    cidade:   newUser.cidade,
-                    role:     dbRole,
-                  }
-                });
-                if (asaasData?.walletId) walletId = asaasData.walletId;
-              } catch (e) {
-                console.warn('Edge Function asaas-create-subaccount indisponível, usando API nativa:', e);
-              }
+                let walletId = '';
+                try {
+                  const { data: asaasData } = await supabase.functions.invoke('asaas-create-subaccount', {
+                    body: {
+                      userId:   newUser.id,
+                      name:     newUser.name,
+                      email:    newUser.email,
+                      cpfCnpj:  newUser.cpfCnpj,
+                      phone:    newUser.telefone,
+                      endereco: newUser.endereco,
+                      bairro:   newUser.bairro,
+                      cidade:   newUser.cidade,
+                      role:     dbRole,
+                    }
+                  });
+                  if (asaasData?.walletId) walletId = asaasData.walletId;
+                } catch (e) {
+                  console.warn('Edge Function asaas-create-subaccount indisponível, usando API nativa:', e);
+                }
 
-              // Fallback para API nativa Next.js se a Edge Function não retornou walletId
-              if (!walletId && newUser.cpfCnpj) {
-                const subHeaders = await getAuthHeaders();
-                const subRes = await fetch('/api/asaas/subaccount', {
-                  method: 'POST',
-                  headers: subHeaders,
-                  body: JSON.stringify({
-                    userId:   newUser.id,
-                    name:     newUser.name,
-                    email:    newUser.email,
-                    cpfCnpj:  newUser.cpfCnpj,
-                    phone:    newUser.telefone,
-                    endereco: newUser.endereco,
-                    bairro:   newUser.bairro,
-                    cidade:   newUser.cidade,
-                    role:     dbRole,
-                  })
-                });
-                const subData = await subRes.json();
-                if (subData?.walletId) walletId = subData.walletId;
-              }
+                // Fallback para API nativa Next.js se a Edge Function não retornou walletId
+                if (!walletId && newUser.cpfCnpj) {
+                  const subHeaders = await getAuthHeaders();
+                  const subRes = await fetch('/api/asaas/subaccount', {
+                    method: 'POST',
+                    headers: subHeaders,
+                    body: JSON.stringify({
+                      userId:   newUser.id,
+                      name:     newUser.name,
+                      email:    newUser.email,
+                      cpfCnpj:  newUser.cpfCnpj,
+                      phone:    newUser.telefone,
+                      endereco: newUser.endereco,
+                      bairro:   newUser.bairro,
+                      cidade:   newUser.cidade,
+                      role:     dbRole,
+                    })
+                  });
+                  const subData = await subRes.json();
+                  if (subData?.walletId) walletId = subData.walletId;
+                }
 
-              if (walletId) {
-                newUser.asaasWalletId = walletId;
-                newUser.asaasLinked = true;
-                console.log(`✅ Sub-conta Asaas criada com sucesso! walletId: ${walletId}`);
+                if (walletId) {
+                  newUser.asaasWalletId = walletId;
+                  newUser.asaasLinked = true;
+                  console.log(`✅ Sub-conta Asaas criada com sucesso! walletId: ${walletId}`);
+                }
+              } catch (asaasErr) {
+                console.warn('Erro ao criar sub-conta Asaas (não bloqueante):', asaasErr);
               }
-            } catch (asaasErr) {
-              console.warn('Erro ao criar sub-conta Asaas (não bloqueante):', asaasErr);
             }
         }
 
-        // Motoristas também têm conta Asaas para receber repasse de entrega
-        if (dbRole === 'COURIER' && newUser.cpfCnpj) {
+        // Motoristas também têm conta Asaas para receber repasse de entrega (se gratuito)
+        if (dbRole === 'COURIER' && newUser.cpfCnpj && isFreePartner) {
             try {
               let walletId = '';
               try {
@@ -774,6 +793,8 @@ export const useAppStore = create<AppState>()(
               console.warn('Erro ao criar sub-conta Asaas para motorista:', e);
             }
         }
+
+        newUser.status = initialStatus as any;
 
         const state = get();
         set({ users: { ...state.users, [newUser.id]: newUser }, currentUser: newUser });

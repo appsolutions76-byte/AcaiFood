@@ -811,9 +811,8 @@ function AdminDashboardContent() {
   }, [users]);
 
   const subsidizedPartnersCount = useMemo(() => {
-    const fromUsers = partnerList.filter(u => u.isFounderSubsidized !== false).length;
-    return Math.max(activationConfig.subsidizedCount, fromUsers);
-  }, [partnerList, activationConfig.subsidizedCount]);
+    return Math.min(activationConfig.freeQuota, Math.max(activationConfig.subsidizedCount, 0));
+  }, [activationConfig.freeQuota, activationConfig.subsidizedCount]);
 
   const freeSlotsLeft = useMemo(() => {
     return Math.max(0, activationConfig.freeQuota - subsidizedPartnersCount);

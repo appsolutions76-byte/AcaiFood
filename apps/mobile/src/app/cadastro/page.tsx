@@ -76,8 +76,8 @@ function CadastroForm() {
         if (data && data.success) {
           setActivationInfo({
             activationEnabled: Boolean(data.activationEnabled),
-            activationFee: Number(data.activationFee || 12.90),
-            freeQuota: Number(data.freeQuota || 50),
+            activationFee: Number(data.activationFee || 13.10),
+            freeQuota: Number(data.freeQuota || 8),
             subsidizedCount: Number(data.subsidizedCount || 0),
             freeSlotsRemaining: Number(data.freeSlotsRemaining || 0),
             isFree: Boolean(data.isFree)
@@ -85,7 +85,33 @@ function CadastroForm() {
         }
       })
       .catch(_e => console.warn("Aviso ao carregar info de ativação:", _e));
-  }, [fetchCities]);
+
+    const pendingId = searchParams?.get('pendingUserId');
+    if (pendingId) {
+      setNewUserId(pendingId);
+      setStep(2);
+      fetch('/api/asaas/activation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: pendingId })
+      })
+      .then(r => r.json())
+      .then(actData => {
+        if (actData?.isFounderSubsidized) {
+          setPixData({ isFreeGranted: true });
+          setIsPaymentConfirmed(true);
+        } else if (actData?.paymentId) {
+          setPixData({
+            paymentId: actData.paymentId,
+            pixQrCode: actData.pixQrCode,
+            pixCopiaECola: actData.pixCopiaECola,
+            isFreeGranted: false
+          });
+        }
+      })
+      .catch(_err => console.warn('Aviso ao carregar ativação pendente:', _err));
+    }
+  }, [fetchCities, searchParams]);
 
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,6 +226,28 @@ function CadastroForm() {
       const data = await res.json();
       if (data?.userStatus?.isPaid) {
         setIsPaymentConfirmed(true);
+        // Tenta vincular subconta Asaas oficial agora que o pagamento da homologação foi verificado
+        try {
+          const { data: sessData } = await supabase.auth.getSession();
+          const authHeaders: any = { 'Content-Type': 'application/json' };
+          if (sessData?.session?.access_token) {
+            authHeaders['Authorization'] = `Bearer ${sessData.session.access_token}`;
+          }
+          fetch('/api/asaas/subaccount', {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({
+              userId: newUserId,
+              name: name || undefined,
+              email: email || undefined,
+              cpfCnpj: cpfCnpj ? cpfCnpj.replace(/\D/g, '') : undefined,
+              phone: telefone || undefined,
+              endereco: endereco || undefined,
+              bairro: bairro || undefined,
+              cidade: cidade || undefined
+            })
+          }).catch(_err => console.warn("Aviso ao vincular subconta após Pix:", _err));
+        } catch (_sErr) {}
       } else {
         alert("Pagamento ainda em processamento. Aguarde alguns segundos após pagar no seu banco e tente novamente.");
       }

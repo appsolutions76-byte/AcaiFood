@@ -38,33 +38,43 @@ export async function GET(request: Request) {
     } catch (_e) {}
 
     let subsidizedCount = 0;
+    let isUserAlreadyFounder = false;
+
     try {
       const { data: allUsers } = await supabase
         .from('users')
-        .select('id, role, asaas_wallet_id, pix_key');
+        .select('id, role, created_at, asaas_wallet_id, pix_key, status')
+        .order('created_at', { ascending: true });
 
       if (allUsers && Array.isArray(allUsers)) {
         const partners = allUsers.filter(u => {
           const r = String(u.role || '').toLowerCase();
           return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
         });
-        subsidizedCount = partners.length;
+
+        // Os fundadores são estritamente os primeiros freeQuota parceiros criados
+        const founderPartners = partners.slice(0, freeQuota);
+        subsidizedCount = founderPartners.length;
+
+        if (userId) {
+          isUserAlreadyFounder = founderPartners.some(p => p.id === userId);
+        }
       }
     } catch (_e) {}
 
     const freeSlotsRemaining = Math.max(0, freeQuota - subsidizedCount);
-    const isFree = !activationEnabled || freeSlotsRemaining > 0;
+    const isFree = !activationEnabled || (userId ? isUserAlreadyFounder : freeSlotsRemaining > 0);
 
     let userActivationStatus: any = null;
     if (userId) {
       const { data: user } = await supabase
         .from('users')
-        .select('id, name, role, asaas_wallet_id, asaas_account_id')
+        .select('id, name, role, asaas_wallet_id, asaas_account_id, status')
         .eq('id', userId)
         .maybeSingle();
 
       if (user) {
-        let isPaid = Boolean(user.asaas_wallet_id || user.asaas_account_id);
+        let isPaid = Boolean(user.asaas_wallet_id || user.asaas_account_id || isUserAlreadyFounder || user.status === 'active');
 
         const activePaymentId = paymentId;
         if (!isPaid && activePaymentId) {
@@ -79,6 +89,10 @@ export async function GET(request: Request) {
                 const payData = await res.json();
                 if (payData.status === 'RECEIVED' || payData.status === 'CONFIRMED') {
                   isPaid = true;
+                  await supabase
+                    .from('users')
+                    .update({ status: 'active' })
+                    .eq('id', userId);
                 }
               }
             } catch (_err) {}
@@ -88,7 +102,7 @@ export async function GET(request: Request) {
         userActivationStatus = {
           userId: user.id,
           isPaid,
-          isFounderSubsidized: false,
+          isFounderSubsidized: isUserAlreadyFounder,
           asaasLinked: Boolean(user.asaas_wallet_id),
           paymentId: activePaymentId || null
         };
@@ -147,17 +161,24 @@ export async function POST(request: Request) {
     } catch (_e) {}
 
     let subsidizedCount = 0;
+    let isUserAlreadyFounder = false;
+
     try {
       const { data: allUsers } = await supabase
         .from('users')
-        .select('id, role, asaas_wallet_id, pix_key');
+        .select('id, role, created_at, asaas_wallet_id, pix_key, status')
+        .order('created_at', { ascending: true });
 
       if (allUsers && Array.isArray(allUsers)) {
         const partners = allUsers.filter(u => {
           const r = String(u.role || '').toLowerCase();
           return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
         });
-        subsidizedCount = partners.length;
+
+        // Fundadores estritos (primeiros freeQuota cadastrados)
+        const founderPartners = partners.slice(0, freeQuota);
+        subsidizedCount = founderPartners.length;
+        isUserAlreadyFounder = founderPartners.some(p => p.id === userId);
       }
     } catch (_e) {}
 
@@ -171,14 +192,21 @@ export async function POST(request: Request) {
     }
 
     const freeSlotsRemaining = Math.max(0, freeQuota - subsidizedCount);
-    const qualifiesForFree = isForceAdmin || !activationEnabled || freeSlotsRemaining > 0;
+
+    // Regra estrita de custo: NUNCA concede gratuidade se a cota foi atingida e o usuário não é fundador histórico
+    const qualifiesForFree = isForceAdmin || !activationEnabled || isUserAlreadyFounder;
 
     if (qualifiesForFree) {
+      await supabase
+        .from('users')
+        .update({ status: 'active' })
+        .eq('id', userId);
+
       return NextResponse.json({
         success: true,
         isFounderSubsidized: true,
-        freeSlotsRemaining: Math.max(0, freeSlotsRemaining - 1),
-        message: 'Vaga gratuita garantida com sucesso!'
+        freeSlotsRemaining: freeSlotsRemaining,
+        message: 'Vaga de fundador garantida com sucesso!'
       });
     }
 
