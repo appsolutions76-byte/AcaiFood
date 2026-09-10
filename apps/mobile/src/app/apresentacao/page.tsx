@@ -9,10 +9,18 @@ import {
   Zap, Printer
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { InteractiveVideoModal } from "@/components/InteractiveVideoModal";
 
 export default function LandingPage() {
   const [copied, setCopied] = useState(false);
   const [activeRoleTab, setActiveRoleTab] = useState<'cliente' | 'loja' | 'fornecedor' | 'entregador'>('cliente');
+  const [activeVideoModal, setActiveVideoModal] = useState<'batedeira' | 'cliente' | 'b2b' | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
+  const handleOpenVideo = (videoId: 'batedeira' | 'cliente' | 'b2b') => {
+    setActiveVideoModal(videoId);
+    setIsVideoModalOpen(true);
+  };
 
   const landingUrl = "https://www.acaifood.app.br/apresentacao";
 
@@ -107,7 +115,7 @@ export default function LandingPage() {
           </p>
 
           {/* BOTÕES DE AÇÃO HERO */}
-          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-lg mx-auto">
             <Link
               href="/"
               className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black px-7 py-3.5 rounded-2xl shadow-xl shadow-purple-900/50 flex items-center justify-center gap-2 text-base transition-all active:scale-95"
@@ -116,12 +124,20 @@ export default function LandingPage() {
               <span>Pedir Açaí Agora</span>
             </Link>
 
+            <button
+              onClick={() => handleOpenVideo('batedeira')}
+              className="w-full sm:w-auto bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/40 font-bold px-5 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-base transition-all active:scale-95 shadow-lg"
+            >
+              <Play size={18} className="text-purple-400 fill-purple-400" />
+              <span>Ver em Vídeo</span>
+            </button>
+
             <Link
               href="/parceiros"
-              className="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 text-purple-300 border border-purple-500/30 font-bold px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-base transition-all active:scale-95"
+              className="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/50 font-bold px-5 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-base transition-all active:scale-95"
             >
               <Store size={18} />
-              <span>Quero ser Parceiro</span>
+              <span>Seja Parceiro</span>
             </Link>
           </div>
 
@@ -151,7 +167,7 @@ export default function LandingPage() {
             <span className="text-purple-400 text-xs font-black uppercase tracking-wider">Como Funciona na Prática</span>
             <h2 className="text-2xl sm:text-4xl font-black text-white">Veja a Operação em Tempo Real</h2>
             <p className="text-zinc-400 text-sm">
-              Descubra como a tecnologia do AçaíFood simplifica os pedidos, a produção e o transporte.
+              Clique em qualquer vídeo abaixo para abrir a simulação interativa com áudio, linha do tempo e telas reais do sistema.
             </p>
           </div>
 
@@ -159,77 +175,116 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* VÍDEO 1: Batedeira */}
-            <div className="bg-zinc-900 border border-purple-900/40 rounded-3xl overflow-hidden shadow-xl flex flex-col group hover:border-purple-500/60 transition-all">
+            <div 
+              role="button"
+              tabIndex={0}
+              onClick={() => handleOpenVideo('batedeira')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('batedeira'); }}
+              className="bg-zinc-900 border border-purple-900/40 hover:border-purple-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-purple-900/30 active:scale-[0.98]"
+            >
               <div className="relative aspect-[9/16] bg-purple-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-purple-950/60 to-transparent opacity-90" />
                 <div className="relative z-10 space-y-3">
-                  <div className="w-16 h-16 rounded-full bg-purple-600/80 border border-purple-400/50 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform mx-auto">
-                    <Play size={24} className="translate-x-0.5" />
+                  <div className="w-16 h-16 rounded-full bg-purple-600 border border-purple-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-purple-500 transition-all mx-auto animate-pulse">
+                    <Play size={26} className="translate-x-0.5 fill-white" />
                   </div>
-                  <span className="inline-block bg-purple-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
-                    Vídeo Curto • 0:45
-                  </span>
-                  <h3 className="text-lg font-black text-white">Na Batedeira: Pedido e Impressão Instantânea</h3>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="inline-block bg-purple-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
+                      ▶ Assistir Vídeo • 0:40
+                    </span>
+                    <span className="text-[10px] text-purple-300 font-bold">
+                      Clique para Rodar
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-white group-hover:text-purple-300 transition-colors">
+                    Na Batedeira: Pedido e Impressão Instantânea
+                  </h3>
                   <p className="text-xs text-zinc-300">
                     O pedido entra com toque sonoro, a impressora térmica emite o cupom na hora e o açaí sai fresquinho!
                   </p>
                 </div>
               </div>
-              <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30">
+              <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
                 <span className="text-xs font-bold text-purple-300 flex items-center gap-1">
                   <Store size={14} /> Batedeira Operando
                 </span>
-                <span className="text-[11px] text-zinc-400">Cupom Automático</span>
+                <span className="text-[11px] text-purple-400 font-bold underline">Rodar Demo →</span>
               </div>
             </div>
 
             {/* VÍDEO 2: Cliente */}
-            <div className="bg-zinc-900 border border-purple-900/40 rounded-3xl overflow-hidden shadow-xl flex flex-col group hover:border-pink-500/60 transition-all">
+            <div 
+              role="button"
+              tabIndex={0}
+              onClick={() => handleOpenVideo('cliente')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('cliente'); }}
+              className="bg-zinc-900 border border-purple-900/40 hover:border-pink-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-pink-900/30 active:scale-[0.98]"
+            >
               <div className="relative aspect-[9/16] bg-pink-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-pink-950/60 to-transparent opacity-90" />
                 <div className="relative z-10 space-y-3">
-                  <div className="w-16 h-16 rounded-full bg-pink-600/80 border border-pink-400/50 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform mx-auto">
-                    <Play size={24} className="translate-x-0.5" />
+                  <div className="w-16 h-16 rounded-full bg-pink-600 border border-pink-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-pink-500 transition-all mx-auto animate-pulse">
+                    <Play size={26} className="translate-x-0.5 fill-white" />
                   </div>
-                  <span className="inline-block bg-pink-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
-                    Vídeo Curto • 0:30
-                  </span>
-                  <h3 className="text-lg font-black text-white">Do Celular do Cliente ao Portão</h3>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="inline-block bg-pink-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
+                      ▶ Assistir Vídeo • 0:35
+                    </span>
+                    <span className="text-[10px] text-pink-300 font-bold">
+                      Clique para Rodar
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-white group-hover:text-pink-300 transition-colors">
+                    Do Celular do Cliente ao Portão
+                  </h3>
                   <p className="text-xs text-zinc-300">
                     Escolha a consistência (Popular, Médio ou Grosso), pague via PIX Copia e Cola e receba com o PIN seguro!
                   </p>
                 </div>
               </div>
-              <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30">
+              <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
                 <span className="text-xs font-bold text-pink-300 flex items-center gap-1">
                   <Smartphone size={14} /> Cliente Comprando
                 </span>
-                <span className="text-[11px] text-zinc-400">PIX Instantâneo</span>
+                <span className="text-[11px] text-pink-400 font-bold underline">Rodar Demo →</span>
               </div>
             </div>
 
             {/* VÍDEO 3: Logística do Fruto */}
-            <div className="bg-zinc-900 border border-purple-900/40 rounded-3xl overflow-hidden shadow-xl flex flex-col group hover:border-amber-500/60 transition-all">
+            <div 
+              role="button"
+              tabIndex={0}
+              onClick={() => handleOpenVideo('b2b')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('b2b'); }}
+              className="bg-zinc-900 border border-purple-900/40 hover:border-amber-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-amber-900/30 active:scale-[0.98]"
+            >
               <div className="relative aspect-[9/16] bg-amber-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-amber-950/60 to-transparent opacity-90" />
                 <div className="relative z-10 space-y-3">
-                  <div className="w-16 h-16 rounded-full bg-amber-600/80 border border-amber-400/50 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform mx-auto">
-                    <Play size={24} className="translate-x-0.5" />
+                  <div className="w-16 h-16 rounded-full bg-amber-600 border border-amber-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-amber-500 transition-all mx-auto animate-pulse">
+                    <Play size={26} className="translate-x-0.5 fill-white" />
                   </div>
-                  <span className="inline-block bg-amber-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
-                    Vídeo Curto • 0:50
-                  </span>
-                  <h3 className="text-lg font-black text-white">O Mercado B2B e o Frete Pesado</h3>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="inline-block bg-amber-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
+                      ▶ Assistir Vídeo • 0:45
+                    </span>
+                    <span className="text-[10px] text-amber-300 font-bold">
+                      Clique para Rodar
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-white group-hover:text-amber-300 transition-colors">
+                    O Mercado B2B e o Frete Pesado
+                  </h3>
                   <p className="text-xs text-zinc-300">
                     Fornecedores vendem latas do fruto direto para as batedeiras. Caminhões transportam com frete seguro!
                   </p>
                 </div>
               </div>
-              <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30">
+              <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
                 <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
                   <Truck size={14} /> Abastecimento B2B
                 </span>
-                <span className="text-[11px] text-zinc-400">Carga e Coleta</span>
+                <span className="text-[11px] text-amber-400 font-bold underline">Rodar Demo →</span>
               </div>
             </div>
 
@@ -579,6 +634,13 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* MODAL DE VÍDEO INTERATIVO & OPERAÇÃO */}
+      <InteractiveVideoModal
+        initialVideoId={activeVideoModal}
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+      />
 
     </div>
   );
