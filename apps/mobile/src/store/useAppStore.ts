@@ -624,8 +624,7 @@ export const useAppStore = create<AppState>()(
 
         const cleanedCpfCnpj = newUser.cpfCnpj ? newUser.cpfCnpj.replace(/\D/g, '') : null;
 
-        // Trava de Vagas e Custo: Novos parceiros cadastrados após o esgotamento das vagas gratuitas entram como pending_activation
-        let initialStatus: 'active' | 'pending_activation' = 'active';
+        // Trava de Vagas e Custo: Determina se o parceiro tem vaga gratuita ou taxa comercial
         let isFreePartner = true;
 
         if (dbRole !== 'CLIENT') {
@@ -634,7 +633,6 @@ export const useAppStore = create<AppState>()(
             if (actRes.ok) {
               const actInfo = await actRes.json();
               if (actInfo.activationEnabled && actInfo.freeSlotsRemaining <= 0) {
-                initialStatus = 'pending_activation';
                 isFreePartner = false;
               }
             }
@@ -655,7 +653,7 @@ export const useAppStore = create<AppState>()(
           vehicle_type: vehicleType,
           pix_key: newUser.pixKey,
           cpf_cnpj: cleanedCpfCnpj,
-          status: initialStatus,
+          status: 'active',
           split_enabled: dbRole !== 'CLIENT'
         };
 
@@ -794,7 +792,7 @@ export const useAppStore = create<AppState>()(
             }
         }
 
-        newUser.status = initialStatus as any;
+        newUser.status = 'active';
 
         const state = get();
         set({ users: { ...state.users, [newUser.id]: newUser }, currentUser: newUser });

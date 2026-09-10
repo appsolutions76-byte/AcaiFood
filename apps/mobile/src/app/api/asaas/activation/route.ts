@@ -74,7 +74,7 @@ export async function GET(request: Request) {
         .maybeSingle();
 
       if (user) {
-        let isPaid = Boolean(user.asaas_wallet_id || user.asaas_account_id || isUserAlreadyFounder || user.status === 'active');
+        let isPaid = Boolean(user.asaas_wallet_id || user.asaas_account_id || isUserAlreadyFounder);
 
         const activePaymentId = paymentId;
         if (!isPaid && activePaymentId) {

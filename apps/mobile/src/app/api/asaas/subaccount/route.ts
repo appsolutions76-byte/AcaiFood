@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { getAsaasApiKey } from '@/lib/asaasConfig';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista']);
@@ -64,9 +65,25 @@ export async function POST(request: Request) {
         const founderIds = partners.slice(0, freeQuota).map(p => p.id);
         const isFounder = founderIds.includes(userId);
         const targetUser = partners.find(p => p.id === userId);
-        const isActivated = targetUser?.status === 'active' || Boolean(targetUser?.asaas_wallet_id);
+        const hasWallet = Boolean(targetUser?.asaas_wallet_id);
 
-        if (!isFounder && !isActivated) {
+        let isPaidPix = false;
+        if (!isFounder && !hasWallet) {
+          const checkApiKey = await getAsaasApiKey();
+          if (checkApiKey) {
+            try {
+              const chkRes = await fetch(`https://www.asaas.com/api/v3/payments?externalReference=ACTIVATE_${userId}`, {
+                headers: { 'access_token': checkApiKey, 'Content-Type': 'application/json' }
+              });
+              const chkData = await chkRes.json();
+              if (chkData?.data?.some((p: any) => p.status === 'RECEIVED' || p.status === 'CONFIRMED')) {
+                isPaidPix = true;
+              }
+            } catch (_err) {}
+          }
+        }
+
+        if (!isFounder && !hasWallet && !isPaidPix) {
           return NextResponse.json(
             { error: 'Taxa de homologação Asaas pendente. As vagas de fundador foram preenchidas. Conclua o pagamento Pix da taxa de homologação bancária para vincular sua subconta Asaas.' },
             { status: 402 }
@@ -75,7 +92,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const { getAsaasApiKey } = await import('@/lib/asaasConfig');
     const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
       return NextResponse.json(
