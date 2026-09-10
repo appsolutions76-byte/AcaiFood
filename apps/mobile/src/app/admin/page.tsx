@@ -163,6 +163,7 @@ function AdminDashboardContent() {
   const [orderPeriodFilter, setOrderPeriodFilter] = useState<'all' | 'today' | '7days' | 'month'>('all');
   const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'B2C' | 'B2B' | 'COLETA'>('all');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [selectedAuditOrder, setSelectedAuditOrder] = useState<Order | null>(null);
   const [adminBalances, setAdminBalances] = useState<{
     historical: any;
@@ -671,6 +672,61 @@ function AdminDashboardContent() {
       }
     } catch (err: any) {
       alert("Erro ao excluir: " + err.message);
+    }
+  };
+
+  const handleDeleteUser = async (targetUser: any) => {
+    if (!targetUser?.id) return;
+    const userName = targetUser.name || targetUser.email || 'este usuário';
+    if (!confirm(`ATENÇÃO: Tem certeza de que deseja EXCLUIR DEFINITIVAMENTE a conta de "${userName}"?\n\nEsta ação removerá o usuário, seus pedidos e todos os dados vinculados do banco de dados e não pode ser desfeita.`)) {
+      return;
+    }
+
+    setDeletingUserId(targetUser.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
+      // 1. Tentar excluir subconta Asaas se houver
+      try {
+        await fetch(`/api/asaas/subaccount?userId=${targetUser.id}`, {
+          method: 'DELETE',
+          headers: authHeaders
+        });
+      } catch (_subErr) {
+        console.warn("Aviso ao tentar excluir subconta Asaas:", _subErr);
+      }
+
+      // 2. Chamar rota administrativa de exclusão definitiva
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ userId: targetUser.id })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Falha na exclusão pelo servidor');
+      }
+
+      // 3. Atualizar store Zustand removendo o usuário
+      useAppStore.setState((state) => {
+        const newUsers = { ...state.users };
+        delete newUsers[targetUser.id];
+        return { users: newUsers };
+      });
+
+      showToast(`🗑️ Usuário ${userName} excluído com sucesso!`);
+      if (typeof store.fetchAllUsers === 'function') {
+        await store.fetchAllUsers(true);
+      }
+    } catch (err: any) {
+      console.error("Erro ao excluir usuário:", err);
+      alert(`Erro ao excluir usuário: ${err.message || 'Falha de comunicação com o servidor'}`);
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -1965,8 +2021,13 @@ function AdminDashboardContent() {
                                         </button>
                                     )}
                                     {u.role !== 'admin' && (
-                                        <button onClick={() => { if(confirm('Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.')) { if(typeof store.deleteUser === 'function') store.deleteUser(u.id); showToast("🗑️ Solicitação de exclusão enviada!"); } }} className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 transition">
-                                            🗑️
+                                        <button 
+                                            disabled={deletingUserId === u.id}
+                                            onClick={() => handleDeleteUser(u)} 
+                                            title="Excluir usuário e dados permanentemente"
+                                            className="px-2 py-1.5 text-[10px] font-bold rounded shadow-sm bg-red-600 text-white hover:bg-red-700 disabled:bg-zinc-400 transition flex items-center gap-1"
+                                        >
+                                            {deletingUserId === u.id ? '⏳...' : '🗑️'}
                                         </button>
                                     )}
                                 </div>

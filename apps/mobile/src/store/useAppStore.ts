@@ -1350,11 +1350,13 @@ export const useAppStore = create<AppState>()(
             body: JSON.stringify({ userId })
           });
 
-          if (!apiRes.ok) {
-            // Fallback direto via Supabase JS
+          const resJson = await apiRes.json().catch(() => ({}));
+
+          if (!apiRes.ok || resJson.error) {
+            // Fallback direto via Supabase JS se a API falhar
             const { error: dbDeleteErr } = await supabase.from('users').delete().eq('id', userId);
             if (dbDeleteErr) {
-              alert("Erro ao apagar usuário: " + dbDeleteErr.message);
+              alert("Erro ao excluir usuário do banco: " + (resJson.error || dbDeleteErr.message));
               return;
             }
           }
@@ -1367,9 +1369,9 @@ export const useAppStore = create<AppState>()(
           
           alert("Usuário excluído do banco de dados com sucesso!");
           await get().fetchAllUsers(true);
-        } catch (error) {
+        } catch (error: any) {
            console.error("Exceção ao excluir usuário:", error);
-           alert("Erro de conexão ao tentar excluir usuário.");
+           alert(`Erro ao tentar excluir usuário: ${error?.message || 'Falha de conexão'}`);
         }
       },
 
