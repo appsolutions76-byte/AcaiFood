@@ -6,7 +6,7 @@ import {
   Settings, Trash2, Search, BookOpen, Zap, ShieldAlert,
   Download, Printer, Filter, Calendar, MapPin, User as UserIcon,
   Clock, CheckCircle, X, Eye, ArrowUpRight, Check, FileSpreadsheet,
-  FileText, Layers, Phone, Navigation, ShieldCheck, DollarSign
+  FileText, Layers, Phone, Navigation, ShieldCheck, DollarSign, Share2
 } from "lucide-react";
 import { useAppStore, Order, City, getRatesForCity, calculateOrderFreight, calculateOrderTaxes } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +15,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminManualModal } from "@/components/AdminManualModal";
 import { IncidentReportSection } from "@/components/IncidentReportSection";
 import { AdminSupportSection } from "@/components/admin/AdminSupportSection";
+import { ShareLandingModal } from "@/components/ShareLandingModal";
 
 const emptySubscribe = () => () => {};
 
@@ -155,6 +156,7 @@ function AdminDashboardContent() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [adminManualOpen, setAdminManualOpen] = useState(false);
+  const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
   const [payingPartnerId, setPayingPartnerId] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<'historical' | 'monthly' | 'daily'>('historical');
   const [orderSearchQuery, setOrderSearchQuery] = useState<string>('');
@@ -1226,6 +1228,7 @@ function AdminDashboardContent() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
       <AdminManualModal isOpen={adminManualOpen} onClose={() => setAdminManualOpen(false)} />
+      <ShareLandingModal isOpen={shareLandingModalOpen} onClose={() => setShareLandingModalOpen(false)} />
       {toastMsg && (
         <div className="fixed top-5 right-5 z-[300] bg-zinc-900 text-white border border-zinc-700 px-4 py-3 rounded-xl shadow-xl font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
           <span className="text-sm">{toastMsg}</span>
@@ -1245,7 +1248,13 @@ function AdminDashboardContent() {
               <button disabled={isRefreshing} onClick={handleRefresh} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all disabled:opacity-50">
                 {isRefreshing ? '🔄 Atualizando...' : '🔄 Atualizar'}
               </button>
-              <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1.5 rounded-lg font-bold shadow-sm transition-all">📲 Compartilhar</button>
+              <button 
+                onClick={() => setShareLandingModalOpen(true)}
+                className="text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-pink-200 dark:border-pink-800"
+                title="Compartilhar apresentação e vendas do AçaíFood"
+              >
+                <Share2 size={13} /> <span className="hidden sm:inline">Divulgar App</span>
+              </button>
               <ThemeToggle />
               <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
                   🔑 Senha

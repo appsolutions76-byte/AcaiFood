@@ -16,6 +16,12 @@ export default function ParceirosOnboarding() {
           <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Portal do Parceiro</h1>
         </div>
         <div className="flex items-center gap-3">
+          <Link 
+            href="/apresentacao"
+            className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 px-3 py-2 rounded-xl font-bold flex items-center gap-1 shadow-xs border border-purple-300 dark:border-purple-800 transition"
+          >
+            ✨ <span className="hidden sm:inline">Apresentação</span>
+          </Link>
           <ThemeToggle />
           <Link href="/login" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm">
             Já sou parceiro (Entrar)

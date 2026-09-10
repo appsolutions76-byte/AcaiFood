@@ -154,4 +154,19 @@
 
 ---
 
+## 7. 🚀 Página de Apresentação e Divulgação do App (`/apresentacao`)
+
+O **AçaíFood** conta com uma Landing Page comercial interativa projetada para vender a ideia da plataforma, atrair novos clientes, cadastrar batedeiras parceiras e fornecedores de fruto:
+
+- **Link Oficial da Landing Page:** `https://www.acaifood.app.br/apresentacao`
+- **Vídeos Curtos de Operação:**
+  - 🏪 *Na Batedeira:* Como o pedido entra com som e é impresso na impressora térmica em segundos.
+  - 📱 *Do Celular ao Portão:* Como o cliente escolhe a consistência do açaí, paga via PIX e recebe com PIN.
+  - 🚛 *Mercado B2B e Frete Pesado:* Conexão direta entre produtores de fruto e batedeiras.
+- **Botão "Divulgar App" em Todas as Abas:**
+  - Presente no cabeçalho da loja do cliente, painel da batedeira, fornecedor, motoboy, caminhão e admin.
+  - Abre modal instantâneo com atalho de compartilhamento no WhatsApp, cópia de link e QR Code para panfletos e redes sociais.
+
+---
+
 *AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí no Brasil.*

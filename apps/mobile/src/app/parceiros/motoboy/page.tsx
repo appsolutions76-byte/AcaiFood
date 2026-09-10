@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Bike, BookOpen } from "lucide-react";
+import { Bike, BookOpen, Share2 } from "lucide-react";
 import { useAppStore, getRatesForCity, calculateOrderFreight, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
 import { SupportChatButton } from "@/components/SupportChatButton";
+import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { supabase } from "@/lib/supabase";
 
 const emptySubscribe = () => () => {};
@@ -30,6 +31,7 @@ export default function MotoboyDashboard() {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
+  const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
 
   const mounted = useSyncExternalStore(
     emptySubscribe,
@@ -219,12 +221,19 @@ export default function MotoboyDashboard() {
             <button onClick={() => setPartnerManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">
               <BookOpen size={13} /> Manual
             </button>
-            <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold">📲 Compartilhar</button>
+            <button 
+              onClick={() => setShareLandingModalOpen(true)}
+              className="text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-pink-200 dark:border-pink-800"
+              title="Compartilhar apresentação e vendas do AçaíFood"
+            >
+              <Share2 size={13} /> <span className="hidden sm:inline">Divulgar App</span>
+            </button>
             <ThemeToggle />
             <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 underline">Sair</button>
           </div>
         </div>
       </header>
+      <ShareLandingModal isOpen={shareLandingModalOpen} onClose={() => setShareLandingModalOpen(false)} />
 
       <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
         <div className="max-w-4xl mx-auto px-4 flex gap-6 overflow-x-auto">

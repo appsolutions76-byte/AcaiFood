@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
-import { ShoppingCart, BookOpen, MessageSquare } from "lucide-react";
+import { ShoppingCart, BookOpen, MessageSquare, Share2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
@@ -12,6 +12,7 @@ import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
 import { AdBannerCarousel } from "@/components/AdBannerCarousel";
 import { SupportChatButton } from "@/components/SupportChatButton";
+import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { validateCpfCnpjDigits } from "@/lib/pix";
 
 const emptySubscribe = () => () => {};
@@ -98,6 +99,7 @@ export default function StorefrontPage() {
   const [guestPassword, setGuestPassword] = useState("");
   const [guestCpf, setGuestCpf] = useState("");
   const [isRegisteringGuest, setIsRegisteringGuest] = useState(false);
+  const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
 
   const handleGetGpsLocation = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
@@ -551,14 +553,25 @@ export default function StorefrontPage() {
             </div>
           </div>
           <div className="flex gap-2 items-center">
+             <Link
+               href="/apresentacao"
+               className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-2xs border border-purple-300 dark:border-purple-800 transition-all"
+               title="Conheça a apresentação do aplicativo AçaíFood"
+             >
+               ✨ <span className="hidden sm:inline">Apresentação</span>
+             </Link>
+             <button
+               onClick={() => setShareLandingModalOpen(true)}
+               className="text-xs bg-pink-50 hover:bg-pink-100 text-pink-700 dark:bg-pink-950/50 dark:text-pink-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-2xs border border-pink-200 dark:border-pink-800 transition-all"
+               title="Compartilhar página de apresentação"
+             >
+               <Share2 size={13} /> <span className="hidden sm:inline">Divulgar App</span>
+             </button>
              <button onClick={() => setManualOpen(true)} className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border border-amber-200 dark:border-amber-900/50 transition-all">
                <BookOpen size={13} /> <span className="hidden sm:inline">Manual</span>
              </button>
              {!currentUser ? (
                 <>
-                  <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 px-3 py-1.5 rounded-xl text-xs font-bold border border-purple-200 dark:border-purple-800 transition hidden sm:inline-block">
-                    📲 Compartilhar
-                  </button>
                   <Link href="/login" className="bg-transparent hover:bg-purple-50 dark:hover:bg-purple-950/40 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 transition">
                     Entrar
                   </Link>
@@ -574,9 +587,6 @@ export default function StorefrontPage() {
                   <button onClick={() => window.location.reload()} className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-2xs border border-indigo-200 dark:border-indigo-900/50 transition-all">
                     🔄 <span className="hidden sm:inline">Atualizar</span>
                   </button>
-                  <button onClick={() => { if(navigator.share) { navigator.share({title: 'AçaíFood', text: 'Conheça o AçaíFood!', url: window.location.origin}) } else { alert('Seu navegador não suporta compartilhamento.') } }} className="text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 px-3 py-1.5 rounded-xl font-bold hidden sm:inline-block border border-purple-200 dark:border-purple-800">
-                    📲 Compartilhar
-                  </button>
                   <ThemeToggle />
                   <button onClick={() => store.logout()} className="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-900/50 transition">
                     Sair
@@ -588,6 +598,7 @@ export default function StorefrontPage() {
       </header>
 
       <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role="login" />
+      <ShareLandingModal isOpen={shareLandingModalOpen} onClose={() => setShareLandingModalOpen(false)} />
 
       <main className="p-3 sm:p-5 max-w-7xl mx-auto space-y-5">
         

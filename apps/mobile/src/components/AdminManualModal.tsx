@@ -244,7 +244,16 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 flex justify-end shrink-0">
+        <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2 shrink-0 flex-wrap">
+          <a
+            href="/apresentacao"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 font-bold rounded-xl text-xs transition border border-purple-300 dark:border-purple-800 flex items-center gap-1.5"
+          >
+            ✨ <span>Ver Apresentação do App</span>
+          </a>
+
           <button
             onClick={onClose}
             className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition shadow-md active:scale-95"
