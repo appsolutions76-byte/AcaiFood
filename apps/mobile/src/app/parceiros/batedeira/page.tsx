@@ -873,25 +873,25 @@ export default function BatedeiraDashboard() {
                   </button>
                   <button 
                     onClick={async () => {
-                      const currentPix = (currentUser.pixKey || (currentUser as any).pix_key || '').trim();
-                      const newPix = prompt("Informe a sua Chave PIX (CPF, CNPJ, Celular, E-mail ou Chave Aleatória):", currentPix);
+                      const currentPix = (currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key || '').replace(/\D/g, '').trim();
+                      const newPix = prompt("Conforme regra do Banco Central e Asaas, sua Chave Pix deve ser o CPF ou CNPJ do Titular da Conta:\n\nInforme seu CPF ou CNPJ (somente números):", currentPix);
                       if (newPix === null) return;
-                      const cleanPix = newPix.trim();
-                      if (!cleanPix) {
-                        alert("A Chave Pix não pode ser vazia.");
+                      const cleanPix = newPix.replace(/\D/g, '').trim();
+                      if (!cleanPix || (cleanPix.length !== 11 && cleanPix.length !== 14)) {
+                        alert("A Chave Pix obrigatória deve ter 11 dígitos (CPF) ou 14 dígitos (CNPJ).");
                         return;
                       }
                       try {
                         await store.updateUserPixKey(currentUser.id, cleanPix);
-                        alert("✅ Sua Chave Pix foi atualizada com sucesso!");
+                        alert("✅ Sua Chave Pix CPF/CNPJ foi atualizada com sucesso!");
                       } catch (err: any) {
                         alert("Erro ao salvar Chave Pix: " + err.message);
                       }
                     }}
                     className="text-[10px] bg-purple-800/90 hover:bg-purple-700 text-purple-200 hover:text-white font-bold px-2.5 py-1 rounded-lg border border-purple-600 transition shadow flex items-center gap-1 active:scale-95"
-                    title="Clique para cadastrar ou trocar sua Chave Pix"
+                    title="Chave Pix vinculada ao seu CPF/CNPJ"
                   >
-                    🔑 PIX: {(currentUser.pixKey || (currentUser as any).pix_key) ? (currentUser.pixKey || (currentUser as any).pix_key) : 'Cadastrar'} ✏️
+                    🔑 PIX (CPF): {(currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key) ? (currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key) : 'Cadastrar'} 🔒
                   </button>
                 </div>
             </div>

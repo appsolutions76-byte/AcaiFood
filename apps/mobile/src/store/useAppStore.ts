@@ -2848,18 +2848,22 @@ export const useAppStore = create<AppState>()(
       setClearPassword: (pwd: string) => set({ clearPassword: pwd }),
 
       updateUserPixKey: async (userId: string, pixKey: string) => {
-         const cleanPix = pixKey.trim();
+         const cleanPix = pixKey.replace(/\D/g, '').trim();
+         if (!cleanPix || (cleanPix.length !== 11 && cleanPix.length !== 14)) {
+            throw new Error("A Chave Pix obrigatória deve ser um CPF (11 dígitos) ou CNPJ (14 dígitos) válido do titular conforme normas do Banco Central.");
+         }
          try {
-            const { error } = await supabase.from('users').update({ pix_key: cleanPix }).eq('id', userId);
+            const { error } = await supabase.from('users').update({ pix_key: cleanPix, cpf_cnpj: cleanPix }).eq('id', userId);
             if (error) throw error;
             set((state) => ({
-               currentUser: state.currentUser && state.currentUser.id === userId ? { ...state.currentUser, pixKey: cleanPix, pix_key: cleanPix } : state.currentUser,
+               currentUser: state.currentUser && state.currentUser.id === userId ? { ...state.currentUser, pixKey: cleanPix, pix_key: cleanPix, cpfCnpj: cleanPix } : state.currentUser,
                users: {
                   ...state.users,
                   [userId]: {
                      ...state.users[userId],
                      pixKey: cleanPix,
-                     pix_key: cleanPix
+                     pix_key: cleanPix,
+                     cpfCnpj: cleanPix
                   }
                }
             }));

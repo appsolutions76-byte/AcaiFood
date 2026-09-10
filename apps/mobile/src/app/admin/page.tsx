@@ -300,12 +300,16 @@ function AdminDashboardContent() {
 
   // Função para editar Chave Pix do parceiro diretamente no painel
   const handleEditUserPix = async (u: any) => {
-    const currentPix = u.pixKey || (u as any).pix_key || '';
-    const newPix = prompt(`Editar Chave Pix de ${u.name}:\n\n(CPF, CNPJ, Telefone com DDD, E-mail ou Chave Aleatória EVP)`, currentPix);
+    const currentPix = u.cpfCnpj || (u as any).cpf_cnpj || u.pixKey || (u as any).pix_key || '';
+    const newPix = prompt(`Editar Chave Pix (CPF/CNPJ do Titular) de ${u.name}:\n\n(Conforme regras do Banco Central, a chave Pix é obrigatória no CPF ou CNPJ do titular)`, currentPix);
     if (newPix === null) return;
-    const cleanPix = newPix.trim();
+    const cleanPix = newPix.replace(/\D/g, '').trim();
+    if (!cleanPix || (cleanPix.length !== 11 && cleanPix.length !== 14)) {
+      alert("A Chave Pix deve conter 11 dígitos (CPF) ou 14 dígitos (CNPJ).");
+      return;
+    }
     try {
-      const { error } = await supabase.from('users').update({ pix_key: cleanPix }).eq('id', u.id);
+      const { error } = await supabase.from('users').update({ pix_key: cleanPix, cpf_cnpj: cleanPix }).eq('id', u.id);
       if (error) throw error;
       useAppStore.setState(prev => ({
         users: {
@@ -313,11 +317,12 @@ function AdminDashboardContent() {
           [u.id]: {
             ...prev.users[u.id],
             pixKey: cleanPix,
-            pix_key: cleanPix
+            pix_key: cleanPix,
+            cpfCnpj: cleanPix
           }
         }
       }));
-      showToast(`✅ Chave Pix de ${u.name} atualizada com sucesso!`);
+      showToast(`✅ Chave Pix CPF de ${u.name} atualizada com sucesso!`);
     } catch (err: any) {
       alert(`Erro ao salvar chave Pix: ${err.message}`);
     }
