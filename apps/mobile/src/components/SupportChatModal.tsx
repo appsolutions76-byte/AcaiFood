@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { MessageSquare, Send, X, Headphones, Phone, Mail, CheckCheck, Sparkles, User, ShieldCheck } from "lucide-react";
+import { 
+  MessageSquare, Send, X, Headphones, Phone, Mail, CheckCheck, 
+  Sparkles, User, ShieldCheck, Lock, LogIn, UserPlus, ArrowRight 
+} from "lucide-react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { playChatDing } from "@/lib/soundAlerts";
 import { SupportMessageItem, SupportConfig, DEFAULT_SUPPORT_CONFIG } from "@/app/api/support/route";
@@ -24,36 +28,21 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
   const [messages, setMessages] = useState<SupportMessageItem[]>([]);
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
-  const [guestName, setGuestName] = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
   const [liveConfig, setLiveConfig] = useState<SupportConfig>(config);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // ID persistente para usuários anônimos / visitantes
-  const [sessionId, setSessionId] = useState<string>("");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      let sId = localStorage.getItem("acaifood_support_session_id");
-      if (!sId) {
-        sId = `guest-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-        localStorage.setItem("acaifood_support_session_id", sId);
-      }
-      setSessionId(sId);
-    }
-  }, []);
-
-  const activeUserId = currentUser?.id || sessionId;
-  const activeUserName = currentUser?.name || guestName || "Cliente / Visitante";
-  const activeUserRole = currentUser?.role || "visitante";
-  const activeUserPhone = currentUser?.telefone || guestPhone || "";
+  const isRegisteredUser = Boolean(currentUser && currentUser.id);
+  const activeUserId = currentUser?.id || "";
+  const activeUserName = currentUser?.name || "Usuário Cadastrado";
+  const activeUserRole = currentUser?.role || "cliente";
+  const activeUserPhone = currentUser?.telefone || "";
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const loadMessages = async () => {
-    if (!activeUserId) return;
+    if (!isRegisteredUser || !activeUserId) return;
     try {
       const res = await fetch(`/api/support?userId=${encodeURIComponent(activeUserId)}`);
       if (res.ok) {
@@ -79,12 +68,12 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
   };
 
   useEffect(() => {
-    if (!isOpen || !activeUserId) return;
+    if (!isOpen || !isRegisteredUser || !activeUserId) return;
 
     loadMessages();
     const interval = setInterval(loadMessages, 4000);
 
-    // Canal Realtime leve do Supabase
+    // Canal Realtime leve do Supabase para o usuário cadastrado
     const channel = supabase
       .channel(`support-channel-${activeUserId}`)
       .on(
@@ -109,11 +98,11 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [isOpen, activeUserId]);
+  }, [isOpen, isRegisteredUser, activeUserId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || sending) return;
+    if (!inputText.trim() || sending || !isRegisteredUser) return;
 
     const textToSend = inputText.trim();
     setInputText("");
@@ -155,7 +144,100 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
 
   if (!isOpen) return null;
 
-  // Cálculo dinâmico do status de atendimento com base na configuração do administrador
+  // CASO 1: VISITANTE SEM CONTA / NÃO LOGADO (ACESSO BLOQUEADO)
+  if (!isRegisteredUser) {
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
+        <div className="bg-white dark:bg-zinc-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-purple-200 dark:border-zinc-800 animate-in slide-in-from-bottom-6 sm:zoom-in-95">
+          
+          {/* HEADER DE ACESSO RESTRITO */}
+          <div className="bg-gradient-to-r from-purple-800 via-indigo-900 to-purple-950 text-white p-4 sm:p-4.5 flex items-center justify-between shrink-0 shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-xl shadow-inner">
+                🎧
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm sm:text-base leading-tight">Central de Atendimento</h3>
+                <p className="text-[11px] text-purple-200/80">Suporte Oficial AçaíFood</p>
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl transition active:scale-95 cursor-pointer"
+              aria-label="Fechar"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* CORPO DE BLOQUEIO PARA VISITANTE SEM CONTA */}
+          <div className="p-6 text-center space-y-5 bg-zinc-50/50 dark:bg-zinc-950/40">
+            <div className="w-16 h-16 rounded-3xl bg-purple-100 dark:bg-purple-950/70 border border-purple-300 dark:border-purple-800/60 text-purple-600 dark:text-purple-300 flex items-center justify-center mx-auto shadow-lg">
+              <Lock size={30} />
+            </div>
+
+            <div className="space-y-2">
+              <span className="inline-block bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-purple-300 dark:border-purple-800/50">
+                🔒 Acesso Restrito
+              </span>
+              <h4 className="text-lg sm:text-xl font-black text-zinc-900 dark:text-white">
+                Canal Exclusivo para Usuários Cadastrados
+              </h4>
+              <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-sm mx-auto">
+                Para sua segurança, rastreabilidade e histórico oficial de todos os chamados, o atendimento por chat é restrito a clientes e parceiros com conta cadastrada.
+              </p>
+            </div>
+
+            {/* BENEFÍCIOS DE TER CONTA */}
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-purple-100 dark:border-zinc-800 text-left space-y-2.5 text-xs">
+              <div className="flex items-start gap-2 text-zinc-700 dark:text-zinc-300">
+                <ShieldCheck size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                <span><strong>Histórico Preservado:</strong> seus chamados e conversas ficam vinculados à sua conta.</span>
+              </div>
+              <div className="flex items-start gap-2 text-zinc-700 dark:text-zinc-300">
+                <CheckCheck size={16} className="text-purple-500 shrink-0 mt-0.5" />
+                <span><strong>Atendimento Ágil:</strong> suporte com dados do seu pedido ou loja na tela.</span>
+              </div>
+              <div className="flex items-start gap-2 text-zinc-700 dark:text-zinc-300">
+                <Sparkles size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                <span><strong>Segurança Anti-Fraude:</strong> zero risco de contas falsas ou golpes.</span>
+              </div>
+            </div>
+
+            {/* BOTÕES DE LOGIN / CADASTRO */}
+            <div className="pt-2 space-y-2.5">
+              <Link
+                href="/login"
+                onClick={onClose}
+                className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm py-3 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-purple-900/30 transition active:scale-95"
+              >
+                <LogIn size={16} />
+                <span>Entrar na Minha Conta</span>
+                <ArrowRight size={14} />
+              </Link>
+
+              <Link
+                href="/cadastro"
+                onClick={onClose}
+                className="w-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs sm:text-sm py-3 px-4 rounded-2xl flex items-center justify-center gap-2 border border-zinc-300 dark:border-zinc-700 transition active:scale-95"
+              >
+                <UserPlus size={16} />
+                <span>Criar Conta Gratuita</span>
+              </Link>
+            </div>
+
+            <p className="text-[10px] text-zinc-400">
+              O cadastro é 100% gratuito e leva menos de 1 minuto.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // CASO 2: USUÁRIO AUTENTICADO E CADASTRADO (CHAT COMPLETO)
   const parseHour = (timeStr: string, defaultVal: number) => {
     if (!timeStr) return defaultVal;
     const [h, m] = timeStr.split(':').map(Number);
@@ -163,7 +245,7 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
   };
 
   const now = new Date();
-  const dayOfWeek = now.getDay(); // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
+  const dayOfWeek = now.getDay();
   const currentHour = now.getHours() + now.getMinutes() / 60;
   const isSunday = dayOfWeek === 0;
 
@@ -204,7 +286,9 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-purple-200/80">Atendimento ao Cliente, Lojas & Entregadores</p>
+              <p className="text-[11px] text-purple-200/80">
+                Atendimento exclusivo para <strong className="text-white">{currentUser?.name?.split(" ")[0]}</strong> ({activeUserRole.toUpperCase()})
+              </p>
             </div>
           </div>
 
@@ -260,31 +344,6 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
           </div>
         )}
 
-        {/* FORMULÁRIO RÁPIDO PARA NÃO LOGADOS */}
-        {!currentUser && messages.length === 0 && (
-          <div className="p-3 bg-indigo-50/60 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/30 text-xs">
-            <p className="text-[11px] font-bold text-indigo-900 dark:text-indigo-300 mb-1.5">
-              👋 Olá! Identifique-se para facilitarmos seu atendimento:
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                placeholder="Seu Nome"
-                className="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-2.5 py-1.5 text-xs text-zinc-800 dark:text-white outline-none focus:border-purple-500"
-              />
-              <input
-                type="tel"
-                value={guestPhone}
-                onChange={(e) => setGuestPhone(e.target.value)}
-                placeholder="Seu WhatsApp (com DDD)"
-                className="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-2.5 py-1.5 text-xs text-zinc-800 dark:text-white outline-none focus:border-purple-500"
-              />
-            </div>
-          </div>
-        )}
-
         {/* CORPO DE MENSAGENS */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-zinc-50/50 dark:bg-zinc-950/40">
           {/* Mensagem de Boas-vindas Padrão do Sistema */}
@@ -294,8 +353,7 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
                 <ShieldCheck size={14} /> Atendimento AçaíFood
               </div>
               <p className="leading-relaxed">
-                Olá{currentUser ? `, ${currentUser.name.split(" ")[0]}` : ""}! Como podemos ajudar você hoje? Envie sua
-                dúvida, sugestão ou relato de pedido que nossa equipe responderá aqui em tempo real.
+                Olá, {currentUser?.name?.split(" ")[0]}! Como podemos ajudar você hoje? Envie sua dúvida, sugestão ou relato de pedido que nossa equipe responderá aqui em tempo real.
               </p>
               <span className="block text-[9px] text-zinc-400 mt-1.5 text-right">Agora</span>
             </div>
@@ -351,3 +409,4 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
     </div>
   );
 }
+

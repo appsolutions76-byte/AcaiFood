@@ -78,6 +78,36 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, config: supportConfig });
     }
 
+    // Se for listagem geral do admin, requer autorização de admin
+    if (all) {
+      const auth = await authorizeRequest(request, ['admin']);
+      if (!auth.authorized) {
+        return unauthorizedResponse(auth.error || 'Acesso restrito ao painel administrativo de suporte.');
+      }
+    } else {
+      // Somente usuários cadastrados têm acesso às mensagens de suporte
+      if (!userId || userId.startsWith('guest-') || userId === 'anon') {
+        return NextResponse.json(
+          { error: 'Acesso restrito: somente usuários cadastrados têm acesso ao canal de atendimento.', messages: [] },
+          { status: 403 }
+        );
+      }
+
+      // Validar existência do usuário no banco de dados
+      const { data: userExists } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!userExists) {
+        return NextResponse.json(
+          { error: 'Conta de usuário não encontrada. Cadastre-se ou faça login para acessar o suporte.', messages: [] },
+          { status: 403 }
+        );
+      }
+    }
+
     // 1. Tentar buscar direto na tabela support_messages
     try {
       let query = supabase.from('support_messages').select('*').order('created_at', { ascending: true });
@@ -149,15 +179,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, config: currentCfg.support_config });
     }
 
-    // AÇÃO 2: ENVIAR MENSAGEM
+    // AÇÃO 2: ENVIAR MENSAGEM (SOMENTE USUÁRIOS CADASTRADOS)
     if (action === 'send' && message) {
+      const targetUserId = message.user_id || userId;
+
+      // Restrição: visitantes sem conta NÃO TÊM ACESSO
+      if (!targetUserId || targetUserId.startsWith('guest-') || targetUserId === 'anon') {
+        return NextResponse.json(
+          { error: 'Acesso restrito: somente usuários cadastrados têm permissão para enviar mensagens ao canal de atendimento. Por favor, faça login ou cadastre-se.' },
+          { status: 403 }
+        );
+      }
+
+      // Validar existência da conta cadastrada no banco de dados
+      const { data: userRecord } = await supabase
+        .from('users')
+        .select('id, name, role, phone, telefone, email')
+        .eq('id', targetUserId)
+        .maybeSingle();
+
+      if (!userRecord) {
+        return NextResponse.json(
+          { error: 'Conta não encontrada. Cadastre-se ou entre na sua conta para falar com o suporte.' },
+          { status: 403 }
+        );
+      }
+
       const msgItem: SupportMessageItem = {
         id: message.id || `sup-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        user_id: message.user_id || userId || 'anon',
-        user_name: message.user_name || 'Usuário',
-        user_role: message.user_role || 'cliente',
-        user_phone: message.user_phone || '',
-        user_email: message.user_email || '',
+        user_id: userRecord.id,
+        user_name: userRecord.name || message.user_name || 'Usuário Cadastrado',
+        user_role: userRecord.role || message.user_role || 'cliente',
+        user_phone: userRecord.phone || userRecord.telefone || message.user_phone || '',
+        user_email: userRecord.email || message.user_email || '',
         content: message.content || '',
         sender: message.sender || 'user',
         is_read: false,
