@@ -191,8 +191,19 @@ function ManualBatedeira() {
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
             <p>• <strong>Divisão Automática (Split)</strong>: A cada pedido entregue com PIN, o sistema calcula seu valor líquido: <code>Subtotal − Comissão da Plataforma (%) − Subsídio de Frete</code>.</p>
-            <p>• <strong>Vinculação de Carteira</strong>: Cadastre sua chave Pix (CPF/CNPJ, celular, e-mail) ou conecte sua Carteira Asaas para recebimento.</p>
-            <p>• <strong>Saques Instantâneos Pix</strong>: Realize até <strong>2 saques instantâneos por dia</strong> para sua conta bancária a qualquer momento, além da varredura programada às 22:00.</p>
+            <p>• <strong>Vinculação de Carteira & Chave Pix</strong>: Em conformidade com o Banco Central e o gateway Asaas, os repasses são creditados na subconta digital ou via Chave Pix no CPF/CNPJ cadastrado.</p>
+            <p>• <strong>Saques Instantâneos Pix</strong>: Realize até <strong>2 saques instantâneos por dia</strong> para sua conta bancária a qualquer momento, além da varredura programada diária.</p>
+          </div>
+          <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs space-y-1.5">
+            <p className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+              🛡️ Regra do Banco Central — Mesma Titularidade Obrigatória (Pix CPF/CNPJ):
+            </p>
+            <p className="text-amber-800 dark:text-amber-300">
+              Conforme as <strong>Resoluções BCB nº 1/2020 e nº 80/2021 do Banco Central do Brasil</strong> e as normas de segurança do Asaas, todo saque ou repasse é processado <strong>exclusivamente para a conta bancária do mesmo titular (mesmo CPF ou CNPJ)</strong> cadastrado na plataforma.
+            </p>
+            <p className="text-amber-700 dark:text-amber-400 text-[11px]">
+              🔒 <strong>Blindagem Antifraude</strong>: Essa exigência legal impede que terceiros desviem seu saldo para chaves aleatórias ou contas de terceiros. Seu dinheiro só entra na sua própria conta bancária.
+            </p>
           </div>
         </div>
       )}
@@ -220,9 +231,12 @@ function ManualFornecedor() {
         <p className="font-bold text-emerald-900 dark:text-emerald-300">📌 Escopo do Fornecedor:</p>
         <p className="text-emerald-700 dark:text-emerald-300">O fornecedor atua exclusivamente na venda dos frutos frescos colhidos e <strong>NÃO recebe ou precisa receber caroços de volta</strong>.</p>
       </div>
-      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
-        <p className="font-bold">💰 Repasse Líquido & Saques:</p>
-        <p className="mt-1">Receba o valor líquido das vendas atacadistas via Pix (com até 2 saques instantâneos diários permitidos).</p>
+      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
+        <p className="font-bold">💰 Repasse Líquido & Saques (Regra Banco Central):</p>
+        <p className="text-zinc-600 dark:text-zinc-400">Receba o valor líquido das vendas atacadistas via Pix (até 2 saques instantâneos diários permitidos).</p>
+        <div className="bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-lg border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300">
+          🛡️ <strong>Mesma Titularidade Obrigatória (BCB/Asaas)</strong>: O saque Pix é creditado unicamente na conta bancária vinculada ao CPF ou CNPJ cadastrado do produtor/fornecedor, garantindo proteção total contra desvio de valores.
+        </div>
       </div>
     </div>
   );
@@ -253,9 +267,12 @@ function ManualMotoboy() {
         <p className="font-bold text-amber-900 dark:text-amber-300">🔐 Segurança Contra Fraudes:</p>
         <p className="text-amber-700 dark:text-amber-300 mt-1">O PIN é gerado exclusivamente para o cliente. Não entregue a mercadoria sem digitar o PIN correto na sua tela.</p>
       </div>
-      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
-        <p className="font-bold">💸 Saque Instantâneo Pix:</p>
-        <p className="mt-1">Acompanhe seu saldo em tempo real e use o botão <em>💸 Saque Instantâneo Pix</em> para transferir seus ganhos para seu banco pessoal (até 2 saques diários).</p>
+      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
+        <p className="font-bold">💸 Saque Instantâneo Pix (Regra Banco Central):</p>
+        <p className="text-zinc-600 dark:text-zinc-400">Acompanhe seu saldo em tempo real e use o botão <em>💸 Saque Instantâneo Pix</em> para transferir seus ganhos para seu banco pessoal (até 2 saques diários).</p>
+        <div className="bg-purple-50 dark:bg-purple-950/40 p-2.5 rounded-lg border border-purple-200 dark:border-purple-800 text-[11px] text-purple-900 dark:text-purple-300">
+          🛡️ <strong>Chave Pix no seu CPF (Mesma Titularidade BACEN)</strong>: Por determinação do Banco Central e segurança antifraude, a chave Pix é obrigatoriamente o seu <strong>CPF cadastrado</strong>. Os saques só caem na conta bancária em seu nome.
+        </div>
       </div>
     </div>
   );
@@ -279,9 +296,12 @@ function ManualCaminhao() {
         <p>4. 🧭 <strong>Botões de GPS</strong>: Use os atalhos <em>"🚀 GPS p/ Retirada"</em> e <em>"🏁 GPS p/ Destino"</em> para abrir a rota no Google Maps.</p>
         <p>5. 🔐 <strong>PIN de Conclusão</strong>: Ao descarregar, solicite o PIN de 4 dígitos ao responsável no destino (loja ou ecoponto) e valide na tela para liberar o repasse no Pix.</p>
       </div>
-      <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-800 text-xs">
-        <p className="font-bold text-blue-900 dark:text-blue-300">💰 Repasses Transparentes & Saques:</p>
-        <p className="text-blue-700 dark:text-blue-300 mt-1">O valor exibido no radar já é o valor líquido do transportador, com suporte a até 2 saques instantâneos diários via Pix.</p>
+      <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-800 text-xs space-y-1.5">
+        <p className="font-bold text-blue-900 dark:text-blue-300">💰 Repasses Transparentes & Saques (Regra Banco Central):</p>
+        <p className="text-blue-700 dark:text-blue-300">O valor exibido no radar já é o valor líquido do transportador, com suporte a até 2 saques instantâneos diários via Pix.</p>
+        <div className="bg-white/80 dark:bg-zinc-900/80 p-2.5 rounded-lg border border-blue-200 dark:border-blue-800 text-[11px] text-blue-950 dark:text-blue-200">
+          🛡️ <strong>Chave Pix no CPF/CNPJ (Mesma Titularidade BACEN)</strong>: A transferência de valores é feita exclusivamente para a conta bancária do titular cadastrado, prevenindo fraudes e garantindo que o dinheiro do frete chegue seguro ao motorista.
+        </div>
       </div>
     </div>
   );
@@ -353,11 +373,20 @@ function ManualLogin() {
               <br />• 🛵 <strong>Motoboy</strong>: Para fazer entregas urbanas B2C.
               <br />• 🚛 <strong>Caminhoneiro / Caçamba</strong>: Para fretes B2B e coleta de resíduos.
             </p>
-            <p>4. Informe seu <strong>CPF ou CNPJ</strong> (obrigatório para parceiros receberem repasses Pix).</p>
+            <p>4. Informe seu <strong>CPF ou CNPJ do Titular (Chave Pix Obrigatória)</strong>.</p>
+            <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 space-y-1">
+              <p className="font-bold flex items-center gap-1">🛡️ Regra de Segurança do Banco Central (Resolução BCB):</p>
+              <p className="text-[11px] leading-relaxed">
+                Por determinação legal do <strong>Banco Central do Brasil</strong> e conformidade com o <strong>Asaas</strong>, a conta bancária para recebimento e o cadastro no aplicativo <strong>devem pertencer obrigatoriamente à mesma titularidade (mesmo CPF ou CNPJ)</strong>.
+              </p>
+              <p className="text-[11px] text-amber-800 dark:text-amber-400">
+                Essa medida antifraude protege o parceiro garantindo que saques e repasses jamais sejam desviados para contas de terceiros.
+              </p>
+            </div>
             <p>5. Complete o endereço com <strong>Cidade e Bairro</strong> para cálculo territorial correto.</p>
             <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-300 mt-2 space-y-1">
               <p className="font-bold">🛡️ Ativação Inteligente Asaas:</p>
-              <p>• Contas iniciais contam com <strong>vaga fundador promocional</strong> conforme disponibilidade da plataforma.</p>
+              <p>• Contas contam com ativação conforme limite de vagas promocionais disponibilizadas pela administração.</p>
               <p>• Sua subconta digital Asaas para split de pagamentos é conectada <strong>automaticamente assim que você concluir sua 1ª venda ou aceitar sua 1ª corrida</strong>.</p>
             </div>
           </div>
