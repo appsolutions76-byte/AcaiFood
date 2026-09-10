@@ -1142,8 +1142,250 @@ function AdminDashboardContent() {
     showToast("📥 Relatório CSV exportado com sucesso!");
   };
 
+  const triggerA4Print = (contentHtml: string) => {
+    let container = document.getElementById('admin-report-print-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'admin-report-print-container';
+      document.body.appendChild(container);
+    }
+    container.innerHTML = contentHtml;
+    document.body.classList.add('print-a4-mode');
+
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('print-a4-mode');
+        if (container) container.innerHTML = '';
+      }, 500);
+    }, 150);
+  };
+
   const handlePrintOrdersReport = () => {
-    window.print();
+    if (filteredOrdersForReport.length === 0) {
+      alert("Nenhum pedido selecionado para imprimir no relatório A4.");
+      return;
+    }
+
+    const reportHtml = `
+      <div style="font-family: Arial, Helvetica, sans-serif; color: #111; padding: 20px; font-size: 11px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7c3aed; padding-bottom: 12px; margin-bottom: 16px;">
+          <div>
+            <h1 style="font-size: 18px; font-weight: 800; color: #581c87; margin: 0;">AÇAÍFOOD — RELATÓRIO EXECUTIVO E AUDITORIA DE PEDIDOS</h1>
+            <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">Gestão Operacional, Financeira e Rastreabilidade Completa (Formato A4)</p>
+          </div>
+          <div style="text-align: right; font-size: 10px; color: #555;">
+            <p style="margin: 0;"><strong>Emissão:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+            <p style="margin: 2px 0 0 0;"><strong>Total no Filtro:</strong> ${reportMetrics.totalOrders} pedidos</p>
+          </div>
+        </div>
+
+        <!-- Cards de Resumo Financeiro A4 -->
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 18px;">
+          <div style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #fafafa;">
+            <div style="font-size: 9px; color: #666; text-transform: uppercase; font-weight: bold;">Volume Total</div>
+            <div style="font-size: 13px; font-weight: bold; color: #581c87; margin-top: 2px;">${formatMoney(reportMetrics.totalGrossVolume)}</div>
+          </div>
+          <div style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #fafafa;">
+            <div style="font-size: 9px; color: #666; text-transform: uppercase; font-weight: bold;">Total Fretes</div>
+            <div style="font-size: 13px; font-weight: bold; color: #2563eb; margin-top: 2px;">${formatMoney(reportMetrics.totalFreightVolume)}</div>
+          </div>
+          <div style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #faf5ff; border-color: #d8b4fe;">
+            <div style="font-size: 9px; color: #7e22ce; text-transform: uppercase; font-weight: bold;">Receita App</div>
+            <div style="font-size: 13px; font-weight: bold; color: #6b21a8; margin-top: 2px;">${formatMoney(reportMetrics.totalPlatformFee)}</div>
+          </div>
+          <div style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #f0fdf4; border-color: #86efac;">
+            <div style="font-size: 9px; color: #15803d; text-transform: uppercase; font-weight: bold;">Repasse Vendas</div>
+            <div style="font-size: 13px; font-weight: bold; color: #166534; margin-top: 2px;">${formatMoney(reportMetrics.totalSellerNet)}</div>
+          </div>
+          <div style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #fffbeb; border-color: #fde68a;">
+            <div style="font-size: 9px; color: #b45309; text-transform: uppercase; font-weight: bold;">Repasse Entregadores</div>
+            <div style="font-size: 13px; font-weight: bold; color: #92400e; margin-top: 2px;">${formatMoney(reportMetrics.totalDriverNet)}</div>
+          </div>
+        </div>
+
+        <!-- Tabela Formal A4 -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 20px;">
+          <thead>
+            <tr style="background: #f3f4f6; border-top: 1px solid #ccc; border-bottom: 1.5px solid #999;">
+              <th style="padding: 6px 4px; text-align: left;">ID / Data</th>
+              <th style="padding: 6px 4px; text-align: left;">Tipo</th>
+              <th style="padding: 6px 4px; text-align: left;">Cliente</th>
+              <th style="padding: 6px 4px; text-align: left;">Loja / Origem</th>
+              <th style="padding: 6px 4px; text-align: left;">Entregador</th>
+              <th style="padding: 6px 4px; text-align: right;">Produtos</th>
+              <th style="padding: 6px 4px; text-align: right;">Frete</th>
+              <th style="padding: 6px 4px; text-align: right;">Taxa App</th>
+              <th style="padding: 6px 4px; text-align: right;">Repasse Vendedor</th>
+              <th style="padding: 6px 4px; text-align: right;">Repasse Motoboy</th>
+              <th style="padding: 6px 4px; text-align: center;">Status</th>
+              <th style="padding: 6px 4px; text-align: center;">PIN</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredOrdersForReport.map((o, idx) => {
+              const dyn = getDynamicTaxes(o);
+              const uClient = o.clienteId ? users[o.clienteId] : null;
+              const uStore = o.lojaId ? users[o.lojaId] : null;
+              const uDriver = o.motoristaId ? users[o.motoristaId] : null;
+              const bg = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
+
+              return `
+                <tr style="background: ${bg}; border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 5px 4px; font-family: monospace; font-weight: bold;">
+                    #${o.id.slice(-6)}<br/>
+                    <span style="font-size: 8px; font-weight: normal; color: #666;">${o.createdAt ? new Date(o.createdAt).toLocaleDateString('pt-BR') : ''}</span>
+                  </td>
+                  <td style="padding: 5px 4px; font-weight: bold; color: #4b5563;">${o.type || 'B2C'}</td>
+                  <td style="padding: 5px 4px;">
+                    <strong>${(o.clienteNome || uClient?.name || 'Cliente')}</strong><br/>
+                    <span style="font-size: 8px; color: #666;">${(o.deliveryAddress || uClient?.endereco || '').slice(0, 32)}</span>
+                  </td>
+                  <td style="padding: 5px 4px;">
+                    <strong>${(o.lojaNome || uStore?.name || 'Loja')}</strong>
+                  </td>
+                  <td style="padding: 5px 4px;">
+                    ${o.motoristaId ? (o.motoristaNome || uDriver?.name || 'Entregador') : '<span style="color:#999;">---</span>'}
+                  </td>
+                  <td style="padding: 5px 4px; text-align: right;">${formatMoney(o.valor)}</td>
+                  <td style="padding: 5px 4px; text-align: right;">${formatMoney(dyn.entregaTotal)}</td>
+                  <td style="padding: 5px 4px; text-align: right; color: #7e22ce; font-weight: bold;">${formatMoney((dyn.platVenda || 0) + (dyn.platEntrega || 0))}</td>
+                  <td style="padding: 5px 4px; text-align: right; color: #166534; font-weight: bold;">${formatMoney(o.type === 'B2B' ? dyn.repasseForn : dyn.repasseLoja)}</td>
+                  <td style="padding: 5px 4px; text-align: right; color: #92400e; font-weight: bold;">${formatMoney(dyn.repasseMoto)}</td>
+                  <td style="padding: 5px 4px; text-align: center; text-transform: uppercase; font-size: 8.5px; font-weight: bold;">${o.status}</td>
+                  <td style="padding: 5px 4px; text-align: center; font-family: monospace; font-weight: bold;">${o.deliveryPin || '-'}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+
+        <!-- Rodapé do Relatório A4 -->
+        <div style="border-top: 1px solid #ccc; padding-top: 8px; font-size: 8.5px; color: #777; display: flex; justify-content: space-between;">
+          <span>AçaíFood — Sistema Integrado de Delivery e Logística de Açaí</span>
+          <span>Documento Oficial de Prestação de Contas e Auditoria — Folha A4</span>
+        </div>
+      </div>
+    `;
+
+    triggerA4Print(reportHtml);
+  };
+
+  const handlePrintAuditOrderA4 = (order: Order) => {
+    const dyn = getDynamicTaxes(order);
+    const uClient = order.clienteId ? users[order.clienteId] : null;
+    const uStore = order.lojaId ? users[order.lojaId] : null;
+    const uDriver = order.motoristaId ? users[order.motoristaId] : null;
+
+    const html = `
+      <div style="font-family: Arial, Helvetica, sans-serif; color: #111; padding: 25px; font-size: 11px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7c3aed; padding-bottom: 12px; margin-bottom: 20px;">
+          <div>
+            <h1 style="font-size: 20px; font-weight: 800; color: #581c87; margin: 0;">FICHA DE AUDITORIA DE PEDIDO #${order.id.slice(-6)}</h1>
+            <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">ID Completo: ${order.id} | AçaíFood</p>
+          </div>
+          <div style="text-align: right; font-size: 10px;">
+            <p style="margin: 0;"><strong>Status:</strong> <span style="text-transform: uppercase; font-weight: bold; color: #7c3aed;">${order.status}</span></p>
+            <p style="margin: 2px 0 0 0;"><strong>PIN de Entrega:</strong> <span style="font-family: monospace; font-weight: 900; font-size: 12px;">${order.deliveryPin || 'Sem PIN'}</span></p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+          <div style="border: 1px solid #ddd; padding: 12px; border-radius: 8px; background: #fafafa;">
+            <strong style="color: #1d4ed8; font-size: 11px;">👤 CLIENTE (QUEM PEDIU)</strong>
+            <p style="margin: 6px 0 2px 0; font-size: 12px; font-weight: bold;">${order.clienteNome || uClient?.name || 'Cliente Final'}</p>
+            <p style="margin: 2px 0; color: #555;">Telefone: ${order.clienteTelefone || uClient?.telefone || (uClient as any)?.phone || 'Não informado'}</p>
+            <p style="margin: 2px 0; color: #555;">Entrega: ${order.deliveryAddress || uClient?.endereco || 'Não informado'}</p>
+            <p style="margin: 2px 0; color: #555;">Ref: ${order.deliveryReference || uClient?.bairro || 'Sem referência'}</p>
+          </div>
+
+          <div style="border: 1px solid #ddd; padding: 12px; border-radius: 8px; background: #fafafa;">
+            <strong style="color: #047857; font-size: 11px;">🏪 ORIGEM (LOJA / PRODUTOR)</strong>
+            <p style="margin: 6px 0 2px 0; font-size: 12px; font-weight: bold;">${order.lojaNome || uStore?.name || 'Loja Parceira'}</p>
+            <p style="margin: 2px 0; color: #555;">Telefone: ${uStore?.telefone || (uStore as any)?.phone || 'Não informado'}</p>
+            <p style="margin: 2px 0; color: #555;">Endereço: ${uStore?.endereco || uStore?.bairro || 'Não informado'}</p>
+            <p style="margin: 2px 0; color: #555;">Praça: ${uStore?.cidade || (order as any).cidadeOrigem || 'Belém'}</p>
+          </div>
+
+          <div style="border: 1px solid #ddd; padding: 12px; border-radius: 8px; background: #fafafa;">
+            <strong style="color: #b45309; font-size: 11px;">🛵 ENTREGADOR (QUEM LEVOU)</strong>
+            <p style="margin: 6px 0 2px 0; font-size: 12px; font-weight: bold;">${order.motoristaNome || uDriver?.name || 'Não atribuído'}</p>
+            <p style="margin: 2px 0; color: #555;">Veículo: ${(uDriver?.veiculo || 'moto').toUpperCase()}</p>
+            <p style="margin: 2px 0; color: #555;">Telefone: ${uDriver?.telefone || (uDriver as any)?.phone || 'Não informado'}</p>
+            <p style="margin: 2px 0; color: #555;">Distância: ${(order.distancia || 0).toFixed(1)} km</p>
+          </div>
+        </div>
+
+        <!-- Linha do Tempo -->
+        <div style="border: 1px solid #ddd; padding: 12px; border-radius: 8px; margin-bottom: 20px; background: #fdfdfd;">
+          <strong style="color: #581c87; font-size: 11px;">🕒 LINHA DO TEMPO E REGISTRO DE HORÁRIOS</strong>
+          <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 8px; text-align: center; font-size: 9.5px;">
+            <div style="padding: 6px; background: #f3f4f6; border-radius: 4px;"><strong>Criado:</strong><br/>${safeTime(order.createdAt) || '---'}</div>
+            <div style="padding: 6px; background: #f3f4f6; border-radius: 4px;"><strong>Aceito:</strong><br/>${safeTime(order.acceptedAt) || '---'}</div>
+            <div style="padding: 6px; background: #f3f4f6; border-radius: 4px;"><strong>Pronto:</strong><br/>${safeTime(order.readyAt) || '---'}</div>
+            <div style="padding: 6px; background: #f3f4f6; border-radius: 4px;"><strong>Coletado:</strong><br/>${safeTime(order.pickedUpAt) || '---'}</div>
+            <div style="padding: 6px; background: #f3f4f6; border-radius: 4px;"><strong>Chegou:</strong><br/>${safeTime(order.deliveredAt) || '---'}</div>
+            <div style="padding: 6px; background: #f3f4f6; border-radius: 4px;"><strong>Concluído:</strong><br/>${safeTime(order.receivedAt) || '---'}</div>
+          </div>
+        </div>
+
+        <!-- Divisão Financeira -->
+        <div style="border: 1px solid #d8b4fe; background: #faf5ff; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+          <strong style="color: #6b21a8; font-size: 11px;">💰 DECOMPOSIÇÃO FINANCEIRA DO PEDIDO (TRIPLO SPLIT)</strong>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; text-align: center;">
+            <div style="padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #e9d5ff;">
+              <span style="font-size: 9px; color: #666; text-transform: uppercase;">Produtos:</span><br/>
+              <strong style="font-size: 12px;">${formatMoney(order.valor)}</strong>
+            </div>
+            <div style="padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #e9d5ff;">
+              <span style="font-size: 9px; color: #666; text-transform: uppercase;">Frete Total:</span><br/>
+              <strong style="font-size: 12px; color: #2563eb;">${formatMoney(dyn.entregaTotal)}</strong>
+            </div>
+            <div style="padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #e9d5ff;">
+              <span style="font-size: 9px; color: #666; text-transform: uppercase;">Taxa AçaíFood:</span><br/>
+              <strong style="font-size: 12px; color: #7e22ce;">${formatMoney((dyn.platVenda || 0) + (dyn.platEntrega || 0))}</strong>
+            </div>
+            <div style="padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #e9d5ff;">
+              <span style="font-size: 9px; color: #666; text-transform: uppercase;">Repasse Entregador:</span><br/>
+              <strong style="font-size: 12px; color: #b45309;">${formatMoney(dyn.repasseMoto)}</strong>
+            </div>
+          </div>
+        </div>
+
+        ${order.items && order.items.length > 0 ? `
+          <div style="border: 1px solid #ddd; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+            <strong style="color: #333; font-size: 11px;">📦 ITENS DO PEDIDO (${order.items.length})</strong>
+            <table style="width: 100%; margin-top: 8px; border-collapse: collapse; font-size: 10px;">
+              <thead>
+                <tr style="border-bottom: 1px solid #ccc; background: #f9fafb;">
+                  <th style="padding: 4px; text-align: left;">Item</th>
+                  <th style="padding: 4px; text-align: center;">Qtd</th>
+                  <th style="padding: 4px; text-align: right;">Unitário</th>
+                  <th style="padding: 4px; text-align: right;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${order.items.map((it: any) => `
+                  <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 4px;">${it.name || it.titulo || 'Item'}</td>
+                    <td style="padding: 4px; text-align: center;">${it.quantity || 1}</td>
+                    <td style="padding: 4px; text-align: right;">${formatMoney(it.price || it.preco || 0)}</td>
+                    <td style="padding: 4px; text-align: right; font-weight: bold;">${formatMoney((it.price || it.preco || 0) * (it.quantity || 1))}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
+        <div style="border-top: 1px solid #ccc; padding-top: 8px; font-size: 8.5px; color: #777; display: flex; justify-content: space-between;">
+          <span>Ficha Emitida em: ${new Date().toLocaleString('pt-BR')}</span>
+          <span>AçaíFood — Auditoria e Conformidade Fiscal/Operacional</span>
+        </div>
+      </div>
+    `;
+
+    triggerA4Print(html);
   };
 
   const handleSaveRates = async () => {
@@ -1456,7 +1698,7 @@ function AdminDashboardContent() {
                   onClick={handlePrintOrdersReport}
                   className="flex-1 sm:flex-none bg-zinc-800 hover:bg-black text-white dark:bg-zinc-700 dark:hover:bg-zinc-600 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-95"
                 >
-                  <Printer size={14} /> Imprimir Relatório
+                  <Printer size={14} /> Imprimir Relatório (PDF A4)
                 </button>
               </div>
             </div>
@@ -2739,10 +2981,10 @@ function AdminDashboardContent() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => window.print()}
+                  onClick={() => handlePrintAuditOrderA4(selectedAuditOrder)}
                   className="bg-zinc-800 hover:bg-zinc-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition"
                 >
-                  <Printer size={14} /> Imprimir Ficha
+                  <Printer size={14} /> Imprimir Ficha A4
                 </button>
                 <button
                   onClick={() => setSelectedAuditOrder(null)}

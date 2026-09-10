@@ -25,15 +25,33 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-#thermal-print-container {
+#thermal-print-container,
+#admin-report-print-container {
   display: none;
 }
 
 @media print {
-  body > *:not(#thermal-print-container) {
+  /* Caso 1: Impressão de Relatório Executivo A4 no Painel Admin */
+  body.print-a4-mode {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  body.print-a4-mode > *:not(#admin-report-print-container) {
     display: none !important;
   }
-  #thermal-print-container {
+  body.print-a4-mode #admin-report-print-container {
+    display: block !important;
+    position: relative;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Caso 2: Impressão Térmica de Comandas dos Parceiros (58mm / 80mm) */
+  body:not(.print-a4-mode) > *:not(#thermal-print-container) {
+    display: none !important;
+  }
+  body:not(.print-a4-mode) #thermal-print-container {
     display: block !important;
     position: absolute;
     left: 0;
@@ -42,9 +60,10 @@ body {
     margin: 0;
     padding: 0;
   }
-  @page {
-    margin: 0;
-    size: auto;
-  }
+}
+
+@page {
+  size: auto;
+  margin: 5mm;
 }
 
