@@ -3,14 +3,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { 
   Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2, 
-  Minimize2, X, Store, Smartphone, Truck, CheckCircle2, 
+  Minimize2, X, Store, Smartphone, Truck, Bike, CheckCircle2, 
   Printer, ArrowRight, ChevronRight, ChevronLeft,
-  MapPin, QrCode, Navigation
+  MapPin, QrCode, Navigation, ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 
+export type VideoId = 'batedeira' | 'cliente' | 'motoboy' | 'caminhao' | 'b2b';
+
 export interface VideoItem {
-  id: 'batedeira' | 'cliente' | 'b2b';
+  id: VideoId;
   title: string;
   badge: string;
   role: string;
@@ -18,11 +20,35 @@ export interface VideoItem {
   description: string;
   ctaText: string;
   ctaLink: string;
-  colorScheme: 'purple' | 'pink' | 'amber';
+  colorScheme: 'purple' | 'pink' | 'amber' | 'blue' | 'emerald';
   videoUrl?: string;
 }
 
 export const VIDEO_CATALOG: VideoItem[] = [
+  {
+    id: 'motoboy',
+    title: 'No Motoboy: Corrida GPS, PIN Seguro e Saque PIX',
+    badge: 'Entrega Rápida (Moto)',
+    role: 'Transporte Urbano de Açaí',
+    durationSeconds: 38,
+    description: 'Radar de corridas em tempo real com distância e valor líquido do frete. Retirada no balcão, rota assistida por GPS e validação do PIN de segurança para saque instantâneo.',
+    ctaText: 'Cadastrar como Motoboy',
+    ctaLink: '/parceiros',
+    colorScheme: 'amber',
+    videoUrl: '/videos/motoboy.mp4'
+  },
+  {
+    id: 'caminhao',
+    title: 'No Caminhão: Frete Pesado, Latas e Rota B2B',
+    badge: 'Frete Pesado (Caminhão)',
+    role: 'Carga Pesada & Ribeirinha',
+    durationSeconds: 42,
+    description: 'Transporte de lotes e toneladas de fruto colhido de açaí. Frete calculado automaticamente por km e peso, manifesto digital e liberação de pagamento na doca.',
+    ctaText: 'Cadastrar Meu Caminhão',
+    ctaLink: '/parceiros',
+    colorScheme: 'blue',
+    videoUrl: '/videos/caminhao.mp4'
+  },
   {
     id: 'batedeira',
     title: 'Na Batedeira: Pedido e Impressão Instantânea',
@@ -49,26 +75,26 @@ export const VIDEO_CATALOG: VideoItem[] = [
   },
   {
     id: 'b2b',
-    title: 'O Mercado B2B e o Frete Pesado',
-    badge: 'Abastecimento B2B',
-    role: 'Produtores & Caminhoneiros',
+    title: 'O Mercado B2B e Produtores de Açaí',
+    badge: 'Mercado do Fruto',
+    role: 'Produtores & Batedeiras',
     durationSeconds: 45,
-    description: 'Negociação direta de latas de fruto entre produtores ribeirinhos e batedeiras com frete pesado seguro por peso e rota.',
+    description: 'Negociação direta de latas de fruto entre produtores ribeirinhos e batedeiras com pagamento em escrow protegido e frete conectado.',
     ctaText: 'Acessar Mercado de Frutos',
     ctaLink: '/parceiros',
-    colorScheme: 'amber',
+    colorScheme: 'emerald',
     videoUrl: '/videos/b2b.mp4'
   }
 ];
 
 interface InteractiveVideoModalProps {
-  initialVideoId: 'batedeira' | 'cliente' | 'b2b' | null;
+  initialVideoId: VideoId | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: InteractiveVideoModalProps) {
-  const [currentVideoId, setCurrentVideoId] = useState<'batedeira' | 'cliente' | 'b2b'>('batedeira');
+  const [currentVideoId, setCurrentVideoId] = useState<VideoId>('motoboy');
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -90,7 +116,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
   const activeVideo = VIDEO_CATALOG.find(v => v.id === currentVideoId) || VIDEO_CATALOG[0];
 
   // Web Audio synthesizer for realistic app feedback sound effects
-  const playSoundEffect = (type: 'order_bell' | 'printer' | 'pix_success' | 'truck_gear') => {
+  const playSoundEffect = (type: 'order_bell' | 'printer' | 'pix_success' | 'truck_gear' | 'moto_horn' | 'truck_horn') => {
     if (isMuted) return;
     try {
       if (!audioContextRef.current) {
@@ -102,9 +128,10 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
         ctx.resume();
       }
 
+      const now = ctx.currentTime;
+
       if (type === 'order_bell') {
         // Double ding bell sound
-        const now = ctx.currentTime;
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
         osc1.type = "sine";
@@ -128,7 +155,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
         osc2.stop(now + 0.6);
       } else if (type === 'printer') {
         // Thermal printer stepping sound
-        const now = ctx.currentTime;
         for (let i = 0; i < 4; i++) {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -143,7 +169,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
         }
       } else if (type === 'pix_success') {
         // Happy ascending chord
-        const now = ctx.currentTime;
         [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -157,7 +182,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
           osc.stop(now + idx * 0.08 + 0.35);
         });
       } else if (type === 'truck_gear') {
-        const now = ctx.currentTime;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "sawtooth";
@@ -169,6 +193,34 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
         gain.connect(ctx.destination);
         osc.start(now);
         osc.stop(now + 0.4);
+      } else if (type === 'moto_horn') {
+        // Motorcycle horn beep beep
+        for (let i = 0; i < 2; i++) {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(440, now + i * 0.12);
+          gain.gain.setValueAtTime(0.14, now + i * 0.12);
+          gain.gain.linearRampToValueAtTime(0.01, now + i * 0.12 + 0.08);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.12);
+          osc.stop(now + i * 0.12 + 0.08);
+        }
+      } else if (type === 'truck_horn') {
+        // Deep air horn
+        [185, 233].forEach((freq) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.55);
+        });
       }
     } catch {
       // Audio context might be restricted before interaction
@@ -200,7 +252,34 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
     if (!isOpen) return;
 
     let currentSceneIdx = 0;
-    if (currentVideoId === 'batedeira') {
+
+    if (currentVideoId === 'motoboy') {
+      if (currentTime < 9) currentSceneIdx = 0;
+      else if (currentTime < 18) currentSceneIdx = 1;
+      else if (currentTime < 28) currentSceneIdx = 2;
+      else currentSceneIdx = 3;
+
+      if (currentSceneIdx !== lastSoundSceneRef.current) {
+        lastSoundSceneRef.current = currentSceneIdx;
+        if (currentSceneIdx === 0) playSoundEffect('moto_horn');
+        else if (currentSceneIdx === 1) playSoundEffect('order_bell');
+        else if (currentSceneIdx === 2) playSoundEffect('moto_horn');
+        else if (currentSceneIdx === 3) playSoundEffect('pix_success');
+      }
+    } else if (currentVideoId === 'caminhao') {
+      if (currentTime < 10) currentSceneIdx = 0;
+      else if (currentTime < 20) currentSceneIdx = 1;
+      else if (currentTime < 31) currentSceneIdx = 2;
+      else currentSceneIdx = 3;
+
+      if (currentSceneIdx !== lastSoundSceneRef.current) {
+        lastSoundSceneRef.current = currentSceneIdx;
+        if (currentSceneIdx === 0) playSoundEffect('truck_horn');
+        else if (currentSceneIdx === 1) playSoundEffect('order_bell');
+        else if (currentSceneIdx === 2) playSoundEffect('truck_gear');
+        else if (currentSceneIdx === 3) playSoundEffect('pix_success');
+      }
+    } else if (currentVideoId === 'batedeira') {
       if (currentTime < 10) currentSceneIdx = 0;
       else if (currentTime < 22) currentSceneIdx = 1;
       else if (currentTime < 32) currentSceneIdx = 2;
@@ -313,7 +392,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
             <span className="text-xs font-black text-white flex items-center gap-1.5 uppercase tracking-wider">
               {activeVideo.badge}
             </span>
-            <span className="text-[11px] text-zinc-400 hidden sm:inline">• Demonstração Interativa</span>
+            <span className="text-[11px] text-zinc-400 hidden sm:inline">• Demonstração de Transporte & Operação</span>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
@@ -344,10 +423,10 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
         </div>
 
         {/* VIDEO DISPLAY STAGE */}
-        <div className="relative flex-1 bg-gradient-to-b from-zinc-950 via-purple-950/20 to-zinc-950 min-h-[380px] sm:min-h-[460px] flex items-center justify-center p-3 sm:p-6 overflow-hidden">
+        <div className="relative flex-1 bg-gradient-to-b from-zinc-950 via-purple-950/20 to-zinc-950 min-h-[400px] sm:min-h-[480px] flex items-center justify-center p-3 sm:p-6 overflow-hidden">
           
           {/* SIMULATED HIGH-FIDELITY INTERACTIVE VIDEO SCREEN */}
-          <div className="w-full max-w-sm sm:max-w-md mx-auto aspect-[9/16] max-h-[480px] bg-zinc-900 border-4 border-zinc-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col select-none ring-1 ring-purple-500/20">
+          <div className="w-full max-w-sm sm:max-w-md mx-auto aspect-[9/16] max-h-[500px] bg-zinc-900 border-4 border-zinc-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col select-none ring-1 ring-purple-500/20">
             
             {/* Phone Notch */}
             <div className="h-6 bg-zinc-950 flex items-center justify-center relative shrink-0">
@@ -358,7 +437,233 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
             {/* Simulated Phone Screen Content */}
             <div className="flex-1 bg-zinc-950 p-4 flex flex-col justify-between overflow-hidden relative">
               
-              {/* VIDEO 1: BATEDEIRA FLOW */}
+              {/* VIDEO 1: MOTOBOY FLOW */}
+              {currentVideoId === 'motoboy' && (
+                <div className="h-full flex flex-col justify-between py-2">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center border-b border-amber-900/40 pb-2">
+                      <div className="flex items-center gap-1.5">
+                        <Bike className="text-amber-400" size={16} />
+                        <span className="text-xs font-black text-white">AçaíFood Motoboy</span>
+                      </div>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Online • GPS Ativo
+                      </span>
+                    </div>
+
+                    <div className="bg-amber-950/60 border border-amber-500/30 rounded-xl p-2.5">
+                      <div className="text-[10px] font-bold text-amber-300 uppercase tracking-wide">
+                        {currentTime < 9 && "Etapa 1: Alerta no Radar de Corridas"}
+                        {currentTime >= 9 && currentTime < 18 && "Etapa 2: Retirada na Batedeira"}
+                        {currentTime >= 18 && currentTime < 28 && "Etapa 3: Rota até o Portão"}
+                        {currentTime >= 28 && "Etapa 4: Validação do PIN & Saque PIX"}
+                      </div>
+                      <p className="text-xs text-white font-bold mt-0.5">
+                        {currentTime < 9 && "🏍️ Corrida apitando no painel com distância e valor de frete líquido."}
+                        {currentTime >= 9 && currentTime < 18 && "📦 Batedeira entrega embalagem térmica conferida e lacrada."}
+                        {currentTime >= 18 && currentTime < 28 && "🗺️ Navegação GPS rápida até a residência do cliente."}
+                        {currentTime >= 28 && "🔑 Cliente informa o PIN [ 4 8 2 1 ]. O frete cai no saldo na hora!"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Middle Animated Stage: Motoboy */}
+                  <div className="my-auto space-y-3">
+                    {currentTime < 9 && (
+                      <div className="bg-gradient-to-r from-amber-950/90 to-yellow-950/90 border-2 border-amber-500 rounded-2xl p-4 shadow-xl text-center space-y-2 animate-bounce">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-2xl">🏍️</span>
+                          <span className="bg-amber-500 text-black text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
+                            Nova Corrida!
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-black text-white">PEDIDO #1084 • Batedeira Ponto do Açaí</h4>
+                        <div className="text-xs text-zinc-300">Distância: 2.4 km • Bairro Umarizal</div>
+                        <div className="text-lg font-black text-emerald-400 bg-zinc-950/70 py-1 rounded-xl border border-emerald-500/30">
+                          Frete: R$ 8,50 Líquido
+                        </div>
+                      </div>
+                    )}
+
+                    {currentTime >= 9 && currentTime < 18 && (
+                      <div className="bg-zinc-900 border border-amber-600/50 rounded-2xl p-3.5 space-y-2.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-zinc-300 font-bold">Ponto de Coleta (Loja):</span>
+                          <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-bold">
+                            No Balcão
+                          </span>
+                        </div>
+                        <div className="p-2.5 bg-zinc-950 rounded-xl space-y-1.5 text-xs">
+                          <div className="text-white font-bold">Batedeira Ponto do Açaí</div>
+                          <div className="text-[11px] text-zinc-400">Pacote térmico: 1L Açaí Médio + Tapioca</div>
+                          <div className="text-[10px] text-emerald-400 font-mono">✓ Comanda térmica #1084 conferida</div>
+                        </div>
+                        <button className="w-full bg-amber-600 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                          <Navigation size={14} /> Iniciar Rota ao Cliente
+                        </button>
+                      </div>
+                    )}
+
+                    {currentTime >= 18 && currentTime < 28 && (
+                      <div className="bg-zinc-900 border border-amber-500/50 rounded-2xl p-3.5 space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-zinc-300 font-bold flex items-center gap-1.5">
+                            <Navigation size={14} className="text-amber-400 animate-pulse" /> Navegando com GPS
+                          </span>
+                          <span className="text-[10px] text-amber-400 font-bold">2 min restantes</span>
+                        </div>
+                        <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-1.5 text-xs">
+                          <div className="text-zinc-400 text-[11px]">Destino Final:</div>
+                          <div className="text-white font-bold">Rua dos Açaizeiros, 120 • Casa A</div>
+                          <div className="text-[11px] text-zinc-400">Cliente: Carlos Eduardo</div>
+                        </div>
+                        <div className="bg-amber-950/50 text-amber-300 text-[10px] text-center p-2 rounded-lg border border-amber-900/50 font-bold">
+                          🚨 Peça o PIN ao cliente para finalizar a entrega
+                        </div>
+                      </div>
+                    )}
+
+                    {currentTime >= 28 && (
+                      <div className="bg-emerald-950/70 border border-emerald-500/60 rounded-2xl p-4 text-center space-y-2.5">
+                        <div className="flex items-center justify-center gap-2">
+                          <CheckCircle2 size={24} className="text-emerald-400" />
+                          <span className="text-xs font-black text-emerald-300 uppercase">PIN [4821] Validado!</span>
+                        </div>
+                        <div className="bg-zinc-950/90 p-2.5 rounded-xl border border-emerald-900/50">
+                          <div className="text-[10px] text-zinc-400">Saldo Recebido do Frete:</div>
+                          <div className="text-xl font-black text-emerald-400">+ R$ 8,50</div>
+                          <div className="text-[10px] text-zinc-300 mt-0.5">Saldo Disponível: R$ 94,50</div>
+                        </div>
+                        <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow">
+                          <span>⚡ Resgatar via PIX Agora</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-[10px] text-center text-zinc-500">
+                    AçaíFood Entregador Pro • Frete Instantâneo
+                  </div>
+                </div>
+              )}
+
+              {/* VIDEO 2: CAMINHAO FLOW */}
+              {currentVideoId === 'caminhao' && (
+                <div className="h-full flex flex-col justify-between py-2">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center border-b border-blue-900/40 pb-2">
+                      <div className="flex items-center gap-1.5">
+                        <Truck className="text-blue-400" size={16} />
+                        <span className="text-xs font-black text-white">AçaíFood Caminhão & Carga</span>
+                      </div>
+                      <span className="text-[10px] bg-blue-500/20 text-blue-300 font-bold px-2 py-0.5 rounded-full border border-blue-500/30">
+                        Carga Pesada B2B
+                      </span>
+                    </div>
+
+                    <div className="bg-blue-950/60 border border-blue-500/30 rounded-xl p-2.5">
+                      <div className="text-[10px] font-bold text-blue-300 uppercase tracking-wide">
+                        {currentTime < 10 && "Etapa 1: Alerta de Carga no Radar"}
+                        {currentTime >= 10 && currentTime < 20 && "Etapa 2: Embarque & Romaneio"}
+                        {currentTime >= 20 && currentTime < 31 && "Etapa 3: Rota Rodoviária com GPS"}
+                        {currentTime >= 31 && "Etapa 4: Descarga na Doca & Frete Pago"}
+                      </div>
+                      <p className="text-xs text-white font-bold mt-0.5">
+                        {currentTime < 10 && "🚚 Carga de latas disponível com cálculo automático por tonelada e km."}
+                        {currentTime >= 10 && currentTime < 20 && "📋 Conferência de 50 latas de fruto chumbinho e lacre de segurança."}
+                        {currentTime >= 20 && currentTime < 31 && "🛣️ Viagem monitorada com rastreio de frota em tempo real."}
+                        {currentTime >= 31 && "💰 Descarga confirmada pelo comprador e frete liberado imediatamente!"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Middle Animated Stage: Caminhão */}
+                  <div className="my-auto space-y-3">
+                    {currentTime < 10 && (
+                      <div className="bg-gradient-to-r from-blue-950/90 to-cyan-950/90 border-2 border-blue-500 rounded-2xl p-4 shadow-xl text-center space-y-2 animate-bounce">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-2xl">🚚</span>
+                          <span className="bg-blue-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
+                            Carga Pesada Disponível
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-black text-white">50 LATAS DE AÇAÍ (700 KG)</h4>
+                        <div className="text-xs text-blue-200">Origem: Polo Produtor ➔ Batedeira (42 km)</div>
+                        <div className="text-lg font-black text-emerald-400 bg-zinc-950/70 py-1 rounded-xl border border-emerald-500/30">
+                          Frete: R$ 280,00 Garantido
+                        </div>
+                      </div>
+                    )}
+
+                    {currentTime >= 10 && currentTime < 20 && (
+                      <div className="bg-zinc-900 border border-blue-600/50 rounded-2xl p-3.5 space-y-2.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-zinc-300 font-bold">Embarque de Fruto:</span>
+                          <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-bold">
+                            Romaneio Digital
+                          </span>
+                        </div>
+                        <div className="p-2.5 bg-zinc-950 rounded-xl space-y-1 text-xs">
+                          <div className="flex justify-between text-zinc-300">
+                            <span>Lote:</span>
+                            <span className="text-white font-bold">#LOTE-8942 (50 Latas)</span>
+                          </div>
+                          <div className="flex justify-between text-zinc-300">
+                            <span>Peso estimado:</span>
+                            <span className="text-white font-bold">700 kg</span>
+                          </div>
+                          <div className="flex justify-between text-zinc-300">
+                            <span>Safra:</span>
+                            <span className="text-amber-400 font-bold">Fruto do Dia</span>
+                          </div>
+                        </div>
+                        <button className="w-full bg-blue-600 text-white font-bold py-2 rounded-xl text-xs">
+                          Confirmar Embarque & Iniciar Rota
+                        </button>
+                      </div>
+                    )}
+
+                    {currentTime >= 20 && currentTime < 31 && (
+                      <div className="bg-zinc-900 border border-blue-500/50 rounded-2xl p-3.5 space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-zinc-300 font-bold flex items-center gap-1.5">
+                            <Truck size={14} className="text-blue-400" /> Rota Rodoviária em Curso
+                          </span>
+                          <span className="text-[10px] text-blue-400 font-bold">42 km • 50 min</span>
+                        </div>
+                        <div className="bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 space-y-1 text-xs">
+                          <div className="text-zinc-400 text-[10px]">Destino de Descarregamento:</div>
+                          <div className="text-white font-bold">Doca da Batedeira Ponto do Açaí</div>
+                          <div className="text-[11px] text-emerald-400">Rastreamento de carga ativo via GPS</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {currentTime >= 31 && (
+                      <div className="bg-emerald-950/70 border border-emerald-500/60 rounded-2xl p-4 text-center space-y-2.5">
+                        <div className="flex items-center justify-center gap-2">
+                          <CheckCircle2 size={24} className="text-emerald-400" />
+                          <span className="text-xs font-black text-emerald-300 uppercase">Descarga Realizada na Doca!</span>
+                        </div>
+                        <div className="bg-zinc-950/90 p-2.5 rounded-xl border border-emerald-900/50">
+                          <div className="text-[10px] text-zinc-400">Frete Pesado Creditado no Saldo:</div>
+                          <div className="text-xl font-black text-emerald-400">+ R$ 280,00</div>
+                          <div className="text-[10px] text-zinc-300 mt-0.5">Pagamento seguro Asaas sem taxa de espera</div>
+                        </div>
+                        <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow">
+                          <span>⚡ Resgate PIX Instantâneo</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-[10px] text-center text-zinc-500">
+                    AçaíFood Carga Pesada • Logística de Grande Porte
+                  </div>
+                </div>
+              )}
+
+              {/* VIDEO 3: BATEDEIRA FLOW */}
               {currentVideoId === 'batedeira' && (
                 <div className="h-full flex flex-col justify-between py-2">
                   <div className="space-y-2">
@@ -372,7 +677,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                       </span>
                     </div>
 
-                    {/* Step indicator */}
                     <div className="bg-purple-950/60 border border-purple-500/30 rounded-xl p-2.5">
                       <div className="text-[10px] font-bold text-purple-300 uppercase tracking-wide">
                         {currentTime < 10 && "Etapa 1: Alerta de Pedido Novo"}
@@ -432,7 +736,6 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                           <Printer size={16} className="animate-spin" />
                           <span>Imprimindo Cupom Fiscal / Ordem...</span>
                         </div>
-                        {/* Thermal Paper Animation */}
                         <div className="bg-amber-100 text-zinc-900 p-3 rounded-lg font-mono text-[10px] space-y-1 shadow-md border border-amber-300 transform -translate-y-1 transition-transform">
                           <div className="text-center font-bold text-xs border-b border-zinc-400 pb-1">
                             *** AÇAÍFOOD DELIVERY ***
@@ -473,7 +776,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                 </div>
               )}
 
-              {/* VIDEO 2: CLIENTE FLOW */}
+              {/* VIDEO 4: CLIENTE FLOW */}
               {currentVideoId === 'cliente' && (
                 <div className="h-full flex flex-col justify-between py-2">
                   <div className="space-y-2">
@@ -592,22 +895,22 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                 </div>
               )}
 
-              {/* VIDEO 3: B2B FLOW */}
+              {/* VIDEO 5: B2B PRODUTOR FLOW */}
               {currentVideoId === 'b2b' && (
                 <div className="h-full flex flex-col justify-between py-2">
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center border-b border-amber-900/40 pb-2">
+                    <div className="flex justify-between items-center border-b border-emerald-900/40 pb-2">
                       <div className="flex items-center gap-1.5">
-                        <Truck className="text-amber-400" size={16} />
+                        <Store className="text-emerald-400" size={16} />
                         <span className="text-xs font-black text-white">Mercado B2B do Fruto</span>
                       </div>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
-                        Carga Pesada
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        Safra Direta
                       </span>
                     </div>
 
-                    <div className="bg-amber-950/60 border border-amber-500/30 rounded-xl p-2.5">
-                      <div className="text-[10px] font-bold text-amber-300 uppercase tracking-wide">
+                    <div className="bg-emerald-950/60 border border-emerald-500/30 rounded-xl p-2.5">
+                      <div className="text-[10px] font-bold text-emerald-300 uppercase tracking-wide">
                         {currentTime < 12 && "Etapa 1: Oferta de Fruto Ribeirinho"}
                         {currentTime >= 12 && currentTime < 24 && "Etapa 2: Compra em Lote pela Loja"}
                         {currentTime >= 24 && currentTime < 36 && "Etapa 3: Frete Pesado com Caminhão"}
@@ -625,10 +928,10 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                   {/* Middle Animated Stage: B2B */}
                   <div className="my-auto space-y-3">
                     {currentTime < 12 && (
-                      <div className="bg-zinc-900 border border-amber-700/50 rounded-2xl p-3.5 space-y-2">
+                      <div className="bg-zinc-900 border border-emerald-700/50 rounded-2xl p-3.5 space-y-2">
                         <div className="text-xs font-bold text-white">Novo Lote Disponível:</div>
-                        <div className="p-2.5 bg-amber-950/50 border border-amber-500/40 rounded-xl space-y-1">
-                          <div className="flex justify-between text-xs font-bold text-amber-200">
+                        <div className="p-2.5 bg-emerald-950/50 border border-emerald-500/40 rounded-xl space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-emerald-200">
                             <span>50 Latas de Açaí Chumbinho</span>
                             <span>R$ 48,00 / lata</span>
                           </div>
@@ -651,21 +954,21 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                             <span className="text-emerald-400 font-bold">Escrow Protegido</span>
                           </div>
                         </div>
-                        <button className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-xl text-xs transition">
+                        <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs transition">
                           Contratar Frete & Comprar
                         </button>
                       </div>
                     )}
 
                     {currentTime >= 24 && currentTime < 36 && (
-                      <div className="bg-zinc-900 border border-amber-500/50 rounded-2xl p-3.5 space-y-2">
+                      <div className="bg-zinc-900 border border-blue-500/50 rounded-2xl p-3.5 space-y-2">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="text-amber-300 font-bold flex items-center gap-1">
+                          <span className="text-blue-300 font-bold flex items-center gap-1">
                             <Truck size={14} /> Frete de Carga Pesada
                           </span>
                           <span className="text-[10px] text-zinc-400">Em Trânsito</span>
                         </div>
-                        <div className="p-2.5 bg-amber-950/40 border border-amber-800/40 rounded-xl space-y-1 text-xs">
+                        <div className="p-2.5 bg-blue-950/40 border border-blue-800/40 rounded-xl space-y-1 text-xs">
                           <div className="flex justify-between text-zinc-300">
                             <span>Distância Rota:</span>
                             <span className="font-bold text-white">42 km</span>
@@ -674,7 +977,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                             <span>Carga estimada:</span>
                             <span className="font-bold text-white">420 kg (30 latas)</span>
                           </div>
-                          <div className="flex justify-between text-emerald-400 font-bold border-t border-amber-900/40 pt-1">
+                          <div className="flex justify-between text-emerald-400 font-bold border-t border-blue-900/40 pt-1">
                             <span>Frete Caminhoneiro:</span>
                             <span>R$ 180,00</span>
                           </div>
@@ -742,7 +1045,9 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
               className={`h-full transition-all duration-100 ${
                 activeVideo.colorScheme === 'purple' ? 'bg-gradient-to-r from-purple-500 to-purple-400' :
                 activeVideo.colorScheme === 'pink' ? 'bg-gradient-to-r from-pink-500 to-pink-400' :
-                'bg-gradient-to-r from-amber-500 to-amber-400'
+                activeVideo.colorScheme === 'amber' ? 'bg-gradient-to-r from-amber-500 to-amber-400' :
+                activeVideo.colorScheme === 'blue' ? 'bg-gradient-to-r from-blue-500 to-blue-400' :
+                'bg-gradient-to-r from-emerald-500 to-emerald-400'
               }`}
               style={{ width: `${progressPercent}%` }}
             />
@@ -799,15 +1104,17 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                     setCurrentTime(0);
                     lastSoundSceneRef.current = -1;
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1 ${
                     currentVideoId === vid.id
                       ? 'bg-purple-600 text-white shadow-md'
                       : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                   }`}
                 >
-                  {vid.id === 'batedeira' && '🏪 Batedeira'}
-                  {vid.id === 'cliente' && '📱 Cliente'}
-                  {vid.id === 'b2b' && '🚚 B2B & Frete'}
+                  {vid.id === 'motoboy' && <span>🏍️ Motoboy</span>}
+                  {vid.id === 'caminhao' && <span>🚚 Caminhão</span>}
+                  {vid.id === 'batedeira' && <span>🏪 Batedeira</span>}
+                  {vid.id === 'cliente' && <span>📱 Cliente</span>}
+                  {vid.id === 'b2b' && <span>🌾 Produtor</span>}
                 </button>
               ))}
             </div>

@@ -9,15 +9,16 @@ import {
   Zap, Printer
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { InteractiveVideoModal } from "@/components/InteractiveVideoModal";
+import { InteractiveVideoModal, VideoId } from "@/components/InteractiveVideoModal";
 
 export default function LandingPage() {
   const [copied, setCopied] = useState(false);
   const [activeRoleTab, setActiveRoleTab] = useState<'cliente' | 'loja' | 'fornecedor' | 'entregador'>('cliente');
-  const [activeVideoModal, setActiveVideoModal] = useState<'batedeira' | 'cliente' | 'b2b' | null>(null);
+  const [activeVideoModal, setActiveVideoModal] = useState<VideoId | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [videoFilter, setVideoFilter] = useState<'todos' | 'transportes' | 'motoboy' | 'caminhao' | 'batedeira' | 'cliente' | 'b2b'>('todos');
 
-  const handleOpenVideo = (videoId: 'batedeira' | 'cliente' | 'b2b') => {
+  const handleOpenVideo = (videoId: VideoId) => {
     setActiveVideoModal(videoId);
     setIsVideoModalOpen(true);
   };
@@ -159,134 +160,284 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* SEÇÃO VÍDEO / DEMONSTRAÇÃO INTERATIVA */}
-      <section className="px-4 sm:px-6 py-12 bg-zinc-900/50 border-y border-purple-900/20">
-        <div className="max-w-6xl mx-auto">
+      {/* SEÇÃO VÍDEO / DEMONSTRAÇÃO INTERATIVA COM TRANSPORTES */}
+      <section className="px-4 sm:px-6 py-14 bg-zinc-900/50 border-y border-purple-900/20">
+        <div className="max-w-6xl mx-auto space-y-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
+          <div className="text-center max-w-2xl mx-auto space-y-2">
             <span className="text-purple-400 text-xs font-black uppercase tracking-wider">Como Funciona na Prática</span>
-            <h2 className="text-2xl sm:text-4xl font-black text-white">Veja a Operação em Tempo Real</h2>
+            <h2 className="text-2xl sm:text-4xl font-black text-white">Veja a Operação e os Transportes em Vídeo</h2>
             <p className="text-zinc-400 text-sm">
-              Clique em qualquer vídeo abaixo para abrir a simulação interativa com áudio, linha do tempo e telas reais do sistema.
+              Assista como funciona a rotina dos clientes, das batedeiras e da nossa malha logística de <strong>Moto Entrega Express</strong> e <strong>Caminhão de Carga Pesada</strong>.
             </p>
           </div>
 
+          {/* FILTRO DE CATEGORIAS DE VÍDEO */}
+          <div className="flex items-center justify-center gap-2 flex-wrap pb-2">
+            <button
+              onClick={() => setVideoFilter('todos')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                videoFilter === 'todos'
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
+                  : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+              }`}
+            >
+              Todos os Vídeos (5)
+            </button>
+            <button
+              onClick={() => setVideoFilter('transportes')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                videoFilter === 'transportes'
+                  ? 'bg-gradient-to-r from-amber-600 to-blue-600 text-white shadow-lg'
+                  : 'bg-zinc-900 text-amber-300 hover:text-white border border-amber-800/40'
+              }`}
+            >
+              <span>🚚🏍️ Transportes (2)</span>
+            </button>
+            <button
+              onClick={() => setVideoFilter('motoboy')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                videoFilter === 'motoboy'
+                  ? 'bg-amber-600 text-white shadow-lg'
+                  : 'bg-zinc-900 text-zinc-400 hover:text-amber-300 border border-zinc-800'
+              }`}
+            >
+              <Bike size={13} /> Motoboy
+            </button>
+            <button
+              onClick={() => setVideoFilter('caminhao')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                videoFilter === 'caminhao'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-zinc-900 text-zinc-400 hover:text-blue-300 border border-zinc-800'
+              }`}
+            >
+              <Truck size={13} /> Caminhão
+            </button>
+            <button
+              onClick={() => setVideoFilter('batedeira')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                videoFilter === 'batedeira'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'bg-zinc-900 text-zinc-400 hover:text-purple-300 border border-zinc-800'
+              }`}
+            >
+              <Store size={13} /> Batedeira
+            </button>
+            <button
+              onClick={() => setVideoFilter('cliente')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                videoFilter === 'cliente'
+                  ? 'bg-pink-600 text-white shadow-lg'
+                  : 'bg-zinc-900 text-zinc-400 hover:text-pink-300 border border-zinc-800'
+              }`}
+            >
+              <Smartphone size={13} /> Cliente
+            </button>
+          </div>
+
           {/* CARDS DE VÍDEOS OPERACIONAIS */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
-            {/* VÍDEO 1: Batedeira */}
-            <div 
-              role="button"
-              tabIndex={0}
-              onClick={() => handleOpenVideo('batedeira')}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('batedeira'); }}
-              className="bg-zinc-900 border border-purple-900/40 hover:border-purple-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-purple-900/30 active:scale-[0.98]"
-            >
-              <div className="relative aspect-[9/16] bg-purple-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-purple-950/60 to-transparent opacity-90" />
-                <div className="relative z-10 space-y-3">
-                  <div className="w-16 h-16 rounded-full bg-purple-600 border border-purple-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-purple-500 transition-all mx-auto animate-pulse">
-                    <Play size={26} className="translate-x-0.5 fill-white" />
+            {/* VÍDEO TRANSPORTE 1: MOTOBOY */}
+            {(videoFilter === 'todos' || videoFilter === 'transportes' || videoFilter === 'motoboy') && (
+              <div 
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenVideo('motoboy')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('motoboy'); }}
+                className="bg-zinc-900 border-2 border-amber-500/50 hover:border-amber-400 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-amber-900/40 active:scale-[0.98]"
+              >
+                <div className="relative aspect-[9/16] bg-amber-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-amber-950/60 to-transparent opacity-90" />
+                  <div className="relative z-10 space-y-3">
+                    <div className="w-16 h-16 rounded-full bg-amber-500 border-2 border-amber-300 flex items-center justify-center text-zinc-950 shadow-xl group-hover:scale-110 transition-all mx-auto animate-pulse">
+                      <Play size={26} className="translate-x-0.5 fill-zinc-950 text-zinc-950" />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="inline-block bg-amber-500 text-zinc-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
+                        ▶ Vídeo Transporte • 0:38
+                      </span>
+                      <span className="text-[10px] text-amber-300 font-bold">
+                        Clique para Rodar
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black text-white group-hover:text-amber-300 transition-colors">
+                      No Motoboy: Corrida GPS, PIN Seguro e Saque PIX
+                    </h3>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      Radar de corridas apitando, retirada do açaí térmico na loja, rota com GPS e liberação do dinheiro no portão com PIN!
+                    </p>
                   </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="inline-block bg-purple-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
-                      ▶ Assistir Vídeo • 0:40
-                    </span>
-                    <span className="text-[10px] text-purple-300 font-bold">
-                      Clique para Rodar
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-black text-white group-hover:text-purple-300 transition-colors">
-                    Na Batedeira: Pedido e Impressão Instantânea
-                  </h3>
-                  <p className="text-xs text-zinc-300">
-                    O pedido entra com toque sonoro, a impressora térmica emite o cupom na hora e o açaí sai fresquinho!
-                  </p>
+                </div>
+                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-amber-900/40 group-hover:bg-zinc-900 transition-colors">
+                  <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <Bike size={15} /> Motoboy Parceiro
+                  </span>
+                  <span className="text-[11px] text-amber-400 font-bold underline">Rodar Vídeo →</span>
                 </div>
               </div>
-              <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
-                <span className="text-xs font-bold text-purple-300 flex items-center gap-1">
-                  <Store size={14} /> Batedeira Operando
-                </span>
-                <span className="text-[11px] text-purple-400 font-bold underline">Rodar Demo →</span>
-              </div>
-            </div>
+            )}
 
-            {/* VÍDEO 2: Cliente */}
-            <div 
-              role="button"
-              tabIndex={0}
-              onClick={() => handleOpenVideo('cliente')}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('cliente'); }}
-              className="bg-zinc-900 border border-purple-900/40 hover:border-pink-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-pink-900/30 active:scale-[0.98]"
-            >
-              <div className="relative aspect-[9/16] bg-pink-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-pink-950/60 to-transparent opacity-90" />
-                <div className="relative z-10 space-y-3">
-                  <div className="w-16 h-16 rounded-full bg-pink-600 border border-pink-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-pink-500 transition-all mx-auto animate-pulse">
-                    <Play size={26} className="translate-x-0.5 fill-white" />
+            {/* VÍDEO TRANSPORTE 2: CAMINHÃO */}
+            {(videoFilter === 'todos' || videoFilter === 'transportes' || videoFilter === 'caminhao') && (
+              <div 
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenVideo('caminhao')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('caminhao'); }}
+                className="bg-zinc-900 border-2 border-blue-500/50 hover:border-blue-400 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-blue-900/40 active:scale-[0.98]"
+              >
+                <div className="relative aspect-[9/16] bg-blue-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-blue-950/60 to-transparent opacity-90" />
+                  <div className="relative z-10 space-y-3">
+                    <div className="w-16 h-16 rounded-full bg-blue-600 border-2 border-blue-300 flex items-center justify-center text-white shadow-xl group-hover:scale-110 transition-all mx-auto animate-pulse">
+                      <Play size={26} className="translate-x-0.5 fill-white" />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="inline-block bg-blue-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
+                        ▶ Vídeo Transporte • 0:42
+                      </span>
+                      <span className="text-[10px] text-blue-300 font-bold">
+                        Clique para Rodar
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black text-white group-hover:text-blue-300 transition-colors">
+                      No Caminhão: Frete Pesado, Latas e Rota B2B
+                    </h3>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      Lotes de toneladas de fruto colhido. Frete calculado automaticamente por km/peso, romaneio digital e descarga na batedeira!
+                    </p>
                   </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="inline-block bg-pink-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
-                      ▶ Assistir Vídeo • 0:35
-                    </span>
-                    <span className="text-[10px] text-pink-300 font-bold">
-                      Clique para Rodar
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-black text-white group-hover:text-pink-300 transition-colors">
-                    Do Celular do Cliente ao Portão
-                  </h3>
-                  <p className="text-xs text-zinc-300">
-                    Escolha a consistência (Popular, Médio ou Grosso), pague via PIX Copia e Cola e receba com o PIN seguro!
-                  </p>
+                </div>
+                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-blue-900/40 group-hover:bg-zinc-900 transition-colors">
+                  <span className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
+                    <Truck size={15} /> Caminhão & Carga
+                  </span>
+                  <span className="text-[11px] text-blue-400 font-bold underline">Rodar Vídeo →</span>
                 </div>
               </div>
-              <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
-                <span className="text-xs font-bold text-pink-300 flex items-center gap-1">
-                  <Smartphone size={14} /> Cliente Comprando
-                </span>
-                <span className="text-[11px] text-pink-400 font-bold underline">Rodar Demo →</span>
-              </div>
-            </div>
+            )}
 
-            {/* VÍDEO 3: Logística do Fruto */}
-            <div 
-              role="button"
-              tabIndex={0}
-              onClick={() => handleOpenVideo('b2b')}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('b2b'); }}
-              className="bg-zinc-900 border border-purple-900/40 hover:border-amber-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-amber-900/30 active:scale-[0.98]"
-            >
-              <div className="relative aspect-[9/16] bg-amber-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-amber-950/60 to-transparent opacity-90" />
-                <div className="relative z-10 space-y-3">
-                  <div className="w-16 h-16 rounded-full bg-amber-600 border border-amber-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-amber-500 transition-all mx-auto animate-pulse">
-                    <Play size={26} className="translate-x-0.5 fill-white" />
+            {/* VÍDEO 3: Batedeira */}
+            {(videoFilter === 'todos' || videoFilter === 'batedeira') && (
+              <div 
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenVideo('batedeira')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('batedeira'); }}
+                className="bg-zinc-900 border border-purple-900/40 hover:border-purple-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-purple-900/30 active:scale-[0.98]"
+              >
+                <div className="relative aspect-[9/16] bg-purple-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-purple-950/60 to-transparent opacity-90" />
+                  <div className="relative z-10 space-y-3">
+                    <div className="w-16 h-16 rounded-full bg-purple-600 border border-purple-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-purple-500 transition-all mx-auto animate-pulse">
+                      <Play size={26} className="translate-x-0.5 fill-white" />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="inline-block bg-purple-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
+                        ▶ Assistir Vídeo • 0:40
+                      </span>
+                      <span className="text-[10px] text-purple-300 font-bold">
+                        Clique para Rodar
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black text-white group-hover:text-purple-300 transition-colors">
+                      Na Batedeira: Pedido e Impressão Instantânea
+                    </h3>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      O pedido entra com toque sonoro, a impressora térmica emite o cupom na hora e o açaí sai fresquinho!
+                    </p>
                   </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="inline-block bg-amber-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
-                      ▶ Assistir Vídeo • 0:45
-                    </span>
-                    <span className="text-[10px] text-amber-300 font-bold">
-                      Clique para Rodar
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-black text-white group-hover:text-amber-300 transition-colors">
-                    O Mercado B2B e o Frete Pesado
-                  </h3>
-                  <p className="text-xs text-zinc-300">
-                    Fornecedores vendem latas do fruto direto para as batedeiras. Caminhões transportam com frete seguro!
-                  </p>
+                </div>
+                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
+                  <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                    <Store size={15} /> Batedeira Operando
+                  </span>
+                  <span className="text-[11px] text-purple-400 font-bold underline">Rodar Vídeo →</span>
                 </div>
               </div>
-              <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
-                <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
-                  <Truck size={14} /> Abastecimento B2B
-                </span>
-                <span className="text-[11px] text-amber-400 font-bold underline">Rodar Demo →</span>
+            )}
+
+            {/* VÍDEO 4: Cliente */}
+            {(videoFilter === 'todos' || videoFilter === 'cliente') && (
+              <div 
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenVideo('cliente')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('cliente'); }}
+                className="bg-zinc-900 border border-purple-900/40 hover:border-pink-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-pink-900/30 active:scale-[0.98]"
+              >
+                <div className="relative aspect-[9/16] bg-pink-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-pink-950/60 to-transparent opacity-90" />
+                  <div className="relative z-10 space-y-3">
+                    <div className="w-16 h-16 rounded-full bg-pink-600 border border-pink-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-pink-500 transition-all mx-auto animate-pulse">
+                      <Play size={26} className="translate-x-0.5 fill-white" />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="inline-block bg-pink-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
+                        ▶ Assistir Vídeo • 0:35
+                      </span>
+                      <span className="text-[10px] text-pink-300 font-bold">
+                        Clique para Rodar
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black text-white group-hover:text-pink-300 transition-colors">
+                      Do Celular do Cliente ao Portão
+                    </h3>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      Escolha a consistência (Popular, Médio ou Grosso), pague via PIX Copia e Cola e receba com o PIN seguro!
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
+                  <span className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
+                    <Smartphone size={15} /> Cliente Comprando
+                  </span>
+                  <span className="text-[11px] text-pink-400 font-bold underline">Rodar Vídeo →</span>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* VÍDEO 5: Produtor & Fornecedor B2B */}
+            {(videoFilter === 'todos' || videoFilter === 'b2b' || videoFilter === 'transportes') && (
+              <div 
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenVideo('b2b')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('b2b'); }}
+                className="bg-zinc-900 border border-purple-900/40 hover:border-emerald-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-emerald-900/30 active:scale-[0.98]"
+              >
+                <div className="relative aspect-[9/16] bg-emerald-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-emerald-950/60 to-transparent opacity-90" />
+                  <div className="relative z-10 space-y-3">
+                    <div className="w-16 h-16 rounded-full bg-emerald-600 border border-emerald-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-emerald-500 transition-all mx-auto animate-pulse">
+                      <Play size={26} className="translate-x-0.5 fill-white" />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="inline-block bg-emerald-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
+                        ▶ Assistir Vídeo • 0:45
+                      </span>
+                      <span className="text-[10px] text-emerald-300 font-bold">
+                        Clique para Rodar
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black text-white group-hover:text-emerald-300 transition-colors">
+                      O Mercado B2B e Produtores de Açaí
+                    </h3>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      Fornecedores vendem latas do fruto direto para as batedeiras. Caminhões transportam com frete seguro!
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
+                  <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                    <Store size={15} /> Abastecimento B2B
+                  </span>
+                  <span className="text-[11px] text-emerald-400 font-bold underline">Rodar Vídeo →</span>
+                </div>
+              </div>
+            )}
 
           </div>
 
