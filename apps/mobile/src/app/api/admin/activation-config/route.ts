@@ -37,15 +37,6 @@ export async function GET(request: Request) {
     let pendingCount = 0;
 
     try {
-      // Auto-regularizar parceiros existentes para is_founder_subsidized = true e activation_paid = true
-      await supabase
-        .from('users')
-        .update({ is_founder_subsidized: true, activation_paid: true })
-        .neq('role', 'cliente')
-        .neq('role', 'admin')
-        .neq('role', 'CUSTOMER')
-        .neq('role', 'ADMIN');
-
       const { data: allUsers } = await supabase
         .from('users')
         .select('id, role, is_founder_subsidized, activation_paid, asaas_wallet_id, pix_key');

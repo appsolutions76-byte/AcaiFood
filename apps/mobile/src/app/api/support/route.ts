@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,6 +108,14 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { action = 'send', message, userId, status, config } = body;
+
+    // Proteção de segurança: Modificações de configuração do suporte e resolução de chamados requerem autorização
+    if (action === 'save_config' || action === 'resolve') {
+      const auth = await authorizeRequest(request, ['admin']);
+      if (!auth.authorized) {
+        return unauthorizedResponse(auth.error || 'Apenas administradores podem alterar configurações do canal de suporte.');
+      }
+    }
 
     const supabase = getSupabaseAdmin();
 

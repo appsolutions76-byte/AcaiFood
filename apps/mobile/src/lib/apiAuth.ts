@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 export function isAuthorizedRequest(request: Request): boolean {
-  // Segredo interno — lido APENAS de env do servidor (nunca NEXT_PUBLIC_ em produção)
-  const internalSecret = process.env.INTERNAL_API_SECRET || process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '';
+  // Segredo interno — lido APENAS de env do servidor (nunca exposto no client)
+  const internalSecret = process.env.INTERNAL_API_SECRET || '';
   const webhookSecret = process.env.WEBHOOK_SECRET || 'acaifood_webhook_2026';
 
   const headerToken = request.headers.get('x-internal-secret');

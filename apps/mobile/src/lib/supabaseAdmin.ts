@@ -13,16 +13,15 @@ export function getSupabaseAdmin(): SupabaseClient {
     return adminClientInstance;
   }
 
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vfsenzzuoisgcvppfbbz.supabase.co";
-  const defaultServiceKey = Buffer.from('c2Jfc2VjcmV0XzhyYVpVOUlSMTRDYUFDTmFMS2YyYkFfVVNHWHBHSUo=', 'base64').toString('utf8');
-  const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || defaultServiceKey;
-  const rawAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_eqyQYjFtuSNJUExRiU9R3Q_WAgo_6eX";
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const rawServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const rawAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   const supabaseUrl = cleanEnvStr(rawUrl);
   const serviceRoleKey = cleanEnvStr(rawServiceKey) || cleanEnvStr(rawAnonKey);
 
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("As chaves do Supabase não foram encontradas no ambiente.");
+    throw new Error("As chaves do Supabase (SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_URL) não foram encontradas no ambiente.");
   }
 
   adminClientInstance = createClient(supabaseUrl, serviceRoleKey, {

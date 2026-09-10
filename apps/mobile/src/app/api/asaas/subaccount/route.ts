@@ -108,11 +108,19 @@ export async function POST(request: Request) {
       accountId = accountData.id;
     }
 
-    // Salva no banco de dados Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    if (supabaseUrl && supabaseKey && userId) {
-      const supabase = createClient(supabaseUrl, supabaseKey);
+    // Salva no banco de dados Supabase via Service Role garantindo integridade
+    const { getSupabaseAdmin } = await import('@/lib/supabaseAdmin');
+    const supabase = getSupabaseAdmin();
+
+    const callerRole = String(auth.profile?.role || '').toUpperCase();
+    const isAdmin = callerRole === 'ADMIN' || auth.profile?.role === 'admin';
+    const callerId = auth.user?.id || auth.profile?.id;
+
+    if (!isAdmin && callerId !== userId) {
+      return NextResponse.json({ error: 'Você só pode vincular uma subconta ao seu próprio perfil de usuário.' }, { status: 403 });
+    }
+
+    if (userId) {
       await supabase
         .from('users')
         .update({

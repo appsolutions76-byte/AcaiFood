@@ -30,6 +30,25 @@ CREATE INDEX IF NOT EXISTS idx_users_role_status
 CREATE INDEX IF NOT EXISTS idx_print_log_order_time 
   ON public.print_log (order_id, printed_at DESC);
 
+-- Índices de alta performance para a tabela orders (consultas frequentes e filtros de painel)
+CREATE INDEX IF NOT EXISTS idx_orders_buyer_id 
+  ON public.orders (buyer_id);
+
+CREATE INDEX IF NOT EXISTS idx_orders_driver_id 
+  ON public.orders (driver_id) WHERE driver_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_orders_seller_storefront_id 
+  ON public.orders (seller_storefront_id);
+
+CREATE INDEX IF NOT EXISTS idx_orders_status 
+  ON public.orders (status);
+
+CREATE INDEX IF NOT EXISTS idx_orders_created_at 
+  ON public.orders (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_orders_buyer_status 
+  ON public.orders (buyer_id, status, created_at DESC);
+
 -- Índice para acelerar o histórico e carregamento do chat em tempo real
 DO $$
 BEGIN

@@ -4,7 +4,8 @@ import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 
 export async function POST(request: Request) {
-  const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
+  // Transferências financeiras ativas são permitidas para admin ou parceiros operacionais (loja, fornecedor, motorista)
+  const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista']);
   if (!auth.authorized) {
     console.warn("Acesso negado em /api/asaas/transfer:", auth.error);
     return unauthorizedResponse(auth.error);
@@ -13,6 +14,9 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { pixKey, value, description, orderId, scheduleDate, isWalletId, walletId } = body;
+
+    const role = String(auth.profile?.role || auth.user?.user_metadata?.role || '').toLowerCase();
+    const isAdmin = role === 'admin' || role === 'administrador' || auth.source === 'internal_secret';
 
     if (!pixKey && !walletId) {
       return NextResponse.json(
@@ -28,6 +32,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Se não for administrador, validações estritas de segurança:
+    // 1. Clientes não podem acionar transferências de saldo
+    // 2. Parceiros devem ter um pedido vinculado ou valor correspondente aos repasses
+    if (!isAdmin && !orderId) {
+      // Caso de resgate instantâneo de loja/parceiro: garantir que a chave PIX informada corresponda à cadastrada no perfil
+      const userPixKey = String(auth.profile?.pix_key || '').trim().toLowerCase();
+      const reqPixKey = String(pixKey || '').trim().toLowerCase();
+      
+      if (userPixKey && reqPixKey && userPixKey !== reqPixKey) {
+        return NextResponse.json(
+          { error: 'Por segurança, o saque só pode ser realizado para a chave PIX cadastrada no seu perfil.' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Se houver orderId, valida a existência do pedido, status de conclusão e se já foi pago (Anti-Duplicidade)
     if (orderId) {
       try {
@@ -39,7 +59,6 @@ export async function POST(request: Request) {
           .maybeSingle();
 
         if (dbOrder) {
-          const role = auth.profile?.role || auth.user?.user_metadata?.role;
           const isDriverRole = role === 'motorista' || role === 'courier' || role === 'motoboy' || role === 'caminhao' || role === 'driver';
 
           if (isDriverRole && dbOrder.payout_driver_done) {

@@ -1374,17 +1374,6 @@ export const useAppStore = create<AppState>()(
       },
 
       changePassword: async (userId, newPassword) => {
-        set((state) => {
-          const user = state.users[userId];
-          if (!user) return state;
-          const updatedUser = { ...user, password: newPassword };
-          const isCurrent = state.currentUser?.id === userId;
-          return { 
-            users: { ...state.users, [userId]: updatedUser },
-            currentUser: isCurrent ? updatedUser : state.currentUser
-          };
-        });
-
         try {
           if (get().currentUser?.id === userId) {
             await supabase.auth.updateUser({ password: newPassword });

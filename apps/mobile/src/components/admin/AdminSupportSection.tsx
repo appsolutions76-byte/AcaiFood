@@ -89,9 +89,15 @@ export function AdminSupportSection() {
     setIsSavingConfig(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        authHeaders["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch("/api/support", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify({
           action: "save_config",
           config: finalConfig
@@ -211,9 +217,15 @@ export function AdminSupportSection() {
 
   const handleResolveTicket = async (userId: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        authHeaders["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       await fetch("/api/support", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify({
           action: "resolve",
           userId,

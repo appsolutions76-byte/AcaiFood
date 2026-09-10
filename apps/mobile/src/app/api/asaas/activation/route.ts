@@ -165,8 +165,17 @@ export async function POST(request: Request) {
       }
     } catch (_e) {}
 
+    // Validação de segurança: apenas admin autenticado ou segredo interno pode forçar subsídio gratuito
+    let isForceAdmin = false;
+    if (forceFounder) {
+      const auth = await authorizeRequest(request, ['admin']);
+      if (auth.authorized && (auth.profile?.role === 'admin' || auth.profile?.role === 'ADMIN' || auth.source === 'internal_secret')) {
+        isForceAdmin = true;
+      }
+    }
+
     const freeSlotsRemaining = Math.max(0, freeQuota - subsidizedCount);
-    const qualifiesForFree = forceFounder || !activationEnabled || freeSlotsRemaining > 0;
+    const qualifiesForFree = isForceAdmin || !activationEnabled || freeSlotsRemaining > 0;
 
     if (qualifiesForFree) {
       await supabase

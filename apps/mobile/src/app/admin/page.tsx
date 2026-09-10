@@ -675,17 +675,27 @@ function AdminDashboardContent() {
   const handleGrantFreeActivation = async (targetUserId: string) => {
     if (!confirm("Deseja conceder isenção gratuita e homologar este parceiro manualmente?")) return;
     try {
-      await supabase
-        .from('users')
-        .update({
-          is_founder_subsidized: true,
-          activation_paid: true
-        })
-        .eq('id', targetUserId);
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 'Content-Type': 'application/json' };
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
 
-      showToast("✅ Isenção concedida com sucesso ao parceiro!");
-      if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers();
-      fetchActivationConfig();
+      const res = await fetch('/api/asaas/activation', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          userId: targetUserId,
+          forceFounder: true
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast("✅ Isenção concedida com sucesso ao parceiro!");
+        if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers();
+        fetchActivationConfig();
+      } else {
+        alert("Erro ao conceder isenção: " + (data.error || 'Falha de comunicação'));
+      }
     } catch (err: any) {
       alert("Erro: " + err.message);
     }

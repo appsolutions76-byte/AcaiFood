@@ -202,6 +202,11 @@ export async function POST(request: Request) {
       if (supabaseUrl && supabaseKey) {
         const supabase = getSupabaseAdmin();
         
+        if (!orderId && !paymentId) {
+          console.warn("⚠️ Webhook Asaas: Evento de pagamento recebido sem orderId nem paymentId. Abortando update em massa.");
+          return NextResponse.json({ success: false, error: 'Identificador do pedido ausente' }, { status: 400 });
+        }
+
         let query = supabase.from('orders').update({
           status: 'PAID',
           paid_at: new Date().toISOString(),
