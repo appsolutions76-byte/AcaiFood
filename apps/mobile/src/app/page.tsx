@@ -235,6 +235,12 @@ export default function StorefrontPage() {
   const batedeirasAll = Object.values(store.users || {})
     .filter(u => u.role === 'loja' && u.status !== 'blocked')
     .filter(u => {
+      // Oculta estabelecimentos não ativados da vitrine pública
+      const hasWalletOrPix = Boolean(u.asaasWalletId || (u as any).asaas_wallet_id || u.pixKey);
+      const isFounder = u.isFounderSubsidized === true || (u.isFounderSubsidized !== false && hasWalletOrPix);
+      return isFounder || hasWalletOrPix;
+    })
+    .filter(u => {
       if (!userCityNorm || !u.cidade) return true;
       return norm(u.cidade) === userCityNorm;
     });

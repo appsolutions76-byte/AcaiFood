@@ -90,6 +90,21 @@ function CadastroForm() {
     if (pendingId) {
       setNewUserId(pendingId);
       setStep(2);
+
+      const storeUser = useAppStore.getState().currentUser;
+      if (storeUser && storeUser.id === pendingId && storeUser.role) {
+        setRole(storeUser.role as any);
+      } else {
+        supabase.from('users').select('role').eq('id', pendingId).maybeSingle().then(({ data }) => {
+          if (data?.role) {
+            const r = String(data.role).toLowerCase();
+            if (r.includes('partner') || r.includes('loja')) setRole('loja');
+            else if (r.includes('supplier') || r.includes('fornecedor')) setRole('fornecedor');
+            else if (r.includes('courier') || r.includes('motoboy') || r.includes('motorista')) setRole('motorista');
+          }
+        });
+      }
+
       fetch('/api/asaas/activation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,8 +112,8 @@ function CadastroForm() {
       })
       .then(r => r.json())
       .then(actData => {
-        if (actData?.isFounderSubsidized) {
-          setPixData({ isFreeGranted: true });
+        if (actData?.isFounderSubsidized || actData?.isPaid) {
+          setPixData({ isFreeGranted: Boolean(actData?.isFounderSubsidized) });
           setIsPaymentConfirmed(true);
         } else if (actData?.paymentId) {
           setPixData({
@@ -218,9 +233,9 @@ function CadastroForm() {
     }
   };
 
-  const checkPixStatus = async () => {
+  const checkPixStatus = async (silent = false) => {
     if (!newUserId) return;
-    setIsCheckingPayment(true);
+    if (!silent) setIsCheckingPayment(true);
     try {
       const res = await fetch(`/api/asaas/activation?userId=${newUserId}${pixData?.paymentId ? `&paymentId=${pixData.paymentId}` : ''}`);
       const data = await res.json();
@@ -248,15 +263,24 @@ function CadastroForm() {
             })
           }).catch(_err => console.warn("Aviso ao vincular subconta após Pix:", _err));
         } catch (_sErr) {}
-      } else {
+      } else if (!silent) {
         alert("Pagamento ainda em processamento. Aguarde alguns segundos após pagar no seu banco e tente novamente.");
       }
     } catch (_e) {
-      alert("Erro ao checar status. Tente novamente.");
+      if (!silent) alert("Erro ao checar status. Tente novamente.");
     } finally {
-      setIsCheckingPayment(false);
+      if (!silent) setIsCheckingPayment(false);
     }
   };
+
+  useEffect(() => {
+    if (step === 2 && !isPaymentConfirmed && newUserId) {
+      const interval = setInterval(() => {
+        checkPixStatus(true);
+      }, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [step, isPaymentConfirmed, newUserId, pixData?.paymentId]);
 
   const handleCopyPix = () => {
     if (pixData?.pixCopiaECola) {
@@ -645,20 +669,13 @@ function CadastroForm() {
                     </div>
                   )}
 
-                  <div className="pt-2 space-y-2">
+                  <div className="pt-2">
                     <button 
-                      onClick={checkPixStatus}
+                      onClick={() => checkPixStatus(false)}
                       disabled={isCheckingPayment}
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95 text-sm disabled:opacity-50"
                     >
                       {isCheckingPayment ? '⏳ Verificando no Asaas...' : '✅ Já Paguei o Pix'}
-                    </button>
-
-                    <button 
-                      onClick={handleGoToPartnerPanel}
-                      className="w-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 font-bold py-2.5 rounded-xl transition text-xs flex justify-center items-center"
-                    >
-                      Pagar Depois e Acessar Painel
                     </button>
                   </div>
                 </>

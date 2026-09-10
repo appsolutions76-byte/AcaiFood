@@ -21,6 +21,7 @@ import {
   DEFAULT_PRINTER_CONFIG,
   PrinterConfig,
 } from "@/lib/thermalPrinter";
+import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 
 const emptySubscribe = () => () => {};
 
@@ -352,7 +353,8 @@ export default function FornecedorDashboard() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
+    <PartnerActivationGuard roleName="Fornecedor de Frutos (B2B)">
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
       <PartnerManualModal isOpen={partnerManualOpen} onClose={() => setPartnerManualOpen(false)} role="fornecedor" />
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
         <div className="flex justify-between items-center max-w-5xl mx-auto">
@@ -1227,5 +1229,6 @@ export default function FornecedorDashboard() {
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
     </div>
+    </PartnerActivationGuard>
   );
 }

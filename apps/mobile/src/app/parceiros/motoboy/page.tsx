@@ -11,6 +11,7 @@ import { OrderChatModal } from "@/components/OrderChatModal";
 import { SupportChatButton } from "@/components/SupportChatButton";
 import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { supabase } from "@/lib/supabase";
+import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 
 const emptySubscribe = () => () => {};
 
@@ -205,7 +206,8 @@ export default function MotoboyDashboard() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
+    <PartnerActivationGuard roleName="Entregador / Motoboy">
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
       <PartnerManualModal isOpen={partnerManualOpen} onClose={() => setPartnerManualOpen(false)} role="motoboy" />
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
         <div className="flex justify-between items-center max-w-4xl mx-auto">
@@ -626,5 +628,6 @@ export default function MotoboyDashboard() {
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
     </div>
+    </PartnerActivationGuard>
   );
 }

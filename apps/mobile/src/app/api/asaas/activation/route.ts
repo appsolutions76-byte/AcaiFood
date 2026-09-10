@@ -76,27 +76,30 @@ export async function GET(request: Request) {
       if (user) {
         let isPaid = Boolean(user.asaas_wallet_id || user.asaas_account_id || isUserAlreadyFounder);
 
-        const activePaymentId = paymentId;
-        if (!isPaid && activePaymentId) {
-          const ASAAS_API_KEY = await getAsaasApiKey();
-          const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
-          if (ASAAS_API_KEY) {
-            try {
-              const res = await fetch(`${ASAAS_URL}/payments/${activePaymentId}`, {
-                headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
-              });
-              if (res.ok) {
-                const payData = await res.json();
-                if (payData.status === 'RECEIVED' || payData.status === 'CONFIRMED') {
-                  isPaid = true;
-                  await supabase
-                    .from('users')
-                    .update({ status: 'active' })
-                    .eq('id', userId);
-                }
+        const ASAAS_API_KEY = await getAsaasApiKey();
+        const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
+
+        if (!isPaid && ASAAS_API_KEY) {
+          try {
+            const searchUrl = paymentId 
+              ? `${ASAAS_URL}/payments/${paymentId}`
+              : `${ASAAS_URL}/payments?externalReference=ACTIVATE_${userId}`;
+            
+            const res = await fetch(searchUrl, {
+              headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+            });
+            if (res.ok) {
+              const payData = await res.json();
+              const paymentList = Array.isArray(payData?.data) ? payData.data : [payData];
+              if (paymentList.some((p: any) => p && (p.status === 'RECEIVED' || p.status === 'CONFIRMED'))) {
+                isPaid = true;
+                await supabase
+                  .from('users')
+                  .update({ status: 'active' })
+                  .eq('id', userId);
               }
-            } catch (_err) {}
-          }
+            }
+          } catch (_err) {}
         }
 
         userActivationStatus = {
@@ -104,7 +107,7 @@ export async function GET(request: Request) {
           isPaid,
           isFounderSubsidized: isUserAlreadyFounder,
           asaasLinked: Boolean(user.asaas_wallet_id),
-          paymentId: activePaymentId || null
+          paymentId: paymentId || null
         };
       }
     }
@@ -266,25 +269,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Não foi possível registrar o cliente no Asaas para cobrança' }, { status: 400 });
     }
 
-    const dueDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const paymentPayload = {
-      customer: customerId,
-      billingType: 'PIX',
-      value: activationFee,
-      dueDate: dueDate,
-      description: 'Taxa Única de Homologação Asaas & Ativação de Parceiro - AçaíFood',
-      externalReference: `ACTIVATE_${userId}`
-    };
+    let payData: any = null;
 
-    const payRes = await fetch(`${ASAAS_URL}/payments`, {
-      method: 'POST',
-      headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify(paymentPayload)
-    });
+    try {
+      const existRes = await fetch(`${ASAAS_URL}/payments?externalReference=ACTIVATE_${userId}`, {
+        headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+      });
+      if (existRes.ok) {
+        const existJson = await existRes.json();
+        const existingList = Array.isArray(existJson?.data) ? existJson.data : [];
+        const paidPay = existingList.find((p: any) => p.status === 'RECEIVED' || p.status === 'CONFIRMED');
+        if (paidPay) {
+          return NextResponse.json({
+            success: true,
+            isPaid: true,
+            isFounderSubsidized: false,
+            paymentId: paidPay.id,
+            message: 'Ativação já paga com sucesso!'
+          });
+        }
+        const pendingPay = existingList.find((p: any) => p.status === 'PENDING');
+        if (pendingPay?.id) {
+          payData = pendingPay;
+        }
+      }
+    } catch (_exErr) {}
 
-    const payData = await payRes.json();
-    if (!payData.id) {
-      return NextResponse.json({ error: payData.errors?.[0]?.description || 'Erro ao gerar Pix no Asaas' }, { status: 400 });
+    if (!payData) {
+      const dueDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const paymentPayload = {
+        customer: customerId,
+        billingType: 'PIX',
+        value: activationFee,
+        dueDate: dueDate,
+        description: 'Taxa Única de Homologação Asaas & Ativação de Parceiro - AçaíFood',
+        externalReference: `ACTIVATE_${userId}`
+      };
+
+      const payRes = await fetch(`${ASAAS_URL}/payments`, {
+        method: 'POST',
+        headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentPayload)
+      });
+
+      payData = await payRes.json();
+      if (!payData?.id) {
+        return NextResponse.json({ error: payData?.errors?.[0]?.description || 'Erro ao gerar Pix no Asaas' }, { status: 400 });
+      }
     }
 
     let pixQrCode = null;

@@ -27,6 +27,19 @@ export default function LoginPage() {
       const roleStr = String(user?.role || '').toLowerCase();
       const veicStr = String(user?.veiculo || '').toLowerCase();
 
+      if (roleStr !== 'admin' && roleStr !== 'cliente' && roleStr !== '' && user?.id) {
+        try {
+          const actRes = await fetch(`/api/asaas/activation?userId=${user.id}`);
+          const actData = await actRes.json();
+          if (actData?.activationEnabled && !actData?.userStatus?.isPaid) {
+            router.push(`/cadastro?pendingUserId=${user.id}`);
+            return;
+          }
+        } catch (_actErr) {
+          console.warn("Aviso ao checar ativação no login:", _actErr);
+        }
+      }
+
       if (roleStr === 'admin') router.push('/admin');
       else if (roleStr === 'loja') router.push('/parceiros/batedeira');
       else if (roleStr === 'fornecedor') router.push('/parceiros/fornecedor');
