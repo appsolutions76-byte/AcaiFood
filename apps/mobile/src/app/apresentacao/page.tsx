@@ -6,7 +6,8 @@ import {
   Sparkles, Store, Truck, Bike, ShoppingBag, ShieldCheck, 
   MapPin, Play, CheckCircle2, ArrowRight, Share2, 
   Copy, Check, MessageCircle, Smartphone,
-  Zap, Printer
+  Zap, Printer, XCircle, ChevronDown, ChevronUp,
+  Recycle, HelpCircle, Layers, Volume2
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InteractiveVideoModal, VideoId } from "@/components/InteractiveVideoModal";
@@ -16,7 +17,31 @@ export default function LandingPage() {
   const [activeRoleTab, setActiveRoleTab] = useState<'cliente' | 'loja' | 'fornecedor' | 'entregador'>('cliente');
   const [activeVideoModal, setActiveVideoModal] = useState<VideoId | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-  const [videoFilter, setVideoFilter] = useState<'todos' | 'transportes' | 'motoboy' | 'caminhao' | 'batedeira' | 'cliente' | 'b2b'>('todos');
+  const [videoFilter, setVideoFilter] = useState<'todos' | 'ciclo_animado' | 'ciclo_completo' | 'transportes'>('todos');
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const faqItems = [
+    {
+      q: "Preciso de um computador ou sistema caro para usar na minha batedeira?",
+      a: "Não! O AçaíFood roda diretamente no seu smartphone, tablet ou maquininha Android (Smart POS). A impressão de comandas térmicas se conecta via Bluetooth ou USB em segundos."
+    },
+    {
+      q: "Como o motoboy e o caminhoneiro recebem o valor do frete?",
+      a: "O repasse é automático e seguro. Para motoboys, a liberação ocorre quando o cliente informa o PIN no portão. Para caminhões, o PIN é validado na doca de descarregamento da loja. O saldo cai na hora e pode ser sacado via PIX."
+    },
+    {
+      q: "Como o AçaíFood evita golpes de pedidos e entregas falsas?",
+      a: "Através da tecnologia de Duplo PIN de 4 dígitos. A entrega só é concluída e o dinheiro só é liberado para o entregador quando o recebedor digita o código individual gerado pelo sistema."
+    },
+    {
+      q: "Existe taxa de mensalidade ou mensalidade fixa para parceiros?",
+      a: "Não cobramos nenhuma mensalidade fixa! Você só paga uma pequena taxa sobre as vendas ou fretes que forem efetivamente concluídos com sucesso. Cadastro 100% gratuito."
+    },
+    {
+      q: "Como funciona a coleta ecológica de caroço por caçamba?",
+      a: "Quando a batedeira atinge o volume residual de caroços, ela solicita a retirada com um clique no painel. Caçambas parceiras recolhem e destinam o resíduo para indústrias de biomassa, tijolos ecológicos e pavimentação."
+    }
+  ];
 
   const handleOpenVideo = (videoId: VideoId) => {
     setActiveVideoModal(videoId);
@@ -168,169 +193,83 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* SEÇÃO VÍDEO / DEMONSTRAÇÃO INTERATIVA COM TRANSPORTES */}
+      {/* SEÇÃO CINE HUB: CURADORIA DE VÍDEOS DE ALTO IMPACTO */}
       <section className="px-4 sm:px-6 py-14 bg-zinc-900/50 border-y border-purple-900/20">
         <div className="max-w-6xl mx-auto space-y-8">
           
           <div className="text-center max-w-2xl mx-auto space-y-2">
-            <span className="text-purple-400 text-xs font-black uppercase tracking-wider">Como Funciona na Prática</span>
-            <h2 className="text-2xl sm:text-4xl font-black text-white">Veja a Operação e os Transportes em Vídeo</h2>
+            <span className="text-purple-400 text-xs font-black uppercase tracking-wider">Cine Hub Oficial</span>
+            <h2 className="text-2xl sm:text-4xl font-black text-white">Experiências em Vídeo Selecionadas</h2>
             <p className="text-zinc-400 text-sm">
-              Assista como funciona a rotina dos clientes, das batedeiras e da nossa malha logística de <strong>Moto Entrega Express</strong>, <strong>Caminhão de Carga Pesada</strong> e <strong>Coleta de Caroço por Caçamba</strong>.
+              Simplificamos nossa apresentação em <strong>2 vídeos mestres de alta definição</strong> que mostram tudo de ponta a ponta, além do foco na nossa malha de transportes.
             </p>
           </div>
 
-          {/* DESTAQUE MASTER: VÍDEO DO FLUXO COMPLETO */}
-          <div 
-            role="button"
-            tabIndex={0}
-            onClick={() => handleOpenVideo('ciclo_completo')}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('ciclo_completo'); }}
-            className="relative bg-gradient-to-r from-purple-950 via-zinc-900 to-amber-950 border-2 border-purple-500/60 hover:border-purple-400 rounded-3xl p-6 sm:p-8 shadow-2xl cursor-pointer group transition-all duration-300 hover:shadow-purple-900/50 active:scale-[0.99] overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-            
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="space-y-3 text-center md:text-left max-w-2xl">
-                <div className="inline-flex items-center gap-2 bg-purple-600/30 border border-purple-400/40 px-3 py-1 rounded-full text-purple-200 text-xs font-black uppercase tracking-wider">
-                  <Sparkles size={14} className="text-amber-400" />
-                  <span>Vídeo Principal • Ciclo Completo (1:30)</span>
-                </div>
-                <h3 className="text-2xl sm:text-3xl font-black text-white group-hover:text-purple-300 transition-colors">
-                  Da Colheita à Tigela e ao Descarte do Caroço
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
-                  Assista em um só vídeo todo o ecossistema integrado: cliente pede, loja imprime comanda térmica, motoboy entrega com PIN no portão, loja compra frutos ribeirinhos, caminhoneiro valida o PIN na doca da loja, e caçamba recolhe o caroço residual!
-                </p>
-                
-                {/* Fluxo visual em linha */}
-                <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-2 text-[11px] font-bold text-zinc-300">
-                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🥣 Cliente Pede</span>
-                  <span>➔</span>
-                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🏪 Loja Imprime</span>
-                  <span>➔</span>
-                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🏍️ Moto (PIN Cliente)</span>
-                  <span>➔</span>
-                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🚚 Caminhão (PIN Loja)</span>
-                  <span>➔</span>
-                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🚜 Caçamba Caroço</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-center gap-2 shrink-0">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 border-2 border-purple-300 flex items-center justify-center text-white shadow-2xl group-hover:scale-110 transition-transform animate-pulse">
-                  <Play size={32} className="translate-x-0.5 fill-white" />
-                </div>
-                <span className="text-xs font-black text-purple-300 uppercase tracking-wider">
-                  Rodar Vídeo Completo
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* FILTRO DE CATEGORIAS DE VÍDEO */}
+          {/* FILTRO DE CATEGORIAS SIMPLIFICADO */}
           <div className="flex items-center justify-center gap-2 flex-wrap pb-2">
             <button
               onClick={() => setVideoFilter('todos')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
                 videoFilter === 'todos'
                   ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
                   : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
               }`}
             >
-              Todos os Vídeos (7)
+              Todos os Destaques (3)
             </button>
             <button
-              onClick={() => setVideoFilter('ciclo_animado' as any)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                (videoFilter as string) === 'ciclo_animado'
+              onClick={() => setVideoFilter('ciclo_animado')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                videoFilter === 'ciclo_animado'
                   ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg'
                   : 'bg-zinc-900 text-pink-300 hover:text-white border border-pink-800/40'
               }`}
             >
-              <span>🎭 Vídeo Animado (Voz)</span>
+              <span>🎭 A História Animada (Voz & Personagens)</span>
             </button>
             <button
-              onClick={() => setVideoFilter('ciclo_completo' as any)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                (videoFilter as string) === 'ciclo_completo'
+              onClick={() => setVideoFilter('ciclo_completo')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                videoFilter === 'ciclo_completo'
                   ? 'bg-purple-600 text-white shadow-lg'
                   : 'bg-zinc-900 text-purple-300 hover:text-white border border-purple-800/40'
               }`}
             >
-              <Sparkles size={13} /> Ciclo Simulado
+              <Sparkles size={13} /> <span>🎬 Ciclo Operacional (Telas Reais & PIN)</span>
             </button>
             <button
               onClick={() => setVideoFilter('transportes')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
                 videoFilter === 'transportes'
                   ? 'bg-gradient-to-r from-amber-600 to-blue-600 text-white shadow-lg'
                   : 'bg-zinc-900 text-amber-300 hover:text-white border border-amber-800/40'
               }`}
             >
-              <span>🚚🏍️ Transportes (2)</span>
-            </button>
-            <button
-              onClick={() => setVideoFilter('motoboy')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                videoFilter === 'motoboy'
-                  ? 'bg-amber-600 text-white shadow-lg'
-                  : 'bg-zinc-900 text-zinc-400 hover:text-amber-300 border border-zinc-800'
-              }`}
-            >
-              <Bike size={13} /> Motoboy
-            </button>
-            <button
-              onClick={() => setVideoFilter('caminhao')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                videoFilter === 'caminhao'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-zinc-900 text-zinc-400 hover:text-blue-300 border border-zinc-800'
-              }`}
-            >
-              <Truck size={13} /> Caminhão
-            </button>
-            <button
-              onClick={() => setVideoFilter('batedeira')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                videoFilter === 'batedeira'
-                  ? 'bg-purple-600 text-white shadow-lg'
-                  : 'bg-zinc-900 text-zinc-400 hover:text-purple-300 border border-zinc-800'
-              }`}
-            >
-              <Store size={13} /> Batedeira
-            </button>
-            <button
-              onClick={() => setVideoFilter('cliente')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                videoFilter === 'cliente'
-                  ? 'bg-pink-600 text-white shadow-lg'
-                  : 'bg-zinc-900 text-zinc-400 hover:text-pink-300 border border-zinc-800'
-              }`}
-            >
-              <Smartphone size={13} /> Cliente
+              <span>🚚🏍️ Malha de Transportes (Logística)</span>
             </button>
           </div>
 
-          {/* CARDS DE VÍDEOS OPERACIONAIS */}
+          {/* GRADE CURADA COM OS 3 VÍDEOS FUNDAMENTAIS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-            {/* VÍDEO 0: CICLO ANIMADO COM PERSONAGENS E ÁUDIO */}
-            {(videoFilter === 'todos' || (videoFilter as string) === 'ciclo_animado') && (
+            {/* CARD 1: HISTÓRIA ANIMADA (VOZ & PERSONAGENS) */}
+            {(videoFilter === 'todos' || videoFilter === 'ciclo_animado') && (
               <div 
                 role="button"
                 tabIndex={0}
                 onClick={() => handleOpenVideo('ciclo_animado')}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('ciclo_animado'); }}
-                className="bg-gradient-to-b from-pink-950 via-purple-950 to-zinc-950 border-2 border-pink-500 hover:border-amber-300 rounded-3xl overflow-hidden shadow-2xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-pink-900/60 active:scale-[0.98] relative ring-1 ring-pink-400/40"
+                className="bg-gradient-to-b from-pink-950 via-purple-950 to-zinc-950 border-2 border-pink-500/80 hover:border-amber-300 rounded-3xl overflow-hidden shadow-2xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-pink-900/60 active:scale-[0.98] relative ring-1 ring-pink-400/40"
               >
                 <div className="absolute top-3 right-3 z-20 bg-gradient-to-r from-pink-600 to-amber-500 text-white text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1">
-                  <span>🎭 Animado • Voz & Áudio</span>
+                  <Volume2 size={11} />
+                  <span>Voz Real & Áudio</span>
                 </div>
+                
                 <div className="relative aspect-[9/16] bg-pink-950/60 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-pink-950/70 to-transparent opacity-90" />
                   
-                  {/* Avatares dos personagens voando */}
+                  {/* Avatares dos personagens */}
                   <div className="relative z-10 space-y-3">
                     <div className="flex items-center justify-center -space-x-2 mb-1">
                       <div className="w-10 h-10 rounded-full bg-pink-600 border-2 border-white flex items-center justify-center text-lg shadow">🧑‍💻</div>
@@ -349,16 +288,23 @@ export default function LandingPage() {
                         ▶ Vídeo Animado • 1:28
                       </span>
                       <span className="text-[10px] text-amber-300 font-black">
-                        Com Vozes, Balões & Som Real
+                        Com Vozes, Diálogos & Som Ambiente
                       </span>
                     </div>
 
                     <h3 className="text-lg font-black text-white group-hover:text-pink-300 transition-colors">
-                      História Animada: Turma do AçaíFood
+                      A Turma do AçaíFood: Uma História Real
                     </h3>
                     <p className="text-xs text-zinc-300 leading-relaxed">
-                      Conheça o Carlos, Seu Manoel, Marcos Motoboy, Tião Caminhoneiro e Beto da Caçamba em uma divertida animação falada com PIN duplo!
+                      Conheça Carlos (cliente), Seu Manoel (batedeira), Marcos (motoboy), Tião (caminhoneiro), Zé Ribeirinho e Beto da Caçamba em uma narrativa descontraída que explica tudo!
                     </p>
+
+                    {/* Badges de recursos */}
+                    <div className="pt-2 flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-bold">
+                      <span className="bg-pink-900/60 text-pink-200 border border-pink-700/50 px-2 py-0.5 rounded-md">🎙️ Narração com Voz</span>
+                      <span className="bg-purple-900/60 text-purple-200 border border-purple-700/50 px-2 py-0.5 rounded-md">💬 Balões Vivos</span>
+                      <span className="bg-amber-900/60 text-amber-200 border border-amber-700/50 px-2 py-0.5 rounded-md">🔊 Sons Reais</span>
+                    </div>
                   </div>
                 </div>
 
@@ -371,8 +317,8 @@ export default function LandingPage() {
               </div>
             )}
 
-            {/* VÍDEO MASTER: CICLO COMPLETO DO ECOSSISTEMA */}
-            {(videoFilter === 'todos' || (videoFilter as string) === 'ciclo_completo') && (
+            {/* CARD 2: CICLO OPERACIONAL COMPLETO (TELAS REAIS DO APP & DUPLO PIN) */}
+            {(videoFilter === 'todos' || videoFilter === 'ciclo_completo') && (
               <div 
                 role="button"
                 tabIndex={0}
@@ -380,242 +326,247 @@ export default function LandingPage() {
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('ciclo_completo'); }}
                 className="bg-gradient-to-b from-purple-950 via-zinc-900 to-zinc-950 border-2 border-purple-500 hover:border-pink-400 rounded-3xl overflow-hidden shadow-2xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-purple-900/50 active:scale-[0.98] relative"
               >
-                <div className="absolute top-3 right-3 z-20 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
+                <div className="absolute top-3 right-3 z-20 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1">
                   <Sparkles size={11} /> Master • 8 Etapas
                 </div>
+
                 <div className="relative aspect-[9/16] bg-purple-950/70 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-purple-950/60 to-transparent opacity-90" />
+                  
                   <div className="relative z-10 space-y-3">
                     <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 border-2 border-purple-200 flex items-center justify-center text-white shadow-xl group-hover:scale-110 transition-all mx-auto animate-pulse">
                       <Play size={26} className="translate-x-0.5 fill-white text-white" />
                     </div>
+
                     <div className="flex flex-col items-center gap-1">
                       <span className="inline-block bg-purple-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
-                        ▶ Vídeo Completo • 1:30
+                        ▶ Vídeo Técnico • 1:30
                       </span>
                       <span className="text-[10px] text-pink-300 font-bold">
-                        Cliente ➔ Loja ➔ Moto ➔ Caminhão (PIN) ➔ Caçamba
+                        Simulação Fiel da Interface do App
                       </span>
                     </div>
+
                     <h3 className="text-lg font-black text-white group-hover:text-pink-300 transition-colors">
-                      O Ciclo Completo de Ponta a Ponta
+                      Ciclo Operacional: Telas Reais & Duplo PIN
                     </h3>
                     <p className="text-xs text-zinc-300 leading-relaxed">
-                      Acompanhe o pedido, impressão, motoboy com PIN, compra de matéria-prima, caminhoneiro com validação do PIN da loja e caçamba de resíduos!
+                      Acompanhe o pedido do cliente, impressão térmica da comanda na loja, motoboy com PIN [4821], compra B2B, caminhoneiro com PIN [9354] na doca e caçamba de resíduos!
                     </p>
+
+                    {/* Badges de etapas técnicas */}
+                    <div className="pt-2 flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-bold">
+                      <span className="bg-purple-900/60 text-purple-200 border border-purple-700/50 px-2 py-0.5 rounded-md">🖨️ Impressora Térmica</span>
+                      <span className="bg-pink-900/60 text-pink-200 border border-pink-700/50 px-2 py-0.5 rounded-md">🔐 PIN Duplo</span>
+                      <span className="bg-emerald-900/60 text-emerald-200 border border-emerald-700/50 px-2 py-0.5 rounded-md">🚜 Caçamba Caroço</span>
+                    </div>
                   </div>
                 </div>
+
                 <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/40 group-hover:bg-zinc-900 transition-colors">
                   <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                    <Sparkles size={15} className="text-pink-400" /> Cadeia Total Integrada
+                    <Sparkles size={15} className="text-pink-400" /> Demonstração Prática do App
                   </span>
-                  <span className="text-[11px] text-pink-400 font-bold underline">Rodar Tudo →</span>
+                  <span className="text-[11px] text-pink-400 font-bold underline">Rodar Demonstração →</span>
                 </div>
               </div>
             )}
             
-            {/* VÍDEO TRANSPORTE 1: MOTOBOY */}
-            {(videoFilter === 'todos' || videoFilter === 'transportes' || videoFilter === 'motoboy') && (
+            {/* CARD 3: MALHA LOGÍSTICA (MOTOBOY + CAMINHÃO INTEGRADOS) */}
+            {(videoFilter === 'todos' || videoFilter === 'transportes') && (
               <div 
-                role="button"
-                tabIndex={0}
-                onClick={() => handleOpenVideo('motoboy')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('motoboy'); }}
-                className="bg-zinc-900 border-2 border-amber-500/50 hover:border-amber-400 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-amber-900/40 active:scale-[0.98]"
+                className="bg-zinc-900 border-2 border-amber-500/50 rounded-3xl overflow-hidden shadow-xl flex flex-col justify-between relative"
               >
-                <div className="relative aspect-[9/16] bg-amber-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-amber-950/60 to-transparent opacity-90" />
-                  <div className="relative z-10 space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-amber-500 border-2 border-amber-300 flex items-center justify-center text-zinc-950 shadow-xl group-hover:scale-110 transition-all mx-auto animate-pulse">
-                      <Play size={26} className="translate-x-0.5 fill-zinc-950 text-zinc-950" />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="inline-block bg-amber-500 text-zinc-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
-                        ▶ Vídeo Transporte • 0:38
-                      </span>
-                      <span className="text-[10px] text-amber-300 font-bold">
-                        Clique para Rodar
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-black text-white group-hover:text-amber-300 transition-colors">
-                      No Motoboy: Corrida GPS, PIN Seguro e Saque PIX
-                    </h3>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
-                      Radar de corridas apitando, retirada do açaí térmico na loja, rota com GPS e liberação do dinheiro no portão com PIN!
-                    </p>
+                <div className="p-6 bg-gradient-to-b from-amber-950/60 via-zinc-900 to-zinc-950 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase bg-amber-500 text-zinc-950 px-2.5 py-0.5 rounded-md shadow">
+                      🚚🏍️ Logística de Ponta
+                    </span>
+                    <span className="text-xs text-amber-300 font-bold">2 Modalidades</span>
                   </div>
+
+                  <h3 className="text-xl font-black text-white">
+                    Malha Integrada: Moto Express & Carga Pesada
+                  </h3>
+                  <p className="text-xs text-zinc-300 leading-relaxed">
+                    O AçaíFood atende as duas maiores demandas de transporte do mercado de açaí: a entrega expressa ao consumidor e o abastecimento de toneladas de fruto!
+                  </p>
+
+                  {/* Sub-item 1: Motoboy */}
+                  <div 
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleOpenVideo('motoboy')}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('motoboy'); }}
+                    className="p-3.5 bg-zinc-950 rounded-2xl border border-amber-500/40 hover:border-amber-400 transition cursor-pointer group flex items-center justify-between gap-3 shadow-md"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0">
+                        <Bike size={20} />
+                      </div>
+                      <div className="text-left">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-black text-white group-hover:text-amber-300 transition-colors">Motoboy Express</span>
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-bold">0:38</span>
+                        </div>
+                        <p className="text-[11px] text-zinc-400">Radar GPS, PIN no portão e saque instantâneo.</p>
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-amber-500 text-zinc-950 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <Play size={14} className="translate-x-0.5 fill-zinc-950" />
+                    </div>
+                  </div>
+
+                  {/* Sub-item 2: Caminhão */}
+                  <div 
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleOpenVideo('caminhao')}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('caminhao'); }}
+                    className="p-3.5 bg-zinc-950 rounded-2xl border border-blue-500/40 hover:border-blue-400 transition cursor-pointer group flex items-center justify-between gap-3 shadow-md"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/40 flex items-center justify-center shrink-0">
+                        <Truck size={20} />
+                      </div>
+                      <div className="text-left">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-black text-white group-hover:text-blue-300 transition-colors">Caminhão de Carga</span>
+                          <span className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.2 rounded font-bold">0:42</span>
+                        </div>
+                        <p className="text-[11px] text-zinc-400">Frete por km/peso, latas e romaneio digital.</p>
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <Play size={14} className="translate-x-0.5 fill-white" />
+                    </div>
+                  </div>
+
                 </div>
-                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-amber-900/40 group-hover:bg-zinc-900 transition-colors">
+
+                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-amber-900/40">
                   <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                    <Bike size={15} /> Motoboy Parceiro
+                    <Truck size={15} /> Frete Inteligente
                   </span>
-                  <span className="text-[11px] text-amber-400 font-bold underline">Rodar Vídeo →</span>
-                </div>
-              </div>
-            )}
-
-            {/* VÍDEO TRANSPORTE 2: CAMINHÃO */}
-            {(videoFilter === 'todos' || videoFilter === 'transportes' || videoFilter === 'caminhao') && (
-              <div 
-                role="button"
-                tabIndex={0}
-                onClick={() => handleOpenVideo('caminhao')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('caminhao'); }}
-                className="bg-zinc-900 border-2 border-blue-500/50 hover:border-blue-400 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-blue-900/40 active:scale-[0.98]"
-              >
-                <div className="relative aspect-[9/16] bg-blue-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-blue-950/60 to-transparent opacity-90" />
-                  <div className="relative z-10 space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-blue-600 border-2 border-blue-300 flex items-center justify-center text-white shadow-xl group-hover:scale-110 transition-all mx-auto animate-pulse">
-                      <Play size={26} className="translate-x-0.5 fill-white" />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="inline-block bg-blue-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
-                        ▶ Vídeo Transporte • 0:42
-                      </span>
-                      <span className="text-[10px] text-blue-300 font-bold">
-                        Clique para Rodar
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-black text-white group-hover:text-blue-300 transition-colors">
-                      No Caminhão: Frete Pesado, Latas e Rota B2B
-                    </h3>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
-                      Lotes de toneladas de fruto colhido. Frete calculado automaticamente por km/peso, romaneio digital e descarga na batedeira!
-                    </p>
-                  </div>
-                </div>
-                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-blue-900/40 group-hover:bg-zinc-900 transition-colors">
-                  <span className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
-                    <Truck size={15} /> Caminhão & Carga
-                  </span>
-                  <span className="text-[11px] text-blue-400 font-bold underline">Rodar Vídeo →</span>
-                </div>
-              </div>
-            )}
-
-            {/* VÍDEO 3: Batedeira */}
-            {(videoFilter === 'todos' || videoFilter === 'batedeira') && (
-              <div 
-                role="button"
-                tabIndex={0}
-                onClick={() => handleOpenVideo('batedeira')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('batedeira'); }}
-                className="bg-zinc-900 border border-purple-900/40 hover:border-purple-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-purple-900/30 active:scale-[0.98]"
-              >
-                <div className="relative aspect-[9/16] bg-purple-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-purple-950/60 to-transparent opacity-90" />
-                  <div className="relative z-10 space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-purple-600 border border-purple-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-purple-500 transition-all mx-auto animate-pulse">
-                      <Play size={26} className="translate-x-0.5 fill-white" />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="inline-block bg-purple-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
-                        ▶ Assistir Vídeo • 0:40
-                      </span>
-                      <span className="text-[10px] text-purple-300 font-bold">
-                        Clique para Rodar
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-black text-white group-hover:text-purple-300 transition-colors">
-                      Na Batedeira: Pedido e Impressão Instantânea
-                    </h3>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
-                      O pedido entra com toque sonoro, a impressora térmica emite o cupom na hora e o açaí sai fresquinho!
-                    </p>
-                  </div>
-                </div>
-                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
-                  <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                    <Store size={15} /> Batedeira Operando
-                  </span>
-                  <span className="text-[11px] text-purple-400 font-bold underline">Rodar Vídeo →</span>
-                </div>
-              </div>
-            )}
-
-            {/* VÍDEO 4: Cliente */}
-            {(videoFilter === 'todos' || videoFilter === 'cliente') && (
-              <div 
-                role="button"
-                tabIndex={0}
-                onClick={() => handleOpenVideo('cliente')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('cliente'); }}
-                className="bg-zinc-900 border border-purple-900/40 hover:border-pink-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-pink-900/30 active:scale-[0.98]"
-              >
-                <div className="relative aspect-[9/16] bg-pink-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-pink-950/60 to-transparent opacity-90" />
-                  <div className="relative z-10 space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-pink-600 border border-pink-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-pink-500 transition-all mx-auto animate-pulse">
-                      <Play size={26} className="translate-x-0.5 fill-white" />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="inline-block bg-pink-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
-                        ▶ Assistir Vídeo • 0:35
-                      </span>
-                      <span className="text-[10px] text-pink-300 font-bold">
-                        Clique para Rodar
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-black text-white group-hover:text-pink-300 transition-colors">
-                      Do Celular do Cliente ao Portão
-                    </h3>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
-                      Escolha a consistência (Popular, Médio ou Grosso), pague via PIX Copia e Cola e receba com o PIN seguro!
-                    </p>
-                  </div>
-                </div>
-                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
-                  <span className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
-                    <Smartphone size={15} /> Cliente Comprando
-                  </span>
-                  <span className="text-[11px] text-pink-400 font-bold underline">Rodar Vídeo →</span>
-                </div>
-              </div>
-            )}
-
-            {/* VÍDEO 5: Produtor & Fornecedor B2B */}
-            {(videoFilter === 'todos' || videoFilter === 'b2b' || videoFilter === 'transportes') && (
-              <div 
-                role="button"
-                tabIndex={0}
-                onClick={() => handleOpenVideo('b2b')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenVideo('b2b'); }}
-                className="bg-zinc-900 border border-purple-900/40 hover:border-emerald-500 rounded-3xl overflow-hidden shadow-xl flex flex-col group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-emerald-900/30 active:scale-[0.98]"
-              >
-                <div className="relative aspect-[9/16] bg-emerald-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-emerald-950/60 to-transparent opacity-90" />
-                  <div className="relative z-10 space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-emerald-600 border border-emerald-400/50 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-emerald-500 transition-all mx-auto animate-pulse">
-                      <Play size={26} className="translate-x-0.5 fill-white" />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="inline-block bg-emerald-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow">
-                        ▶ Assistir Vídeo • 0:45
-                      </span>
-                      <span className="text-[10px] text-emerald-300 font-bold">
-                        Clique para Rodar
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-black text-white group-hover:text-emerald-300 transition-colors">
-                      O Mercado B2B e Produtores de Açaí
-                    </h3>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
-                      Fornecedores vendem latas do fruto direto para as batedeiras. Caminhões transportam com frete seguro!
-                    </p>
-                  </div>
-                </div>
-                <div className="p-4 bg-zinc-950 flex justify-between items-center border-t border-purple-900/30 group-hover:bg-zinc-900 transition-colors">
-                  <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                    <Store size={15} /> Abastecimento B2B
-                  </span>
-                  <span className="text-[11px] text-emerald-400 font-bold underline">Rodar Vídeo →</span>
+                  <Link href="/cadastro?role=motoboy" className="text-[11px] text-amber-400 font-bold hover:underline">
+                    Quero Transportar →
+                  </Link>
                 </div>
               </div>
             )}
 
           </div>
 
+        </div>
+      </section>
+
+      {/* SEÇÃO COMPARATIVA: O MODO TRADICIONAL VS COM AÇAÍFOOD */}
+      <section className="px-4 sm:px-6 py-16 max-w-6xl mx-auto space-y-10">
+        <div className="text-center space-y-2 max-w-2xl mx-auto">
+          <span className="text-purple-400 text-xs font-black uppercase tracking-wider">A Diferença na Prática</span>
+          <h2 className="text-3xl sm:text-4xl font-black text-white">O Jeito Tradicional vs. O Modo AçaíFood</h2>
+          <p className="text-zinc-400 text-sm">
+            Entenda por que comércios e consumidores estão abandonando cadernos e grupos de WhatsApp desorganizados.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* O MODO ANTIGO (PROBLEMAS) */}
+          <div className="bg-zinc-900/60 border border-red-900/40 rounded-3xl p-6 sm:p-8 space-y-5">
+            <div className="flex items-center gap-2.5 text-red-400 font-black text-lg border-b border-red-900/30 pb-3">
+              <XCircle size={22} />
+              <span>O Jeito Antigo (Sem AçaíFood)</span>
+            </div>
+
+            <ul className="space-y-4 text-xs sm:text-sm text-zinc-300">
+              <li className="flex items-start gap-2.5">
+                <span className="text-red-400 font-bold shrink-0">❌</span>
+                <span><strong>Pedidos Perdidos no WhatsApp:</strong> mensagens acumuladas, áudios demorados para ouvir e clientes desistindo pela demora.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="text-red-400 font-bold shrink-0">❌</span>
+                <span><strong>Caderno Borrado e Erros:</strong> pedidos anotados à mão que são trocados na correria da batedeira.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="text-red-400 font-bold shrink-0">❌</span>
+                <span><strong>Golpes e Entregas Falsas:</strong> motoboys sem comprovação de entrega ou taxas de frete combinadas no "chute".</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="text-red-400 font-bold shrink-0">❌</span>
+                <span><strong>Caroço Acumulado na Calçada:</strong> sacas de caroço jogadas na rua gerando mau cheiro, insetos e risco de multa.</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* O MODO AÇAÍFOOD (SOLUÇÕES) */}
+          <div className="bg-gradient-to-b from-purple-950/40 to-zinc-900/80 border-2 border-purple-500/60 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+            <div className="flex items-center gap-2.5 text-emerald-400 font-black text-lg border-b border-purple-800/40 pb-3">
+              <CheckCircle2 size={22} />
+              <span>Com o AçaíFood (Ecossistema Digital)</span>
+            </div>
+
+            <ul className="space-y-4 text-xs sm:text-sm text-zinc-200">
+              <li className="flex items-start gap-2.5">
+                <span className="text-emerald-400 font-bold shrink-0">✅</span>
+                <span><strong>Cardápio Digital com Impressão Automática:</strong> o cliente escolhe a consistência e a impressora térmica solta a comanda na hora com som de alerta.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="text-emerald-400 font-bold shrink-0">✅</span>
+                <span><strong>Cálculo Milimétrico por GPS:</strong> frete justo calculado automaticamente por km real, sem discussão de valor.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="text-emerald-400 font-bold shrink-0">✅</span>
+                <span><strong>Duplo PIN de 4 Dígitos Anti-Fraude:</strong> motoboy e caminhoneiro só concluem a corrida após o recebedor informar o PIN do pedido.</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="text-emerald-400 font-bold shrink-0">✅</span>
+                <span><strong>Coleta de Caroço por Caçamba:</strong> agendamento com 1 toque no app para destinação sustentável a indústrias de biomassa.</span>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      </section>
+
+      {/* SEÇÃO SUSTENTABILIDADE & ECONOMIA CIRCULAR DO CAROÇO */}
+      <section className="px-4 sm:px-6 py-14 bg-gradient-to-r from-teal-950/30 via-zinc-900 to-purple-950/30 border-y border-teal-900/30">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="space-y-4 max-w-2xl">
+            <div className="inline-flex items-center gap-2 bg-teal-950/80 border border-teal-500/40 px-3 py-1 rounded-full text-teal-300 text-xs font-bold">
+              <Recycle size={14} className="text-emerald-400" />
+              <span>Economia Circular do Açaí</span>
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-black text-white">
+              O Único Aplicativo que Resolve o Descarte do Caroço
+            </h2>
+            <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
+              Mais de 80% do fruto do açaí é caroço residual. Para a batedeira, isso era lixo e dor de cabeça. No AçaíFood, transformamos passivo ambiental em sustentabilidade: você solicita uma <strong>Caçamba de Resíduos</strong> pelo app, que direciona o caroço para caldeiras industriais, carvão ativado e bioenergia.
+            </p>
+            <div className="flex flex-wrap gap-4 text-xs text-teal-200 font-semibold pt-1">
+              <span>🌱 Zero Caroço na Rua</span>
+              <span>•</span>
+              <span>♻️ Reaproveitamento em Biomassa</span>
+              <span>•</span>
+              <span>⚡ Agendamento Simples pelo Painel</span>
+            </div>
+          </div>
+
+          <div className="bg-zinc-950 p-6 rounded-3xl border border-teal-500/30 text-center shrink-0 w-full sm:w-80 shadow-2xl space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-teal-600/20 text-teal-400 border border-teal-500/40 flex items-center justify-center mx-auto text-3xl">
+              🚜
+            </div>
+            <h3 className="text-base font-black text-white">Coleta Sob Medida</h3>
+            <p className="text-xs text-zinc-400">
+              Acione caçambas parceiras conforme a capacidade de produção da sua loja. Sem complicações e com descarte certificado.
+            </p>
+            <Link
+              href="/parceiros/batedeira"
+              className="inline-block bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition"
+            >
+              Conhecer Painel da Batedeira
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -900,6 +851,43 @@ export default function LandingPage() {
 
           </div>
 
+        </div>
+      </section>
+
+      {/* SEÇÃO FAQ (PERGUNTAS FREQUENTES) */}
+      <section className="px-4 sm:px-6 py-16 max-w-4xl mx-auto space-y-8">
+        <div className="text-center space-y-2">
+          <span className="text-purple-400 text-xs font-black uppercase tracking-wider">Tire Suas Dúvidas</span>
+          <h2 className="text-2xl sm:text-4xl font-black text-white">Perguntas Frequentes</h2>
+          <p className="text-zinc-400 text-sm">Respostas rápidas e transparentes para você começar hoje mesmo.</p>
+        </div>
+
+        <div className="space-y-3">
+          {faqItems.map((item, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div
+                key={idx}
+                className="bg-zinc-900/70 border border-purple-900/30 rounded-2xl overflow-hidden transition-all"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 text-sm sm:text-base font-bold text-white hover:text-purple-300 transition"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <HelpCircle size={18} className="text-purple-400 shrink-0" />
+                    <span>{item.q}</span>
+                  </span>
+                  {isOpen ? <ChevronUp size={18} className="text-purple-400 shrink-0" /> : <ChevronDown size={18} className="text-zinc-500 shrink-0" />}
+                </button>
+                {isOpen && (
+                  <div className="px-5 pb-5 text-xs sm:text-sm text-zinc-300 border-t border-purple-900/20 pt-3 leading-relaxed">
+                    {item.a}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 

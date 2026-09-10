@@ -1746,9 +1746,9 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
 
             </div>
 
-            {/* Quick Switch Video Tabs */}
+            {/* Quick Switch Video Tabs - Curated Selection */}
             <div className="flex items-center gap-1.5 overflow-x-auto max-w-full py-1">
-              {VIDEO_CATALOG.map((vid) => (
+              {VIDEO_CATALOG.slice(0, 4).map((vid) => (
                 <button
                   key={vid.id}
                   onClick={() => {
@@ -1756,19 +1756,16 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                     setCurrentTime(0);
                     lastSoundSceneRef.current = -1;
                   }}
-                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
                     currentVideoId === vid.id
                       ? 'bg-purple-600 text-white shadow-md'
                       : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                   }`}
                 >
                   {vid.id === 'ciclo_animado' && <span>🎭 Vídeo Animado (Voz)</span>}
-                  {vid.id === 'ciclo_completo' && <span>🎬 Ciclo Completo</span>}
+                  {vid.id === 'ciclo_completo' && <span>🎬 Telas do App (PIN)</span>}
                   {vid.id === 'motoboy' && <span>🏍️ Motoboy</span>}
                   {vid.id === 'caminhao' && <span>🚚 Caminhão</span>}
-                  {vid.id === 'batedeira' && <span>🏪 Batedeira</span>}
-                  {vid.id === 'cliente' && <span>📱 Cliente</span>}
-                  {vid.id === 'b2b' && <span>🌾 Produtor</span>}
                 </button>
               ))}
             </div>
