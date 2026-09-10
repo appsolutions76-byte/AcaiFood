@@ -298,35 +298,6 @@ function AdminDashboardContent() {
     return { pendingOrders, amountOwed };
   };
 
-  // Função para editar Chave Pix do parceiro diretamente no painel
-  const handleEditUserPix = async (u: any) => {
-    const currentPix = u.cpfCnpj || (u as any).cpf_cnpj || u.pixKey || (u as any).pix_key || '';
-    const newPix = prompt(`Editar Chave Pix (CPF/CNPJ do Titular) de ${u.name}:\n\n(Conforme regras do Banco Central, a chave Pix é obrigatória no CPF ou CNPJ do titular)`, currentPix);
-    if (newPix === null) return;
-    const cleanPix = newPix.replace(/\D/g, '').trim();
-    if (!cleanPix || (cleanPix.length !== 11 && cleanPix.length !== 14)) {
-      alert("A Chave Pix deve conter 11 dígitos (CPF) ou 14 dígitos (CNPJ).");
-      return;
-    }
-    try {
-      const { error } = await supabase.from('users').update({ pix_key: cleanPix, cpf_cnpj: cleanPix }).eq('id', u.id);
-      if (error) throw error;
-      useAppStore.setState(prev => ({
-        users: {
-          ...prev.users,
-          [u.id]: {
-            ...prev.users[u.id],
-            pixKey: cleanPix,
-            pix_key: cleanPix,
-            cpfCnpj: cleanPix
-          }
-        }
-      }));
-      showToast(`✅ Chave Pix CPF de ${u.name} atualizada com sucesso!`);
-    } catch (err: any) {
-      alert(`Erro ao salvar chave Pix: ${err.message}`);
-    }
-  };
 
   // Função de pagamento individual de parceiro via Pix
   const pagarParceiro = async (u: any, pendingOrders: Order[], amountOwed: number) => {
@@ -1982,13 +1953,12 @@ function AdminDashboardContent() {
                                           }`}>
                                             {amountOwed > 0 ? `A Pagar: ${formatMoney(amountOwed)} (${pendingOrders.length} ped.)` : 'Repasse: R$ 0,00'}
                                           </span>
-                                          <button
-                                            onClick={() => handleEditUserPix(u)}
-                                            title="Clique para cadastrar ou editar a Chave Pix"
-                                            className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/60 dark:hover:bg-purple-900 border border-purple-300 dark:border-purple-700 px-2 py-0.5 rounded font-mono flex items-center gap-1 transition"
+                                          <span
+                                            title="Chave Pix CPF vinculada ao parceiro (edição exclusiva pelo próprio parceiro em seu painel)"
+                                            className="text-[10px] text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 border border-purple-300 dark:border-purple-800 px-2 py-0.5 rounded font-mono flex items-center gap-1"
                                           >
-                                            🔑 PIX: {pixKey || 'Cadastrar'} ✏️
-                                          </button>
+                                            🔑 PIX: {pixKey || 'Não cadastrado'}
+                                          </span>
                                         </div>
                                         {amountOwed > 0 && (
                                           <button
