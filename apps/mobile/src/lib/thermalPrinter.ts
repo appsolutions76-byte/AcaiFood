@@ -108,7 +108,6 @@ export function generateSingleTicketHTML(
   // 2. Taxa de Entrega / Frete & Subsídio da Loja
   const totalDeliveryFee = Number(
     order.taxas?.entregaTotal ?? 
-    (order as any).total_delivery_fee ?? 
     order.taxas?.entregaCliente ?? 
     0
   );
@@ -121,21 +120,24 @@ export function generateSingleTicketHTML(
     ? Number(order.taxas.entregaLoja)
     : 0;
 
-  // Se o total_amount for fornecido e demonstrar que o cliente pagou menos que (items + frete total), calcula o subsidio
-  if ((order as any).total_amount && Number((order as any).total_amount) > 0) {
-    const diff = Number((order as any).total_amount) - itemsSubtotal;
-    if (diff >= 0 && diff <= totalDeliveryFee) {
-      clientDeliveryFee = diff;
-      storeDeliveryFee = Number((totalDeliveryFee - clientDeliveryFee).toFixed(2));
-    }
-  } else if (storeDeliveryFee === 0 && totalDeliveryFee > clientDeliveryFee) {
+  if (storeDeliveryFee === 0 && totalDeliveryFee > clientDeliveryFee) {
     storeDeliveryFee = Number((totalDeliveryFee - clientDeliveryFee).toFixed(2));
+  } else if (storeDeliveryFee > 0 && clientDeliveryFee === totalDeliveryFee) {
+    clientDeliveryFee = Number((totalDeliveryFee - storeDeliveryFee).toFixed(2));
   }
 
-  // 3. Soma Total do Pedido cobrada do Comprador
-  const totalFinal = (order as any).total_amount 
-    ? Number((order as any).total_amount) 
-    : (itemsSubtotal + clientDeliveryFee);
+  // 3. Valor Total do Pedido cobrado do Comprador (consistência absoluta com Pix/Checkout e Split)
+  let totalFinal = order.totalValue !== undefined && Number(order.totalValue) > 0
+    ? Number(order.totalValue)
+    : Number((itemsSubtotal + clientDeliveryFee).toFixed(2));
+
+  // Se houver qualquer divergência de centavos entre totalFinal e items + frete cliente, alinha o frete cliente
+  if (totalFinal > 0 && Math.abs(totalFinal - (itemsSubtotal + clientDeliveryFee)) > 0.01) {
+    clientDeliveryFee = Math.max(0, Number((totalFinal - itemsSubtotal).toFixed(2)));
+    if (totalDeliveryFee >= clientDeliveryFee) {
+      storeDeliveryFee = Number((totalDeliveryFee - clientDeliveryFee).toFixed(2));
+    }
+  }
 
   const formattedItemsSubtotal = itemsSubtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formattedTotalDelivery = totalDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -320,6 +322,8 @@ export function generateSingleTicketHTML(
   `;
 }
 
+const recentPrints = new Set<string>();
+
 export function printOrderTicket(
   order: Order,
   storeName: string = 'Loja/Batedeira AçaíFood',
@@ -333,6 +337,18 @@ export function printOrderTicket(
 
   const config = customConfig || getPrinterConfig();
   if (!config.enabled) return;
+
+  // Evita disparos repetidos ou concorrentes para o mesmo pedido em sistema automático
+  const dedupeKey = `${order.id}-${printType}`;
+  if (triggeredBy === 'SYSTEM') {
+    if (recentPrints.has(dedupeKey)) {
+      return;
+    }
+    recentPrints.add(dedupeKey);
+    setTimeout(() => {
+      recentPrints.delete(dedupeKey);
+    }, 15000);
+  }
 
   const copies = Math.max(1, Math.min(2, config.copies || 1));
 

@@ -2416,23 +2416,7 @@ export const useAppStore = create<AppState>()(
           return { orders: newOrders };
         });
 
-        // Impressão Automática no momento em que a Loja ou Fornecedor aceita o pedido do cliente (apenas se printMode for 'auto')
-        if (action === 'aceitar_loja' || action === 'aceitar_forn' || action === 'chamar_moto' || action === 'chamar_caminhao') {
-          try {
-            const { getPrinterConfig, printOrderTicket } = await import('@/lib/thermalPrinter');
-            const pConfig = getPrinterConfig();
-            if (pConfig.enabled && pConfig.printMode === 'auto') {
-              const targetOrder = get().orders.find(o => o.id === orderId);
-              if (targetOrder) {
-                const pType = (action === 'aceitar_loja' || action === 'aceitar_forn') ? 'PREPARO' : 'ENTREGA';
-                const storeName = targetOrder.lojaNome || currentUser?.name || 'AçaíFood';
-                printOrderTicket(targetOrder, storeName, pConfig, get().users, null, pType, 'SYSTEM');
-              }
-            }
-          } catch (pErr) {
-            console.warn("Aviso ao disparar impressão automática:", pErr);
-          }
-        }
+
 
         const updates: any = {};
         if (newDbStatus) updates.status = newDbStatus;
@@ -2709,48 +2693,76 @@ export const useAppStore = create<AppState>()(
                 const orderCity = dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || 'Belém';
                 const orderCityRates = getRatesForCity(orderCity, state.rates, state.cities);
 
-                let deliveryTotal = 0;
+                const sfUser = allUsers[dbOrder.seller_storefront_id] || 
+                               allUsers[dbOrder.storefront?.partner_id] ||
+                               Object.values(allUsers).find((u: any) => u.storefrontId === dbOrder.seller_storefront_id || (u.storefronts && u.storefronts.some((s: any) => s.id === dbOrder.seller_storefront_id)));
+                const resolvedPartnerId = sfUser?.id || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id;
+                const resolvedStoreName = dbOrder.storefront?.store_name || sfUser?.name || localOrder?.lojaNome || 'Ponto do açaí';
+                const resolvedStoreAddress = sfUser?.endereco || sfUser?.address || localOrder?.lojaEndereco;
+
+                const deliveryTotal = calculateOrderFreight(
+                  dbOrder.order_type,
+                  dbOrder.delivery_distance_km || 0,
+                  orderCityRates
+                );
+
+                const partnerSubsidyPct = Number(
+                  sfUser?.freteSubsidyPct ?? 
+                  (allUsers[resolvedPartnerId]?.freteSubsidyPct ?? 
+                  (dbOrder.storefront?.frete_subsidy_pct ?? 0))
+                );
+
+                let calculatedEntregaLoja = 0;
+                let calculatedEntregaCliente = deliveryTotal;
+                let calculatedEntregaForn = 0;
+
                 if (dbOrder.order_type === 'B2C') {
-                  deliveryTotal = (orderCityRates.courier_payment_mode === 'FIXED') 
-                    ? (orderCityRates.courier_fixed_fee ?? 8.00) 
-                    : (dbOrder.delivery_distance_km || 0) * (orderCityRates.b2c_km || 2.00);
+                  if (partnerSubsidyPct > 0) {
+                    calculatedEntregaLoja = Number((deliveryTotal * (partnerSubsidyPct / 100)).toFixed(2));
+                    calculatedEntregaCliente = Number((deliveryTotal - calculatedEntregaLoja).toFixed(2));
+                  }
                 } else if (dbOrder.order_type === 'B2B') {
-                  deliveryTotal = (orderCityRates.transporter_payment_mode === 'FIXED') 
-                    ? (orderCityRates.transporter_fixed_fee ?? 150.00) 
-                    : (dbOrder.delivery_distance_km || 0) * (orderCityRates.b2b_km || 5.00);
-                } else {
-                  deliveryTotal = (dbOrder.delivery_distance_km || 0) * (dbOrder.applied_delivery_fee_per_km || 0);
+                  if (partnerSubsidyPct > 0) {
+                    calculatedEntregaForn = Number((deliveryTotal * (partnerSubsidyPct / 100)).toFixed(2));
+                    calculatedEntregaLoja = Number((deliveryTotal - calculatedEntregaForn).toFixed(2));
+                  } else {
+                    calculatedEntregaLoja = deliveryTotal;
+                  }
                 }
 
-                const platformDelivery = deliveryTotal * ((dbOrder.applied_delivery_platform_fee_percent || orderCityRates.b2c_mot_plat || 15) / 100);
-                const driverAmount = deliveryTotal - platformDelivery;
+                const platformDelivery = Number((deliveryTotal * ((dbOrder.applied_delivery_platform_fee_percent || (dbOrder.order_type === 'B2B' ? orderCityRates.b2b_mot_plat : orderCityRates.b2c_mot_plat) || 15) / 100)).toFixed(2));
+                const driverAmount = Number((deliveryTotal - platformDelivery).toFixed(2));
 
-                const itemsTotal = dbOrder.products_subtotal || 0;
-                const platformSales = itemsTotal * ((dbOrder.applied_platform_fee_percent || 0) / 100);
-                const sellerAmount = itemsTotal - platformSales;
+                const itemsTotal = Number(dbOrder.products_subtotal || 0);
+                const platformSales = Number((itemsTotal * ((dbOrder.applied_platform_fee_percent || (dbOrder.order_type === 'B2B' ? orderCityRates.b2b_plat : orderCityRates.b2c_plat) || 15) / 100)).toFixed(2));
+                const sellerAmount = Number((itemsTotal - platformSales).toFixed(2));
 
                 let finalEntregaTotal = deliveryTotal;
                 let finalEntregaMotorista = driverAmount;
                 let finalPlatVenda = platformSales;
                 let finalPlatEntrega = platformDelivery;
-                let finalRepasse = sellerAmount;
+                let finalRepasse = dbOrder.order_type === 'B2C' 
+                  ? Number((sellerAmount - calculatedEntregaLoja).toFixed(2)) 
+                  : (dbOrder.order_type === 'B2B' 
+                      ? Number((sellerAmount - calculatedEntregaForn).toFixed(2)) 
+                      : 0);
 
                 if (dbOrder.order_type === 'COLETA') {
                     finalEntregaTotal = itemsTotal;
                     finalPlatVenda = 0;
-                    finalPlatEntrega = itemsTotal * ((dbOrder.applied_delivery_platform_fee_percent || 0) / 100);
-                    finalEntregaMotorista = finalEntregaTotal - finalPlatEntrega;
+                    finalPlatEntrega = Number((itemsTotal * ((dbOrder.applied_delivery_platform_fee_percent || orderCityRates.col_mot_plat || 15) / 100)).toFixed(2));
+                    finalEntregaMotorista = Number((finalEntregaTotal - finalPlatEntrega).toFixed(2));
                     finalRepasse = 0;
+                    calculatedEntregaCliente = itemsTotal;
                 }
 
-                const platformTotal = finalPlatVenda + finalPlatEntrega;
+                const platformTotal = Number((finalPlatVenda + finalPlatEntrega).toFixed(2));
 
-                    const sfUser = allUsers[dbOrder.seller_storefront_id] || 
-                                   allUsers[dbOrder.storefront?.partner_id] ||
-                                   Object.values(allUsers).find((u: any) => u.storefrontId === dbOrder.seller_storefront_id || (u.storefronts && u.storefronts.some((s: any) => s.id === dbOrder.seller_storefront_id)));
-                    const resolvedPartnerId = sfUser?.id || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id;
-                    const resolvedStoreName = dbOrder.storefront?.store_name || sfUser?.name || localOrder?.lojaNome || 'Ponto do açaí';
-                    const resolvedStoreAddress = sfUser?.endereco || sfUser?.address || localOrder?.lojaEndereco;
+                const orderTotalValue = dbOrder.order_type === 'COLETA'
+                  ? itemsTotal
+                  : (dbOrder.order_type === 'B2C'
+                      ? Number((itemsTotal + calculatedEntregaCliente).toFixed(2))
+                      : Number((itemsTotal + calculatedEntregaLoja).toFixed(2)));
                     
                     return {
                        ...(localOrder || {}),
@@ -2780,37 +2792,30 @@ export const useAppStore = create<AppState>()(
                        criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,
                        origemId: localOrder?.origemId || (dbOrder.order_type === 'B2B' ? resolvedPartnerId : (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id)),
                        destinoId: localOrder?.destinoId || dbOrder.buyer_id,
-                   cidadeOrigem: dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || sfUser?.cidade || 'Belém',
-                   clienteId: localOrder?.clienteId || (dbOrder.order_type === 'B2C' ? dbOrder.buyer_id : undefined),
-                   lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : resolvedPartnerId),
-                   fornecedorId: localOrder?.fornecedorId || (dbOrder.order_type === 'B2B' ? resolvedPartnerId : undefined),
-                   seller_storefront_id: dbOrder.seller_storefront_id,
-                   sellerStorefrontId: dbOrder.seller_storefront_id,
-                   distancia: dbOrder.delivery_distance_km,
-                   valor: dbOrder.products_subtotal,
-                   motoristaId: dbOrder.driver_id,
-                   confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
-                   taxas: localOrder?.taxas || (() => {
-                      const lojaSubsidy = sfUser?.subsidy ?? (allUsers[resolvedPartnerId]?.subsidy ?? 0);
-                      let calculatedEntregaLoja = 0;
-                      let calculatedEntregaCliente = deliveryTotal;
-                      if (dbOrder.order_type === 'B2C' && lojaSubsidy > 0) {
-                        calculatedEntregaLoja = Number((deliveryTotal * (lojaSubsidy / 100)).toFixed(2));
-                        calculatedEntregaCliente = Number((deliveryTotal - calculatedEntregaLoja).toFixed(2));
-                      }
-                      return {
-                         entregaTotal: finalEntregaTotal,
-                         entregaMotorista: finalEntregaMotorista,
-                         entregaCliente: calculatedEntregaCliente,
-                         entregaLoja: calculatedEntregaLoja,
-                         entregaFornecedor: 0,
-                         plataformaVenda: finalPlatVenda,
-                         plataformaEntrega: finalPlatEntrega,
-                         plataformaTotal: platformTotal,
-                         repasse: finalRepasse
-                      };
-                   })()
-                };
+                       cidadeOrigem: dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || sfUser?.cidade || 'Belém',
+                       clienteId: localOrder?.clienteId || (dbOrder.order_type === 'B2C' ? dbOrder.buyer_id : undefined),
+                       lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : resolvedPartnerId),
+                       fornecedorId: localOrder?.fornecedorId || (dbOrder.order_type === 'B2B' ? resolvedPartnerId : undefined),
+                       seller_storefront_id: dbOrder.seller_storefront_id,
+                       sellerStorefrontId: dbOrder.seller_storefront_id,
+                       distancia: dbOrder.delivery_distance_km,
+                       valor: dbOrder.products_subtotal,
+                       totalValue: localOrder?.totalValue || orderTotalValue,
+                       total_amount: localOrder?.totalValue || orderTotalValue,
+                       motoristaId: dbOrder.driver_id,
+                       confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
+                       taxas: {
+                          entregaTotal: finalEntregaTotal,
+                          entregaMotorista: finalEntregaMotorista,
+                          entregaCliente: calculatedEntregaCliente,
+                          entregaLoja: calculatedEntregaLoja,
+                          entregaFornecedor: calculatedEntregaForn,
+                          plataformaVenda: finalPlatVenda,
+                          plataformaEntrega: finalPlatEntrega,
+                          plataformaTotal: platformTotal,
+                          repasse: finalRepasse
+                       }
+                    };
              });
 
              set({ orders: mappedOrders });

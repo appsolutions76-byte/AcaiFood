@@ -128,22 +128,11 @@ export default function BatedeiraDashboard() {
 
       if (!isMyStore) continue;
 
-      // 1. Cupom de Preparo (ao aceitar o pedido para preparar)
+      // 1. Impressão Única Oficial de Comanda (ao aceitar o pedido para preparar)
+      // Respeita a quantidade de vias configurada pelo parceiro (1 via ou 2 vias)
       if (order.status === 'preparo' && !printedOrdersRef.current.has(`${order.id}-PREPARO`)) {
         printedOrdersRef.current.add(`${order.id}-PREPARO`);
         printOrderTicket(order, currentUser.name || order.lojaNome || 'Loja/Batedeira AçaíFood', activeConfig, store.users, null, 'PREPARO', 'SYSTEM');
-      }
-
-      // 2. Cupom de Entrega (ao clicar em Chamar Moto)
-      if (order.status === 'pronto' && !printedOrdersRef.current.has(`${order.id}-ENTREGA`)) {
-        printedOrdersRef.current.add(`${order.id}-ENTREGA`);
-        printOrderTicket(order, currentUser.name || order.lojaNome || 'Loja/Batedeira AçaíFood', activeConfig, store.users, null, 'ENTREGA', 'SYSTEM');
-      }
-
-      // 3. Cupom de Entrega Atualizado (reimpresso automaticamente assim que o motoboy aceitar a corrida)
-      if (order.status === 'em_rota' && order.motoristaId && !printedOrdersRef.current.has(`${order.id}-ENTREGA_ATUALIZADO`)) {
-        printedOrdersRef.current.add(`${order.id}-ENTREGA_ATUALIZADO`);
-        printOrderTicket(order, currentUser.name || order.lojaNome || 'Loja/Batedeira AçaíFood', activeConfig, store.users, null, 'ENTREGA_ATUALIZADO', 'SYSTEM');
       }
     }
 
@@ -674,10 +663,6 @@ export default function BatedeiraDashboard() {
                     }} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
                     <button onClick={() => {
                       store.acaoPedido(o.id, 'aceitar_loja');
-                      const pConfig = getPrinterConfig();
-                      if (pConfig.enabled && pConfig.printMode === 'auto') {
-                        printOrderTicket(o, currentUser?.name || o.lojaNome || 'Loja/Batedeira AçaíFood', pConfig, store.users, null, 'PREPARO', 'SYSTEM');
-                      }
                     }} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Preparar</button>
                 </div>
               )}
