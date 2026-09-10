@@ -144,7 +144,10 @@ function CadastroForm() {
     if (role === 'motorista' && veiculo === 'Caçamba') icon = '🚛';
 
     const cleanCpf = cpfCnpj.replace(/\D/g, "");
-    if (cleanCpf && cleanCpf.length !== 11 && cleanCpf.length !== 14) {
+    if (role !== 'cliente' && (!cleanCpf || (cleanCpf.length !== 11 && cleanCpf.length !== 14))) {
+      alert("Para parceiros, o preenchimento de um CPF (11 dígitos) ou CNPJ (14 dígitos) válido é obrigatório. Ele será utilizado como sua Chave Pix oficial de recebimento de repasses (mesma titularidade).");
+      return;
+    } else if (cleanCpf && cleanCpf.length !== 11 && cleanCpf.length !== 14) {
       alert("O CPF deve possuir 11 dígitos ou o CNPJ 14 dígitos válidos.");
       return;
     }
@@ -171,7 +174,7 @@ function CadastroForm() {
       };
       
       if (role !== 'cliente') {
-        data.pixKey = pixKey;
+        data.pixKey = cleanCpf; // A Chave Pix é OBRIGATORIAMENTE o CPF/CNPJ do titular cadastrado
       }
       if (role === 'motorista') {
         data.veiculo = veiculo;
@@ -425,30 +428,32 @@ function CadastroForm() {
                   </div>
                 )}
 
-                {role !== 'cliente' && (
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      Chave PIX (Para receber os repasses via Split Asaas)
-                    </label>
-                    <input 
-                      type="text" 
-                      required 
-                      value={pixKey} 
-                      onChange={e => setPixKey(e.target.value)} 
-                      placeholder="Celular, CPF, E-mail ou Aleatória" 
-                      className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" 
-                    />
-                  </div>
-                )}
-
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Nome ou Razão Social</label>
                   <input type="text" required value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">CPF ou CNPJ (Exigido para cobranças Pix)</label>
-                  <input type="text" required value={cpfCnpj} onChange={e => setCpfCnpj(e.target.value)} placeholder="000.000.000-00" className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    CPF ou CNPJ do Titular {role !== 'cliente' && <span className="text-purple-600 font-bold">(Chave Pix Obrigatória)</span>}
+                  </label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={cpfCnpj} 
+                    onChange={e => {
+                      setCpfCnpj(e.target.value);
+                      if (role !== 'cliente') setPixKey(e.target.value.replace(/\D/g, ''));
+                    }} 
+                    placeholder="000.000.000-00 ou 00.000.000/0000-00" 
+                    className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" 
+                  />
+                  {role !== 'cliente' && (
+                    <div className="text-[11px] text-purple-900 dark:text-purple-300 mt-1.5 flex items-start gap-1.5 bg-purple-50 dark:bg-purple-950/40 p-2.5 rounded-xl border border-purple-200 dark:border-purple-800/60 leading-relaxed">
+                      <span className="text-base leading-none">🛡️</span>
+                      <span><strong>Mesma Titularidade Obrigatória:</strong> Por segurança patrimonial e conformidade bancária (BACEN/Asaas), a conta bancária receptora deve pertencer ao mesmo titular deste CPF/CNPJ. Seus repasses Pix serão creditados exclusivamente para esta chave.</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Cidade Base</label>

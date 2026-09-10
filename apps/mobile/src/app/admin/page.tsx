@@ -325,11 +325,11 @@ function AdminDashboardContent() {
 
   // Função de pagamento individual de parceiro via Pix
   const pagarParceiro = async (u: any, pendingOrders: Order[], amountOwed: number) => {
-    let pixKey = (u.pixKey || (u as any).pix_key || u.chavePix || (u as any).chave_pix || u.cpfCnpj || (u as any).cpf_cnpj || u.email || '').trim();
+    let pixKey = (u.cpfCnpj || (u as any).cpf_cnpj || u.pixKey || (u as any).pix_key || '').replace(/\D/g, '').trim();
     if (!pixKey) {
-      const inputPix = prompt(`Informe a Chave Pix externa de ${u.name} (CPF, Celular, E-mail ou Aleatória):`);
+      const inputPix = prompt(`Informe o CPF/CNPJ do titular ${u.name} para a Chave Pix:`);
       if (inputPix && inputPix.trim()) {
-        pixKey = inputPix.trim();
+        pixKey = inputPix.replace(/\D/g, '').trim();
         try {
           await supabase.from('users').update({ pix_key: pixKey }).eq('id', u.id);
           u.pixKey = pixKey;
@@ -421,7 +421,7 @@ function AdminDashboardContent() {
     for (let i = 0; i < partnersWithOwed.length; i++) {
       const p = partnersWithOwed[i];
       const u = p.user;
-      const pixKey = (u.pixKey || (u as any).pix_key || u.chavePix || (u as any).chave_pix || u.cpfCnpj || (u as any).cpf_cnpj || u.email || '').trim();
+      const pixKey = (u.cpfCnpj || (u as any).cpf_cnpj || u.pixKey || (u as any).pix_key || '').replace(/\D/g, '').trim();
 
       setPayAllProgress({ current: i + 1, total: partnersWithOwed.length, name: u.name });
 

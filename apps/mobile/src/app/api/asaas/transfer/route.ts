@@ -36,13 +36,13 @@ export async function POST(request: Request) {
     // 1. Clientes não podem acionar transferências de saldo
     // 2. Parceiros devem ter um pedido vinculado ou valor correspondente aos repasses
     if (!isAdmin && !orderId) {
-      // Caso de resgate instantâneo de loja/parceiro: garantir que a chave PIX informada corresponda à cadastrada no perfil
-      const userPixKey = String(auth.profile?.pix_key || '').trim().toLowerCase();
-      const reqPixKey = String(pixKey || '').trim().toLowerCase();
+      // Caso de resgate instantâneo de loja/parceiro: garantir que a chave PIX informada corresponda ao CPF/CNPJ do titular
+      const userCpfCnpj = String(auth.profile?.cpf_cnpj || auth.profile?.pix_key || '').replace(/\D/g, '');
+      const reqPixKey = String(pixKey || '').replace(/\D/g, '');
       
-      if (userPixKey && reqPixKey && userPixKey !== reqPixKey) {
+      if (userCpfCnpj && reqPixKey && userCpfCnpj !== reqPixKey) {
         return NextResponse.json(
-          { error: 'Por segurança, o saque só pode ser realizado para a chave PIX cadastrada no seu perfil.' },
+          { error: 'Por segurança contra fraudes e conformidade de titularidade (BACEN/Asaas), o saque só pode ser realizado para o CPF/CNPJ cadastrado no seu perfil.' },
           { status: 403 }
         );
       }

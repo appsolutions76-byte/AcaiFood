@@ -651,7 +651,7 @@ export const useAppStore = create<AppState>()(
           latitude: newUser.lat,
           longitude: newUser.lng,
           vehicle_type: vehicleType,
-          pix_key: newUser.pixKey,
+          pix_key: dbRole !== 'CLIENT' ? (cleanedCpfCnpj || newUser.pixKey) : newUser.pixKey,
           cpf_cnpj: cleanedCpfCnpj,
           status: 'active',
           split_enabled: dbRole !== 'CLIENT'

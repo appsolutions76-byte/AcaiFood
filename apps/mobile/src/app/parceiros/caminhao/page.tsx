@@ -126,25 +126,17 @@ export default function CaminhaoDashboard() {
   const linkAsaasAccount = store.linkAsaasAccount;
   const handleLinkAsaas = async () => {
     if (!currentUser) return;
-    const inputPix = prompt("Informe a sua Chave PIX (CPF, Celular, E-mail ou Aleatória) ou Carteira Asaas para receber os repasses dos seus fretes:", currentUser.pixKey || currentUser.asaasWalletId || "");
-    if (inputPix !== null && inputPix.trim() !== "") {
-      await linkAsaasAccount(currentUser.id, inputPix.trim());
-      alert("✅ Chave PIX / Carteira Asaas salva com sucesso! Repasses ativados.\n\n📲 Nota: Se você receber um SMS do Asaas com código de verificação, não se preocupe: sua conta no AçaíFood já está 100% ativa e pronta para receber!");
-    }
+    const cpfKey = currentUser.cpfCnpj || currentUser.pixKey;
+    alert(`🔒 Chave PIX Oficial de Repasses:\n\nSua Chave Pix oficial cadastrada é o seu CPF/CNPJ (${cpfKey || 'Cadastrado'}).\n\nPor conformidade bancária e segurança contra fraudes, os repasses de fretes pesados são creditados exclusivamente na conta bancária de mesma titularidade.`);
   };
 
   const handleResgatarPix = async () => {
     if (!currentUser) return;
-    const isRealUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    let targetKey = currentUser.pixKey && !isRealUuid(currentUser.pixKey) ? currentUser.pixKey : (currentUser.cpfCnpj || currentUser.email);
+    const targetKey = String(currentUser.cpfCnpj || currentUser.pixKey || '').replace(/\D/g, '');
 
-    if (!targetKey || isRealUuid(targetKey)) {
-      const inputPix = prompt("Informe a sua Chave PIX externa (CPF, Celular, E-mail ou Aleatória) para receber a transferência no seu banco:", currentUser.cpfCnpj || currentUser.email || "");
-      if (inputPix && inputPix.trim()) {
-        targetKey = inputPix.trim();
-      } else {
-        return;
-      }
+    if (!targetKey) {
+      alert("Chave Pix (CPF/CNPJ) não localizada no seu cadastro. Entre em contato com o suporte.");
+      return;
     }
 
     if (!ganhosHoje || ganhosHoje <= 0) {
@@ -160,7 +152,7 @@ export default function CaminhaoDashboard() {
 
     if (isWithdrawing) return;
 
-    if (confirm(`Deseja transferir R$ ${ganhosHoje.toFixed(2)} instantaneamente via PIX para a sua Chave Pix externa (${targetKey})?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
+    if (confirm(`Deseja transferir R$ ${ganhosHoje.toFixed(2)} instantaneamente via PIX para o seu CPF/CNPJ (${targetKey}) cadastrado?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
       setIsWithdrawing(true);
       try {
         const pendingOrders = minhasCorridas.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone);
