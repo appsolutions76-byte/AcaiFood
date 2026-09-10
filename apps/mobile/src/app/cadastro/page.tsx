@@ -50,11 +50,11 @@ function CadastroForm() {
     isFree: boolean;
   }>({
     activationEnabled: true,
-    activationFee: 12.90,
-    freeQuota: 50,
-    subsidizedCount: 0,
-    freeSlotsRemaining: 50,
-    isFree: true
+    activationFee: 13.10,
+    freeQuota: 8,
+    subsidizedCount: 8,
+    freeSlotsRemaining: 0,
+    isFree: false
   });
 
   // Estado de pagamento Pix
@@ -288,7 +288,7 @@ function CadastroForm() {
                   <Sparkles size={20} />
                 </div>
                 <div>
-                  {activationInfo.isFree ? (
+                  {activationInfo.isFree && activationInfo.freeSlotsRemaining > 0 ? (
                     <>
                       <div className="flex items-center gap-2">
                         <span className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
@@ -309,7 +309,11 @@ function CadastroForm() {
                         <p className="text-xs font-bold text-zinc-900 dark:text-white">Homologação Asaas</p>
                       </div>
                       <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
-                        Taxa única de ativação bancária de apenas <strong>R$ {activationInfo.activationFee.toFixed(2).replace('.', ',')}</strong> via Pix.
+                        {activationInfo.freeQuota > 0 && activationInfo.freeSlotsRemaining <= 0 ? (
+                          <>Vagas de fundador preenchidas (<strong>0 de {activationInfo.freeQuota} vagas restantes</strong>). Taxa única de homologação bancária de apenas <strong>R$ {activationInfo.activationFee.toFixed(2).replace('.', ',')}</strong> via Pix.</>
+                        ) : (
+                          <>Taxa única de ativação bancária de apenas <strong>R$ {activationInfo.activationFee.toFixed(2).replace('.', ',')}</strong> via Pix.</>
+                        )}
                       </p>
                     </>
                   )}

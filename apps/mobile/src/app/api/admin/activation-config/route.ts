@@ -39,17 +39,17 @@ export async function GET(request: Request) {
     try {
       const { data: allUsers } = await supabase
         .from('users')
-        .select('id, role, is_founder_subsidized, activation_paid, asaas_wallet_id, pix_key');
+        .select('id, role, asaas_wallet_id, pix_key');
 
       if (allUsers && Array.isArray(allUsers)) {
         const partners = allUsers.filter(u => {
           const r = String(u.role || '').toLowerCase();
-          return r !== 'cliente' && r !== 'admin' && r !== 'customer';
+          return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
         });
 
-        subsidizedCount = partners.filter(u => u.is_founder_subsidized !== false).length;
-        paidCount = partners.filter(u => u.activation_paid === true && u.is_founder_subsidized === false).length;
-        pendingCount = partners.filter(u => u.activation_paid === false && u.is_founder_subsidized === false).length;
+        subsidizedCount = partners.length;
+        paidCount = partners.filter(u => Boolean(u.asaas_wallet_id)).length;
+        pendingCount = partners.filter(u => !u.asaas_wallet_id).length;
       }
     } catch (_e) {}
 

@@ -357,7 +357,7 @@ function ManualLogin() {
             <p>5. Complete o endereço com <strong>Cidade e Bairro</strong> para cálculo territorial correto.</p>
             <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-300 mt-2 space-y-1">
               <p className="font-bold">🛡️ Ativação Inteligente Asaas:</p>
-              <p>• As primeiras 50 contas contam com <strong>vaga fundador gratuita</strong>.</p>
+              <p>• Contas iniciais contam com <strong>vaga fundador promocional</strong> conforme disponibilidade da plataforma.</p>
               <p>• Sua subconta digital Asaas para split de pagamentos é conectada <strong>automaticamente assim que você concluir sua 1ª venda ou aceitar sua 1ª corrida</strong>.</p>
             </div>
           </div>

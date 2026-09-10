@@ -41,14 +41,14 @@ export async function GET(request: Request) {
     try {
       const { data: allUsers } = await supabase
         .from('users')
-        .select('id, role, is_founder_subsidized, activation_paid, asaas_wallet_id, pix_key');
+        .select('id, role, asaas_wallet_id, pix_key');
 
       if (allUsers && Array.isArray(allUsers)) {
         const partners = allUsers.filter(u => {
           const r = String(u.role || '').toLowerCase();
-          return r !== 'cliente' && r !== 'admin' && r !== 'customer';
+          return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
         });
-        subsidizedCount = partners.filter(u => u.is_founder_subsidized !== false).length;
+        subsidizedCount = partners.length;
       }
     } catch (_e) {}
 
@@ -59,14 +59,14 @@ export async function GET(request: Request) {
     if (userId) {
       const { data: user } = await supabase
         .from('users')
-        .select('id, name, role, asaas_wallet_id, asaas_account_id, activation_paid, is_founder_subsidized, activation_payment_id')
+        .select('id, name, role, asaas_wallet_id, asaas_account_id')
         .eq('id', userId)
         .maybeSingle();
 
       if (user) {
-        let isPaid = Boolean(user.activation_paid || user.is_founder_subsidized || user.asaas_wallet_id);
+        let isPaid = Boolean(user.asaas_wallet_id || user.asaas_account_id);
 
-        const activePaymentId = paymentId || user.activation_payment_id;
+        const activePaymentId = paymentId;
         if (!isPaid && activePaymentId) {
           const ASAAS_API_KEY = await getAsaasApiKey();
           const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
@@ -79,10 +79,6 @@ export async function GET(request: Request) {
                 const payData = await res.json();
                 if (payData.status === 'RECEIVED' || payData.status === 'CONFIRMED') {
                   isPaid = true;
-                  await supabase
-                    .from('users')
-                    .update({ activation_paid: true })
-                    .eq('id', userId);
                 }
               }
             } catch (_err) {}
@@ -92,9 +88,9 @@ export async function GET(request: Request) {
         userActivationStatus = {
           userId: user.id,
           isPaid,
-          isFounderSubsidized: Boolean(user.is_founder_subsidized),
+          isFounderSubsidized: false,
           asaasLinked: Boolean(user.asaas_wallet_id),
-          paymentId: activePaymentId
+          paymentId: activePaymentId || null
         };
       }
     }
@@ -154,14 +150,14 @@ export async function POST(request: Request) {
     try {
       const { data: allUsers } = await supabase
         .from('users')
-        .select('id, role, is_founder_subsidized, activation_paid, asaas_wallet_id, pix_key');
+        .select('id, role, asaas_wallet_id, pix_key');
 
       if (allUsers && Array.isArray(allUsers)) {
         const partners = allUsers.filter(u => {
           const r = String(u.role || '').toLowerCase();
-          return r !== 'cliente' && r !== 'admin' && r !== 'customer';
+          return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
         });
-        subsidizedCount = partners.filter(u => u.is_founder_subsidized !== false).length;
+        subsidizedCount = partners.length;
       }
     } catch (_e) {}
 
@@ -178,14 +174,6 @@ export async function POST(request: Request) {
     const qualifiesForFree = isForceAdmin || !activationEnabled || freeSlotsRemaining > 0;
 
     if (qualifiesForFree) {
-      await supabase
-        .from('users')
-        .update({
-          is_founder_subsidized: true,
-          activation_paid: true
-        })
-        .eq('id', userId);
-
       return NextResponse.json({
         success: true,
         isFounderSubsidized: true,
@@ -279,14 +267,6 @@ export async function POST(request: Request) {
         txId: `ACT${userId.slice(0, 6)}`
       });
     }
-
-    await supabase
-      .from('users')
-      .update({
-        activation_payment_id: payData.id,
-        activation_paid: false
-      })
-      .eq('id', userId);
 
     return NextResponse.json({
       success: true,
