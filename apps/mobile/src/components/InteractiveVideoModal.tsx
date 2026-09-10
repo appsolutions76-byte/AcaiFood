@@ -32,7 +32,7 @@ export const VIDEO_CATALOG: VideoItem[] = [
     badge: '🎬 Super Demonstração • Ciclo Completo',
     role: 'O Ecossistema Completo do Açaí',
     durationSeconds: 90,
-    description: 'Veja todo o processo integrado: cliente pede, batedeira imprime cupom, motoboy entrega com PIN, batedeira compra frutos com caminhão B2B, e a caçamba recolhe o caroço residual!',
+    description: 'Veja todo o processo: cliente pede, loja imprime comanda, motoboy entrega com PIN, loja compra frutos, caminhoneiro descarrega e valida o PIN B2B com a loja, e a caçamba recolhe o caroço residual!',
     ctaText: 'Fazer Parte do AçaíFood',
     ctaLink: '/parceiros',
     colorScheme: 'purple',
@@ -281,9 +281,10 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
       else if (currentTime < 38) currentSceneIdx = 2;
       else if (currentTime < 50) currentSceneIdx = 3;
       else if (currentTime < 62) currentSceneIdx = 4;
-      else if (currentTime < 74) currentSceneIdx = 5;
-      else if (currentTime < 83) currentSceneIdx = 6;
-      else currentSceneIdx = 7;
+      else if (currentTime < 68) currentSceneIdx = 5;
+      else if (currentTime < 74) currentSceneIdx = 6;
+      else if (currentTime < 83) currentSceneIdx = 7;
+      else currentSceneIdx = 8;
 
       if (currentSceneIdx !== lastSoundSceneRef.current) {
         lastSoundSceneRef.current = currentSceneIdx;
@@ -293,8 +294,9 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
         else if (currentSceneIdx === 3) playSoundEffect('pix_success');
         else if (currentSceneIdx === 4) playSoundEffect('order_bell');
         else if (currentSceneIdx === 5) playSoundEffect('truck_horn');
-        else if (currentSceneIdx === 6) playSoundEffect('cacamba');
-        else if (currentSceneIdx === 7) playSoundEffect('pix_success');
+        else if (currentSceneIdx === 6) playSoundEffect('pix_success'); // PIN validado na loja
+        else if (currentSceneIdx === 7) playSoundEffect('cacamba');
+        else if (currentSceneIdx === 8) playSoundEffect('pix_success');
       }
     } else if (currentVideoId === 'motoboy') {
       if (currentTime < 9) currentSceneIdx = 0;
@@ -503,7 +505,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                           {currentTime >= 26 && currentTime < 38 && "Passo 3/8: Motoboy Coleta na Loja"}
                           {currentTime >= 38 && currentTime < 50 && "Passo 4/8: Entrega Portão com PIN"}
                           {currentTime >= 50 && currentTime < 62 && "Passo 5/8: Loja Compra Frutos B2B"}
-                          {currentTime >= 62 && currentTime < 74 && "Passo 6/8: Caminhão Entrega Carga"}
+                          {currentTime >= 62 && currentTime < 74 && "Passo 6/8: Caminhão & PIN da Loja"}
                           {currentTime >= 74 && currentTime < 83 && "Passo 7/8: Chamando Coleta do Caroço"}
                           {currentTime >= 83 && "Passo 8/8: Caçamba Retira o Caroço"}
                         </span>
@@ -514,7 +516,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                         {currentTime >= 26 && currentTime < 38 && "🏍️ Alerta toca no motoboy, que pilota até a loja e retira a bag térmica."}
                         {currentTime >= 38 && currentTime < 50 && "🔑 Cliente digita o PIN [4821]. Pedido entregue e motoboy pago!"}
                         {currentTime >= 50 && currentTime < 62 && "🍇 Batedeira compra 50 latas de fruto direto do produtor ribeirinho."}
-                        {currentTime >= 62 && currentTime < 74 && "🚚 Caminhão pesado carrega romaneio e descarrega as latas na doca."}
+                        {currentTime >= 62 && currentTime < 74 && "🚚 Doca: Loja informa o PIN [9354] ao caminhoneiro para validar descarga!"}
                         {currentTime >= 74 && currentTime < 83 && "♻️ Batedeira aciona o botão 'Solicitar Coleta de Caroço residual'."}
                         {currentTime >= 83 && "🚜 Caçamba aceita a ordem e recolhe os caroços para reciclagem e biomassa!"}
                       </p>
@@ -587,7 +589,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                           4 8 2 1
                         </div>
                         <p className="text-[11px] text-emerald-200">
-                          Cliente recebeu o açaí geladinho e motoboy recebeu o dinheiro na conta!
+                          Cliente informou o PIN ao motoboy. Açaí entregue e dinheiro liberado na conta do piloto!
                         </p>
                       </div>
                     )}
@@ -599,28 +601,62 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
                           <span className="text-purple-300 font-bold">5. Reposição de Matéria-Prima:</span>
                           <span className="text-[10px] text-amber-400 font-bold">Mercado B2B</span>
                         </div>
-                        <div className="bg-zinc-950 p-2.5 rounded-xl space-y-1 text-xs">
+                        <div className="bg-zinc-950 p-2.5 rounded-xl space-y-1.5 text-xs">
                           <div className="text-white font-bold">50 Latas de Açaí Chumbinho (700 kg)</div>
                           <div className="text-[10px] text-zinc-400">Fornecedor: Produtor Ribeirinho • Igarapé-Miri</div>
-                          <div className="text-[11px] text-emerald-400 font-bold">Pagamento Seguro em Escrow</div>
+                          <div className="flex items-center justify-between pt-1 border-t border-zinc-800">
+                            <span className="text-[10px] text-zinc-400">Custódia Asaas:</span>
+                            <span className="text-[11px] text-emerald-400 font-bold">Escrow Protegido</span>
+                          </div>
+                          <div className="bg-purple-950/60 p-2 rounded-lg border border-purple-700/50 flex justify-between items-center">
+                            <span className="text-[10px] text-purple-300 font-bold">🔑 PIN da Loja Compradora:</span>
+                            <span className="font-mono font-black text-white bg-zinc-900 px-2 py-0.5 rounded border border-purple-500/50">9 3 5 4</span>
+                          </div>
                         </div>
                       </div>
                     )}
 
-                    {/* 6. Caminhão B2B */}
+                    {/* 6. Caminhão B2B & PIN na Loja */}
                     {currentTime >= 62 && currentTime < 74 && (
-                      <div className="bg-zinc-900 border border-blue-500/50 rounded-2xl p-3.5 space-y-2 animate-in fade-in">
+                      <div className="bg-gradient-to-b from-blue-950/80 to-zinc-900 border-2 border-blue-400 rounded-2xl p-3.5 space-y-2 animate-in fade-in shadow-xl">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="text-blue-300 font-bold flex items-center gap-1">
-                            <Truck size={14} /> 6. Caminhão em Rota:
+                          <span className="text-blue-300 font-black flex items-center gap-1">
+                            <Truck size={15} /> 6. Doca da Loja & PIN de Descarga:
                           </span>
-                          <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-bold">Carga Pesada</span>
+                          <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-bold">Chegou na Doca</span>
                         </div>
-                        <div className="bg-zinc-950 p-2.5 rounded-xl space-y-1 text-xs">
-                          <div className="text-white font-bold">Transporte Rodoviário: 45 km</div>
-                          <div className="text-[11px] text-zinc-400">Descarregando 50 latas na doca da batedeira</div>
-                          <div className="text-[11px] font-bold text-emerald-400">Frete Pesado: R$ 280,00 Pago</div>
-                        </div>
+
+                        {currentTime < 68 ? (
+                          /* Fase A: Caminhão chega e solicita o PIN da Loja */
+                          <div className="bg-zinc-950 p-2.5 rounded-xl space-y-1.5 text-xs">
+                            <div className="flex justify-between items-center text-white font-bold">
+                              <span>🚚 Caminhoneiro na Doca</span>
+                              <span className="text-[10px] text-blue-400">45 km percorridos</span>
+                            </div>
+                            <div className="text-[11px] text-zinc-300">Descarregando 50 latas de açaí (700 kg)</div>
+                            <div className="bg-amber-950/40 border border-amber-500/50 p-2 rounded-lg text-center space-y-1">
+                              <span className="text-[10px] text-amber-300 font-bold block">
+                                🔐 Caminhoneiro solicita o PIN à Batedeira:
+                              </span>
+                              <div className="font-mono font-black text-base text-amber-200 tracking-widest animate-pulse">
+                                [ 9 3 5 4 ]
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Fase B: Caminhoneiro valida PIN e recebe frete pesado */
+                          <div className="bg-emerald-950/80 border border-emerald-500/60 rounded-xl p-3 text-center space-y-1.5">
+                            <div className="flex items-center justify-center gap-1.5 text-emerald-300 text-xs font-black uppercase">
+                              <ShieldCheck size={16} /> PIN Validado pela Loja!
+                            </div>
+                            <div className="text-[11px] text-white font-bold">
+                              Descarga aprovada • Matéria-prima recebida
+                            </div>
+                            <div className="bg-zinc-950 p-1.5 rounded-lg text-emerald-400 font-black text-sm">
+                              💰 Frete Pesado: + R$ 280,00 Liquidado
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 

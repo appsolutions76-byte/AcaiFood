@@ -192,7 +192,7 @@ export default function LandingPage() {
                   Da Colheita à Tigela e ao Descarte do Caroço
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
-                  Assista em um só vídeo todo o ciclo integrado: o cliente pede, a loja imprime a comanda, o motoboy retira e entrega com PIN, a loja compra latas de açaí com frete pesado de caminhão, e a caçamba recolhe o caroço residual!
+                  Assista em um só vídeo todo o ecossistema integrado: cliente pede, loja imprime comanda térmica, motoboy entrega com PIN no portão, loja compra frutos ribeirinhos, caminhoneiro valida o PIN na doca da loja, e caçamba recolhe o caroço residual!
                 </p>
                 
                 {/* Fluxo visual em linha */}
@@ -201,9 +201,9 @@ export default function LandingPage() {
                   <span>➔</span>
                   <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🏪 Loja Imprime</span>
                   <span>➔</span>
-                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🏍️ Moto Entrega</span>
+                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🏍️ Moto (PIN Cliente)</span>
                   <span>➔</span>
-                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🚚 Caminhão B2B</span>
+                  <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🚚 Caminhão (PIN Loja)</span>
                   <span>➔</span>
                   <span className="bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800">🚜 Caçamba Caroço</span>
                 </div>
@@ -320,14 +320,14 @@ export default function LandingPage() {
                         ▶ Vídeo Completo • 1:30
                       </span>
                       <span className="text-[10px] text-pink-300 font-bold">
-                        Cliente ➔ Loja ➔ Moto ➔ Caminhão ➔ Caçamba
+                        Cliente ➔ Loja ➔ Moto ➔ Caminhão (PIN) ➔ Caçamba
                       </span>
                     </div>
                     <h3 className="text-lg font-black text-white group-hover:text-pink-300 transition-colors">
                       O Ciclo Completo de Ponta a Ponta
                     </h3>
                     <p className="text-xs text-zinc-300 leading-relaxed">
-                      Acompanhe o pedido do açaí, impressão da comanda, entrega por moto, compra de fruto ribeirinho em caminhão e caçamba de caroço!
+                      Acompanhe o pedido, impressão, motoboy com PIN, compra de matéria-prima, caminhoneiro com validação do PIN da loja e caçamba de resíduos!
                     </p>
                   </div>
                 </div>
