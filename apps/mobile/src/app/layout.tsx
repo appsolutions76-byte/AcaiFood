@@ -7,7 +7,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://acai-food-mobile.vercel.app"),
+  metadataBase: new URL("https://www.acaifood.app.br"),
   title: "AçaíFood - O Marketplace Definitivo de Açaí",
   description: "O açaí perfeito pra você. O frete é calculado por GPS de acordo com a sua distância da loja.",
   manifest: "/manifest.json",
@@ -23,12 +23,12 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "AçaíFood - O Marketplace Definitivo de Açaí",
-    description: "O açaí perfeito pra você. O frete é calculated por GPS.",
-    url: "https://acai-food-mobile.vercel.app",
+    description: "O açaí perfeito pra você. O frete é calculado por GPS.",
+    url: "https://www.acaifood.app.br",
     siteName: "AçaíFood",
     images: [
       {
-        url: "https://acai-food-mobile.vercel.app/banner.png?v=4",
+        url: "https://www.acaifood.app.br/banner.png?v=4",
         width: 1200,
         height: 630,
         alt: "AçaíFood Roxo Açaí",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "AçaíFood - O Marketplace Definitivo de Açaí",
     description: "O marketplace definitivo de açaí.",
-    images: ["https://acai-food-mobile.vercel.app/banner.png?v=4"],
+    images: ["https://www.acaifood.app.br/banner.png?v=4"],
   },
 };
 
@@ -53,18 +53,15 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <meta property="og:image" content="https://acai-food-mobile.vercel.app/banner.png?v=4" />
-        <meta property="og:image:secure_url" content="https://acai-food-mobile.vercel.app/banner.png?v=4" />
+        <meta property="og:image" content="https://www.acaifood.app.br/banner.png?v=4" />
+        <meta property="og:image:secure_url" content="https://www.acaifood.app.br/banner.png?v=4" />
         <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta name="twitter:image" content="https://acai-food-mobile.vercel.app/banner.png?v=4" />
-        <link rel="image_src" href="https://acai-food-mobile.vercel.app/banner.png?v=4" />
+        <meta name="twitter:image" content="https://www.acaifood.app.br/banner.png?v=4" />
+        <link rel="image_src" href="https://www.acaifood.app.br/banner.png?v=4" />
       </head>
       <body className="antialiased font-sans bg-zinc-950 text-zinc-100">
-        <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <meta httpEquiv="Pragma" content="no-cache" />
-        <meta httpEquiv="Expires" content="0" />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
         </ThemeProvider>
