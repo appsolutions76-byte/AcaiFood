@@ -12,6 +12,7 @@ import { SupportChatButton } from "@/components/SupportChatButton";
 import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { supabase } from "@/lib/supabase";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
+import { initAudioUnlock, playDeliveryAlertTone } from "@/lib/soundAlerts";
 
 const emptySubscribe = () => () => {};
 
@@ -41,6 +42,7 @@ export default function CaminhaoDashboard() {
   );
 
   useEffect(() => {
+    initAudioUnlock();
     const s = useAppStore.getState();
     s.fetchAllUsers();
     if (typeof s.fetchCities === 'function') s.fetchCities();
@@ -109,11 +111,28 @@ export default function CaminhaoDashboard() {
   const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
 
   const corridasDisponiveis = (store.orders || []).filter(o => {
-    // Caminhão só vê a corrida B2B ou Coleta após a parte chamá-lo (status pronto / READY / SEARCHING_OPERATOR)
-    const isReady = (o.status === 'pronto' || (o.status as string) === 'READY' || (o.status as string) === 'SEARCHING_OPERATOR') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2B' || o.type === 'COLETA');
-    if (!isReady) return false;
-    return true;
+    if (o.motoristaId) return false;
+    if (o.status === 'cancelado' || o.status === 'arquivado' || o.status === 'entregue') return false;
+    
+    // Coleta (caçamba de caroço) fica disponível assim que o pagamento Pix é confirmado pela loja
+    if (o.type === 'COLETA') {
+      return o.status === 'pronto' || o.status === 'pendente' || (o.status as string) === 'READY' || (o.status as string) === 'PAID' || (o.status as string) === 'SEARCHING_OPERATOR';
+    }
+    // Frete B2B fica disponível quando o fornecedor apronta o pedido
+    if (o.type === 'B2B') {
+      return o.status === 'pronto' || (o.status as string) === 'READY' || (o.status as string) === 'SEARCHING_OPERATOR';
+    }
+    return false;
   });
+
+  const lastAvailableCountRef = React.useRef(0);
+  useEffect(() => {
+    if (corridasDisponiveis.length > lastAvailableCountRef.current) {
+      playDeliveryAlertTone();
+    }
+    lastAvailableCountRef.current = corridasDisponiveis.length;
+  }, [corridasDisponiveis.length]);
+
   const minhasCorridas = (store.orders || []).filter(o => o.motoristaId === currentUser.id);
   const ganhosHoje = minhasCorridas.filter(o => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc, curr) => acc + getDriverFee(curr), 0);
   const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
@@ -340,30 +359,47 @@ export default function CaminhaoDashboard() {
                         <p className="text-zinc-500 font-medium">Nenhum frete pesado no momento.</p>
                     </div>
                   ) : corridasDisponiveis.map(o => {
-                    const origem = store.users?.[o.origemId];
-                    const destino = store.users?.[o.destinoId];
+                    const isColeta = o.type === 'COLETA';
+                    const origId = o.origemId || o.lojaId;
+                    const destId = o.destinoId;
+                    const origem = (origId && store.users ? store.users[origId] : null) || (o.lojaNome ? { name: o.lojaNome, bairro: o.cidadeOrigem || 'Belém' } : null);
+                    const destino = isColeta
+                      ? { name: 'Ecoponto Municipal', bairro: 'Área de Descarte Ecológico' }
+                      : ((destId && store.users) ? store.users[destId] : null);
                     return (
                       <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900/50">
                           <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">Nova Rota {o.type}</span>
-                              <span className="font-bold text-green-600 dark:text-green-400">Líquido: {formatMoney(o.taxas?.entregaMotorista || 0)}</span>
+                              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
+                                {isColeta ? '🚛 Coleta de Caroço (Caçamba)' : `Nova Rota ${o.type}`}
+                              </span>
+                              <span className="font-bold text-green-600 dark:text-green-400">Líquido: {formatMoney(getDriverFee(o))}</span>
                           </div>
                           <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded text-sm mb-4 flex flex-col gap-1 border border-zinc-100 dark:border-zinc-800">
-                              <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">📍</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{origem?.bairro || '—'}</span></div>
-                              <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">🏁</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{destino?.bairro || '—'}</span></div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-zinc-400 text-xs">📍</span> 
+                                <span className="text-zinc-700 dark:text-zinc-300 font-medium">
+                                  {isColeta ? `Retirar em: ${o.lojaNome || origem?.name || 'Loja de Açaí'} (${origem?.bairro || o.lojaEndereco || 'Belém'})` : (origem?.bairro || '—')}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-zinc-400 text-xs">🏁</span> 
+                                <span className="text-zinc-700 dark:text-zinc-300 font-medium">
+                                  {isColeta ? 'Descarte: Ecoponto Municipal de Caroço' : (destino?.bairro || '—')}
+                                </span>
+                              </div>
                               <button 
                                 onClick={() => {
-                                  const latOrigem = (origem?.lat && origem.lat !== 0) ? origem.lat : -1.4558;
-                                  const lngOrigem = (origem?.lng && origem.lng !== 0) ? origem.lng : -48.4908;
-                                  const latDestino = o.deliveryLat || destino?.lat || (latOrigem + 0.0045);
-                                  const lngDestino = o.deliveryLng || destino?.lng || (lngOrigem + 0.0045);
+                                  const latOrigem = ((origem as any)?.lat && (origem as any).lat !== 0) ? (origem as any).lat : -1.4558;
+                                  const lngOrigem = ((origem as any)?.lng && (origem as any).lng !== 0) ? (origem as any).lng : -48.4908;
+                                  const latDestino = o.deliveryLat || (destino as any)?.lat || (latOrigem + 0.0045);
+                                  const lngDestino = o.deliveryLng || (destino as any)?.lng || (lngOrigem + 0.0045);
                                   const driverLat = (currentUser?.lat && currentUser.lat !== 0) ? currentUser.lat : latOrigem - 0.003;
                                   const driverLng = (currentUser?.lng && currentUser.lng !== 0) ? currentUser.lng : lngOrigem - 0.003;
 
                                   setMapModal({
                                     open: true,
                                     origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origem?.name || 'Retirada' },
-                                    destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destino?.name || 'Entrega' },
+                                    destino: { lat: latDestino, lng: lngDestino, name: isColeta ? 'Ecoponto Municipal' : (o.clienteNome || destino?.name || 'Entrega') },
                                     motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Seu Veículo', veiculo: currentUser?.veiculo || 'Caminhão' }
                                   });
                                 }} 
@@ -372,7 +408,9 @@ export default function CaminhaoDashboard() {
                                 🗺️ Ver Rota de {o.distancia ? o.distancia.toFixed(1) : '0.0'} km
                               </button>
                           </div>
-                          <button onClick={() => store.acaoPedido(o.id, 'aceitar_motorista')} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-base font-bold py-3.5 rounded-xl transition shadow-md">Aceitar Frete</button>
+                          <button onClick={() => store.acaoPedido(o.id, 'aceitar_motorista')} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-base font-bold py-3.5 rounded-xl transition shadow-md">
+                            {isColeta ? '🚛 Aceitar Coleta' : 'Aceitar Frete'}
+                          </button>
                       </div>
                     )
                   })}
@@ -392,10 +430,13 @@ export default function CaminhaoDashboard() {
                         <p className="text-zinc-500 font-medium">Você está livre.</p>
                     </div>
                   ) : minhasCorridas.map(o => {
-                    const origId = o.fornecedorId || o.origemId;
-                    const destId = o.lojaId || o.destinoId;
-                    const origemUser = store.users?.[origId];
-                    const destinoUser = store.users?.[destId];
+                    const isColeta = o.type === 'COLETA';
+                    const origId = o.fornecedorId || o.origemId || o.lojaId;
+                    const destId = o.destinoId || o.lojaId;
+                    const origemUser = (origId && store.users) ? store.users[origId] : null;
+                    const destinoUser = isColeta
+                      ? { name: 'Ecoponto Municipal de Caroço', bairro: 'Área de Descarte Ecológico' }
+                      : ((destId && store.users) ? store.users[destId] : null);
                     return (
                     <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-blue-400 dark:border-blue-600' : 'border-zinc-200 dark:border-zinc-800'}`}>
                         <div className="flex justify-between items-center mb-2">
@@ -407,32 +448,32 @@ export default function CaminhaoDashboard() {
                             <div className="flex items-center gap-2">
                                 <span className="text-sm">📍</span> 
                                 <div>
-                                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">Retirar no Fornecedor</span>
-                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.lojaNome || origemUser?.name || '—'}</span> 
-                                    <span className="text-zinc-500 text-[11px]"> ({origemUser?.bairro || '—'})</span>
+                                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">{isColeta ? 'Retirar na Loja de Açaí' : 'Retirar no Fornecedor'}</span>
+                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.lojaNome || origemUser?.name || 'Loja de Açaí'}</span> 
+                                    <span className="text-zinc-500 text-[11px]"> ({origemUser?.bairro || o.lojaEndereco || '—'})</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 pt-1 border-t border-zinc-200 dark:border-zinc-800">
                                 <span className="text-sm">🏁</span> 
                                 <div>
-                                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">Entregar na Loja</span>
-                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.clienteNome || destinoUser?.name || '—'}</span> 
-                                    <span className="text-zinc-500 text-[11px]"> ({destinoUser?.bairro || '—'})</span>
+                                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">{isColeta ? 'Destino do Caroço' : 'Entregar na Loja'}</span>
+                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{isColeta ? 'Ecoponto Municipal de Caroço' : (o.clienteNome || destinoUser?.name || '—')}</span> 
+                                    <span className="text-zinc-500 text-[11px]"> ({isColeta ? 'Descarte Ecológico' : (destinoUser?.bairro || '—')})</span>
                                 </div>
                             </div>
                             <div className="mt-2 flex flex-col sm:flex-row gap-2 w-full">
                               <button 
                                   onClick={() => {
-                                    const latOrigem = (origemUser?.lat && origemUser.lat !== 0) ? origemUser.lat : -1.4558;
-                                    const lngOrigem = (origemUser?.lng && origemUser.lng !== 0) ? origemUser.lng : -48.4908;
+                                    const latOrigem = ((origemUser as any)?.lat && (origemUser as any).lat !== 0) ? (origemUser as any).lat : -1.4558;
+                                    const lngOrigem = ((origemUser as any)?.lng && (origemUser as any).lng !== 0) ? (origemUser as any).lng : -48.4908;
                                     
                                     const latDestino = (o.deliveryLat && o.deliveryLat !== 0) 
                                       ? o.deliveryLat 
-                                      : ((destinoUser?.lat && destinoUser.lat !== 0) ? destinoUser.lat : (latOrigem ? latOrigem + 0.0045 : -1.4552));
+                                      : (((destinoUser as any)?.lat && (destinoUser as any).lat !== 0) ? (destinoUser as any).lat : (latOrigem ? latOrigem + 0.0045 : -1.4552));
                                     
                                     const lngDestino = (o.deliveryLng && o.deliveryLng !== 0) 
                                       ? o.deliveryLng 
-                                      : ((destinoUser?.lng && destinoUser.lng !== 0) ? destinoUser.lng : (lngOrigem ? lngOrigem + 0.0045 : -48.4902));
+                                      : (((destinoUser as any)?.lng && (destinoUser as any).lng !== 0) ? (destinoUser as any).lng : (lngOrigem ? lngOrigem + 0.0045 : -48.4902));
 
                                     const driverLat = (currentUser?.lat && currentUser.lat !== 0) ? currentUser.lat : latOrigem - 0.003;
                                     const driverLng = (currentUser?.lng && currentUser.lng !== 0) ? currentUser.lng : lngOrigem - 0.003;
@@ -470,13 +511,13 @@ export default function CaminhaoDashboard() {
                               )}
 
                               {(() => {
-                                const latOrig = origemUser?.lat || 0;
-                                const lngOrig = origemUser?.lng || 0;
-                                const latDest = o.deliveryLat || destinoUser?.lat;
-                                const lngDest = o.deliveryLng || destinoUser?.lng;
+                                const latOrig = (origemUser as any)?.lat || 0;
+                                const lngOrig = (origemUser as any)?.lng || 0;
+                                const latDest = o.deliveryLat || (destinoUser as any)?.lat;
+                                const lngDest = o.deliveryLng || (destinoUser as any)?.lng;
 
                                 const hasDistinctDest = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
-                                const destAddress = o.deliveryAddress || destinoUser?.endereco || destinoUser?.bairro || o.clienteNome || 'Destino';
+                                const destAddress = o.deliveryAddress || (destinoUser as any)?.endereco || (destinoUser as any)?.bairro || o.clienteNome || 'Destino';
 
                                 const mapsUrl = hasDistinctDest
                                   ? `https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`

@@ -173,6 +173,7 @@ export interface Order {
   totalValue?: number;
   asaasPaymentId?: string | null;
   asaas_payment_id?: string | null;
+  cidadeOrigem?: string;
 }
 
 export interface CityRates {
@@ -2693,7 +2694,7 @@ export const useAppStore = create<AppState>()(
              const mappedOrders = dbOrders.map((dbOrder: any) => {
                  let appStatus: Order['status'] = 'aguardando_pagamento';
                  if (dbOrder.status === 'PENDING' || dbOrder.status === 'CREATED') appStatus = 'aguardando_pagamento';
-                 if (dbOrder.status === 'PAID') appStatus = 'pendente';
+                 if (dbOrder.status === 'PAID') appStatus = dbOrder.order_type === 'COLETA' ? 'pronto' : 'pendente';
                  if (dbOrder.status === 'PREPARING') appStatus = 'preparo';
                  if (dbOrder.status === 'READY' || dbOrder.status === 'SEARCHING_OPERATOR') appStatus = 'pronto';
                  if (dbOrder.status === 'IN_TRANSIT' || dbOrder.status === 'DELIVERING') appStatus = 'em_rota';
@@ -2829,11 +2830,11 @@ export const useAppStore = create<AppState>()(
                        lojaTelefone: sfUser?.phone || sfUser?.telefone || localOrder?.lojaTelefone,
                        motoristaNome: dbOrder.driver?.name || allUsers[dbOrder.driver_id]?.name,
                        criadoPor: localOrder?.criadoPor || dbOrder.buyer_id,
-                       origemId: localOrder?.origemId || (dbOrder.order_type === 'B2B' ? resolvedPartnerId : (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id)),
-                       destinoId: localOrder?.destinoId || dbOrder.buyer_id,
+                       origemId: localOrder?.origemId || (dbOrder.order_type === 'COLETA' ? (dbOrder.buyer_id || sfPartnerId) : (dbOrder.order_type === 'B2B' ? resolvedPartnerId : (dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id))),
+                       destinoId: localOrder?.destinoId || (dbOrder.order_type === 'COLETA' ? 'ecoponto' : dbOrder.buyer_id),
                        cidadeOrigem: dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || sfUser?.cidade || 'Belém',
                        clienteId: localOrder?.clienteId || (dbOrder.order_type === 'B2C' ? dbOrder.buyer_id : undefined),
-                       lojaId: localOrder?.lojaId || (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : resolvedPartnerId),
+                       lojaId: localOrder?.lojaId || (dbOrder.order_type === 'COLETA' ? (dbOrder.buyer_id || sfPartnerId) : (dbOrder.order_type === 'B2B' ? dbOrder.buyer_id : resolvedPartnerId)),
                        fornecedorId: localOrder?.fornecedorId || (dbOrder.order_type === 'B2B' ? resolvedPartnerId : undefined),
                        seller_storefront_id: dbOrder.seller_storefront_id,
                        sellerStorefrontId: dbOrder.seller_storefront_id,

@@ -1089,11 +1089,15 @@ export default function BatedeiraDashboard() {
                   </button>
                   
                   {(() => {
-                      const activeColeta = (store.orders || []).find(o => o.type === 'COLETA' && o.origemId === currentUser.id && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado');
+                      const activeColeta = (store.orders || []).find(o => 
+                        o.type === 'COLETA' && 
+                        (o.origemId === currentUser.id || o.lojaId === currentUser.id || o.criadoPor === currentUser.id || (o as any).buyerId === currentUser.id || (o as any).seller_storefront_id === currentUser.id || (currentUser as any).storefrontId === (o as any).seller_storefront_id) && 
+                        o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado'
+                      );
                       
                       if (activeColeta) {
                           const statusText = activeColeta.status === 'aguardando_pagamento' ? 'Aguardando Pagamento Pix' :
-                                             (activeColeta.status === 'pendente' || activeColeta.status === 'pronto') ? 'Aguardando Caçamba' :
+                                             (activeColeta.status === 'pendente' || activeColeta.status === 'pronto') ? (activeColeta.motoristaId ? 'Caçamba a Caminho' : 'Aguardando Caçamba Aceitar') :
                                              activeColeta.status === 'em_rota' ? 'Caçamba a Caminho' : 'Em Andamento';
                           return (
                               <div className="flex flex-wrap items-center gap-2">
