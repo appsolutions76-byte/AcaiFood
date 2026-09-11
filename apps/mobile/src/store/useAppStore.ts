@@ -1140,7 +1140,7 @@ export const useAppStore = create<AppState>()(
           }
         }
 
-        const updatePayload: any = { pix_key: walletId };
+        const updatePayload: any = {};
         if (isRealWallet && finalWalletId) {
           updatePayload.asaas_wallet_id = finalWalletId;
           updatePayload.split_enabled = true;

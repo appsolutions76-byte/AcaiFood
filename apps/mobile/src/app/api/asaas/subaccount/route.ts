@@ -183,8 +183,7 @@ export async function POST(request: Request) {
           asaas_wallet_id: walletId,
           asaas_account_id: accountId,
           asaas_account_status: 'APPROVED',
-          split_enabled: true,
-          pix_key: walletId
+          split_enabled: true
         })
         .eq('id', userId);
     }

@@ -2181,7 +2181,10 @@ function AdminDashboardContent() {
                                   {(u.role === 'motorista' || u.role === 'loja' || u.role === 'fornecedor') && (() => {
                                     const { pendingOrders, amountOwed } = getPendingOrdersAndOwedForUser(u);
                                     const isPaying = payingPartnerId === u.id;
-                                    const pixKey = (u.pixKey || (u as any).pix_key || (u as any).chavePix || (u as any).chave_pix || u.cpfCnpj || (u as any).cpf_cnpj || u.email || '').trim();
+                                    const rawPix = (u.cpfCnpj || (u as any).cpf_cnpj || u.pixKey || (u as any).pix_key || '').trim();
+                                    // Se o valor for um UUID de wallet do Asaas, prioriza o CPF/CNPJ limpo
+                                    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawPix);
+                                    const pixKey = (isUuid && (u.cpfCnpj || (u as any).cpf_cnpj)) ? (u.cpfCnpj || (u as any).cpf_cnpj).trim() : rawPix;
 
                                     return (
                                       <div className={`mt-2 border p-2 rounded-lg flex items-center justify-between flex-wrap gap-2 ${
