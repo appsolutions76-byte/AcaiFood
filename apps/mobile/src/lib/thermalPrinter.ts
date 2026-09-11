@@ -120,7 +120,19 @@ export function generateSingleTicketHTML(
     ? Number(order.taxas.entregaLoja)
     : 0;
 
-  if (storeDeliveryFee === 0 && totalDeliveryFee > clientDeliveryFee) {
+  // Resolução do parceiro vendedor para conferir se há subsídio de frete configurado
+  const sellerPartnerUser = (allUsers && (order as any).seller_storefront_id ? Object.values(allUsers).find(u => (u as any).storefrontId === (order as any).seller_storefront_id || ((u as any).storefronts && (u as any).storefronts.some((s: any) => s.id === (order as any).seller_storefront_id))) : undefined)
+    || (allUsers && order.lojaId ? allUsers[order.lojaId] : undefined)
+    || (allUsers && (order as any).sellerStorefrontId ? allUsers[(order as any).sellerStorefrontId] : undefined)
+    || (allUsers && order.origemId ? allUsers[order.origemId] : undefined)
+    || (allUsers ? Object.values(allUsers).find(u => u.name?.toLowerCase().trim() === storeName.toLowerCase().trim()) : undefined);
+
+  const activeSubsidyPct = Number(sellerPartnerUser?.freteSubsidyPct ?? 0);
+
+  if (storeDeliveryFee === 0 && activeSubsidyPct > 0 && totalDeliveryFee > 0) {
+    storeDeliveryFee = Number((totalDeliveryFee * (activeSubsidyPct / 100)).toFixed(2));
+    clientDeliveryFee = Number((totalDeliveryFee - storeDeliveryFee).toFixed(2));
+  } else if (storeDeliveryFee === 0 && totalDeliveryFee > clientDeliveryFee) {
     storeDeliveryFee = Number((totalDeliveryFee - clientDeliveryFee).toFixed(2));
   } else if (storeDeliveryFee > 0 && clientDeliveryFee === totalDeliveryFee) {
     clientDeliveryFee = Number((totalDeliveryFee - storeDeliveryFee).toFixed(2));
@@ -131,8 +143,10 @@ export function generateSingleTicketHTML(
     ? Number(order.totalValue)
     : Number((itemsSubtotal + clientDeliveryFee).toFixed(2));
 
-  // Se houver qualquer divergência de centavos entre totalFinal e items + frete cliente, alinha o frete cliente
-  if (totalFinal > 0 && Math.abs(totalFinal - (itemsSubtotal + clientDeliveryFee)) > 0.01) {
+  // Se o pedido teve subsídio de frete pago pela loja, o total cobrado do comprador é estritamente items + frete do cliente
+  if (storeDeliveryFee > 0) {
+    totalFinal = Number((itemsSubtotal + clientDeliveryFee).toFixed(2));
+  } else if (totalFinal > 0 && Math.abs(totalFinal - (itemsSubtotal + clientDeliveryFee)) > 0.01) {
     clientDeliveryFee = Math.max(0, Number((totalFinal - itemsSubtotal).toFixed(2)));
     if (totalDeliveryFee >= clientDeliveryFee) {
       storeDeliveryFee = Number((totalDeliveryFee - clientDeliveryFee).toFixed(2));

@@ -69,7 +69,8 @@ export default function FornecedorDashboard() {
 
     for (const order of autoOrders) {
       printedOrdersRef.current.add(order.id);
-      printOrderTicket(order, currentUser.name, printerConfig, store.users);
+      const allUsersWithCurrent = currentUser ? { ...store.users, [currentUser.id]: currentUser } : store.users;
+      printOrderTicket(order, currentUser.name, printerConfig, allUsersWithCurrent);
     }
   }, [store.orders, currentUser, printerConfig, mounted, store.users]);
 
@@ -950,7 +951,10 @@ export default function FornecedorDashboard() {
                     {!isCanceled && (
                       <button
                         type="button"
-                        onClick={() => printOrderTicket(o, currentUser?.name || 'Fornecedor AçaíFood', printerConfig, store.users)}
+                        onClick={() => {
+                          const allUsersWithCurrent = currentUser ? { ...store.users, [currentUser.id]: currentUser } : store.users;
+                          printOrderTicket(o, currentUser?.name || 'Fornecedor AçaíFood', printerConfig, allUsersWithCurrent);
+                        }}
                         className="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-bold px-3 py-2 rounded-lg border border-emerald-300 dark:border-emerald-800 transition shadow-sm flex items-center gap-1 shrink-0 mt-2 sm:mt-0"
                         title="Imprimir comanda térmica deste pedido"
                       >
@@ -984,7 +988,8 @@ export default function FornecedorDashboard() {
                             store.acaoPedido(o.id, 'aceitar_forn');
                             const pConfig = getPrinterConfig();
                             if (pConfig.enabled && pConfig.printMode === 'auto') {
-                              printOrderTicket(o, currentUser?.name || o.lojaNome || 'Fornecedor AçaíFood', pConfig, store.users, null, 'PREPARO', 'SYSTEM');
+                              const allUsersWithCurrent = currentUser ? { ...store.users, [currentUser.id]: currentUser } : store.users;
+                              printOrderTicket(o, currentUser?.name || o.lojaNome || 'Fornecedor AçaíFood', pConfig, allUsersWithCurrent, null, 'PREPARO', 'SYSTEM');
                             }
                           }} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow">Aceitar e Separar</button>
                       </div>

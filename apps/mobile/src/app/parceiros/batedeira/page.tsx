@@ -132,7 +132,8 @@ export default function BatedeiraDashboard() {
       // Respeita a quantidade de vias configurada pelo parceiro (1 via ou 2 vias)
       if (order.status === 'preparo' && !printedOrdersRef.current.has(`${order.id}-PREPARO`)) {
         printedOrdersRef.current.add(`${order.id}-PREPARO`);
-        printOrderTicket(order, currentUser.name || order.lojaNome || 'Loja/Batedeira AçaíFood', activeConfig, store.users, null, 'PREPARO', 'SYSTEM');
+        const allUsersWithCurrent = currentUser ? { ...store.users, [currentUser.id]: currentUser } : store.users;
+        printOrderTicket(order, currentUser?.name || order.lojaNome || 'Loja/Batedeira AçaíFood', activeConfig, allUsersWithCurrent, null, 'PREPARO', 'SYSTEM');
       }
     }
 
@@ -696,7 +697,8 @@ export default function BatedeiraDashboard() {
                     type="button"
                     onClick={() => {
                       const pType = (o.status === 'em_rota' || o.status === 'entregue' || o.status === 'aguardando_cliente') ? 'ENTREGA_ATUALIZADO' : (o.status === 'pronto' ? 'ENTREGA' : 'PREPARO');
-                      printOrderTicket(o, currentUser?.name || 'Loja/Batedeira AçaíFood', printerConfig, store.users, null, pType, 'MANUAL');
+                      const allUsersWithCurrent = currentUser ? { ...store.users, [currentUser.id]: currentUser } : store.users;
+                      printOrderTicket(o, currentUser?.name || 'Loja/Batedeira AçaíFood', printerConfig, allUsersWithCurrent, null, pType, 'MANUAL');
                     }}
                     className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-3 py-2 rounded-lg border border-purple-300 dark:border-purple-800 transition shadow-sm flex items-center gap-1 shrink-0 active:scale-95"
                     title="Imprimir cupom térmico deste pedido"

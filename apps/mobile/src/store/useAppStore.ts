@@ -2642,20 +2642,53 @@ export const useAppStore = create<AppState>()(
          
          if (dbOrders) {
             const missingUserIds = new Set<string>();
+            const storefrontIds = new Set<string>();
             dbOrders.forEach((o: any) => {
                if (o.buyer_id && !state.users[o.buyer_id]?.name) missingUserIds.add(o.buyer_id);
                if (o.driver_id && !state.users[o.driver_id]?.name) missingUserIds.add(o.driver_id);
+               if (o.seller_storefront_id) storefrontIds.add(o.seller_storefront_id);
             });
 
-                const fetchedUsersMap: Record<string, any> = {};
+            const storefrontsMap: Record<string, any> = {};
+            if (storefrontIds.size > 0) {
+               const { data: sfData } = await supabase
+                 .from('storefronts')
+                 .select('id, store_name, partner_id, frete_subsidy_pct')
+                 .in('id', Array.from(storefrontIds));
+               if (sfData && sfData.length > 0) {
+                  sfData.forEach((sf: any) => {
+                     storefrontsMap[sf.id] = sf;
+                     if (sf.partner_id && !state.users[sf.partner_id]?.name) {
+                        missingUserIds.add(sf.partner_id);
+                     }
+                  });
+               }
+            }
+
+            const fetchedUsersMap: Record<string, any> = {};
             if (missingUserIds.size > 0) {
-               const { data: uData } = await supabase.from('users').select('id, name, email, phone, telefone, endereco, address, bairro, cidade, role').in('id', Array.from(missingUserIds));
+               const { data: uData } = await supabase.from('users').select('id, name, email, phone, telefone, endereco, address, bairro, cidade, role, frete_subsidy_pct').in('id', Array.from(missingUserIds));
                if (uData && uData.length > 0) {
-                  uData.forEach((u: any) => { fetchedUsersMap[u.id] = u; });
+                  uData.forEach((u: any) => { 
+                    fetchedUsersMap[u.id] = {
+                      ...u,
+                      freteSubsidyPct: u.frete_subsidy_pct ?? u.freteSubsidyPct ?? 0
+                    }; 
+                  });
                   set(prev => ({ users: { ...prev.users, ...fetchedUsersMap } }));
                }
             }
             const allUsers = { ...state.users, ...fetchedUsersMap };
+
+            // Injeta dados de subsidio dos storefronts nos parceiros
+            Object.values(storefrontsMap).forEach((sf: any) => {
+              if (sf.partner_id && allUsers[sf.partner_id]) {
+                if (sf.frete_subsidy_pct !== null && sf.frete_subsidy_pct !== undefined) {
+                  allUsers[sf.partner_id].freteSubsidyPct = Number(sf.frete_subsidy_pct);
+                }
+                allUsers[sf.partner_id].storefrontId = sf.id;
+              }
+            });
 
              const mappedOrders = dbOrders.map((dbOrder: any) => {
                  let appStatus: Order['status'] = 'aguardando_pagamento';
@@ -2669,7 +2702,10 @@ export const useAppStore = create<AppState>()(
                  if (dbOrder.status === 'COMPLETED') appStatus = 'arquivado';
                  if (dbOrder.status === 'CANCELLED' || dbOrder.status === 'CANCELED' || dbOrder.status === 'REFUND_REQUESTED' || dbOrder.status === 'REFUNDED') appStatus = 'cancelado';
 
-                const storeName = dbOrder.storefront?.store_name || 'Loja';
+                const sfObj = storefrontsMap[dbOrder.seller_storefront_id] || dbOrder.storefront;
+                const sfPartnerId = sfObj?.partner_id || dbOrder.storefront?.partner_id;
+
+                const storeName = sfObj?.store_name || dbOrder.storefront?.store_name || 'Loja';
                 const localOrder = state.orders.find(o => o.id === dbOrder.id);
                 
                 // Preserva o status local se a loja ou usuario ja aceitou/avancou o pedido (evita regressao de status no auto-refresh)
@@ -2690,15 +2726,16 @@ export const useAppStore = create<AppState>()(
                   finalStatus = localOrder.status;
                 }
 
-                const orderCity = dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || 'Belém';
-                const orderCityRates = getRatesForCity(orderCity, state.rates, state.cities);
-
-                const sfUser = allUsers[dbOrder.seller_storefront_id] || 
-                               allUsers[dbOrder.storefront?.partner_id] ||
+                const sfUser = (sfPartnerId ? allUsers[sfPartnerId] : null) ||
+                               allUsers[dbOrder.seller_storefront_id] ||
+                               (currentUser?.id === sfPartnerId ? currentUser : null) ||
                                Object.values(allUsers).find((u: any) => u.storefrontId === dbOrder.seller_storefront_id || (u.storefronts && u.storefronts.some((s: any) => s.id === dbOrder.seller_storefront_id)));
-                const resolvedPartnerId = sfUser?.id || dbOrder.storefront?.partner_id || dbOrder.seller_storefront_id;
-                const resolvedStoreName = dbOrder.storefront?.store_name || sfUser?.name || localOrder?.lojaNome || 'Ponto do açaí';
+                const resolvedPartnerId = sfPartnerId || sfUser?.id || dbOrder.seller_storefront_id;
+                const resolvedStoreName = sfObj?.store_name || dbOrder.storefront?.store_name || sfUser?.name || localOrder?.lojaNome || 'Ponto do açaí';
                 const resolvedStoreAddress = sfUser?.endereco || sfUser?.address || localOrder?.lojaEndereco;
+
+                const orderCity = sfUser?.cidade || dbOrder.storefront?.partner?.cidade || dbOrder.buyer?.cidade || 'Belém';
+                const orderCityRates = getRatesForCity(orderCity, state.rates, state.cities);
 
                 const deliveryTotal = calculateOrderFreight(
                   dbOrder.order_type,
@@ -2707,9 +2744,11 @@ export const useAppStore = create<AppState>()(
                 );
 
                 const partnerSubsidyPct = Number(
+                  sfObj?.frete_subsidy_pct ?? 
+                  dbOrder.storefront?.frete_subsidy_pct ?? 
                   sfUser?.freteSubsidyPct ?? 
-                  (allUsers[resolvedPartnerId]?.freteSubsidyPct ?? 
-                  (dbOrder.storefront?.frete_subsidy_pct ?? 0))
+                  (currentUser?.id === resolvedPartnerId ? currentUser.freteSubsidyPct : 0) ??
+                  (allUsers[resolvedPartnerId]?.freteSubsidyPct ?? 0)
                 );
 
                 let calculatedEntregaLoja = 0;
@@ -2800,8 +2839,7 @@ export const useAppStore = create<AppState>()(
                        sellerStorefrontId: dbOrder.seller_storefront_id,
                        distancia: dbOrder.delivery_distance_km,
                        valor: dbOrder.products_subtotal,
-                       totalValue: localOrder?.totalValue || orderTotalValue,
-                       total_amount: localOrder?.totalValue || orderTotalValue,
+                       totalValue: (localOrder?.totalValue && Math.abs(Number(localOrder.totalValue) - orderTotalValue) < 0.05) ? Number(localOrder.totalValue) : orderTotalValue,
                        motoristaId: dbOrder.driver_id,
                        confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
                        taxas: {
