@@ -35,7 +35,12 @@ export function AdminSupportSection() {
   const loadAllSupportMessagesAndConfig = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/support?all=true");
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: Record<string, string> = {};
+      if (session?.access_token) {
+        authHeaders["Authorization"] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch("/api/support?all=true", { headers: authHeaders });
       if (res.ok) {
         const data = await res.json();
         if (data.messages && Array.isArray(data.messages)) {
