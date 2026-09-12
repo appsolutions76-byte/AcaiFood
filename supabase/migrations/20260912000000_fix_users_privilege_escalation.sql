@@ -21,8 +21,7 @@ GRANT UPDATE (
   vehicle_type,
   is_online,
   pix_key,
-  cpf_cnpj,
-  frete_subsidy_pct
+  cpf_cnpj
 ) ON public.users TO authenticated;
 
 -- 3. Trigger para impedir autopromoção a role admin / partner_admin / administrador e is_admin = true
