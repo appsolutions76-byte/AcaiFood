@@ -6,9 +6,8 @@ serve(async (req) => {
     const webhookTokenHeader = req.headers.get('asaas-access-token');
     const expectedToken = Deno.env.get('ASAAS_WEBHOOK_TOKEN');
 
-    // Segurança: se o token estiver configurado nos Secrets, ele é OBRIGATÓRIO.
-    if (expectedToken && webhookTokenHeader !== expectedToken) {
-      console.error("Token do webhook Asaas inválido ou ausente!");
+    if (!expectedToken || webhookTokenHeader !== expectedToken) {
+      console.error("Token do webhook Asaas ausente/inválido — requisição recusada.");
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }

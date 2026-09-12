@@ -3,13 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 export function isAuthorizedRequest(request: Request): boolean {
   // Segredo interno — lido APENAS de env do servidor (nunca exposto no client)
   const internalSecret = process.env.INTERNAL_API_SECRET || '';
-  const webhookSecret = process.env.WEBHOOK_SECRET || 'acaifood_webhook_2026';
+  const webhookSecret = process.env.ASAAS_WEBHOOK_TOKEN || '';
 
   const headerToken = request.headers.get('x-internal-secret');
   if (headerToken && internalSecret && headerToken === internalSecret) return true;
 
   const asaasHeaderToken = request.headers.get('asaas-access-token');
-  if (asaasHeaderToken && asaasHeaderToken === webhookSecret) return true;
+  if (webhookSecret && asaasHeaderToken && asaasHeaderToken === webhookSecret) return true;
 
   // Verificar cron jobs da Vercel
   const cronSecret = process.env.CRON_SECRET || '';
@@ -19,7 +19,7 @@ export function isAuthorizedRequest(request: Request): boolean {
   try {
     const url = new URL(request.url);
     const whToken = url.searchParams.get('wh_token');
-    if (whToken && whToken === webhookSecret) return true;
+    if (webhookSecret && whToken && whToken === webhookSecret) return true;
   } catch (_e) {}
 
   return false;
@@ -89,8 +89,7 @@ export async function authorizeRequest(
               const isAdminAuth = allowedRoles.includes('admin') && (
                 userRole === 'admin' || 
                 profile.is_admin === true || 
-                user.user_metadata?.role === 'admin' ||
-                user.email?.toLowerCase().includes('admin')
+                user.user_metadata?.role === 'admin'
               );
 
               if (!allowedRoles.includes(userRole as any) && !isAdminAuth) {
@@ -128,8 +127,12 @@ export function unauthorizedResponse(message?: string) {
  * SEMPRE verifica o token, independente do conteúdo do body.
  */
 export function isValidAsaasWebhook(request: Request): boolean {
-  const webhookSecret = process.env.WEBHOOK_SECRET || 'acaifood_webhook_2026';
-  
+  const webhookSecret = process.env.ASAAS_WEBHOOK_TOKEN || '';
+  if (!webhookSecret) {
+    console.error("ASAAS_WEBHOOK_TOKEN não configurado — recusando webhook por segurança.");
+    return false;
+  }
+
   // Verificar header asaas-access-token (método oficial do Asaas)
   const asaasToken = request.headers.get('asaas-access-token');
   if (asaasToken && asaasToken === webhookSecret) return true;
@@ -140,11 +143,6 @@ export function isValidAsaasWebhook(request: Request): boolean {
     const whToken = url.searchParams.get('wh_token');
     if (whToken && whToken === webhookSecret) return true;
   } catch (_e) {}
-
-  // Verificar x-internal-secret como fallback para chamadas internas do servidor
-  const internalSecret = process.env.INTERNAL_API_SECRET || process.env.NEXT_PUBLIC_INTERNAL_API_SECRET || '';
-  const internalToken = request.headers.get('x-internal-secret');
-  if (internalToken && internalSecret && internalToken === internalSecret) return true;
 
   return false;
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
+import { calculateSellerPayout, calculateDriverPayout } from '@/lib/payoutCalc';
 
 export async function POST(request: Request) {
   // Transferências financeiras ativas são permitidas para admin ou parceiros operacionais (loja, fornecedor, motorista)
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { pixKey, value, description, orderId, scheduleDate, isWalletId, walletId } = body;
+    const { pixKey, description, orderId, scheduleDate, isWalletId, walletId } = body;
 
     const role = String(auth.profile?.role || auth.user?.user_metadata?.role || '').toLowerCase();
     const isAdmin = role === 'admin' || role === 'administrador' || auth.source === 'internal_secret';
@@ -25,58 +26,80 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!value || Number(value) <= 0) {
+    // P1.1 — Se não houver orderId (saque avulso), desativar temporariamente até P2.1 (ledger de saldo)
+    if (!orderId && !isAdmin) {
       return NextResponse.json(
-        { error: 'O valor da transferência deve ser maior que zero' },
+        { error: 'Saque avulso temporariamente indisponível — use o saque vinculado ao pedido.' },
         { status: 400 }
       );
     }
 
-    // Se não for administrador, validações estritas de segurança:
-    // 1. Clientes não podem acionar transferências de saldo
-    // 2. Parceiros devem ter um pedido vinculado ou valor correspondente aos repasses
-    if (!isAdmin && !orderId) {
-      // Caso de resgate instantâneo de loja/parceiro: garantir que a chave PIX informada corresponda ao CPF/CNPJ do titular
-      const userCpfCnpj = String(auth.profile?.cpf_cnpj || auth.profile?.pix_key || '').replace(/\D/g, '');
-      const reqPixKey = String(pixKey || '').replace(/\D/g, '');
-      
-      if (userCpfCnpj && reqPixKey && userCpfCnpj !== reqPixKey) {
-        return NextResponse.json(
-          { error: 'Por segurança contra fraudes e conformidade de titularidade (BACEN/Asaas), o saque só pode ser realizado para o CPF/CNPJ cadastrado no seu perfil.' },
-          { status: 403 }
-        );
+    if (!orderId && isAdmin) {
+      if (!body.value || Number(body.value) <= 0) {
+        return NextResponse.json({ error: 'O valor da transferência para admin deve ser maior que zero' }, { status: 400 });
       }
     }
 
-    // Se houver orderId, valida a existência do pedido, status de conclusão e se já foi pago (Anti-Duplicidade)
+    let transferValue = 0;
+
+    // Se houver orderId, recalcula o valor devido no SERVIDOR e valida status
     if (orderId) {
-      try {
-        const supabase = getSupabaseAdmin();
-        const { data: dbOrder } = await supabase
-          .from('orders')
-          .select('id, status, buyer_id, driver_id, seller_storefront_id, payout_seller_done, payout_driver_done')
-          .eq('id', orderId)
-          .maybeSingle();
+      const supabase = getSupabaseAdmin();
+      const { data: dbOrder, error: ordErr } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
 
-        if (dbOrder) {
-          const isDriverRole = role === 'motorista' || role === 'courier' || role === 'motoboy' || role === 'caminhao' || role === 'driver';
-
-          if (isDriverRole && dbOrder.payout_driver_done) {
-            return NextResponse.json(
-              { error: 'Este frete já foi liquidado e transferido via PIX anteriormente.' },
-              { status: 400 }
-            );
-          }
-          if (!isDriverRole && dbOrder.payout_seller_done) {
-            return NextResponse.json(
-              { error: 'Este repasse de venda já foi liquidado e transferido via PIX anteriormente.' },
-              { status: 400 }
-            );
-          }
-        }
-      } catch (ordErr) {
-        console.warn("[API Asaas] Aviso ao verificar pedido no banco:", ordErr);
+      if (ordErr || !dbOrder) {
+        return NextResponse.json({ error: 'Pedido não encontrado para transferência' }, { status: 404 });
       }
+
+      const isDriverRole = role === 'motorista' || role === 'courier' || role === 'motoboy' || role === 'caminhao' || role === 'driver';
+
+      if (isDriverRole && dbOrder.payout_driver_done) {
+        return NextResponse.json(
+          { error: 'Este frete já foi liquidado e transferido via PIX anteriormente.' },
+          { status: 400 }
+        );
+      }
+      if (!isDriverRole && dbOrder.payout_seller_done) {
+        return NextResponse.json(
+          { error: 'Este repasse de venda já foi liquidado e transferido via PIX anteriormente.' },
+          { status: 400 }
+        );
+      }
+
+      // Buscar configurações da plataforma e storefront para recalcular repasse líquido
+      const { data: settings } = await supabase
+        .from('platform_settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (isDriverRole) {
+        transferValue = calculateDriverPayout(dbOrder, settings);
+      } else {
+        let freteSubsidyPct = 0;
+        if (dbOrder.seller_storefront_id) {
+          const { data: sf } = await supabase
+            .from('storefronts')
+            .select('frete_subsidy_pct')
+            .eq('id', dbOrder.seller_storefront_id)
+            .maybeSingle();
+          if (sf) freteSubsidyPct = Number(sf.frete_subsidy_pct || 0);
+        }
+        transferValue = calculateSellerPayout(dbOrder, freteSubsidyPct, settings);
+      }
+
+      if (transferValue <= 0) {
+        return NextResponse.json(
+          { error: 'O valor calculado para este repasse é zero ou negativo' },
+          { status: 400 }
+        );
+      }
+    } else {
+      transferValue = Number(body.value);
     }
 
     const ASAAS_API_KEY = await getAsaasApiKey();
@@ -93,7 +116,7 @@ export async function POST(request: Request) {
     const cleanDigits = targetKey.replace(/\D/g, '');
 
     const transferBody: any = {
-      value: Number(Number(value).toFixed(2)),
+      value: Number(transferValue.toFixed(2)),
       description: description || `Repasse AçaíFood #${String(orderId || '').substring(0, 8)}`
     };
 
@@ -101,51 +124,34 @@ export async function POST(request: Request) {
       transferBody.scheduleDate = String(scheduleDate).trim();
     }
 
-    // Se for explicitamente informado como subconta Asaas (walletId)
     if (isWalletId || !!walletId) {
       transferBody.walletId = targetKey;
     } else {
-      // É Chave Pix do Banco Central (CPF, CNPJ, EMAIL, PHONE, EVP)
-      // 1. E-mail (contém @)
       if (targetKey.includes('@')) {
         transferBody.pixAddressKey = targetKey.toLowerCase();
         transferBody.pixAddressKeyType = 'EMAIL';
-      }
-      // 2. Chave Aleatória EVP (formato UUID xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-      else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetKey)) {
+      } else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetKey)) {
         transferBody.pixAddressKey = targetKey.toLowerCase();
         transferBody.pixAddressKeyType = 'EVP';
-      }
-      // 3. CNPJ (14 dígitos numéricos)
-      else if (cleanDigits.length === 14) {
+      } else if (cleanDigits.length === 14) {
         transferBody.pixAddressKey = cleanDigits;
         transferBody.pixAddressKeyType = 'CNPJ';
-      }
-      // 4. Celular / Telefone formatado com código internacional (+55...) ou parênteses de DDD
-      else if (targetKey.startsWith('+') || /^\(\d{2}\)/.test(targetKey) || (cleanDigits.length >= 10 && cleanDigits.length <= 11 && (targetKey.includes('(') || targetKey.includes('-') || targetKey.includes(' ')))) {
+      } else if (targetKey.startsWith('+') || /^\(\d{2}\)/.test(targetKey) || (cleanDigits.length >= 10 && cleanDigits.length <= 11 && (targetKey.includes('(') || targetKey.includes('-') || targetKey.includes(' ')))) {
         const phoneFormatted = cleanDigits.startsWith('55') && cleanDigits.length >= 12 ? `+${cleanDigits}` : `+55${cleanDigits}`;
         transferBody.pixAddressKey = phoneFormatted;
         transferBody.pixAddressKeyType = 'PHONE';
-      }
-      // 5. CPF (11 dígitos numéricos)
-      else if (cleanDigits.length === 11) {
+      } else if (cleanDigits.length === 11) {
         transferBody.pixAddressKey = cleanDigits;
         transferBody.pixAddressKeyType = 'CPF';
-      }
-      // 6. Telefone celular puro com 10 ou 12-13 dígitos
-      else if (cleanDigits.length === 10 || cleanDigits.length === 12 || cleanDigits.length === 13) {
+      } else if (cleanDigits.length === 10 || cleanDigits.length === 12 || cleanDigits.length === 13) {
         const phoneFormatted = cleanDigits.startsWith('55') ? `+${cleanDigits}` : `+55${cleanDigits}`;
         transferBody.pixAddressKey = phoneFormatted;
         transferBody.pixAddressKeyType = 'PHONE';
-      }
-      // 7. Chave Aleatória EVP genérica
-      else {
+      } else {
         transferBody.pixAddressKey = targetKey;
         transferBody.pixAddressKeyType = 'EVP';
       }
     }
-
-    console.log(`[API Asaas] Disparando transferência para ${ASAAS_URL}/transfers:`, JSON.stringify(transferBody));
 
     const res = await fetch(`${ASAAS_URL}/transfers`, {
       method: 'POST',
@@ -176,15 +182,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Asaas recusou transferência: ${msg}` }, { status: 400 });
     }
 
-    console.log(`[API Asaas] Transferência Pix autorizada com sucesso! ID: ${data.id}`);
-
     // Se houver orderId, marca a flag de repasse no banco de dados via Service Role
     if (orderId) {
       try {
         const supabase = getSupabaseAdmin();
-        const role = auth.profile?.role || auth.user?.user_metadata?.role;
         const updatePayload: any = {};
-        if (role === 'motorista' || role === 'courier' || role === 'motoboy' || role === 'caminhao' || role === 'driver') {
+        const isDriverRole = role === 'motorista' || role === 'courier' || role === 'motoboy' || role === 'caminhao' || role === 'driver';
+        if (isDriverRole) {
           updatePayload.payout_driver_done = true;
         } else {
           updatePayload.payout_seller_done = true;
@@ -210,3 +214,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

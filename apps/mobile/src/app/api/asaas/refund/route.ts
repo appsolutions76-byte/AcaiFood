@@ -106,6 +106,34 @@ export async function POST(request: Request) {
     let refundMessage = '';
 
     if (asaasPaymentId) {
+      // P2.7 — Somar reembolsos parciais existentes em refund_history para evitar ultrapassar o valor original
+      try {
+        const { data: existingRefunds } = await supabase
+          .from('refund_history')
+          .select('requested_value')
+          .eq('payment_id', asaasPaymentId);
+
+        const totalRefundedSoFar = (existingRefunds || []).reduce((acc: number, r: any) => acc + Number(r.requested_value || 0), 0);
+
+        const payRes = await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}`, {
+          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+        });
+        if (payRes.ok) {
+          const payObj = await payRes.json();
+          const origValue = Number(payObj?.value || 0);
+          const currentRequested = value ? Number(value) : origValue;
+
+          if (origValue > 0 && (totalRefundedSoFar + currentRequested > origValue + 0.01)) {
+            return NextResponse.json(
+              { error: `Estorno recusado: a soma dos estornos (R$ ${totalRefundedSoFar.toFixed(2)} + R$ ${currentRequested.toFixed(2)}) ultrapassa o valor pago do pedido (R$ ${origValue.toFixed(2)}).` },
+              { status: 400 }
+            );
+          }
+        }
+      } catch (chkRefundErr) {
+        console.warn("Aviso ao checar limite em refund_history:", chkRefundErr);
+      }
+
       console.log(`Solicitando estorno no Asaas para a cobrança ${asaasPaymentId}...`);
 
       const refundBodyPayload: any = { description: cancelReasonText };
@@ -125,6 +153,20 @@ export async function POST(request: Request) {
       if (refundRes.ok && !refundData.errors) {
         refundId = refundData.id || null;
         refundStatus = refundData.status || 'REFUNDED';
+
+        // Gravar no histórico de reembolsos
+        try {
+          await supabase.from('refund_history').insert({
+            order_id: orderId || null,
+            payment_id: asaasPaymentId,
+            requested_value: value ? Number(value) : Number(refundData.value || 0),
+            asaas_refund_id: refundId,
+            status: refundStatus,
+            requested_by: auth.user?.id || auth.profile?.id || null
+          });
+        } catch (hisErr) {
+          console.warn("Aviso ao inserir histórico de estorno:", hisErr);
+        }
       } else {
         const msg = refundData.errors
           ? refundData.errors.map((e: any) => e.description).join(', ')

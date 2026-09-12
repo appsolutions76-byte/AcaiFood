@@ -3,67 +3,28 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { generateValidPixPayload } from '@/lib/pix';
+import { getFounderQuotaStatus } from '@/lib/founderQuota';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
+  if (!auth.authorized) return unauthorizedResponse(auth.error);
+
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const paymentId = searchParams.get('paymentId');
 
+    const callerId = auth.user?.id || auth.profile?.id;
+    const isAdmin = auth.source === 'internal_secret' || String(auth.profile?.role || '').toLowerCase() === 'admin';
+    if (!isAdmin && userId && callerId !== userId) {
+      return NextResponse.json({ error: 'Você só pode consultar os dados da sua própria ativação.' }, { status: 403 });
+    }
+
     const supabase = getSupabaseAdmin();
-
-    let activationFee = 12.90;
-    let freeQuota = 50;
-    let activationEnabled = true;
-
-    try {
-      const { data: row } = await supabase
-        .from('platform_settings')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (row?.asaas_platform_wallet_id) {
-        try {
-          const parsed = JSON.parse(row.asaas_platform_wallet_id);
-          if (parsed && typeof parsed === 'object') {
-            if (parsed.activationFee !== undefined) activationFee = Number(parsed.activationFee);
-            if (parsed.freeQuota !== undefined) freeQuota = Number(parsed.freeQuota);
-            if (parsed.activationEnabled !== undefined) activationEnabled = Boolean(parsed.activationEnabled);
-          }
-        } catch (_e) {}
-      }
-    } catch (_e) {}
-
-    let subsidizedCount = 0;
-    let isUserAlreadyFounder = false;
-
-    try {
-      const { data: allUsers } = await supabase
-        .from('users')
-        .select('id, role, created_at, asaas_wallet_id, pix_key, status')
-        .order('created_at', { ascending: true });
-
-      if (allUsers && Array.isArray(allUsers)) {
-        const partners = allUsers.filter(u => {
-          const r = String(u.role || '').toLowerCase();
-          return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
-        });
-
-        // Os fundadores são estritamente os primeiros freeQuota parceiros criados
-        const founderPartners = partners.slice(0, freeQuota);
-        subsidizedCount = founderPartners.length;
-
-        if (userId) {
-          isUserAlreadyFounder = founderPartners.some(p => p.id === userId);
-        }
-      }
-    } catch (_e) {}
-
-    const freeSlotsRemaining = Math.max(0, freeQuota - subsidizedCount);
-    const isFree = !activationEnabled || (userId ? isUserAlreadyFounder : freeSlotsRemaining > 0);
+    const quota = await getFounderQuotaStatus(userId || undefined);
+    const { activationFee, freeQuota, activationEnabled, subsidizedCount, freeSlotsRemaining, isUserAlreadyFounder, isFree } = quota;
 
     let userActivationStatus: any = null;
     if (userId) {
@@ -130,12 +91,21 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
+  if (!auth.authorized) return unauthorizedResponse(auth.error);
+
   try {
     const body = await request.json();
     const { userId, name, email, cpfCnpj, phone, forceFounder } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 });
+    }
+
+    const callerId = auth.user?.id || auth.profile?.id;
+    const isAdmin = auth.source === 'internal_secret' || String(auth.profile?.role || '').toLowerCase() === 'admin';
+    if (!isAdmin && callerId !== userId) {
+      return NextResponse.json({ error: 'Você só pode ativar seu próprio cadastro.' }, { status: 403 });
     }
 
     const supabase = getSupabaseAdmin();

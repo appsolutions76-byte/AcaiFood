@@ -48,11 +48,14 @@ serve(async (req) => {
     // 3. Verify if caller is an ADMIN
     const { data: callerProfile, error: profileError } = await supabaseClient
       .from('users')
-      .select('role')
+      .select('role, is_admin')
       .eq('id', callerUser.id)
       .single()
 
-    if (profileError || !callerProfile || callerProfile.role !== 'ADMIN') {
+    const rawRole = String(callerProfile?.role || '').toLowerCase();
+    const callerIsAdmin = callerProfile?.is_admin === true || rawRole === 'admin' || rawRole === 'administrador';
+
+    if (profileError || !callerProfile || !callerIsAdmin) {
       return new Response(JSON.stringify({ error: `Forbidden. Admin role required. Profile error: ${JSON.stringify(profileError)}` }), { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

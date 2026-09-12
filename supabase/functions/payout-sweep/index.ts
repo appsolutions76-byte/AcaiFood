@@ -43,7 +43,8 @@ serve(async (req) => {
     const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')
     if (!ASAAS_API_KEY) throw new Error('ASAAS_API_KEY não configurada nos Supabase Secrets')
 
-    const ASAAS_URL = 'https://www.asaas.com/api/v3'
+    const isSandbox = ASAAS_API_KEY.startsWith('$aact_hmlg_')
+    const ASAAS_URL = isSandbox ? 'https://sandbox.asaas.com/api/v3' : 'https://www.asaas.com/api/v3'
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -159,28 +160,29 @@ serve(async (req) => {
               })
               const resData = await res.json()
 
-              // Marcar como pago independentemente do resultado (evita reprocessamento)
-              await supabase.from('orders').update({ payout_seller_done: true }).eq('id', order.id)
-
               const ok = res.ok || resData.id || String(resData.status || '').includes('PENDING') || String(resData.status || '').includes('AUTHORIZATION')
               if (ok) {
+                await supabase.from('orders').update({ payout_seller_done: true }).eq('id', order.id)
                 sellerPayoutsCount++
                 totalAmountTransferred += sellerValue
                 console.log(`✅ Seller repasse R$ ${sellerValue} → ${uSeller?.name || sellerPartnerId}`)
               } else {
                 console.warn(`⚠️ Seller repasse falhou (${order.id}):`, resData)
+                await supabase.from('payout_failures').insert({
+                  order_id: order.id,
+                  role: 'seller',
+                  attempted_value: sellerValue,
+                  asaas_response: resData
+                })
               }
             } else {
-              // Mesmo sem chave Pix, marcar para não re-processar indefinidamente
+              // Mesmo sem chave Pix, registrar o aviso sem marcar done levianamente
               if (!sellerPixKey) {
-                console.warn(`[payout-sweep] Seller sem chave Pix (${sellerPartnerId}), marcando como done`)
-                await supabase.from('orders').update({ payout_seller_done: true }).eq('id', order.id)
+                console.warn(`[payout-sweep] Seller sem chave Pix (${sellerPartnerId})`)
               }
             }
           } else {
-            // Sem storefront → marcar como done para não re-processar
             console.warn(`[payout-sweep] Sem seller_storefront_id para pedido ${order.id}`)
-            await supabase.from('orders').update({ payout_seller_done: true }).eq('id', order.id)
           }
         } catch (errSeller) {
           console.warn(`[payout-sweep] Erro seller pedido ${order.id}:`, errSeller)
@@ -206,7 +208,6 @@ serve(async (req) => {
             uDriver?.email ||
             uDriver?.asaas_wallet_id
 
-          // Calcular total da entrega respeitando modo de pagamento (FIXO vs KM)
           const distKm       = Number(order.delivery_distance_km || 3)
           const feePerKm     = Number(order.applied_delivery_fee_per_km || 2)
           const platPct      = Number(order.applied_delivery_platform_fee_percent ?? 10)
@@ -217,7 +218,6 @@ serve(async (req) => {
           } else if (orderType === 'B2B') {
             deliveryTotal = transporterMode === 'FIXED' ? transporterFixed : distKm * feePerKm
           } else {
-            // B2C (Motoboy)
             deliveryTotal = courierMode === 'FIXED' ? courierFixed : distKm * feePerKm
           }
 
@@ -238,19 +238,23 @@ serve(async (req) => {
             })
             const resData = await res.json()
 
-            await supabase.from('orders').update({ payout_driver_done: true }).eq('id', order.id)
-
             const ok = res.ok || resData.id || String(resData.status || '').includes('PENDING') || String(resData.status || '').includes('AUTHORIZATION')
             if (ok) {
+              await supabase.from('orders').update({ payout_driver_done: true }).eq('id', order.id)
               driverPayoutsCount++
               totalAmountTransferred += driverValue
               console.log(`✅ Driver repasse R$ ${driverValue} → ${uDriver?.name || driverId}`)
             } else {
               console.warn(`⚠️ Driver repasse falhou (${order.id}):`, resData)
+              await supabase.from('payout_failures').insert({
+                order_id: order.id,
+                role: 'driver',
+                attempted_value: driverValue,
+                asaas_response: resData
+              })
             }
           } else if (!driverPixKey) {
-            console.warn(`[payout-sweep] Driver sem chave Pix (${driverId}), marcando como done`)
-            await supabase.from('orders').update({ payout_driver_done: true }).eq('id', order.id)
+            console.warn(`[payout-sweep] Driver sem chave Pix (${driverId})`)
           }
         } catch (errDriver) {
           console.warn(`[payout-sweep] Erro driver pedido ${order.id}:`, errDriver)
