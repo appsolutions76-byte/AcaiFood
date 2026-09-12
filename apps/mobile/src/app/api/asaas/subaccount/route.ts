@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey } from '@/lib/asaasConfig';
 import { getFounderQuotaStatus } from '@/lib/founderQuota';
@@ -209,12 +208,13 @@ export async function DELETE(request: Request) {
 
     let accountId = accountIdParam || '';
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    // Usa Service Role (Admin) para ler/gravar em users — a chave anônima não tem
+    // permissão para essas colunas após a migration de privilégios (20260912000000).
+    const { getSupabaseAdmin } = await import('@/lib/supabaseAdmin');
+    const supabaseAdmin = getSupabaseAdmin();
 
-    if (userId && supabaseUrl && supabaseKey) {
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      const { data: user } = await supabase
+    if (userId) {
+      const { data: user } = await supabaseAdmin
         .from('users')
         .select('asaas_account_id, asaas_wallet_id, cpf_cnpj')
         .eq('id', userId)
@@ -253,9 +253,8 @@ export async function DELETE(request: Request) {
       asaasResult = await deleteRes.json();
     }
 
-    if (userId && supabaseUrl && supabaseKey) {
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      await supabase
+    if (userId) {
+      await supabaseAdmin
         .from('users')
         .update({
           asaas_wallet_id: null,

@@ -1114,7 +1114,7 @@ export const useAppStore = create<AppState>()(
             if (cpfCnpjToUse) {
               const subRes = await fetch('/api/asaas/subaccount', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: await getAuthHeaders(),
                 body: JSON.stringify({
                   userId,
                   name: uAny?.name || 'Parceiro AçaíFood',
@@ -1140,17 +1140,23 @@ export const useAppStore = create<AppState>()(
           }
         }
 
-        const updatePayload: any = {};
+        // asaas_wallet_id e split_enabled não são colunas liberadas para UPDATE direto
+        // pelo cliente (migration 20260912000000_fix_users_privilege_escalation.sql) —
+        // a gravação precisa passar por uma rota de servidor com Service Role.
         if (isRealWallet && finalWalletId) {
-          updatePayload.asaas_wallet_id = finalWalletId;
-          updatePayload.split_enabled = true;
-        }
-
-        try {
-          const { error } = await supabase.from('users').update(updatePayload).eq('id', userId);
-          if (error) console.error("Erro ao salvar carteira Asaas no banco:", error);
-        } catch (e) {
-          console.warn("Erro ao atualizar banco Supabase:", e);
+          try {
+            const linkRes = await fetch('/api/asaas/link-wallet', {
+              method: 'POST',
+              headers: await getAuthHeaders(),
+              body: JSON.stringify({ userId, walletId: finalWalletId })
+            });
+            if (!linkRes.ok) {
+              const linkErr = await linkRes.json().catch(() => ({}));
+              console.error("Erro ao salvar carteira Asaas no banco:", linkErr.error || linkRes.statusText);
+            }
+          } catch (e) {
+            console.warn("Erro ao atualizar carteira Asaas via API:", e);
+          }
         }
 
         set((state) => {
