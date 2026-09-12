@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey } from '@/lib/asaasConfig';
+import { getFounderQuotaStatus } from '@/lib/founderQuota';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista']);
@@ -40,35 +41,20 @@ export async function POST(request: Request) {
     const isAdmin = callerRole === 'ADMIN' || auth.profile?.role === 'admin';
 
     if (!isAdmin) {
-      let freeQuota = 8;
-      let activationEnabled = true;
-      try {
-        const { data: row } = await supabase.from('platform_settings').select('*').limit(1).maybeSingle();
-        if (row?.asaas_platform_wallet_id) {
-          const parsed = JSON.parse(row.asaas_platform_wallet_id);
-          if (parsed?.freeQuota !== undefined) freeQuota = Number(parsed.freeQuota);
-          if (parsed?.activationEnabled !== undefined) activationEnabled = Boolean(parsed.activationEnabled);
-        }
-      } catch (_e) {}
+      const quota = await getFounderQuotaStatus(userId);
+      const { activationEnabled, isUserAlreadyFounder } = quota;
 
       if (activationEnabled) {
-        const { data: allUsers } = await supabase
+        const { data: targetUser } = await supabase
           .from('users')
-          .select('id, role, created_at, status, asaas_wallet_id')
-          .order('created_at', { ascending: true });
+          .select('asaas_wallet_id')
+          .eq('id', userId)
+          .maybeSingle();
 
-        const partners = (allUsers || []).filter(u => {
-          const r = String(u.role || '').toLowerCase();
-          return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
-        });
-
-        const founderIds = partners.slice(0, freeQuota).map(p => p.id);
-        const isFounder = founderIds.includes(userId);
-        const targetUser = partners.find(p => p.id === userId);
         const hasWallet = Boolean(targetUser?.asaas_wallet_id);
 
         let isPaidPix = false;
-        if (!isFounder && !hasWallet) {
+        if (!isUserAlreadyFounder && !hasWallet) {
           const checkApiKey = await getAsaasApiKey();
           if (checkApiKey) {
             try {
@@ -83,7 +69,7 @@ export async function POST(request: Request) {
           }
         }
 
-        if (!isFounder && !hasWallet && !isPaidPix) {
+        if (!isUserAlreadyFounder && !hasWallet && !isPaidPix) {
           return NextResponse.json(
             { error: 'Taxa de homologação Asaas pendente. As vagas de fundador foram preenchidas. Conclua o pagamento Pix da taxa de homologação bancária para vincular sua subconta Asaas.' },
             { status: 402 }

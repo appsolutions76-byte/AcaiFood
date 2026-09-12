@@ -110,50 +110,8 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    let activationFee = 12.90;
-    let freeQuota = 50;
-    let activationEnabled = true;
-
-    try {
-      const { data: row } = await supabase
-        .from('platform_settings')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (row?.asaas_platform_wallet_id) {
-        try {
-          const parsed = JSON.parse(row.asaas_platform_wallet_id);
-          if (parsed && typeof parsed === 'object') {
-            if (parsed.activationFee !== undefined) activationFee = Number(parsed.activationFee);
-            if (parsed.freeQuota !== undefined) freeQuota = Number(parsed.freeQuota);
-            if (parsed.activationEnabled !== undefined) activationEnabled = Boolean(parsed.activationEnabled);
-          }
-        } catch (_e) {}
-      }
-    } catch (_e) {}
-
-    let subsidizedCount = 0;
-    let isUserAlreadyFounder = false;
-
-    try {
-      const { data: allUsers } = await supabase
-        .from('users')
-        .select('id, role, created_at, asaas_wallet_id, pix_key, status')
-        .order('created_at', { ascending: true });
-
-      if (allUsers && Array.isArray(allUsers)) {
-        const partners = allUsers.filter(u => {
-          const r = String(u.role || '').toLowerCase();
-          return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
-        });
-
-        // Fundadores estritos (primeiros freeQuota cadastrados)
-        const founderPartners = partners.slice(0, freeQuota);
-        subsidizedCount = founderPartners.length;
-        isUserAlreadyFounder = founderPartners.some(p => p.id === userId);
-      }
-    } catch (_e) {}
+    const quota = await getFounderQuotaStatus(userId);
+    const { activationFee, freeQuota, activationEnabled, subsidizedCount, freeSlotsRemaining, isUserAlreadyFounder } = quota;
 
     // Validação de segurança: apenas admin autenticado ou segredo interno pode forçar subsídio gratuito
     let isForceAdmin = false;
@@ -164,9 +122,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const freeSlotsRemaining = Math.max(0, freeQuota - subsidizedCount);
-
-    // Regra estrita de custo: NUNCA concede gratuidade se a cota foi atingida e o usuário não é fundador histórico
     const qualifiesForFree = isForceAdmin || !activationEnabled || isUserAlreadyFounder;
 
     if (qualifiesForFree) {

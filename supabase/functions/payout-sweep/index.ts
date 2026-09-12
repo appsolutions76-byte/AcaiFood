@@ -151,7 +151,7 @@ serve(async (req) => {
                 sellerValue,
                 `Varredura Repasse Venda AçaíFood #${String(order.id).substring(0, 8)}`
               )
-              console.log(`[payout-sweep] Seller #${String(order.id).substring(0,8)} → R$ ${sellerValue} (platFee ${platformFee}%)`, transferBody)
+              console.log(`[payout-sweep] Seller #${String(order.id).substring(0,8)} → R$ ${sellerValue} (platFee ${platformFee}%)`)
 
               const res = await fetch(`${ASAAS_URL}/transfers`, {
                 method: 'POST',
@@ -166,6 +166,22 @@ serve(async (req) => {
                 sellerPayoutsCount++
                 totalAmountTransferred += sellerValue
                 console.log(`✅ Seller repasse R$ ${sellerValue} → ${uSeller?.name || sellerPartnerId}`)
+
+                try {
+                  const { data: ledgerHistory } = await supabase.from('partner_ledger').select('amount, type').eq('partner_id', sellerPartnerId)
+                  const curBal = (ledgerHistory || []).reduce((acc: number, item: any) => item.type === 'credit' ? acc + Number(item.amount || 0) : acc - Number(item.amount || 0), 0)
+                  const balAfter = Number((curBal + sellerValue).toFixed(2))
+                  await supabase.from('partner_ledger').insert({
+                    partner_id: sellerPartnerId,
+                    order_id: order.id,
+                    type: 'credit',
+                    amount: sellerValue,
+                    reason: `Repasse Varredura Venda #${String(order.id).substring(0, 8)}`,
+                    balance_after: balAfter
+                  })
+                } catch (ledErr) {
+                  console.warn(`[payout-sweep] Aviso ledger seller ${order.id}:`, ledErr)
+                }
               } else {
                 console.warn(`⚠️ Seller repasse falhou (${order.id}):`, resData)
                 await supabase.from('payout_failures').insert({
@@ -176,7 +192,6 @@ serve(async (req) => {
                 })
               }
             } else {
-              // Mesmo sem chave Pix, registrar o aviso sem marcar done levianamente
               if (!sellerPixKey) {
                 console.warn(`[payout-sweep] Seller sem chave Pix (${sellerPartnerId})`)
               }
@@ -229,7 +244,7 @@ serve(async (req) => {
               driverValue,
               `Varredura Repasse Frete AçaíFood #${String(order.id).substring(0, 8)}`
             )
-            console.log(`[payout-sweep] Driver #${String(order.id).substring(0,8)} → R$ ${driverValue} (${orderType}, platPct ${platPct}%)`, transferBody)
+            console.log(`[payout-sweep] Driver #${String(order.id).substring(0,8)} → R$ ${driverValue} (${orderType}, platPct ${platPct}%)`)
 
             const res = await fetch(`${ASAAS_URL}/transfers`, {
               method: 'POST',
@@ -244,6 +259,22 @@ serve(async (req) => {
               driverPayoutsCount++
               totalAmountTransferred += driverValue
               console.log(`✅ Driver repasse R$ ${driverValue} → ${uDriver?.name || driverId}`)
+
+              try {
+                const { data: ledgerHistory } = await supabase.from('partner_ledger').select('amount, type').eq('partner_id', driverId)
+                const curBal = (ledgerHistory || []).reduce((acc: number, item: any) => item.type === 'credit' ? acc + Number(item.amount || 0) : acc - Number(item.amount || 0), 0)
+                const balAfter = Number((curBal + driverValue).toFixed(2))
+                await supabase.from('partner_ledger').insert({
+                  partner_id: driverId,
+                  order_id: order.id,
+                  type: 'credit',
+                  amount: driverValue,
+                  reason: `Repasse Varredura Frete #${String(order.id).substring(0, 8)}`,
+                  balance_after: balAfter
+                })
+              } catch (ledErr) {
+                console.warn(`[payout-sweep] Aviso ledger driver ${order.id}:`, ledErr)
+              }
             } else {
               console.warn(`⚠️ Driver repasse falhou (${order.id}):`, resData)
               await supabase.from('payout_failures').insert({

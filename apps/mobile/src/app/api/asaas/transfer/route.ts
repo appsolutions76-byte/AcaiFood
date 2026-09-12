@@ -182,10 +182,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Asaas recusou transferência: ${msg}` }, { status: 400 });
     }
 
-    // Se houver orderId, marca a flag de repasse no banco de dados via Service Role
-    if (orderId) {
-      try {
-        const supabase = getSupabaseAdmin();
+    // Se houver orderId, marca a flag de repasse no banco de dados via Service Role e grava no partner_ledger
+    try {
+      const supabase = getSupabaseAdmin();
+      if (orderId) {
         const updatePayload: any = {};
         const isDriverRole = role === 'motorista' || role === 'courier' || role === 'motoboy' || role === 'caminhao' || role === 'driver';
         if (isDriverRole) {
@@ -194,9 +194,33 @@ export async function POST(request: Request) {
           updatePayload.payout_seller_done = true;
         }
         await supabase.from('orders').update(updatePayload).eq('id', orderId);
-      } catch (upErr) {
-        console.warn("[API Asaas] Aviso ao atualizar payout_done no pedido:", upErr);
       }
+
+      // Gravação auditável em partner_ledger
+      const targetPartnerId = auth.user?.id || auth.profile?.id;
+      if (targetPartnerId) {
+        const { data: ledgerHistory } = await supabase
+          .from('partner_ledger')
+          .select('amount, type')
+          .eq('partner_id', targetPartnerId);
+
+        const currentBalance = (ledgerHistory || []).reduce((acc: number, item: any) => {
+          return item.type === 'credit' ? acc + Number(item.amount || 0) : acc - Number(item.amount || 0);
+        }, 0);
+
+        const balanceAfter = Number((currentBalance + transferValue).toFixed(2));
+
+        await supabase.from('partner_ledger').insert({
+          partner_id: targetPartnerId,
+          order_id: orderId || null,
+          type: 'credit',
+          amount: transferValue,
+          reason: `Repasse Pix #${String(orderId || data.id || '').substring(0, 8)}`,
+          balance_after: balanceAfter
+        });
+      }
+    } catch (upErr) {
+      console.warn("[API Asaas] Aviso ao atualizar payout_done e partner_ledger:", upErr);
     }
 
     return NextResponse.json({
