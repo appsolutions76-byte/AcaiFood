@@ -9,5 +9,9 @@
     "build": "npm run build --prefix apps/mobile",
     "dev": "npm run dev --prefix apps/mobile",
     "start": "npm run start --prefix apps/mobile"
+  },
+  "optionalDependencies": {
+    "lightningcss-linux-x64-gnu": "1.32.0",
+    "lightningcss-win32-x64-msvc": "1.32.0"
   }
 }
