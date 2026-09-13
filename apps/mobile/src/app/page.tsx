@@ -71,6 +71,9 @@ export default function StorefrontPage() {
   const [cpfInputValue, setCpfInputValue] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
+  const [orderHistoryModalOpen, setOrderHistoryModalOpen] = useState(false);
+  const [historySearchQuery, setHistorySearchQuery] = useState("");
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'delivered' | 'canceled'>('all');
   const { cart, addToCart, removeFromCart, updateCartQuantity } = store;
 
   const [addressMode, setAddressMode] = useState<'profile' | 'gps' | 'custom'>('profile');
@@ -590,11 +593,20 @@ export default function StorefrontPage() {
                   <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 hidden sm:inline-block bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-xl">
                     👋 Olá, {currentUser.name.split(' ')[0]}
                   </span>
-                  <button onClick={() => window.location.reload()} className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-2xs border border-indigo-200 dark:border-indigo-900/50 transition-all">
+                  {clientHistoryOrders.length > 0 && (
+                    <button 
+                      onClick={() => setOrderHistoryModalOpen(true)} 
+                      className="text-xs bg-purple-50 hover:bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 dark:text-purple-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border border-purple-200 dark:border-purple-800/80 transition cursor-pointer"
+                      title="Ver histórico de pedidos"
+                    >
+                      📜 <span className="hidden sm:inline">Histórico</span> ({clientHistoryOrders.length})
+                    </button>
+                  )}
+                  <button onClick={() => window.location.reload()} className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-2xs border border-indigo-200 dark:border-indigo-900/50 transition-all cursor-pointer">
                     🔄 <span className="hidden sm:inline">Atualizar</span>
                   </button>
                   <ThemeToggle />
-                  <button onClick={() => store.logout()} className="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-900/50 transition">
+                  <button onClick={() => store.logout()} className="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-900/50 transition cursor-pointer">
                     Sair
                   </button>
                 </div>
@@ -1073,16 +1085,18 @@ export default function StorefrontPage() {
                                   <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">⏱️ {minTime}-{maxTime} min</span>
                                 </div>
                                 
-                                <div className="bg-zinc-50 dark:bg-zinc-950/70 p-2.5 rounded-xl flex flex-col gap-1 text-xs mb-2.5 border border-zinc-100 dark:border-zinc-800/80">
-                                    <div className="flex justify-between items-center text-xs">
-                                      <span className="text-zinc-500 font-medium">A partir de:</span>
-                                      <span className="font-extrabold text-purple-600 dark:text-purple-400 text-sm">{formatMoney(loja.priceB2C?.popular || loja.priceB2C?.medio || 0)} <span className="text-[10px] text-zinc-400 font-normal">/L</span></span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[11px]">
-                                      <span className="text-zinc-500">Entrega estimada:</span>
-                                      <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteCliente)}</span>
-                                    </div>
-                                </div>
+                                 <div className="bg-zinc-100/90 dark:bg-zinc-950 p-3 rounded-xl flex flex-col gap-1.5 mb-2.5 border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+                                     <div className="flex justify-between items-baseline">
+                                       <span className="text-zinc-600 dark:text-zinc-300 font-bold text-xs sm:text-sm">A partir de:</span>
+                                       <span className="font-black text-zinc-950 dark:text-white text-base sm:text-lg tracking-tight">
+                                         {formatMoney(loja.priceB2C?.popular || loja.priceB2C?.medio || 0)} <span className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold">/L</span>
+                                       </span>
+                                     </div>
+                                     <div className="flex justify-between items-center text-xs pt-1 border-t border-zinc-200/60 dark:border-zinc-800/80">
+                                       <span className="text-zinc-500 dark:text-zinc-400">Entrega estimada:</span>
+                                       <span className="font-extrabold text-zinc-900 dark:text-zinc-100 text-xs sm:text-sm">{formatMoney(freteCliente)}</span>
+                                     </div>
+                                 </div>
 
                                 {/* TAGS DE TIPOS DE AÇAÍ DISPONÍVEIS */}
                                 <div className="flex items-center gap-1 flex-wrap">
@@ -1139,34 +1153,36 @@ export default function StorefrontPage() {
                 )}
             </div>
 
-        {currentUser && meusPedidos.length > 0 && (
+        {/* PEDIDOS ATIVOS EM ANDAMENTO NA TELA PRINCIPAL */}
+        {currentUser && clientActiveOrders.length > 0 && (
           <div className="mt-8">
               <div className="flex items-center justify-between mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                <h3 className="font-extrabold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
-                  <span>🛍️</span> Meus Pedidos ({meusPedidos.length})
-                </h3>
-                {clientActiveOrders.length > 0 && (
-                  <span className="text-xs bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-extrabold px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-800 animate-pulse">
-                    ⚡ {clientActiveOrders.length} em andamento
+                <div className="flex items-center gap-2">
+                  <h3 className="font-extrabold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
+                    <span>⚡</span> Pedidos em Andamento ({clientActiveOrders.length})
+                  </h3>
+                  <span className="text-xs bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800 animate-pulse">
+                    Ao Vivo
                   </span>
+                </div>
+                {clientHistoryOrders.length > 0 && (
+                  <button
+                    onClick={() => setOrderHistoryModalOpen(true)}
+                    className="px-3.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-zinc-200 dark:border-zinc-700 shadow-2xs cursor-pointer"
+                  >
+                    📜 Ver Histórico ({clientHistoryOrders.length})
+                  </button>
                 )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {meusPedidos.map(o => {
+                {clientActiveOrders.map(o => {
                   const isCanceled = o.status === 'cancelado';
-                  const isActive = o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado';
                   
                   return (
                     <div 
                       key={o.id} 
-                      className={`bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl shadow-xs border transition-all flex flex-col justify-between gap-3 ${
-                        isActive
-                          ? 'border-purple-400 dark:border-purple-700 ring-1 ring-purple-400/20' 
-                          : isCanceled 
-                            ? 'border-zinc-200 dark:border-zinc-800 opacity-60' 
-                            : 'border-zinc-200 dark:border-zinc-800'
-                      }`}
+                      className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl shadow-xs border border-purple-400 dark:border-purple-700 ring-1 ring-purple-400/20 transition-all flex flex-col justify-between gap-3"
                     >
                         <div>
                             <div className="flex items-start justify-between gap-2">
@@ -1178,8 +1194,6 @@ export default function StorefrontPage() {
                                 {o.status === 'pronto' && <span className="bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">Aguardando Entregador</span>}
                                 {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">🛵 Moto em Rota</span>}
                                 {o.status === 'aguardando_cliente' && <span className="bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase font-black">📍 Chegou!</span>}
-                                {(o.status === 'entregue' || o.status === 'arquivado') && <span className="bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">✅ Entregue</span>}
-                                {isCanceled && <span className="bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">Cancelado</span>}
                               </div>
                             </div>
 
@@ -1187,8 +1201,7 @@ export default function StorefrontPage() {
                                Motorista: {(() => {
                                  const mUser = o.motoristaId ? store.users[o.motoristaId] : null;
                                  const dName = o.motoristaNome || mUser?.name;
-                                 const isFinished = o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado' || !!o.receivedAt || !!o.deliveredAt;
-                                 return dName || (isFinished ? 'Concluído' : 'Aguardando Atribuição');
+                                 return dName || 'Aguardando Atribuição';
                                })()}
                              </p>
                             {o.deliveryAddress && (
@@ -1199,7 +1212,7 @@ export default function StorefrontPage() {
                             )}
                             <p className="text-xs text-zinc-500 mt-1">Total: <strong className="text-zinc-800 dark:text-zinc-200">{formatMoney(o.valor + o.taxas.entregaCliente)}</strong> (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
                             
-                            {o.deliveryPin && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && (
+                            {o.deliveryPin && (
                                <div className="mt-3 bg-zinc-900 dark:bg-zinc-950 text-white p-2.5 rounded-xl flex items-center justify-between shadow-xs border border-zinc-700">
                                    <div>
                                        <p className="text-[9px] font-bold uppercase text-zinc-400">PIN de Entrega</p>
@@ -1209,47 +1222,45 @@ export default function StorefrontPage() {
                                </div>
                             )}
 
-                             {!isCanceled && (
-                                <div className="flex flex-wrap gap-2 mt-3">
-                                  <button 
-                                    onClick={() => {
-                                      const origemUser = store.users[o.origemId];
-                                      const destinoUser = store.users[o.destinoId];
-                                      const latOrigem = origemUser?.lat || 0;
-                                      const lngOrigem = origemUser?.lng || 0;
-                                      const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
-                                      const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
-                                      const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
-                                      setMapModal({
-                                        open: true,
-                                        origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
-                                        destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
-                                        motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
-                                      });
-                                    }} 
-                                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 border border-blue-200 dark:border-blue-800"
-                                  >
-                                    🗺️ Ver Rota ({(o.distancia || 0).toFixed(1)} km)
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
-                                      const lojaUser = o.origemId ? store.users[o.origemId] : null;
-                                      const targetOther = motoristaUser || lojaUser;
-                                      setChatModalData({
-                                        open: true,
-                                        orderId: o.id,
-                                        otherName: targetOther?.name || o.lojaNome || 'Atendimento',
-                                        otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
-                                        otherRole: motoristaUser ? 'Motoboy' : 'Batedeira'
-                                      });
-                                    }}
-                                    className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-xs"
-                                  >
-                                    💬 Chat & 📞 Voz
-                                  </button>
-                                </div>
-                             )}
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              <button 
+                                onClick={() => {
+                                  const origemUser = store.users[o.origemId];
+                                  const destinoUser = store.users[o.destinoId];
+                                  const latOrigem = origemUser?.lat || 0;
+                                  const lngOrigem = origemUser?.lng || 0;
+                                  const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                                  const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                                  const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                                  setMapModal({
+                                    open: true,
+                                    origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                                    destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                                    motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
+                                  });
+                                }} 
+                                className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 border border-blue-200 dark:border-blue-800 cursor-pointer"
+                              >
+                                🗺️ Ver Rota ({(o.distancia || 0).toFixed(1)} km)
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                                  const lojaUser = o.origemId ? store.users[o.origemId] : null;
+                                  const targetOther = motoristaUser || lojaUser;
+                                  setChatModalData({
+                                    open: true,
+                                    orderId: o.id,
+                                    otherName: targetOther?.name || o.lojaNome || 'Atendimento',
+                                    otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
+                                    otherRole: motoristaUser ? 'Motoboy' : 'Batedeira'
+                                  });
+                                }}
+                                className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                              >
+                                💬 Chat & 📞 Voz
+                              </button>
+                            </div>
                         </div>
                         
                         <div className="flex items-center justify-end w-full border-t border-zinc-100 dark:border-zinc-800 pt-2.5 gap-2">
@@ -1271,13 +1282,13 @@ export default function StorefrontPage() {
                                     alert("Erro ao verificar pagamento no Asaas.");
                                   }
                                 }}
-                                className="text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-xs"
+                                className="text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-xs cursor-pointer"
                               >
                                 🔍 Checar Pix no Asaas
                               </button>
                             )}
   
-                            {!isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'em_rota' && o.status !== 'aguardando_cliente' && (
+                            {o.status !== 'em_rota' && o.status !== 'aguardando_cliente' && (
                               <button 
                                 onClick={() => {
                                   const reason = prompt("Informe o motivo do cancelamento para estorno Pix Asaas:", "Desistência");
@@ -1286,20 +1297,42 @@ export default function StorefrontPage() {
                                     alert("❌ Pedido cancelado.");
                                   }
                                 }} 
-                                className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-1.5 rounded-lg transition"
+                                className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-1.5 rounded-lg transition cursor-pointer"
                               >
                                 ❌ Cancelar Pedido
                               </button>
                             )}
-
-                            {isCanceled && (
-                              <button onClick={() => { if(confirm('Deseja excluir este pedido do seu histórico?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-1.5 rounded-lg transition">🗑️ Excluir</button>
-                            )}
                         </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
+          </div>
+        )}
+
+        {/* BANNER DE HISTÓRICO DE PEDIDOS (QUANDO NÃO HÁ PEDIDOS ATIVOS) */}
+        {currentUser && clientActiveOrders.length === 0 && clientHistoryOrders.length > 0 && (
+          <div className="mt-8 bg-gradient-to-r from-purple-900/15 via-zinc-900/30 to-purple-950/15 p-4 sm:p-5 rounded-2xl border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 flex items-center justify-center text-xl shrink-0">
+                📜
+              </div>
+              <div>
+                <h4 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white">
+                  Histórico de Pedidos
+                </h4>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Nenhum pedido em andamento no momento. Você possui {clientHistoryOrders.length} pedido(s) anteriores no seu histórico.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setOrderHistoryModalOpen(true)}
+              className="w-full sm:w-auto px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-extrabold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+            >
+              <span>Ver Histórico de Pedidos</span>
+              <span>➔</span>
+            </button>
           </div>
         )}
 
@@ -1787,6 +1820,217 @@ export default function StorefrontPage() {
           otherParticipantPhone={chatModalData.otherPhone}
           otherParticipantRole={chatModalData.otherRole}
         />
+      )}
+
+      {/* MODAL DE HISTÓRICO DE PEDIDOS DO CLIENTE */}
+      {orderHistoryModalOpen && (
+        <div className="fixed inset-0 bg-black/80 z-[220] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-xs">
+          <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95 flex flex-col max-h-[90vh] border border-zinc-200 dark:border-zinc-800">
+            {/* Header do Modal */}
+            <div className="bg-gradient-to-r from-purple-900 via-zinc-900 to-purple-950 text-white p-4 sm:p-5 flex justify-between items-center shrink-0 border-b border-purple-500/30">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">📜</span>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg text-white leading-tight">Histórico de Pedidos</h3>
+                  <p className="text-xs text-purple-200/80">Todos os seus pedidos concluídos e anteriores</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setOrderHistoryModalOpen(false)} 
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-xl transition cursor-pointer"
+                title="Fechar histórico"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Barra de Busca e Filtros */}
+            <div className="p-3 sm:p-4 bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800 space-y-2.5 shrink-0">
+              <div className="relative">
+                <input 
+                  type="text"
+                  value={historySearchQuery}
+                  onChange={(e) => setHistorySearchQuery(e.target.value)}
+                  placeholder="🔍 Buscar por loja, código (#) ou endereço..."
+                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition"
+                />
+                {historySearchQuery && (
+                  <button
+                    onClick={() => setHistorySearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Filtros rápidos */}
+              <div className="flex items-center gap-2 overflow-x-auto text-xs pb-0.5">
+                <button
+                  onClick={() => setHistoryFilter('all')}
+                  className={`px-3 py-1 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
+                    historyFilter === 'all'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-300'
+                  }`}
+                >
+                  Todos ({clientHistoryOrders.length})
+                </button>
+                <button
+                  onClick={() => setHistoryFilter('delivered')}
+                  className={`px-3 py-1 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
+                    historyFilter === 'delivered'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-300'
+                  }`}
+                >
+                  ✅ Entregues ({clientHistoryOrders.filter(o => o.status === 'entregue' || o.status === 'arquivado').length})
+                </button>
+                <button
+                  onClick={() => setHistoryFilter('canceled')}
+                  className={`px-3 py-1 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
+                    historyFilter === 'canceled'
+                      ? 'bg-red-600 text-white shadow-xs'
+                      : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-300'
+                  }`}
+                >
+                  ❌ Cancelados ({clientHistoryOrders.filter(o => o.status === 'cancelado').length})
+                </button>
+              </div>
+            </div>
+
+            {/* Lista de Pedidos com Scroll */}
+            <div className="p-3 sm:p-5 overflow-y-auto flex-1 space-y-3.5 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+              {(() => {
+                const filtered = clientHistoryOrders.filter(o => {
+                  if (historyFilter === 'delivered' && o.status !== 'entregue' && o.status !== 'arquivado') return false;
+                  if (historyFilter === 'canceled' && o.status !== 'cancelado') return false;
+                  if (!historySearchQuery.trim()) return true;
+                  const q = historySearchQuery.toLowerCase();
+                  const titleMatch = (o.title || '').toLowerCase().includes(q);
+                  const idMatch = (o.id || '').toLowerCase().includes(q);
+                  const storeMatch = (o.lojaNome || '').toLowerCase().includes(q);
+                  const addressMatch = (o.deliveryAddress || '').toLowerCase().includes(q);
+                  return titleMatch || idMatch || storeMatch || addressMatch;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-zinc-500">
+                      <p className="text-3xl mb-2">📜</p>
+                      <p className="font-bold text-zinc-700 dark:text-zinc-300 text-sm">Nenhum pedido encontrado</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">Nenhum registro corresponde aos filtros selecionados.</p>
+                    </div>
+                  );
+                }
+
+                return filtered.map(o => {
+                  const isCanceled = o.status === 'cancelado';
+                  const isDelivered = o.status === 'entregue' || o.status === 'arquivado';
+                  const dateStr = o.createdAt ? new Date(o.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data não registrada';
+
+                  return (
+                    <div key={o.id} className="pt-3.5 first:pt-0">
+                      <div className="bg-zinc-50 dark:bg-zinc-950/70 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 shadow-2xs space-y-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-extrabold text-zinc-900 dark:text-white text-sm">
+                              {o.title} <span className="text-[11px] text-zinc-400 font-normal">({o.id.slice(-6)})</span>
+                            </p>
+                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                              📅 {dateStr} • Loja: <strong>{o.lojaNome || store.users[o.origemId]?.name || 'Batedeira'}</strong>
+                            </p>
+                          </div>
+                          <div>
+                            {isDelivered && <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase">✅ Entregue</span>}
+                            {isCanceled && <span className="bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-300 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase">❌ Cancelado</span>}
+                          </div>
+                        </div>
+
+                        {o.deliveryAddress && (
+                          <p className="text-xs text-purple-700 dark:text-purple-300 font-medium">📍 {o.deliveryAddress}</p>
+                        )}
+
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-zinc-200/60 dark:border-zinc-800/80">
+                          <span className="text-zinc-500">
+                            Total Pago: <strong className="text-zinc-900 dark:text-zinc-100">{formatMoney(o.valor + (o.taxas?.entregaCliente || 0))}</strong> (Frete: {formatMoney(o.taxas?.entregaCliente || 0)})
+                          </span>
+                        </div>
+
+                        {/* Ações do Pedido Histórico */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button 
+                              onClick={() => {
+                                const origemUser = store.users[o.origemId];
+                                const destinoUser = store.users[o.destinoId];
+                                const latOrigem = origemUser?.lat || 0;
+                                const lngOrigem = origemUser?.lng || 0;
+                                const latDestino = o.deliveryLat || destinoUser?.lat || (latOrigem ? latOrigem + 0.0045 : -1.455);
+                                const lngDestino = o.deliveryLng || destinoUser?.lng || (lngOrigem ? lngOrigem + 0.0045 : -48.490);
+                                const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                                setMapModal({
+                                  open: true,
+                                  origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                                  destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                                  motorista: motoristaUser?.lat ? { lat: motoristaUser.lat, lng: motoristaUser.lng || 0, name: motoristaUser.name || 'Entregador', veiculo: motoristaUser.veiculo || 'moto' } : null
+                                });
+                              }} 
+                              className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100"
+                            >
+                              🗺️ Rota
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                const motoristaUser = o.motoristaId ? store.users[o.motoristaId] : null;
+                                const lojaUser = o.origemId ? store.users[o.origemId] : null;
+                                const targetOther = motoristaUser || lojaUser;
+                                setChatModalData({
+                                  open: true,
+                                  orderId: o.id,
+                                  otherName: targetOther?.name || o.lojaNome || 'Atendimento',
+                                  otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
+                                  otherRole: motoristaUser ? 'Motoboy' : 'Batedeira'
+                                });
+                              }}
+                              className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                            >
+                              💬 Mensagens
+                            </button>
+                          </div>
+
+                          {isCanceled && (
+                            <button 
+                              onClick={() => { 
+                                if (confirm('Deseja remover permanentemente este pedido cancelado do seu histórico?')) {
+                                  store.acaoPedido(o.id, 'deletar_pedido');
+                                }
+                              }} 
+                              className="text-[11px] bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+                            >
+                              🗑️ Ocultar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Footer do Modal */}
+            <div className="p-3.5 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 flex justify-end shrink-0">
+              <button
+                onClick={() => setOrderHistoryModalOpen(false)}
+                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer"
+              >
+                Fechar Histórico
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}

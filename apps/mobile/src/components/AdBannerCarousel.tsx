@@ -140,14 +140,14 @@ export function AdBannerCarousel({ city, onSelectStore }: AdBannerCarouselProps)
     <div className="w-full max-w-5xl mx-auto px-4 mb-4 select-none">
       <div 
         onClick={handleClick}
-        className="relative group overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900 via-zinc-900 to-purple-950 border border-purple-500/30 shadow-lg cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-44 sm:h-52"
+        className="relative group overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900 via-zinc-900 to-purple-950 border border-purple-500/30 shadow-xl cursor-pointer transition-all duration-300 hover:scale-[1.005] active:scale-[0.99] h-60 sm:h-80 md:h-96"
       >
         {/* Imagem de Fundo / Vídeo */}
         {currentAd.mediaType === 'video' ? (
           <video 
             key={currentAd.id || currentIndex}
             src={currentAd.mediaUrl}
-            className="w-full h-full object-cover opacity-75 group-hover:opacity-90 transition-all duration-500"
+            className="w-full h-full object-cover opacity-85 group-hover:opacity-95 transition-all duration-500"
             autoPlay 
             muted 
             loop 
@@ -158,19 +158,13 @@ export function AdBannerCarousel({ city, onSelectStore }: AdBannerCarouselProps)
             key={currentAd.id || currentIndex}
             src={currentAd.mediaUrl || '/banner.png?v=4'} 
             alt={currentAd.title}
-            className="w-full h-full object-cover opacity-75 group-hover:opacity-90 transition-all duration-500"
+            className="w-full h-full object-cover opacity-85 group-hover:opacity-95 transition-all duration-500"
             loading="eager"
           />
         )}
 
         {/* Gradiente de Alto Contraste */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/20" />
-
-        {/* Badge Patrocinado / Destaque */}
-        <div className="absolute top-3.5 left-3.5 flex items-center gap-1.5 bg-amber-400 text-zinc-950 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider shadow-md z-30 pointer-events-none">
-          <Sparkles size={12} className="text-zinc-950" />
-          <span>Comercial • Destaque</span>
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
 
         {/* Setas de Navegação Super Visíveis */}
         {ads.length > 1 && (
