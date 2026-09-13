@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AçaíFood — Governança, Etapas & Validação Universal por PIN</title>
+  <title>AçaíFood — Governança, Comandas Térmicas & Segurança por PIN</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -23,12 +23,12 @@
     <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
       <div>
         <div class="flex items-center gap-3">
-          <span class="text-3xl">🔐</span>
+          <span class="text-3xl">🏛️</span>
           <h1 class="text-3xl sm:text-4xl font-black tracking-tight text-white">
-            AçaíFood <span class="text-amber-400">Governança, Etapas & Segurança por PIN</span>
+            AçaíFood <span class="text-amber-400">Governança, Comandas & Padrão PIN</span>
           </h1>
         </div>
-        <p class="text-zinc-400 text-sm mt-1">Validação Universal por PIN de 4 Dígitos nos 3 Momentos Críticos de Entrega e Coleta Física</p>
+        <p class="text-zinc-400 text-sm mt-1">Impressão de Comandas (Loja e Fornecedor), Despacho de Frotas e Validação Universal por PIN (4 Dígitos)</p>
       </div>
       <div class="flex items-center gap-3 no-print">
         <button onclick="window.print()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl shadow-lg transition active:scale-95 text-sm flex items-center gap-2 cursor-pointer">
@@ -37,64 +37,76 @@
       </div>
     </header>
 
-    <!-- INFOGRÁFICO MASTER -->
+    <!-- DIAGRAMA RENDERIZADO -->
     <section class="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col items-center">
       <div class="w-full flex items-center justify-between mb-4">
         <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
-          🗺️ Infográfico Completo: Etapas Enumeradas & Checkpoints de PIN
+          🗺️ Diagrama Oficial dos Fluxos com Comandas & Checkpoints de PIN
         </h2>
-        <span class="text-xs bg-amber-500/10 text-amber-300 px-3 py-1 rounded-full border border-amber-500/20 font-semibold">100% Blindado com PIN</span>
+        <span class="text-xs bg-amber-500/10 text-amber-300 px-3 py-1 rounded-full border border-amber-500/20 font-semibold">100% Padronizado</span>
       </div>
       <div class="w-full rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 flex items-center justify-center p-2">
-        <img src="./torre_controle_admin_master.jpg" alt="AçaíFood Governança, Etapas e Validação por PIN" class="max-w-full h-auto object-contain rounded-xl shadow-xl">
+        <img src="./ciclo_de_vida_fluxos_operacionais_grafico.png" alt="AçaíFood Fluxos Operacionais e Checkpoints de PIN" class="max-w-full h-auto object-contain rounded-xl shadow-xl">
       </div>
     </section>
 
-    <!-- OS 3 CHECKPOINTS DE PIN DE 4 DÍGITOS -->
+    <!-- OS 3 CHECKPOINTS PADRONIZADOS DE PIN -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       
-      <!-- CHECKPOINT 1: B2C -->
+      <!-- B2C -->
       <div class="bg-zinc-900/90 border border-purple-900/50 rounded-2xl p-5 flex flex-col justify-between">
         <div>
-          <div class="flex items-center gap-2 text-purple-400 font-extrabold text-xs uppercase mb-2">
-            <span class="bg-purple-500/20 text-purple-300 w-6 h-6 rounded-lg flex items-center justify-center font-bold">1</span>
-            Checkpoint 1.4: Entrega ao Cliente
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-purple-400 font-extrabold text-xs uppercase">Trilha 1 • Urbana B2C</span>
+            <span class="bg-purple-500/20 text-purple-300 text-xs px-2.5 py-1 rounded-full font-bold">PIN 1.4</span>
           </div>
-          <h4 class="font-bold text-base text-white mb-2">PIN Cliente ➔ Motoboy</h4>
-          <p class="text-zinc-300 text-xs leading-relaxed mb-3">O cliente informa o PIN de 4 dígitos na porta. O motoboy digita no app para concluir a corrida.</p>
-          <div class="bg-purple-950/40 border border-purple-800/40 rounded-xl p-3 text-xs text-purple-200">
-            <strong>Impacto:</strong> Descongela e libera instantaneamente o saldo da venda para a Batedeira e o frete para o Motoboy no Cofre Asaas.
-          </div>
+          <h4 class="font-bold text-base text-white mb-2">Comanda Loja + PIN Cliente</h4>
+          <ul class="space-y-2 text-xs text-zinc-300 mb-4">
+            <li><strong>🖨️ Impressora Loja:</strong> Batedeira recebe o pedido e imprime a comanda de preparo.</li>
+            <li><strong>🛵 Despacho:</strong> Batedeira chama o Motoboy no aplicativo.</li>
+            <li><strong>🔐 PIN 4 Dígitos:</strong> Cliente informa o PIN na porta para liberar saldos do Cofre.</li>
+          </ul>
+        </div>
+        <div class="bg-purple-950/40 border border-purple-800/40 rounded-xl p-3 text-xs text-purple-200">
+          <strong>Padronização PIN:</strong> <code>[🔑 PIN 4 DÍGITOS]</code> ➔ Saldo liberado no Cofre.
         </div>
       </div>
 
-      <!-- CHECKPOINT 2: B2B -->
+      <!-- B2B -->
       <div class="bg-zinc-900/90 border border-blue-900/50 rounded-2xl p-5 flex flex-col justify-between">
         <div>
-          <div class="flex items-center gap-2 text-blue-400 font-extrabold text-xs uppercase mb-2">
-            <span class="bg-blue-500/20 text-blue-300 w-6 h-6 rounded-lg flex items-center justify-center font-bold">2</span>
-            Checkpoint 2.4: Entrega de Frutos
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-blue-400 font-extrabold text-xs uppercase">Trilha 2 • Atacado B2B</span>
+            <span class="bg-blue-500/20 text-blue-300 text-xs px-2.5 py-1 rounded-full font-bold">PIN 2.4</span>
           </div>
-          <h4 class="font-bold text-base text-white mb-2">PIN Batedeira ➔ Caminhoneiro</h4>
-          <p class="text-zinc-300 text-xs leading-relaxed mb-3">Após descarregar e conferir as latas/sacas na loja, a Batedeira informa o PIN de 4 dígitos ao motorista do caminhão.</p>
-          <div class="bg-blue-950/40 border border-blue-800/40 rounded-xl p-3 text-xs text-blue-200">
-            <strong>Impacto:</strong> Libera o pagamento do lote ao Fornecedor e o frete pesado ao Caminhoneiro com garantia de entrega física.
-          </div>
+          <h4 class="font-bold text-base text-white mb-2">Comanda Fornecedor + PIN Loja</h4>
+          <ul class="space-y-2 text-xs text-zinc-300 mb-4">
+            <li><strong>🖨️ Impressora Fornecedor:</strong> Fornecedor prepara o lote de latas/sacas e imprime a comanda/romaneio.</li>
+            <li><strong>🚚 Despacho:</strong> Fornecedor chama o Caminhoneiro no aplicativo.</li>
+            <li><strong>🔐 PIN 4 Dígitos:</strong> Batedeira confere a carga na entrega e valida o PIN do motorista.</li>
+          </ul>
+        </div>
+        <div class="bg-blue-950/40 border border-blue-800/40 rounded-xl p-3 text-xs text-blue-200">
+          <strong>Padronização PIN:</strong> <code>[🔑 PIN 4 DÍGITOS]</code> ➔ Liquidação de venda e frete.
         </div>
       </div>
 
-      <!-- CHECKPOINT 3: ECOPOINT -->
+      <!-- ECOPOINT -->
       <div class="bg-zinc-900/90 border border-emerald-900/50 rounded-2xl p-5 flex flex-col justify-between">
         <div>
-          <div class="flex items-center gap-2 text-emerald-400 font-extrabold text-xs uppercase mb-2">
-            <span class="bg-emerald-500/20 text-emerald-300 w-6 h-6 rounded-lg flex items-center justify-center font-bold">3</span>
-            Checkpoint 3.3: Retirada de Caroço
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-emerald-400 font-extrabold text-xs uppercase">Trilha 3 • Logística Reversa</span>
+            <span class="bg-emerald-500/20 text-emerald-300 text-xs px-2.5 py-1 rounded-full font-bold">PIN 3.3</span>
           </div>
-          <h4 class="font-bold text-base text-white mb-2">PIN Batedeira ➔ Caçamba</h4>
-          <p class="text-zinc-300 text-xs leading-relaxed mb-3">Ao carregar os sacos de caroço no caminhão caçamba, a Batedeira valida o PIN de 4 dígitos com o operador da caçamba.</p>
-          <div class="bg-emerald-950/40 border border-emerald-800/40 rounded-xl p-3 text-xs text-emerald-200">
-            <strong>Impacto:</strong> Registra a baixa oficial dos resíduos na loja e valida os créditos de sustentabilidade/ESG no ledger da plataforma.
-          </div>
+          <h4 class="font-bold text-base text-white mb-2">Chamada App + PIN Caçamba</h4>
+          <ul class="space-y-2 text-xs text-zinc-300 mb-4">
+            <li><strong>🗑️ Descarte:</strong> Batedeira separa os sacos de caroço residual.</li>
+            <li><strong>🚛 Despacho:</strong> Batedeira chama o Caminhão Caçamba no aplicativo.</li>
+            <li><strong>🔐 PIN 4 Dígitos:</strong> Batedeira valida o PIN com o operador da caçamba na coleta.</li>
+          </ul>
+        </div>
+        <div class="bg-emerald-950/40 border border-emerald-800/40 rounded-xl p-3 text-xs text-emerald-200">
+          <strong>Padronização PIN:</strong> <code>[🔑 PIN 4 DÍGITOS]</code> ➔ Baixa oficial e créditos ESG.
         </div>
       </div>
 
