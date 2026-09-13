@@ -353,9 +353,9 @@ export default function MotoboyDashboard() {
                     const destino = store.users?.[o.destinoId];
                     return (
                       <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900/50">
-                          <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">Nova Rota B2C</span>
-                              <span className="font-bold text-green-600 dark:text-green-400">Líquido: {formatMoney(getMotoboyFee(o))}</span>
+                          <div className="flex justify-between items-center mb-2">
+                              <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">Nova Rota B2C</span>
+                              <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">Líquido: {formatMoney(getMotoboyFee(o))}</span>
                           </div>
                           <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded text-sm mb-4 flex flex-col gap-1 border border-zinc-100 dark:border-zinc-800">
                               <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">📍</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{origem?.bairro || '—'}</span></div>
@@ -410,8 +410,8 @@ export default function MotoboyDashboard() {
                     return (
                     <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-purple-400 dark:border-purple-600' : isCanceled ? 'border-red-300 opacity-60 border-l-4 border-l-red-400' : 'border-zinc-200 dark:border-zinc-800'}`}>
                         <div className="flex justify-between items-center mb-2">
-                            <span className="font-bold text-zinc-800 dark:text-white text-sm">{o.title}</span>
-                            <span className="text-xs font-bold text-green-600 dark:text-green-400">Líquido: {formatMoney(getMotoboyFee(o))}</span>
+                            <span className="font-extrabold text-zinc-900 dark:text-white text-sm sm:text-base">{o.title}</span>
+                            <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">Líquido: {formatMoney(getMotoboyFee(o))}</span>
                         </div>
                         
                         <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded-lg text-xs mb-3 flex flex-col gap-1.5 border border-zinc-100 dark:border-zinc-800">

@@ -1042,8 +1042,8 @@ export default function BatedeiraDashboard() {
                           </div>
 
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate">{label}</p>
-                            <p className="text-purple-600 dark:text-purple-400 font-extrabold text-xs">R$ {price.toFixed(2)}</p>
+                            <p className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white truncate">{label}</p>
+                            <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">R$ {price.toFixed(2)}</p>
                           </div>
                         </div>
 
@@ -1283,8 +1283,8 @@ export default function BatedeiraDashboard() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className={`font-bold text-xs truncate ${isAvail ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-400 line-through'}`}>{p.name}</p>
-                          <p className="text-purple-600 dark:text-purple-400 text-xs font-bold">R$ {p.price.toFixed(2)}</p>
+                          <p className={`font-extrabold text-sm sm:text-base truncate ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`}>{p.name}</p>
+                          <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">R$ {p.price.toFixed(2)}</p>
                         </div>
                       </div>
 
@@ -1475,12 +1475,12 @@ export default function BatedeiraDashboard() {
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{item.name}</p>
+                                <p className="font-extrabold text-zinc-950 dark:text-white text-base sm:text-lg leading-tight truncate">{item.name}</p>
                                 {!item.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
                                 {isPaused && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Fechado</span>}
                               </div>
                               <p className="text-[11px] text-zinc-500 font-medium">{item.desc}</p>
-                              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-black">{formatMoney(item.price)} {item.unit && <span className="text-[10px] font-normal text-zinc-500">{item.unit}</span>}</p>
+                              <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">{formatMoney(item.price)} {item.unit && <span className="text-xs font-normal text-zinc-400">{item.unit}</span>}</p>
                             </div>
                           </div>
                           {canOrder ? (
@@ -1713,16 +1713,16 @@ export default function BatedeiraDashboard() {
                             </div>
 
                             {/* BOX DE PREÇOS */}
-                            <div className="bg-zinc-50 dark:bg-zinc-950/70 p-2.5 rounded-xl flex flex-col gap-1 text-xs mb-2.5 border border-zinc-100 dark:border-zinc-800/80">
-                              <div className="flex justify-between items-center text-xs">
-                                <span className="text-zinc-500 font-medium">Lata Açaí:</span>
-                                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
-                                  {formatMoney(forn.priceB2B || 140)} <span className="text-[10px] text-zinc-400 font-normal">/lata</span>
+                            <div className="bg-zinc-100/90 dark:bg-zinc-950 p-3 rounded-xl flex flex-col gap-1.5 mb-2.5 border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-zinc-600 dark:text-zinc-300 font-bold text-xs sm:text-sm">Lata Açaí:</span>
+                                <span className="font-black text-zinc-950 dark:text-white text-base sm:text-lg tracking-tight">
+                                  {formatMoney(forn.priceB2B || 140)} <span className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold">/lata</span>
                                 </span>
                               </div>
-                              <div className="flex justify-between items-center text-[11px]">
-                                <span className="text-zinc-500">Frete Caminhão:</span>
-                                <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(freteLoja)}</span>
+                              <div className="flex justify-between items-center text-xs pt-1 border-t border-zinc-200/60 dark:border-zinc-800/80">
+                                <span className="text-zinc-500 dark:text-zinc-400">Frete Caminhão:</span>
+                                <span className="font-extrabold text-zinc-900 dark:text-zinc-100 text-xs sm:text-sm">{formatMoney(freteLoja)}</span>
                               </div>
                             </div>
 

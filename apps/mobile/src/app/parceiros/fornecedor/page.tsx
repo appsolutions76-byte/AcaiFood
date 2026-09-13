@@ -553,8 +553,8 @@ export default function FornecedorDashboard() {
                     {isPaused ? '🔴 Pausado (Clique para Abrir)' : '🟢 Operando (Recebendo Pedidos)'}
                   </button>
                   <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700">
-                    <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Lata:</span>
-                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{formatMoney(b2bPrice)}</span>
+                    <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">Lata:</span>
+                    <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">{formatMoney(b2bPrice)}</span>
                   </div>
                   <button onClick={() => setPriceModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm">
                     ✏️ Editar Preço
@@ -624,7 +624,7 @@ export default function FornecedorDashboard() {
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white">
+                          <h4 className="font-extrabold text-base sm:text-lg text-zinc-950 dark:text-white leading-tight">
                             Paneiro / Lata de Açaí (In Natura)
                           </h4>
                           {!isLataAvail && (
@@ -634,8 +634,8 @@ export default function FornecedorDashboard() {
                           )}
                         </div>
                         <p className="text-xs text-zinc-500">Frutos in natura padrão (por lata)</p>
-                        <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
-                          {formatMoney(b2bPrice)} <span className="text-[10px] font-normal text-zinc-500">/ lata</span>
+                        <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">
+                          {formatMoney(b2bPrice)} <span className="text-xs font-normal text-zinc-400">/ lata</span>
                         </p>
                       </div>
                     </div>
@@ -759,8 +759,8 @@ export default function FornecedorDashboard() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className={`font-bold text-xs truncate ${isAvail ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-400 line-through'}`}>{p.name}</p>
-                          <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold">R$ {p.price.toFixed(2)}</p>
+                          <p className={`font-extrabold text-sm sm:text-base truncate ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`}>{p.name}</p>
+                          <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">R$ {p.price.toFixed(2)}</p>
                         </div>
                       </div>
 
