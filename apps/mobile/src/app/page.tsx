@@ -705,7 +705,8 @@ export default function StorefrontPage() {
 
                           <button 
                             onClick={() => setSelectedStoreId(null)}
-                            className="text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold px-3 py-2 rounded-xl transition border border-zinc-200 dark:border-zinc-700 cursor-pointer"
+                            className="text-xs sm:text-sm bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 text-white font-black px-4 py-2.5 rounded-xl transition-all shadow-md hover:shadow-purple-500/30 border border-purple-300/40 flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+                            title="Voltar para a lista com todas as lojas e batedeiras"
                           >
                             ⬅️ Ver Outras Lojas
                           </button>
@@ -801,6 +802,15 @@ export default function StorefrontPage() {
                                 </div>
                               ))}
                             </div>
+
+                            <div className="pt-4 mt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-center">
+                              <button 
+                                onClick={() => setSelectedStoreId(null)}
+                                className="w-full sm:w-auto text-xs sm:text-sm bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-extrabold px-6 py-3 rounded-xl transition border border-zinc-300 dark:border-zinc-700 flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+                              >
+                                ⬅️ Voltar e Ver Outras Lojas / Fornecedores
+                              </button>
+                            </div>
                           </>
                         );
                       })() : (() => {
@@ -862,6 +872,15 @@ export default function StorefrontPage() {
                                   )}
                                 </div>
                               ))}
+                            </div>
+
+                            <div className="pt-4 mt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-center">
+                              <button 
+                                onClick={() => setSelectedStoreId(null)}
+                                className="w-full sm:w-auto text-xs sm:text-sm bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-extrabold px-6 py-3 rounded-xl transition border border-zinc-300 dark:border-zinc-700 flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+                              >
+                                ⬅️ Voltar e Ver Outras Lojas / Batedeiras
+                              </button>
                             </div>
                           </>
                         );
