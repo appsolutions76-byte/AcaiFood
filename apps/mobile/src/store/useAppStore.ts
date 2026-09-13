@@ -2625,7 +2625,8 @@ export const useAppStore = create<AppState>()(
           }
 
           query = query.order('created_at', { ascending: false }).limit(200);
-          let { data: dbOrders, error } = await query;
+          const { data: initialDbOrders, error } = await query;
+          let dbOrders: any[] | null = initialDbOrders;
 
           if (error || !dbOrders) {
              console.warn("Primary fetchOrders query notice (executing safe fallback):", error);

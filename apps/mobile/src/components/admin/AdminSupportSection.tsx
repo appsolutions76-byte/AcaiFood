@@ -32,9 +32,9 @@ export function AdminSupportSection() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const loadAllSupportMessagesAndConfig = async () => {
+  const loadAllSupportMessagesAndConfig = async (showLoading = false) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       const authHeaders: Record<string, string> = {};
       if (session?.access_token) {
@@ -53,13 +53,13 @@ export function AdminSupportSection() {
     } catch (_err) {
       console.warn("Erro ao carregar suporte admin:", _err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAllSupportMessagesAndConfig();
-    const interval = setInterval(loadAllSupportMessagesAndConfig, 6000);
+    loadAllSupportMessagesAndConfig(true);
+    const interval = setInterval(() => loadAllSupportMessagesAndConfig(false), 6000);
 
     // Canal Realtime Supabase
     const channel = supabase
@@ -324,7 +324,7 @@ export function AdminSupportSection() {
           </button>
 
           <button
-            onClick={loadAllSupportMessagesAndConfig}
+            onClick={() => loadAllSupportMessagesAndConfig(true)}
             disabled={loading}
             className="p-2 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 rounded-xl border border-zinc-200 dark:border-zinc-700 transition active:scale-95 cursor-pointer shrink-0"
             title="Atualizar conversas"
