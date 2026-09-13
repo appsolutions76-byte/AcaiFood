@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -15,49 +16,81 @@ export async function POST(request: Request) {
     const cleanStatus = status === 'paused' ? 'paused' : 'active';
     const isOnline = cleanStatus === 'active';
 
-    const supabase = getSupabaseAdmin();
+    // 1. Tentar com Supabase Admin (Service Role)
+    let updated = false;
+    const adminSupabase = getSupabaseAdmin();
+    try {
+      const { data, error } = await adminSupabase
+        .from('users')
+        .update({ 
+          status: cleanStatus,
+          is_online: isOnline,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select();
 
-    // 1. Atualizar tabela users
-    const { error: userError } = await supabase
-      .from('users')
-      .update({ 
-        status: cleanStatus,
-        is_online: isOnline,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId);
+      if (!error && data && data.length > 0) {
+        updated = true;
+      }
+    } catch (_admErr) {}
 
-    if (userError) {
-      console.error('[API /api/user/status] Erro ao atualizar usuário:', userError);
-      return NextResponse.json({ error: userError.message }, { status: 500 });
+    // 2. Se não atualizou ou se o admin usou anon key com RLS, tentar com o Bearer JWT do usuário autenticado
+    const authHeader = request.headers.get('Authorization');
+    if (!updated && authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      if (supabaseUrl && supabaseAnonKey && token) {
+        try {
+          const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: `Bearer ${token}` } },
+            auth: { persistSession: false }
+          });
+          const { data: uData } = await userSupabase
+            .from('users')
+            .update({ 
+              status: cleanStatus,
+              is_online: isOnline,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId)
+            .select();
+
+          if (uData && uData.length > 0) {
+            updated = true;
+          }
+        } catch (_uErr) {}
+      }
     }
 
-    // 2. Atualizar storefronts se existir (executados de forma segura e individual)
+    // 3. Atualizar storefronts
     try {
-      await supabase
+      await adminSupabase
         .from('storefronts')
         .update({
           is_active: isOnline,
           updated_at: new Date().toISOString()
         })
         .eq('partner_id', userId);
-    } catch (_sfErr1) {}
+    } catch (_sf1) {}
 
     try {
-      await supabase
+      await adminSupabase
         .from('storefronts')
         .update({
           is_active: isOnline,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
-    } catch (_sfErr2) {}
+    } catch (_sf2) {}
 
     return NextResponse.json({
       success: true,
       userId,
       status: cleanStatus,
-      isOnline
+      isOnline,
+      updated
     });
   } catch (err: any) {
     console.error('[API /api/user/status] Erro interno:', err);

@@ -1367,29 +1367,28 @@ export const useAppStore = create<AppState>()(
           };
         });
 
-        // 2. Persistir no Supabase com Service Role Key via API Server
         const isOnline = status === 'active';
+
+        // 2. Persistir no Supabase Client diretamente com a sessão autenticada do usuário
         try {
+          await supabase.from('users').update({ status, is_online: isOnline }).eq('id', userId);
+        } catch (_clErr1) {}
+
+        try {
+          await supabase.from('storefronts').update({ is_active: isOnline }).eq('partner_id', userId);
+        } catch (_clErr2) {}
+
+        // 3. Persistir via API Server com token Bearer JWT e Service Role de contingência
+        try {
+          const authHeaders = await getAuthHeaders();
           await fetch('/api/user/status', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders,
             body: JSON.stringify({ userId, status })
           });
         } catch (_apiErr) {
           console.error("Erro ao sincronizar status do usuário via API:", _apiErr);
         }
-
-        // 3. Fallback client-side direto
-        try {
-          await supabase.from('users').update({ status, is_online: isOnline }).eq('id', userId);
-          await supabase.from('storefronts').update({ is_active: isOnline }).eq('partner_id', userId);
-        } catch (_clErr) {}
-
-        // 4. Força atualização instantânea do estado local e cache
-        try {
-          await get().fetchLojas(true);
-          await get().fetchAllUsers(true);
-        } catch (_fErr) {}
       },
 
       deleteUser: async (userId) => {
