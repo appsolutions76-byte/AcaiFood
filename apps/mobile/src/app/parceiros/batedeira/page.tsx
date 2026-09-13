@@ -2,7 +2,25 @@
 
 import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Store, Printer, BookOpen, ShoppingCart, Share2 } from "lucide-react";
+import { 
+  Store, 
+  Printer, 
+  BookOpen, 
+  ShoppingCart, 
+  Share2, 
+  Search, 
+  Plus, 
+  Trash2, 
+  Edit3, 
+  Check, 
+  X, 
+  Sparkles, 
+  CheckCircle2, 
+  XCircle, 
+  Package,
+  Layers,
+  ArrowUpDown
+} from "lucide-react";
 import { useAppStore, haversineKm, getRatesForCity, generateUUID, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { supabase } from "@/lib/supabase";
@@ -24,6 +42,54 @@ import {
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 
 const emptySubscribe = () => () => {};
+
+const QUICK_EXTRAS_CATEGORIES = [
+  { id: 'acai', label: '🥣 Açaí & Adicionais' },
+  { id: 'carnes', label: '🍖 Churrasco & Carnes' },
+  { id: 'bebidas', label: '🥤 Bebidas' },
+  { id: 'outros', label: '🍟 Porções & Outros' }
+] as const;
+
+const QUICK_EXTRAS_PRESETS = [
+  // Açaí & Adicionais
+  { name: 'Farinha de Tapioca', price: 5, category: 'acai', icon: '🥣' },
+  { name: 'Farinha D\'Água', price: 5, category: 'acai', icon: '🌾' },
+  { name: 'Banana Fatiada', price: 3, category: 'acai', icon: '🍌' },
+  { name: 'Granola Crocante', price: 4, category: 'acai', icon: '🥣' },
+  { name: 'Leite em Pó', price: 4, category: 'acai', icon: '🥛' },
+  { name: 'Leite Condensado', price: 4, category: 'acai', icon: '🍯' },
+  { name: 'Paçoca de Amendoim', price: 2.5, category: 'acai', icon: '🥜' },
+  { name: 'Morango Fresco', price: 6, category: 'acai', icon: '🍓' },
+  { name: 'Mel Puro de Abelha', price: 4, category: 'acai', icon: '🍯' },
+  { name: 'Calda de Chocolate', price: 3.5, category: 'acai', icon: '🍫' },
+
+  // Churrasco & Carnes
+  { name: 'Churrasco Misto', price: 23, category: 'carnes', icon: '🍖' },
+  { name: 'Maminha na Brasa', price: 28, category: 'carnes', icon: '🥩' },
+  { name: 'Sobre Coxa Frango', price: 25, category: 'carnes', icon: '🍗' },
+  { name: 'Picanha na Brasa', price: 35, category: 'carnes', icon: '🥩' },
+  { name: 'Espetinho de Carne', price: 12, category: 'carnes', icon: '🍢' },
+  { name: 'Espetinho de Frango c/ Bacon', price: 12, category: 'carnes', icon: '🍢' },
+  { name: 'Espetinho de Calabresa', price: 10, category: 'carnes', icon: '🌭' },
+  { name: 'Peixe Frito (Posta)', price: 25, category: 'carnes', icon: '🐟' },
+  { name: 'Camarão Seco Regional', price: 15, category: 'carnes', icon: '🦐' },
+
+  // Bebidas
+  { name: 'Água Mineral 500ml', price: 3, category: 'bebidas', icon: '💧' },
+  { name: 'Água c/ Gás 500ml', price: 4, category: 'bebidas', icon: '🫧' },
+  { name: 'Refrigerante Lata 350ml', price: 5, category: 'bebidas', icon: '🥤' },
+  { name: 'Coca-Cola 2L', price: 12, category: 'bebidas', icon: '🍾' },
+  { name: 'Guaraná Antarctica 2L', price: 10, category: 'bebidas', icon: '🍾' },
+  { name: 'Suco Natural Cupuaçu 500ml', price: 8, category: 'bebidas', icon: '🧃' },
+  { name: 'Suco Natural Graviola 500ml', price: 8, category: 'bebidas', icon: '🧃' },
+  { name: 'Cerveja Lata 350ml', price: 6, category: 'bebidas', icon: '🍺' },
+
+  // Porções & Outros
+  { name: 'Porção Batata Frita', price: 15, category: 'outros', icon: '🍟' },
+  { name: 'Porção Macaxeira Frita', price: 15, category: 'outros', icon: '🥔' },
+  { name: 'Caldo de Carne', price: 12, category: 'outros', icon: '🍲' },
+  { name: 'Vatapá Paraense', price: 18, category: 'outros', icon: '🍲' },
+];
 
 export default function BatedeiraDashboard() {
   const router = useRouter();
@@ -71,6 +137,16 @@ export default function BatedeiraDashboard() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+  const [extraSearchQuery, setExtraSearchQuery] = useState('');
+  const [extraFilterStatus, setExtraFilterStatus] = useState<'all' | 'available' | 'unavailable'>('all');
+  const [extraPresetCategory, setExtraPresetCategory] = useState<'acai' | 'carnes' | 'bebidas' | 'outros'>('acai');
+  const [editingProduct, setEditingProduct] = useState<{
+    id: string;
+    name: string;
+    price: number;
+    imageUrl?: string;
+    isAvailable?: boolean;
+  } | null>(null);
   const { cart, addToCart, removeFromCart, updateCartQuantity, clearCart } = store;
   const [productSelectModalB2B, setProductSelectModalB2B] = useState<{
     open: boolean;
@@ -194,33 +270,62 @@ export default function BatedeiraDashboard() {
     alert('Preços atualizados com sucesso!');
   };
 
-  const handleAddProduct = () => {
-      if (!currentUser || !newProductName || !newProductPrice) return;
-      store.addProduct(currentUser.id, {
-          id: generateUUID(),
-          name: newProductName,
-          price: Number(newProductPrice),
-          imageUrl: newProductImage,
-          isAvailable: true
-      });
-      setNewProductName('');
-      setNewProductPrice('');
-      setNewProductImage(undefined);
-  };
-
-  const handleEditProduct = (p: any) => {
+  const handleAddProduct = (presetName?: string, presetPrice?: number) => {
     if (!currentUser) return;
-    const newName = prompt("Editar nome do produto extra:", p.name);
-    if (newName === null) return;
-    const newPriceStr = prompt("Editar preço do produto extra (R$):", p.price.toString());
-    if (newPriceStr === null) return;
-    const newPrice = parseFloat(newPriceStr.replace(',', '.'));
-    if (isNaN(newPrice) || newPrice < 0) {
-      alert("Preço inválido.");
+    const nameToAdd = (presetName || newProductName).trim();
+    const rawPrice = presetPrice !== undefined ? presetPrice : parseFloat(newProductPrice.replace(',', '.'));
+    if (!nameToAdd || isNaN(rawPrice) || rawPrice < 0) {
+      alert("Informe o nome e um preço válido para o produto extra.");
       return;
     }
-    const cleanName = newName.trim() || p.name;
-    store.updateProduct(currentUser.id, p.id, { name: cleanName, price: newPrice });
+    store.addProduct(currentUser.id, {
+      id: generateUUID(),
+      name: nameToAdd,
+      price: rawPrice,
+      imageUrl: newProductImage,
+      isAvailable: true
+    });
+    setNewProductName('');
+    setNewProductPrice('');
+    setNewProductImage(undefined);
+  };
+
+  const handleOpenEditProduct = (p: any) => {
+    setEditingProduct({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      imageUrl: p.imageUrl,
+      isAvailable: p.isAvailable !== false
+    });
+  };
+
+  const handleSaveEditProduct = () => {
+    if (!currentUser || !editingProduct) return;
+    if (!editingProduct.name.trim() || isNaN(editingProduct.price) || editingProduct.price < 0) {
+      alert("Informe um nome válido e um preço maior ou igual a zero.");
+      return;
+    }
+    store.updateProduct(currentUser.id, editingProduct.id, {
+      name: editingProduct.name.trim(),
+      price: editingProduct.price,
+      imageUrl: editingProduct.imageUrl,
+      isAvailable: editingProduct.isAvailable !== false
+    });
+    setEditingProduct(null);
+  };
+
+  const handleBulkToggleExtras = (available: boolean) => {
+    if (!currentUser?.products || currentUser.products.length === 0) return;
+    const count = currentUser.products.length;
+    const actionText = available ? 'marcar como DISPONÍVEIS' : 'marcar como ESGOTADOS / PAUSADOS';
+    if (!confirm(`Deseja ${actionText} todos os ${count} produtos extras de uma só vez?`)) return;
+    
+    currentUser.products.forEach(p => {
+      if ((p.isAvailable !== false) !== available) {
+        store.updateProduct(currentUser.id, p.id, { isAvailable: available });
+      }
+    });
   };
 
   const linkAsaasAccount = store.linkAsaasAccount;
@@ -1249,19 +1354,111 @@ export default function BatedeiraDashboard() {
               </div>
             </div>
 
-            {/* PRODUTOS EXTRAS / ADICIONAIS COM DISPONIBILIDADE E FOTOS */}
+            {/* PRODUTOS EXTRAS & ADICIONAIS COM SUPER AGILIDADE */}
             <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
-              <div className="border-b border-zinc-100 dark:border-zinc-800 pb-2 flex justify-between items-center">
+              {/* Header com Totais e Ações Rápidas */}
+              <div className="border-b border-zinc-100 dark:border-zinc-800 pb-3 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                 <div>
-                  <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
-                    <span>📦</span> Produtos Extras & Adicionais
-                  </h3>
-                  <p className="text-xs text-zinc-500">Farinha de tapioca, banana, granola, leite em pó, etc.</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📦</span>
+                    <h3 className="font-extrabold text-zinc-900 dark:text-zinc-100 text-sm sm:text-base uppercase tracking-tight">
+                      Produtos Extras & Adicionais
+                    </h3>
+                    <span className="bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-black text-xs px-2 py-0.5 rounded-full">
+                      {(currentUser?.products || []).length} { (currentUser?.products || []).length === 1 ? 'item' : 'itens' }
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Farinhas, acompanhamentos, churrasco, carnes, bebidas e porções da sua loja.
+                  </p>
+                </div>
+
+                {/* Ações em Lote */}
+                {(currentUser?.products?.length || 0) > 0 && (
+                  <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => handleBulkToggleExtras(true)}
+                      className="px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-[11px] font-bold flex items-center gap-1 transition shadow-xs"
+                      title="Marcar todos os produtos extras como disponíveis"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Todos Ativos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkToggleExtras(false)}
+                      className="px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 text-[11px] font-bold flex items-center gap-1 transition shadow-xs"
+                      title="Pausar todos os extras (ex: ao encerrar estoque)"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      Todos Esgotados
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Sugestões Rápidas de 1 Clique (Preset Chips) */}
+              <div className="bg-gradient-to-br from-purple-50/70 via-indigo-50/40 to-pink-50/30 dark:from-purple-950/30 dark:via-zinc-900 dark:to-zinc-950 p-3.5 rounded-xl border border-purple-100 dark:border-purple-900/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+                  <span className="text-xs font-black text-purple-900 dark:text-purple-300 uppercase flex items-center gap-1.5 tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                    Adicionar Rápido (1 Clique)
+                  </span>
+
+                  {/* Tabs de Categoria dos Presets */}
+                  <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                    {QUICK_EXTRAS_CATEGORIES.map(cat => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setExtraPresetCategory(cat.id as any)}
+                        className={`px-2 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition ${
+                          extraPresetCategory === cat.id
+                            ? 'bg-purple-600 text-white shadow-xs'
+                            : 'bg-white/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-purple-100 dark:hover:bg-zinc-700 border border-zinc-200/60 dark:border-zinc-700'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Chips de Produtos Pré-definidos */}
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                  {QUICK_EXTRAS_PRESETS.filter(p => p.category === extraPresetCategory).map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setNewProductName(preset.name);
+                        setNewProductPrice(preset.price.toString());
+                      }}
+                      className="group flex items-center gap-1.5 bg-white dark:bg-zinc-800 hover:bg-purple-50 dark:hover:bg-purple-950/50 border border-purple-200/80 dark:border-purple-800/60 hover:border-purple-400 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition shadow-xs hover:shadow"
+                      title={`Clique para preencher ${preset.name} por R$ ${preset.price.toFixed(2)}`}
+                    >
+                      <span>{preset.icon}</span>
+                      <span>{preset.name}</span>
+                      <span className="font-black text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 px-1.5 py-0.5 rounded text-[10px]">
+                        R$ {preset.price.toFixed(2)}
+                      </span>
+                      <span className="opacity-0 group-hover:opacity-100 text-purple-600 text-[10px] font-black transition">
+                        ⚡
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {/* Form de Cadastro */}
-              <div className="bg-zinc-50 dark:bg-zinc-950/60 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-2 items-center">
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAddProduct();
+                }}
+                className="bg-zinc-50 dark:bg-zinc-950/80 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-2 items-center"
+              >
                 <button
                   type="button"
                   onClick={() => setPhotoModalData({
@@ -1271,92 +1468,196 @@ export default function BatedeiraDashboard() {
                     currentUrl: newProductImage,
                     onSelect: (url) => setNewProductImage(url)
                   })}
-                  className="w-full sm:w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0 border border-purple-300 dark:border-purple-700 transition"
-                  title="Escolher Foto"
+                  className="w-full sm:w-11 h-11 rounded-lg bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0 border border-purple-300 dark:border-purple-700 transition"
+                  title="Escolher Foto do Produto"
                 >
                   {newProductImage ? (
-                    <img src={newProductImage} alt="Extra" className="w-full h-full object-cover rounded-lg" />
+                    <img src={newProductImage} alt="Foto" className="w-full h-full object-cover rounded-lg" />
                   ) : (
-                    <span>📸</span>
+                    <span className="text-base">📸</span>
                   )}
                 </button>
-                <input 
-                  type="text" 
-                  placeholder="Nome (ex: Farinha de Tapioca)" 
-                  value={newProductName} 
-                  onChange={e => setNewProductName(e.target.value)} 
-                  className="flex-1 w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-purple-500" 
-                />
-                <input 
-                  type="number" 
-                  step="0.1" 
-                  placeholder="R$" 
-                  value={newProductPrice} 
-                  onChange={e => setNewProductPrice(e.target.value)} 
-                  className="w-full sm:w-24 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-purple-500" 
-                />
+                <div className="relative flex-1 w-full">
+                  <input 
+                    type="text" 
+                    placeholder="Nome do produto (ex: Farinha de Tapioca)" 
+                    value={newProductName} 
+                    onChange={e => setNewProductName(e.target.value)} 
+                    className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg py-2.5 px-3 text-xs outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500" 
+                  />
+                  {newProductName && (
+                    <button
+                      type="button"
+                      onClick={() => setNewProductName('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <div className="relative w-full sm:w-28">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 text-xs font-bold">R$</span>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    placeholder="0,00" 
+                    value={newProductPrice} 
+                    onChange={e => setNewProductPrice(e.target.value)} 
+                    className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg py-2.5 pl-8 pr-2 text-xs outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-bold" 
+                  />
+                </div>
                 <button 
-                  onClick={handleAddProduct} 
-                  className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition shrink-0 shadow-sm"
+                  type="submit"
+                  disabled={!newProductName.trim() || !newProductPrice}
+                  className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black px-4 py-2.5 rounded-lg text-xs transition shrink-0 shadow-sm flex items-center justify-center gap-1"
                 >
-                  + Adicionar
+                  <Plus className="w-4 h-4" />
+                  Cadastrar
                 </button>
+              </form>
+
+              {/* Barra de Busca e Filtros de Status */}
+              <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-zinc-50 dark:bg-zinc-950/40 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar nos seus produtos..."
+                    value={extraSearchQuery}
+                    onChange={(e) => setExtraSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs outline-none focus:border-purple-500"
+                  />
+                  {extraSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setExtraSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => setExtraFilterStatus('all')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap ${
+                      extraFilterStatus === 'all'
+                        ? 'bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs'
+                        : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800'
+                    }`}
+                  >
+                    Todos ({(currentUser?.products || []).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExtraFilterStatus('available')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap ${
+                      extraFilterStatus === 'available'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-400 border border-zinc-200 dark:border-zinc-800'
+                    }`}
+                  >
+                    🟢 Ativos ({(currentUser?.products || []).filter(p => p.isAvailable !== false).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExtraFilterStatus('unavailable')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap ${
+                      extraFilterStatus === 'unavailable'
+                        ? 'bg-red-600 text-white shadow-xs'
+                        : 'bg-white dark:bg-zinc-900 text-red-700 dark:text-red-400 border border-zinc-200 dark:border-zinc-800'
+                    }`}
+                  >
+                    🔴 Esgotados ({(currentUser?.products || []).filter(p => p.isAvailable === false).length})
+                  </button>
+                </div>
               </div>
 
-              {/* Lista de Extras (Disponíveis Primeiro, Esgotados ao Final) */}
-              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-60 overflow-y-auto">
-                {[...(currentUser?.products || [])].sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map(p => {
-                  const isAvail = p.isAvailable !== false;
-                  return (
-                    <li key={p.id} className="flex justify-between items-center py-2.5 gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div 
-                          onClick={() => setPhotoModalData({
-                            open: true,
-                            title: `Foto de ${p.name}`,
-                            category: 'adicional',
-                            currentUrl: p.imageUrl,
-                            onSelect: (url) => {
-                              if (currentUser) store.updateProduct(currentUser.id, p.id, { imageUrl: url });
-                            }
-                          })}
-                          className="w-9 h-9 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 cursor-pointer flex items-center justify-center"
-                          title="Trocar Foto"
-                        >
-                          {p.imageUrl ? (
-                            <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-xs">📦</span>
-                          )}
+              {/* Lista de Extras */}
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-72 overflow-y-auto pr-1">
+                {[...(currentUser?.products || [])]
+                  .filter(p => {
+                    if (extraFilterStatus === 'available' && p.isAvailable === false) return false;
+                    if (extraFilterStatus === 'unavailable' && p.isAvailable !== false) return false;
+                    if (extraSearchQuery.trim()) {
+                      const q = extraSearchQuery.toLowerCase().trim();
+                      return p.name.toLowerCase().includes(q);
+                    }
+                    return true;
+                  })
+                  .sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0)))
+                  .map(p => {
+                    const isAvail = p.isAvailable !== false;
+                    return (
+                      <li key={p.id} className="flex justify-between items-center py-2.5 gap-2 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 px-2 rounded-xl transition">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div 
+                            onClick={() => setPhotoModalData({
+                              open: true,
+                              title: `Foto de ${p.name}`,
+                              category: 'adicional',
+                              currentUrl: p.imageUrl,
+                              onSelect: (url) => {
+                                if (currentUser) store.updateProduct(currentUser.id, p.id, { imageUrl: url });
+                              }
+                            })}
+                            className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 cursor-pointer flex items-center justify-center hover:opacity-80 transition"
+                            title="Trocar Foto"
+                          >
+                            {p.imageUrl ? (
+                              <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-base">📦</span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className={`font-extrabold text-sm sm:text-base truncate ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`}>{p.name}</p>
+                            <p className="text-sm sm:text-base font-black text-purple-700 dark:text-purple-400 mt-0.5 tracking-tight">R$ {p.price.toFixed(2)}</p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className={`font-extrabold text-sm sm:text-base truncate ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`}>{p.name}</p>
-                          <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">R$ {p.price.toFixed(2)}</p>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (currentUser) store.toggleProductAvailability(currentUser.id, p.id);
-                          }}
-                          className={`px-2 py-1 rounded-md text-[10px] font-bold border transition ${
-                            isAvail
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800'
-                              : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-800'
-                          }`}
-                        >
-                          {isAvail ? '🟢 Disponível' : '🔴 Esgotado'}
-                        </button>
-                        <button onClick={() => handleEditProduct(p)} className="text-purple-600 hover:text-purple-800 p-1.5 bg-purple-50 dark:bg-purple-900/30 rounded-lg transition" title="Editar produto extra">✏️</button>
-                        <button onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg transition" title="Excluir produto extra">🗑️</button>
-                      </div>
-                    </li>
-                  );
-                })}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (currentUser) store.toggleProductAvailability(currentUser.id, p.id);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-black border transition shadow-xs ${
+                              isAvail
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-700'
+                                : 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-700'
+                            }`}
+                          >
+                            {isAvail ? '🟢 Ativo' : '🔴 Esgotado'}
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => handleOpenEditProduct(p)} 
+                            className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 p-2 bg-purple-50 dark:bg-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-800/60 transition" 
+                            title="Editar produto extra"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} 
+                            className="text-red-500 hover:text-red-700 p-2 bg-red-50 dark:bg-red-900/30 rounded-xl border border-red-200 dark:border-red-800/60 transition" 
+                            title="Excluir produto extra"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 {(!currentUser?.products || currentUser.products.length === 0) && (
-                  <p className="text-xs text-zinc-500 text-center py-4">Nenhum produto extra cadastrado.</p>
+                  <div className="text-center py-6 text-zinc-400">
+                    <p className="text-2xl mb-1">🧺</p>
+                    <p className="text-xs font-medium">Nenhum produto extra cadastrado ainda.</p>
+                    <p className="text-[11px] text-purple-600 dark:text-purple-400 mt-1 font-semibold">Clique nos botões de 1 clique acima para adicionar rapidamente!</p>
+                  </div>
                 )}
               </ul>
             </div>
@@ -2296,6 +2597,177 @@ export default function BatedeiraDashboard() {
           </div>
         </div>
       )}
+      {/* Modal de Edição de Produto Extra */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-md shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            {/* Header */}
+            <div className="p-4 bg-gradient-to-r from-purple-700 to-indigo-700 text-white flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">✏️</span>
+                <h3 className="font-extrabold text-base">Editar Produto Extra</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingProduct(null)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4">
+              {/* Foto do Produto */}
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                  {editingProduct.imageUrl ? (
+                    <img src={editingProduct.imageUrl} alt={editingProduct.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl">📦</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => setPhotoModalData({
+                      open: true,
+                      title: `Foto de ${editingProduct.name}`,
+                      category: 'adicional',
+                      currentUrl: editingProduct.imageUrl,
+                      onSelect: (url) => setEditingProduct(prev => prev ? { ...prev, imageUrl: url } : null)
+                    })}
+                    className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 border border-purple-200 dark:border-purple-800"
+                  >
+                    📸 Alterar Foto
+                  </button>
+                  {editingProduct.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingProduct(prev => prev ? { ...prev, imageUrl: undefined } : null)}
+                      className="text-red-500 hover:text-red-700 text-[11px] font-semibold text-left px-1"
+                    >
+                      Remover foto
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Nome */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1 uppercase tracking-wider">
+                  Nome do Produto
+                </label>
+                <input
+                  type="text"
+                  value={editingProduct.name}
+                  onChange={(e) => setEditingProduct(prev => prev ? { ...prev, name: e.target.value } : null)}
+                  className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm font-semibold outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                  placeholder="Nome do produto"
+                />
+              </div>
+
+              {/* Preço com Botões de Ajuste Rápido */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1 uppercase tracking-wider">
+                  Preço de Venda (R$)
+                </label>
+                <div className="relative mb-2">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-sm">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingProduct.price}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setEditingProduct(prev => prev ? { ...prev, price: isNaN(val) ? 0 : val } : null);
+                    }}
+                    className="w-full pl-10 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl text-base font-black outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* Ajustes rápidos de preço */}
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-bold text-zinc-400 mr-1">Ajuste rápido:</span>
+                  {[-5, -1, 1, 5].map((delta) => (
+                    <button
+                      key={delta}
+                      type="button"
+                      onClick={() => {
+                        setEditingProduct(prev => {
+                          if (!prev) return null;
+                          const newP = Math.max(0, Number((prev.price + delta).toFixed(2)));
+                          return { ...prev, price: newP };
+                        });
+                      }}
+                      className="px-2 py-1 rounded-md bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-bold transition"
+                    >
+                      {delta > 0 ? `+R$ ${delta}` : `-R$ ${Math.abs(delta)}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Disponibilidade Switch */}
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Status no Cardápio</p>
+                  <p className="text-[11px] text-zinc-500">
+                    {editingProduct.isAvailable !== false ? 'Disponível para os clientes comprarem' : 'Esgotado temporariamente'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(prev => prev ? { ...prev, isAvailable: !(prev.isAvailable !== false) } : null)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black border transition ${
+                    editingProduct.isAvailable !== false
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-700'
+                      : 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-700'
+                  }`}
+                >
+                  {editingProduct.isAvailable !== false ? '🟢 Disponível' : '🔴 Esgotado'}
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/60 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`Deseja excluir definitivamente "${editingProduct.name}"?`)) {
+                    if (currentUser) store.removeProduct(currentUser.id, editingProduct.id);
+                    setEditingProduct(null);
+                  }
+                }}
+                className="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl text-xs font-bold transition flex items-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Excluir
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-bold transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEditProduct}
+                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                >
+                  Salvar Alterações
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Pagamento Pix */}
       <PixModal 
         data={pixModalData} 
