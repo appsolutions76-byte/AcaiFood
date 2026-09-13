@@ -628,7 +628,7 @@ export default function StorefrontPage() {
               {selectedStoreId && store.users?.[selectedStoreId] ? (
                 <span>{store.users[selectedStoreId].role === 'fornecedor' ? 'Catálogo de Fornecedor' : 'Cardápio Oficial'}: {store.users[selectedStoreId].name}</span>
               ) : (
-                <span>O Verdadeiro Açaí da Amazônia</span>
+                <span>O Verdadeiro Açaí da Amazônia - Pará</span>
               )}
             </h2>
             <p className="text-xs text-purple-200/90 mt-0.5 font-medium">
@@ -674,13 +674,13 @@ export default function StorefrontPage() {
                     <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-purple-200 dark:border-purple-900/40 mb-6">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4 mb-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-4xl bg-purple-50 dark:bg-purple-950/50 p-2 rounded-2xl">{selLoja.icon || (selLoja.role === 'fornecedor' ? '🏭' : '🏪')}</span>
+                          <span className="text-4xl bg-purple-50 dark:bg-purple-950/50 p-2.5 rounded-2xl border border-purple-100 dark:border-purple-900/40">{selLoja.icon || (selLoja.role === 'fornecedor' ? '🏭' : '🏪')}</span>
                           <div>
-                            <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">
+                            <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider">
                               {selLoja.role === 'fornecedor' ? '🏭 Fornecedor / Produtor Oficial' : '🏪 Loja Selecionada'}
                             </span>
-                            <h3 className="text-xl font-bold text-zinc-800 dark:text-white leading-tight">{selLoja.name}</h3>
-                            <p className="text-xs text-zinc-500">📍 Bairro: {selLoja.bairro || 'Central'}</p>
+                            <h3 className="text-xl sm:text-2xl font-black text-zinc-950 dark:text-white leading-tight mt-0.5">{selLoja.name}</h3>
+                            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 font-semibold mt-0.5">📍 Bairro: {selLoja.bairro || 'Central'} • {selLoja.cidade || 'Belém'}</p>
                           </div>
                         </div>
 
@@ -698,14 +698,14 @@ export default function StorefrontPage() {
                                 motorista: null
                               });
                             }} 
-                            className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-xl"
+                            className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800 flex items-center gap-1 shadow-2xs"
                           >
                             🗺️ {dist.toFixed(1)} km
                           </button>
 
                           <button 
                             onClick={() => setSelectedStoreId(null)}
-                            className="text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-xl transition"
+                            className="text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold px-3 py-2 rounded-xl transition border border-zinc-200 dark:border-zinc-700 cursor-pointer"
                           >
                             ⬅️ Ver Outras Lojas
                           </button>
@@ -719,15 +719,15 @@ export default function StorefrontPage() {
                         </div>
                       )}
 
-                      <div className="bg-purple-50 dark:bg-purple-950/30 p-3 rounded-xl mb-4 border border-purple-100 dark:border-purple-900/30 flex justify-between items-center text-xs text-purple-900 dark:text-purple-300 font-medium">
-                        <span>Frete Estimado p/ esta loja: <strong>{formatMoney(freteCliente)}</strong></span>
-                        {subsidy > 0 && <span className="bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded text-[10px] uppercase">Loja Paga {subsidy}%</span>}
+                      <div className="bg-purple-50 dark:bg-zinc-950 p-3.5 rounded-xl mb-4 border border-purple-200 dark:border-zinc-800 flex justify-between items-center text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-medium shadow-2xs">
+                        <span>Frete Estimado p/ esta loja: <strong className="text-zinc-950 dark:text-white font-black text-sm sm:text-base ml-1">{formatMoney(freteCliente)}</strong></span>
+                        {subsidy > 0 && <span className="bg-orange-100 text-orange-800 dark:bg-orange-950/70 dark:text-orange-300 font-black px-2.5 py-1 rounded-md text-[10px] uppercase border border-orange-200 dark:border-orange-800">Loja Paga {subsidy}%</span>}
                       </div>
 
                       {isCartStore && (
-                        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 p-3 rounded-xl text-xs font-bold mb-4 flex justify-between items-center">
+                        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 p-3.5 rounded-xl text-xs sm:text-sm font-bold mb-4 flex justify-between items-center shadow-xs">
                           <span>🛒 Você tem {cartTotalQuantity} item(ns) no carrinho desta loja ({formatMoney(cartItemsTotal)})</span>
-                          <button onClick={() => setCheckoutModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow transition">
+                          <button onClick={() => setCheckoutModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3.5 py-2 rounded-xl shadow transition cursor-pointer">
                             Finalizar Pedido
                           </button>
                         </div>
@@ -759,40 +759,42 @@ export default function StorefrontPage() {
 
                         return (
                           <>
-                            <h4 className="font-bold text-sm text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-3">
-                              📦 Catálogo de Fruto & Insumos B2B
+                            <h4 className="font-black text-sm sm:text-base text-zinc-900 dark:text-white uppercase tracking-wider mb-3.5 flex items-center gap-2">
+                              <span>📦</span> Catálogo de Fruto & Insumos B2B
                             </h4>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-4">
                               {fornItems.map(item => (
-                                <div key={item.key} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
+                                <div key={item.key} className={`p-4 rounded-2xl border transition-all flex justify-between items-center gap-3.5 ${
                                   item.isAvail 
-                                    ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' 
-                                    : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
+                                    ? 'bg-white dark:bg-zinc-950 border-zinc-200/90 dark:border-zinc-800 shadow-xs hover:border-purple-400 dark:hover:border-purple-600' 
+                                    : 'bg-zinc-100/80 dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-850 opacity-60'
                                 }`}>
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-14 h-14 rounded-xl bg-purple-100 dark:bg-purple-950 overflow-hidden shrink-0 border border-purple-200 dark:border-purple-800 flex items-center justify-center">
+                                  <div className="flex items-center gap-3.5 min-w-0">
+                                    <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950 overflow-hidden shrink-0 border border-purple-200 dark:border-purple-800 flex items-center justify-center shadow-xs">
                                       {item.photo ? (
                                         <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
                                       ) : (
-                                        <span className="text-2xl">{item.emoji}</span>
+                                        <span className="text-3xl">{item.emoji}</span>
                                       )}
                                     </div>
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-1.5 flex-wrap">
-                                        <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{item.name}</p>
+                                        <p className="font-extrabold text-zinc-950 dark:text-white text-base sm:text-lg leading-tight truncate">{item.name}</p>
                                         {!item.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
                                       </div>
-                                      <p className="text-[11px] text-zinc-500 font-medium">{item.desc}</p>
-                                      <p className="text-sm font-black text-zinc-900 dark:text-white">{formatMoney(item.price)} {item.unit && <span className="text-[10px] font-normal text-zinc-500">{item.unit}</span>}</p>
+                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">{item.desc}</p>
+                                      <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-1 tracking-tight">
+                                        {formatMoney(item.price)} {item.unit && <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{item.unit}</span>}
+                                      </p>
                                     </div>
                                   </div>
                                   {item.isAvail ? (
-                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer">
+                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-extrabold px-4 py-2.5 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer">
                                       + Adicionar
                                     </button>
                                   ) : (
-                                    <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
+                                    <span className="text-[11px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-3 py-1.5 rounded-lg shrink-0">
                                       Esgotado
                                     </span>
                                   )}
@@ -820,37 +822,41 @@ export default function StorefrontPage() {
 
                         return (
                           <>
-                            <h4 className="font-bold text-sm text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-3">Cardápio & Produtos</h4>
+                            <h4 className="font-black text-sm sm:text-base text-zinc-900 dark:text-white uppercase tracking-wider mb-3.5 flex items-center gap-2">
+                              <span>🍽️</span> Cardápio & Produtos
+                            </h4>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-4">
                               {storeItems.map(item => (
-                                <div key={item.key} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
+                                <div key={item.key} className={`p-4 rounded-2xl border transition-all flex justify-between items-center gap-3.5 ${
                                   item.isAvail 
-                                    ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' 
-                                    : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
+                                    ? 'bg-white dark:bg-zinc-950 border-zinc-200/90 dark:border-zinc-800 shadow-xs hover:border-purple-400 dark:hover:border-purple-600' 
+                                    : 'bg-zinc-100/80 dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-850 opacity-60'
                                 }`}>
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <div className={`w-12 h-12 rounded-xl ${item.isTeal ? 'bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800' : 'bg-purple-100 dark:bg-purple-950 border-purple-200 dark:border-purple-800'} overflow-hidden shrink-0 border flex items-center justify-center`}>
+                                  <div className="flex items-center gap-3.5 min-w-0">
+                                    <div className={`w-16 h-16 rounded-2xl ${item.isTeal ? 'bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800' : 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800'} overflow-hidden shrink-0 border flex items-center justify-center shadow-xs`}>
                                       {item.photo ? (
                                         <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
                                       ) : (
-                                        <span className="text-xl">{item.emoji}</span>
+                                        <span className="text-3xl">{item.emoji}</span>
                                       )}
                                     </div>
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-1.5 flex-wrap">
-                                        <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{item.name}</p>
+                                        <p className="font-extrabold text-zinc-950 dark:text-white text-base sm:text-lg leading-tight truncate">{item.name}</p>
                                         {!item.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
                                       </div>
-                                      <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">{formatMoney(item.price)}</p>
+                                      <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-1 tracking-tight">
+                                        {formatMoney(item.price)}
+                                      </p>
                                     </div>
                                   </div>
                                   {item.isAvail ? (
-                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })} className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700' : 'bg-purple-600 hover:bg-purple-700'} text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer`}>
+                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })} className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700' : 'bg-purple-600 hover:bg-purple-700'} text-white text-xs sm:text-sm font-extrabold px-4 py-2.5 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer`}>
                                       + Adicionar
                                     </button>
                                   ) : (
-                                    <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
+                                    <span className="text-[11px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-3 py-1.5 rounded-lg shrink-0">
                                       Esgotado
                                     </span>
                                   )}
