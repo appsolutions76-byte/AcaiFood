@@ -26,17 +26,17 @@ BEGIN
 
   IF v_json IS NOT NULL THEN
     IF v_order_type = 'B2C' THEN
-      v_plat_pct := COALESCE(NULLIF(v_json ->> 'b2c_fee_percentage', '')::numeric, 10);
-      v_fee_per_km := COALESCE(NULLIF(v_json ->> 'motoboy_fee_per_km', '')::numeric, 2);
-      v_mot_plat_pct := COALESCE(NULLIF(v_json ->> 'motoboy_platform_fee_percentage', '')::numeric, 10);
+      v_plat_pct := NULLIF(v_json ->> 'b2c_fee_percentage', '')::numeric;
+      v_fee_per_km := NULLIF(v_json ->> 'motoboy_fee_per_km', '')::numeric;
+      v_mot_plat_pct := NULLIF(v_json ->> 'motoboy_platform_fee_percentage', '')::numeric;
     ELSIF v_order_type = 'COLETA' THEN
-      v_plat_pct := COALESCE(NULLIF(v_json ->> 'col_fee_percentage', '')::numeric, 10);
-      v_fee_per_km := COALESCE(NULLIF(v_json ->> 'col_fee_per_km', '')::numeric, 2);
-      v_mot_plat_pct := COALESCE(NULLIF(v_json ->> 'col_platform_fee_percentage', '')::numeric, 10);
+      v_plat_pct := NULLIF(v_json ->> 'col_fee_percentage', '')::numeric;
+      v_fee_per_km := NULLIF(v_json ->> 'col_fee_per_km', '')::numeric;
+      v_mot_plat_pct := NULLIF(v_json ->> 'col_platform_fee_percentage', '')::numeric;
     ELSE -- B2B
-      v_plat_pct := COALESCE(NULLIF(v_json ->> 'b2b_fee_percentage', '')::numeric, 10);
-      v_fee_per_km := COALESCE(NULLIF(v_json ->> 'truck_fee_per_km', '')::numeric, 2);
-      v_mot_plat_pct := COALESCE(NULLIF(v_json ->> 'truck_platform_fee_percentage', '')::numeric, 10);
+      v_plat_pct := NULLIF(v_json ->> 'b2b_fee_percentage', '')::numeric;
+      v_fee_per_km := NULLIF(v_json ->> 'truck_fee_per_km', '')::numeric;
+      v_mot_plat_pct := NULLIF(v_json ->> 'truck_platform_fee_percentage', '')::numeric;
     END IF;
 
     NEW.applied_platform_fee_percent := COALESCE(v_plat_pct, NEW.applied_platform_fee_percent, 10);

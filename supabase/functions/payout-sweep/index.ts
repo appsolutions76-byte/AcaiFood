@@ -183,7 +183,10 @@ serve(async (req) => {
                   console.warn(`[payout-sweep] Aviso ledger seller ${order.id}:`, ledErr)
                 }
               } else {
-                console.warn(`⚠️ Seller repasse falhou (${order.id}):`, resData)
+                const errDetail = resData?.errors
+                  ? resData.errors.map((e: any) => e.description || e.code).join(', ')
+                  : (resData?.message || 'Erro de transferência no Asaas');
+                console.warn(`⚠️ Seller repasse falhou (${order.id}): ${errDetail}`);
                 await supabase.from('payout_failures').insert({
                   order_id: order.id,
                   role: 'seller',
@@ -276,7 +279,10 @@ serve(async (req) => {
                 console.warn(`[payout-sweep] Aviso ledger driver ${order.id}:`, ledErr)
               }
             } else {
-              console.warn(`⚠️ Driver repasse falhou (${order.id}):`, resData)
+              const errDetail = resData?.errors
+                ? resData.errors.map((e: any) => e.description || e.code).join(', ')
+                : (resData?.message || 'Erro de transferência no Asaas');
+              console.warn(`⚠️ Driver repasse falhou (${order.id}): ${errDetail}`);
               await supabase.from('payout_failures').insert({
                 order_id: order.id,
                 role: 'driver',

@@ -50,11 +50,11 @@ function CadastroForm() {
     isFree: boolean;
   }>({
     activationEnabled: true,
-    activationFee: 13.10,
-    freeQuota: 8,
-    subsidizedCount: 8,
-    freeSlotsRemaining: 0,
-    isFree: false
+    activationFee: 12.90,
+    freeQuota: 50,
+    subsidizedCount: 0,
+    freeSlotsRemaining: 50,
+    isFree: true
   });
 
   // Estado de pagamento Pix
@@ -76,8 +76,8 @@ function CadastroForm() {
         if (data && data.success) {
           setActivationInfo({
             activationEnabled: Boolean(data.activationEnabled),
-            activationFee: Number(data.activationFee || 13.10),
-            freeQuota: Number(data.freeQuota || 8),
+            activationFee: Number(data.activationFee || 12.90),
+            freeQuota: Number(data.freeQuota || 50),
             subsidizedCount: Number(data.subsidizedCount || 0),
             freeSlotsRemaining: Number(data.freeSlotsRemaining || 0),
             isFree: Boolean(data.isFree)

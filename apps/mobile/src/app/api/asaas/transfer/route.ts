@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     }
 
     let transferValue = 0;
+    let orderPartnerId: string | null = null;
 
     // Se houver orderId, recalcula o valor devido no SERVIDOR e valida status
     if (orderId) {
@@ -79,15 +80,19 @@ export async function POST(request: Request) {
 
       if (isDriverRole) {
         transferValue = calculateDriverPayout(dbOrder, settings);
+        orderPartnerId = dbOrder.driver_id || dbOrder.courier_id || null;
       } else {
         let freteSubsidyPct = 0;
         if (dbOrder.seller_storefront_id) {
           const { data: sf } = await supabase
             .from('storefronts')
-            .select('frete_subsidy_pct')
+            .select('frete_subsidy_pct, partner_id')
             .eq('id', dbOrder.seller_storefront_id)
             .maybeSingle();
-          if (sf) freteSubsidyPct = Number(sf.frete_subsidy_pct || 0);
+          if (sf) {
+            freteSubsidyPct = Number(sf.frete_subsidy_pct || 0);
+            orderPartnerId = sf.partner_id || null;
+          }
         }
         transferValue = calculateSellerPayout(dbOrder, freteSubsidyPct, settings);
       }
@@ -197,7 +202,7 @@ export async function POST(request: Request) {
       }
 
       // Gravação auditável em partner_ledger
-      const targetPartnerId = auth.user?.id || auth.profile?.id;
+      const targetPartnerId = orderPartnerId || auth.user?.id || auth.profile?.id;
       if (targetPartnerId) {
         const { data: ledgerHistory } = await supabase
           .from('partner_ledger')
