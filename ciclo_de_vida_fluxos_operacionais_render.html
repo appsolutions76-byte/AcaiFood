@@ -26,7 +26,7 @@
       border-radius: 20px;
       padding: 28px 24px;
       width: 100%;
-      max-width: 600px;
+      max-width: 650px;
       box-shadow: 0 15px 35px rgba(0,0,0,0.6);
     }
     .header {
@@ -116,13 +116,15 @@
 
     <div class="mermaid">
 flowchart TD
+    Bat["🏪 Batedeira (Loja)"]
+
     subgraph B2B["Fluxo Atacado B2B"]
         F["🏭 Fornecedor de Fruto"]
         Cam["🚚 Caminhão"]
         F -->|Despacho de Latas| Cam
     end
 
-    Bat["🏪 Batedeira (Loja)"] -->|1. Pedido de Latas B2B| F
+    Bat -->|1. Pedido de Latas B2B| F
     Cam -->|2. Entrega de Frutos| Bat
 
     subgraph B2C["Fluxo Urbano B2C"]
@@ -133,13 +135,13 @@ flowchart TD
         Moto -->|Validação PIN| Cli
     end
 
-    Bat -->|Descarte de Caroço| Eco
-
     subgraph Reversa["Logística Reversa / EcoPoint"]
-        Eco["♻️ Caçamba / Caminhão de Resíduo"]
+        Cacamba["🚛 Caçamba"]
         Ind["🏭 Indústria Sustentável"]
-        Eco -->|Biomassa / Cerâmica / Adubagem| Ind
+        Cacamba -->|Biomassa / Cerâmica / Adubagem| Ind
     end
+
+    Bat -->|Descarte de Caroço| Cacamba
     </div>
 
     <div class="footer">
