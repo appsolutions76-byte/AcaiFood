@@ -99,10 +99,24 @@ export default function BatedeiraDashboard() {
 
   useEffect(() => {
     const s = useAppStore.getState();
-    s.fetchAllUsers();
+    s.fetchAllUsers(true);
     if (typeof s.fetchCities === 'function') s.fetchCities();
-    if (typeof s.fetchRates === 'function') s.fetchRates();
+    if (typeof s.fetchRates === 'function') s.fetchRates(true);
     s.startRealtime();
+
+    const interval = setInterval(() => {
+      s.fetchAllUsers(true);
+    }, 8000);
+
+    const handleFocus = () => {
+      s.fetchAllUsers(true);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   useEffect(() => {
@@ -429,6 +443,11 @@ export default function BatedeiraDashboard() {
     const forn = store.users?.[fornId];
     if (!forn) return;
 
+    if (forn.status === 'paused') {
+      alert(`⚠️ O fornecedor "${forn.name}" está fechado/pausado no momento e não está aceitando novos pedidos de abastecimento.`);
+      return;
+    }
+
     if (cart.storeId && cart.storeId !== fornId && cart.items.length > 0) {
       const fornAtualNome = store.users?.[cart.storeId]?.name || 'outro fornecedor';
       if (!confirm(`⚠️ Seu carrinho possui itens do fornecedor "${fornAtualNome}". Você só pode comprar de um fornecedor por vez.\n\nDeseja limpar o carrinho anterior e adicionar os itens de "${forn.name}"?`)) {
@@ -444,6 +463,11 @@ export default function BatedeiraDashboard() {
   const handleConfirmB2BOrder = async () => {
     if (!cart.storeId || b2bCartItems.length === 0) return;
     const fornId = cart.storeId;
+    const forn = store.users?.[fornId];
+    if (forn?.status === 'paused') {
+      alert(`⚠️ O fornecedor "${forn.name || 'selecionado'}" está fechado no momento. Não é possível concluir o pedido de abastecimento.`);
+      return;
+    }
     const res: any = await store.criarPedido('B2B', fornId);
     setB2bCheckoutModalOpen(false);
 
@@ -1433,9 +1457,11 @@ export default function BatedeiraDashboard() {
                         }))
                       ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
-                      return b2bItems.map(item => (
+                      return b2bItems.map(item => {
+                        const canOrder = item.isAvail && !isPaused;
+                        return (
                         <div key={item.id} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
-                          item.isAvail 
+                          canOrder 
                             ? 'bg-white dark:bg-zinc-900 border-emerald-200 dark:border-emerald-800 shadow-sm' 
                             : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
                         }`}>
@@ -1451,12 +1477,13 @@ export default function BatedeiraDashboard() {
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{item.name}</p>
                                 {!item.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
+                                {isPaused && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Fechado</span>}
                               </div>
                               <p className="text-[11px] text-zinc-500 font-medium">{item.desc}</p>
                               <p className="text-sm text-emerald-600 dark:text-emerald-400 font-black">{formatMoney(item.price)} {item.unit && <span className="text-[10px] font-normal text-zinc-500">{item.unit}</span>}</p>
                             </div>
                           </div>
-                          {item.isAvail ? (
+                          {canOrder ? (
                             <button 
                               onClick={() => {
                                 if (cart.storeId && cart.storeId !== selForn.id && cart.items.length > 0) {
@@ -1482,11 +1509,12 @@ export default function BatedeiraDashboard() {
                             </button>
                           ) : (
                             <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
-                              Esgotado
+                              {isPaused ? 'Fornecedor Fechado' : 'Esgotado'}
                             </span>
                           )}
                         </div>
-                      ));
+                      );
+                      });
                     })()}
                   </div>
                 </div>
