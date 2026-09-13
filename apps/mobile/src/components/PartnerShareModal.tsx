@@ -25,35 +25,39 @@ export function PartnerShareModal({ isOpen, onClose, storeId, storeName, role }:
   const targetUrl = activeTab === 'store' ? storeUrl : appUrl;
   const qrCodeImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(targetUrl)}`;
 
+  const getShareText = () => {
+    if (activeTab === 'store') {
+      if (isSupplier) {
+        return `🏭 Olá! Acesse nosso catálogo de frutos e insumos no *AçaíFood* e faça seu pedido direto com *${storeName}*:\n\n${storeUrl}`;
+      } else {
+        return `🥣 Olá! Acesse nosso cardápio oficial no *AçaíFood* e faça seu pedido direto na *${storeName}*:\n\n${storeUrl}`;
+      }
+    }
+    return `🥣 Conheça o *AçaíFood* — O marketplace e aplicativo oficial do Açaí!\n\nVeja a apresentação completa:\n${appUrl}`;
+  };
+
   const handleCopyLink = () => {
+    const textToCopy = getShareText();
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(targetUrl);
+      navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } else {
-      prompt("Copie o link abaixo:", targetUrl);
+      prompt("Copie a mensagem com link abaixo:", textToCopy);
     }
   };
 
   const handleShareWhatsApp = () => {
-    let text = "";
-    if (activeTab === 'store') {
-      if (isSupplier) {
-        text = `🏭 Olá! Acesse nosso catálogo de frutos e insumos no *AçaíFood* e faça seu pedido direto com *${storeName}*:\n\n${storeUrl}`;
-      } else {
-        text = `🥣 Olá! Acesse nosso cardápio oficial no *AçaíFood* e faça seu pedido direto na *${storeName}*:\n\n${storeUrl}`;
-      }
-    } else {
-      text = `🥣 Conheça o *AçaíFood* — O marketplace e aplicativo oficial do Açaí!\n\nVeja a apresentação completa:\n${appUrl}`;
-    }
+    const text = getShareText();
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleNativeShare = () => {
+    const text = getShareText();
     if (navigator.share) {
       navigator.share({
         title: activeTab === 'store' ? `${storeName} - AçaíFood` : 'AçaíFood Oficial',
-        text: activeTab === 'store' ? `Peça direto na ${storeName} no AçaíFood!` : 'Conheça o AçaíFood',
+        text: text,
         url: targetUrl
       }).catch(() => {});
     } else {
@@ -220,25 +224,29 @@ export function StoreShareCard({ storeId, storeName, role, onOpenModal }: StoreS
   const isSupplier = role === 'fornecedor';
   const storeUrl = `https://www.acaifood.app.br/?loja=${storeId}`;
 
+  const getShareText = () => {
+    if (isSupplier) {
+      return `🏭 Olá! Acesse nosso catálogo de frutos e insumos no *AçaíFood* e faça seu pedido direto com *${storeName}*:\n\n${storeUrl}`;
+    } else {
+      return `🥣 Olá! Acesse nosso cardápio oficial no *AçaíFood* e faça seu pedido direto na *${storeName}*:\n\n${storeUrl}`;
+    }
+  };
+
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
+    const textToCopy = getShareText();
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(storeUrl);
+      navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } else {
-      prompt("Copie o link do seu estabelecimento:", storeUrl);
+      prompt("Copie o texto e link do seu estabelecimento:", textToCopy);
     }
   };
 
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
-    let text = "";
-    if (isSupplier) {
-      text = `🏭 Olá! Acesse nosso catálogo de frutos e insumos no *AçaíFood* e faça seu pedido direto com *${storeName}*:\n\n${storeUrl}`;
-    } else {
-      text = `🥣 Olá! Acesse nosso cardápio oficial no *AçaíFood* e faça seu pedido direto na *${storeName}*:\n\n${storeUrl}`;
-    }
+    const text = getShareText();
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
