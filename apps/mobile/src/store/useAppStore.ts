@@ -972,8 +972,9 @@ export const useAppStore = create<AppState>()(
                 dbLojas.forEach(dbUser => {
                     const sf = extractStorefront(dbUser.storefronts);
                     const sfMeta = parseStorefrontMeta(sf?.logo_url);
-                    const isPaused = dbUser.status === 'paused' || dbUser.is_online === false || sf?.is_active === false;
-                    const storeStatus: 'active' | 'paused' | 'blocked' = isPaused ? 'paused' : (dbUser.status === 'blocked' ? 'blocked' : 'active');
+                    const userStatus = String(dbUser.status || '').toLowerCase();
+                    const isPaused = userStatus === 'paused' || dbUser.is_online === false || (sf && sf.is_active === false);
+                    const storeStatus: 'active' | 'paused' | 'blocked' = userStatus === 'blocked' ? 'blocked' : (isPaused ? 'paused' : 'active');
                     newUsers[dbUser.id] = {
                         id: dbUser.id,
                         role: 'loja',
@@ -1033,17 +1034,19 @@ export const useAppStore = create<AppState>()(
                 dbUsers.forEach(dbUser => {
                     const sf = extractStorefront(dbUser.storefronts);
                     const sfMeta = parseStorefrontMeta(sf?.logo_url);
-                    const appRole = dbUser.role === 'PARTNER' ? 'loja' :
-                                    dbUser.role === 'SUPPLIER' ? 'fornecedor' :
-                                    dbUser.role === 'COURIER' ? 'motorista' :
-                                    dbUser.role === 'ADMIN' ? 'admin' : 'cliente';
+                    const roleStr = String(dbUser.role || '').toUpperCase();
+                    const appRole = (roleStr === 'PARTNER' || roleStr === 'LOJA') ? 'loja' :
+                                    (roleStr === 'SUPPLIER' || roleStr === 'FORNECEDOR') ? 'fornecedor' :
+                                    (roleStr === 'COURIER' || roleStr === 'MOTORISTA' || roleStr === 'MOTOBOY') ? 'motorista' :
+                                    (roleStr === 'ADMIN' || roleStr === 'ADMINISTRADOR') ? 'admin' : 'cliente';
                                     
                     const veiculo = dbUser.vehicle_type === 'MOTO' ? 'Moto' : 
                                     dbUser.vehicle_type === 'TRUCK' ? 'Caminhão' : 
                                     dbUser.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined;
 
-                    const isPaused = dbUser.status === 'paused' || dbUser.is_online === false || sf?.is_active === false;
-                    const storeStatus: 'active' | 'paused' | 'blocked' = isPaused ? 'paused' : (dbUser.status === 'blocked' ? 'blocked' : (dbUser.status || 'active'));
+                    const userStatus = String(dbUser.status || '').toLowerCase();
+                    const isPaused = userStatus === 'paused' || dbUser.is_online === false || (sf && sf.is_active === false);
+                    const storeStatus: 'active' | 'paused' | 'blocked' = userStatus === 'blocked' ? 'blocked' : (isPaused ? 'paused' : 'active');
 
                     newUsers[dbUser.id] = {
                         id: dbUser.id,
@@ -1350,34 +1353,29 @@ export const useAppStore = create<AppState>()(
           };
         });
 
-        // 2. Persistir no Supabase com fallback garantido via API Server
+        // 2. Persistir no Supabase com Service Role Key via API Server
         const isOnline = status === 'active';
         try {
-          const { error } = await supabase.from('users').update({ status, is_online: isOnline }).eq('id', userId);
-          if (error) {
-            console.warn("Aviso ao atualizar status via client supabase, acionando API Server:", error.message);
-            await fetch('/api/user/status', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId, status })
-            });
-          } else {
-            // Atualiza storefronts se for loja ou fornecedor
-            try {
-              await supabase.from('storefronts').update({ is_active: isOnline }).eq('partner_id', userId);
-            } catch (_sfE) {}
-          }
-        } catch (_err) {
-          try {
-            await fetch('/api/user/status', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId, status })
-            });
-          } catch (_apiErr) {
-            console.error("Erro ao sincronizar status do usuário via API:", _apiErr);
-          }
+          await fetch('/api/user/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, status })
+          });
+        } catch (_apiErr) {
+          console.error("Erro ao sincronizar status do usuário via API:", _apiErr);
         }
+
+        // 3. Fallback client-side direto
+        try {
+          await supabase.from('users').update({ status, is_online: isOnline }).eq('id', userId);
+          await supabase.from('storefronts').update({ is_active: isOnline }).eq('partner_id', userId);
+        } catch (_clErr) {}
+
+        // 4. Força atualização instantânea do estado local e cache
+        try {
+          await get().fetchLojas(true);
+          await get().fetchAllUsers(true);
+        } catch (_fErr) {}
       },
 
       deleteUser: async (userId) => {

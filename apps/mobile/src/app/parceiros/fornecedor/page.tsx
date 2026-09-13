@@ -51,10 +51,27 @@ export default function FornecedorDashboard() {
 
   useEffect(() => {
     const s = useAppStore.getState();
-    s.fetchAllUsers();
+    s.fetchAllUsers(true);
+    s.fetchLojas(true);
     if (typeof s.fetchCities === 'function') s.fetchCities();
     if (typeof s.fetchRates === 'function') s.fetchRates();
     s.startRealtime();
+
+    const interval = setInterval(() => {
+      s.fetchAllUsers(true);
+      s.fetchLojas(true);
+    }, 4000);
+
+    const handleFocus = () => {
+      s.fetchAllUsers(true);
+      s.fetchLojas(true);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   useEffect(() => {

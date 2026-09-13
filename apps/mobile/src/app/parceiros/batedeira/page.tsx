@@ -100,16 +100,19 @@ export default function BatedeiraDashboard() {
   useEffect(() => {
     const s = useAppStore.getState();
     s.fetchAllUsers(true);
+    s.fetchLojas(true);
     if (typeof s.fetchCities === 'function') s.fetchCities();
     if (typeof s.fetchRates === 'function') s.fetchRates(true);
     s.startRealtime();
 
     const interval = setInterval(() => {
       s.fetchAllUsers(true);
-    }, 8000);
+      s.fetchLojas(true);
+    }, 4000);
 
     const handleFocus = () => {
       s.fetchAllUsers(true);
+      s.fetchLojas(true);
     };
     window.addEventListener('focus', handleFocus);
 

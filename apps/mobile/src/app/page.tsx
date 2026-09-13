@@ -212,15 +212,18 @@ export default function StorefrontPage() {
 
   useEffect(() => {
     store.fetchLojas(true);
+    store.fetchAllUsers(true);
     store.fetchRates(true);
     store.startRealtime();
 
     const interval = setInterval(() => {
       store.fetchLojas(true);
-    }, 8000);
+      store.fetchAllUsers(true);
+    }, 4000);
 
     const handleFocus = () => {
       store.fetchLojas(true);
+      store.fetchAllUsers(true);
     };
     window.addEventListener('focus', handleFocus);
 

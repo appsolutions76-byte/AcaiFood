@@ -40,7 +40,7 @@ export async function POST(request: Request) {
           is_active: isOnline,
           updated_at: new Date().toISOString()
         })
-        .eq('partner_id', userId);
+        .or(`partner_id.eq.${userId},id.eq.${userId}`);
     } catch (_sfErr) {
       // storefronts opcional
     }
