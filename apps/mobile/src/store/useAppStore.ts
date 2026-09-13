@@ -56,6 +56,7 @@ export function mapDbProducts(rawProducts: any[]): Product[] {
 }
 
 export interface StorefrontMeta {
+  isOpen?: boolean;
   priceB2C?: { popular?: number; medio?: number; grosso?: number; branco?: number };
   availabilityB2C?: { popular?: boolean; medio?: boolean; grosso?: boolean; branco?: boolean };
   imagesB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string };
@@ -976,7 +977,20 @@ export const useAppStore = create<AppState>()(
                     const sf = extractStorefront(dbUser.storefronts);
                     const sfMeta = parseStorefrontMeta(sf?.logo_url);
                     const rawStatus = String(dbUser.status || '').toLowerCase().trim();
-                    const isPaused = rawStatus === 'paused';
+                    
+                    let isPaused = false;
+                    if (sfMeta.isOpen !== undefined) {
+                      isPaused = !sfMeta.isOpen;
+                    } else if (rawStatus === 'paused') {
+                      isPaused = true;
+                    } else if (rawStatus === 'active') {
+                      isPaused = false;
+                    } else if (dbUser.is_online !== undefined && dbUser.is_online !== null) {
+                      isPaused = !dbUser.is_online;
+                    } else if (sf?.is_active !== undefined && sf?.is_active !== null) {
+                      isPaused = !sf.is_active;
+                    }
+
                     const isBlocked = rawStatus === 'blocked';
                     const storeStatus: 'active' | 'paused' | 'blocked' = isBlocked ? 'blocked' : (isPaused ? 'paused' : 'active');
                     const userObj: User = {
@@ -1054,7 +1068,20 @@ export const useAppStore = create<AppState>()(
                                     dbUser.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined;
 
                     const rawStatus = String(dbUser.status || '').toLowerCase().trim();
-                    const isPaused = rawStatus === 'paused';
+                    
+                    let isPaused = false;
+                    if (sfMeta.isOpen !== undefined) {
+                      isPaused = !sfMeta.isOpen;
+                    } else if (rawStatus === 'paused') {
+                      isPaused = true;
+                    } else if (rawStatus === 'active') {
+                      isPaused = false;
+                    } else if (dbUser.is_online !== undefined && dbUser.is_online !== null) {
+                      isPaused = !dbUser.is_online;
+                    } else if (sf?.is_active !== undefined && sf?.is_active !== null) {
+                      isPaused = !sf.is_active;
+                    }
+
                     const isBlocked = rawStatus === 'blocked';
                     const storeStatus: 'active' | 'paused' | 'blocked' = isBlocked ? 'blocked' : (isPaused ? 'paused' : 'active');
 
@@ -1369,16 +1396,39 @@ export const useAppStore = create<AppState>()(
 
         const isOnline = status === 'active';
 
-        // 2. Persistir no Supabase Client diretamente com a sessão autenticada do usuário
+        // 2. Persistir no Storefronts (logo_url JSON metadata e is_active) - Garante gravação segura no PostgreSQL
+        try {
+          const { data: sf } = await supabase.from('storefronts').select('id, logo_url').eq('partner_id', userId).maybeSingle();
+          const existingMeta = parseStorefrontMeta(sf?.logo_url);
+          const metaStr = JSON.stringify({
+            ...existingMeta,
+            isOpen: isOnline
+          });
+          if (sf?.id) {
+            await supabase.from('storefronts').update({ logo_url: metaStr, is_active: isOnline }).eq('id', sf.id);
+          } else {
+            const user = get().users[userId] || get().currentUser;
+            await supabase.from('storefronts').insert({
+              partner_id: userId,
+              store_name: user?.name || 'Loja',
+              is_active: isOnline,
+              logo_url: metaStr
+            });
+          }
+        } catch (_sfE) {
+          console.warn("Aviso ao persistir status em storefronts:", _sfE);
+        }
+
+        // 3. Persistir na tabela users (is_online e status)
         try {
           await supabase.from('users').update({ status, is_online: isOnline }).eq('id', userId);
-        } catch (_clErr1) {}
+        } catch (_uE1) {
+          try {
+            await supabase.from('users').update({ is_online: isOnline }).eq('id', userId);
+          } catch (_uE2) {}
+        }
 
-        try {
-          await supabase.from('storefronts').update({ is_active: isOnline }).eq('partner_id', userId);
-        } catch (_clErr2) {}
-
-        // 3. Persistir via API Server com token Bearer JWT e Service Role de contingência
+        // 4. Persistir via API Server com token Bearer JWT e Service Role
         try {
           const authHeaders = await getAuthHeaders();
           await fetch('/api/user/status', {
@@ -1386,9 +1436,7 @@ export const useAppStore = create<AppState>()(
             headers: authHeaders,
             body: JSON.stringify({ userId, status })
           });
-        } catch (_apiErr) {
-          console.error("Erro ao sincronizar status do usuário via API:", _apiErr);
-        }
+        } catch (_apiErr) {}
       },
 
       deleteUser: async (userId) => {

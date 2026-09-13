@@ -64,15 +64,38 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Atualizar storefronts
+    // 3. Atualizar storefronts (is_active e metadados logo_url)
     try {
-      await adminSupabase
+      const { data: sfData } = await adminSupabase
         .from('storefronts')
-        .update({
-          is_active: isOnline,
-          updated_at: new Date().toISOString()
-        })
+        .select('id, logo_url')
         .eq('partner_id', userId);
+
+      if (sfData && sfData.length > 0) {
+        for (const sf of sfData) {
+          let parsedMeta: any = {};
+          try {
+            if (sf.logo_url) parsedMeta = JSON.parse(sf.logo_url);
+          } catch (_) {}
+          const newLogoUrl = JSON.stringify({ ...parsedMeta, isOpen: isOnline });
+          await adminSupabase
+            .from('storefronts')
+            .update({
+              is_active: isOnline,
+              logo_url: newLogoUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', sf.id);
+        }
+      } else {
+        await adminSupabase
+          .from('storefronts')
+          .update({
+            is_active: isOnline,
+            updated_at: new Date().toISOString()
+          })
+          .eq('partner_id', userId);
+      }
     } catch (_sf1) {}
 
     try {
