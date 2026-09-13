@@ -21,16 +21,13 @@ function DirectStoreUrlHandler({ onStoreFound }: { onStoreFound: (storeId: strin
   const searchParams = useSearchParams();
   const store = useAppStore();
   useEffect(() => {
-    const lojaParam = searchParams.get('loja') || searchParams.get('store');
+    const lojaParam = searchParams.get('loja') || searchParams.get('store') || searchParams.get('fornecedor');
     if (lojaParam) {
-      const targetStore = store.users?.[lojaParam];
-      if (targetStore && targetStore.status === 'paused') {
-        alert(`⛔ A loja "${targetStore.name}" está fechada no momento e não está aceitando novos pedidos.`);
-        return;
-      }
       onStoreFound(lojaParam);
+      store.fetchLojas(true);
+      store.fetchAllUsers(true);
     }
-  }, [searchParams, onStoreFound, store.users]);
+  }, [searchParams, onStoreFound]);
   return null;
 }
 
@@ -688,10 +685,11 @@ export default function StorefrontPage() {
         )}
 
         <div>
-                {selectedStoreId && store.users?.[selectedStoreId] ? (() => {
-                  const selLoja = store.users[selectedStoreId];
-                  const { freteCliente, dist, subsidy } = calcFreteCliente(selLoja.id);
-                  const isCartStore = cart.storeId === selLoja.id && cart.items.length > 0;
+          {selectedStoreId ? (
+            store.users?.[selectedStoreId] ? (() => {
+              const selLoja = store.users[selectedStoreId];
+              const { freteCliente, dist, subsidy } = calcFreteCliente(selLoja.id);
+              const isCartStore = cart.storeId === selLoja.id && cart.items.length > 0;
 
                   return (
                     <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-purple-200 dark:border-purple-900/40 mb-6">
@@ -928,6 +926,13 @@ export default function StorefrontPage() {
                     </div>
                   );
                 })() : (
+                  <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 text-center border border-purple-200 dark:border-purple-900/40 mb-6">
+                    <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                    <h4 className="text-base font-extrabold text-zinc-900 dark:text-white">Carregando cardápio da loja...</h4>
+                    <p className="text-xs text-zinc-500 mt-1">Buscando produtos e valores atualizados em tempo real.</p>
+                  </div>
+                )
+              ) : (
                   <>
                     <div className="space-y-3 mb-6">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">

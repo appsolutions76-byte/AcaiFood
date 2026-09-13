@@ -11,9 +11,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
 import { PhotoPickerModal } from "@/components/PhotoPickerModal";
-import { StoreShareCard } from "@/components/StoreShareCard";
+import { PartnerShareModal, StoreShareCard } from "@/components/PartnerShareModal";
 import { SupportChatButton } from "@/components/SupportChatButton";
-import { ShareLandingModal } from "@/components/ShareLandingModal";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -851,7 +850,13 @@ export default function BatedeiraDashboard() {
           </div>
         </div>
       </header>
-      <ShareLandingModal isOpen={shareLandingModalOpen} onClose={() => setShareLandingModalOpen(false)} />
+      <PartnerShareModal 
+        isOpen={shareLandingModalOpen} 
+        onClose={() => setShareLandingModalOpen(false)} 
+        storeId={currentUser.id} 
+        storeName={currentUser.name} 
+        role="loja" 
+      />
       
       <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
         <div className="max-w-5xl mx-auto px-4 flex gap-6 overflow-x-auto">
