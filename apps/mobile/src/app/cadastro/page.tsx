@@ -13,6 +13,7 @@ function CadastroForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const defaultRole = searchParams?.get('role') || 'cliente';
+  const returnUrl = searchParams?.get('returnUrl') || searchParams?.get('redirect') || '';
   
   const registerUser = useAppStore(state => state.registerUser);
   const linkAsaasAccount = useAppStore(state => state.linkAsaasAccount);
@@ -193,7 +194,11 @@ function CadastroForm() {
       
       if (newUser) {
         if (role === 'cliente') {
-          router.push('/');
+          if (returnUrl && returnUrl.startsWith('/')) {
+            router.push(returnUrl);
+          } else {
+            router.push('/');
+          }
         } else {
           setNewUserId(newUser.id);
           
@@ -301,7 +306,13 @@ function CadastroForm() {
     else if (roleStr === 'fornecedor') router.push('/parceiros/fornecedor');
     else if (roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb')))) router.push('/parceiros/caminhao');
     else if (roleStr === 'motoboy' || roleStr === 'motorista') router.push('/parceiros/motoboy');
-    else router.push('/');
+    else {
+      if (returnUrl && returnUrl.startsWith('/')) {
+        router.push(returnUrl);
+      } else {
+        router.push('/');
+      }
+    }
   };
 
   const getTermosText = () => {
@@ -350,7 +361,7 @@ function CadastroForm() {
               Crie sua Conta
             </h2>
             <p className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
-              Ou <Link href="/login" className="font-medium text-purple-600 hover:text-purple-500">faça login se já for cadastrado</Link>
+              Ou <Link href={returnUrl ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : "/login"} className="font-medium text-purple-600 hover:text-purple-500">faça login se já for cadastrado</Link>
             </p>
           </div>
 

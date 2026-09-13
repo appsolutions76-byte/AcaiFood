@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
-import { KeyRound, Mail, BookOpen } from "lucide-react";
+import { KeyRound, Mail, BookOpen, ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect') || '';
   const loginWithCredentials = useAppStore(state => state.loginWithCredentials);
   
   const [email, setEmail] = useState("");
@@ -32,7 +34,7 @@ export default function LoginPage() {
           const actRes = await fetch(`/api/asaas/activation?userId=${user.id}`);
           const actData = await actRes.json();
           if (actData?.activationEnabled && !actData?.userStatus?.isPaid) {
-            router.push(`/cadastro?pendingUserId=${user.id}`);
+            router.push(`/cadastro?pendingUserId=${user.id}${returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''}`);
             return;
           }
         } catch (_actErr) {
@@ -45,16 +47,33 @@ export default function LoginPage() {
       else if (roleStr === 'fornecedor') router.push('/parceiros/fornecedor');
       else if (roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb')))) router.push('/parceiros/caminhao');
       else if (roleStr === 'motoboy' || roleStr === 'motorista') router.push('/parceiros/motoboy');
-      else router.push('/'); // Cliente
+      else {
+        // Cliente
+        if (returnUrl && returnUrl.startsWith('/')) {
+          router.push(returnUrl);
+        } else {
+          router.push('/');
+        }
+      }
     } else {
       setError("E-mail ou senha incorretos.");
     }
   };
 
+  const cadastroHref = returnUrl 
+    ? `/cadastro?returnUrl=${encodeURIComponent(returnUrl)}` 
+    : '/cadastro';
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative">
       <PartnerManualModal isOpen={loginManualOpen} onClose={() => setLoginManualOpen(false)} role="login" />
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <Link 
+          href={returnUrl || '/'} 
+          className="text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-xs hover:bg-zinc-100 transition"
+        >
+          <ArrowLeft size={13} /> Início
+        </Link>
         <ThemeToggle />
       </div>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -66,7 +85,7 @@ export default function LoginPage() {
           Entrar no AçaíFood
         </h2>
         <p className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
-          Ou <Link href="/cadastro" className="font-medium text-purple-600 hover:text-purple-500">crie sua conta gratuitamente</Link>
+          Ou <Link href={cadastroHref} className="font-medium text-purple-600 hover:text-purple-500">crie sua conta gratuitamente</Link>
         </p>
       </div>
 
@@ -119,7 +138,7 @@ export default function LoginPage() {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition active:scale-95"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition active:scale-95 cursor-pointer"
               >
                 Entrar na Plataforma
               </button>
@@ -130,7 +149,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setLoginManualOpen(true)}
-              className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-amber-300 dark:border-amber-700 rounded-xl text-sm font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition active:scale-95"
+              className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-amber-300 dark:border-amber-700 rounded-xl text-sm font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition active:scale-95 cursor-pointer"
             >
               <BookOpen size={16} />
               Manual de Uso &amp; Cadastro
@@ -143,5 +162,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-sm font-bold text-zinc-500">Carregando...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

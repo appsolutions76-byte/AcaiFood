@@ -236,13 +236,22 @@ export default function StorefrontPage() {
     
     if (currentUser) {
       store.startRealtime();
-      if (currentUser.role === 'admin') router.replace('/admin');
-      else if (currentUser.role === 'loja') router.replace('/parceiros/batedeira');
-      else if (currentUser.role === 'fornecedor') router.replace('/parceiros/fornecedor');
-      else if (currentUser.role === 'motorista' && currentUser.veiculo === 'Moto') router.replace('/parceiros/motoboy');
-      else if (currentUser.role === 'motorista' && (currentUser.veiculo === 'Caminhão' || currentUser.veiculo === 'Caçamba')) router.replace('/parceiros/caminhao');
+      const hasStoreQuery = typeof window !== 'undefined' && Boolean(
+        window.location.search.includes('loja=') || 
+        window.location.search.includes('store=') || 
+        window.location.search.includes('fornecedor=') ||
+        window.location.search.includes('vitrine=')
+      );
+
+      if (!hasStoreQuery && !selectedStoreId) {
+        if (currentUser.role === 'admin') router.replace('/admin');
+        else if (currentUser.role === 'loja') router.replace('/parceiros/batedeira');
+        else if (currentUser.role === 'fornecedor') router.replace('/parceiros/fornecedor');
+        else if (currentUser.role === 'motorista' && currentUser.veiculo === 'Moto') router.replace('/parceiros/motoboy');
+        else if (currentUser.role === 'motorista' && (currentUser.veiculo === 'Caminhão' || currentUser.veiculo === 'Caçamba')) router.replace('/parceiros/caminhao');
+      }
     }
-  }, [mounted, currentUser?.id, currentUser?.role, router]);
+  }, [mounted, currentUser?.id, currentUser?.role, router, selectedStoreId]);
 
   if (!mounted) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;
@@ -562,6 +571,38 @@ export default function StorefrontPage() {
   const cartFrete = cart.storeId ? calcFreteCliente(cart.storeId).freteCliente : 0;
   const finalCartTotal = cartItemsTotal + cartFrete;
 
+  const handleClearSelectedStore = () => {
+    setSelectedStoreId(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('loja');
+      url.searchParams.delete('store');
+      url.searchParams.delete('fornecedor');
+      const newQuery = url.searchParams.toString();
+      window.history.replaceState({}, '', url.pathname + (newQuery ? `?${newQuery}` : ''));
+    }
+  };
+
+  const loginUrl = selectedStoreId 
+    ? `/login?returnUrl=${encodeURIComponent(`/?loja=${selectedStoreId}`)}` 
+    : '/login';
+  const cadastroUrl = selectedStoreId 
+    ? `/cadastro?returnUrl=${encodeURIComponent(`/?loja=${selectedStoreId}`)}` 
+    : '/cadastro';
+
+  const getPartnerDashboard = () => {
+    if (!currentUser) return null;
+    const r = String(currentUser.role || '').toLowerCase();
+    const v = String(currentUser.veiculo || '').toLowerCase();
+    if (r === 'admin') return { label: '👑 Admin', href: '/admin' };
+    if (r === 'loja') return { label: '🏪 Painel Loja', href: '/parceiros/batedeira' };
+    if (r === 'fornecedor') return { label: '🏭 Painel Produtor', href: '/parceiros/fornecedor' };
+    if (r === 'caminhao' || (r === 'motorista' && (v.includes('caminh') || v.includes('caçamb')))) return { label: '🚛 Painel Caminhão', href: '/parceiros/caminhao' };
+    if (r === 'motoboy' || r === 'motorista') return { label: '🛵 Painel Motoboy', href: '/parceiros/motoboy' };
+    return null;
+  };
+  const partnerDashboard = getPartnerDashboard();
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-44 sm:pb-48 font-sans">
       <Suspense fallback={null}>
@@ -569,11 +610,13 @@ export default function StorefrontPage() {
         <DirectStoreUrlHandler onStoreFound={(id) => setSelectedStoreId(id)} />
       </Suspense>
       <header className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 p-3 sm:p-4 sticky top-0 z-30 shadow-xs">
-        <div className="flex justify-between items-center max-w-7xl mx-auto w-full px-2 sm:px-4">
+        <div className="flex justify-between items-center max-w-7xl mx-auto w-full px-2 sm:px-4 flex-wrap gap-2">
           <div className="flex items-center gap-2.5 text-zinc-900 dark:text-white">
-            <span className="text-2xl sm:text-3xl">🥣</span>
+            <span className="text-2xl sm:text-3xl cursor-pointer" onClick={handleClearSelectedStore}>🥣</span>
             <div>
-              <h1 className="text-lg sm:text-xl font-black leading-tight tracking-tight">AçaíFood</h1>
+              <h1 className="text-lg sm:text-xl font-black leading-tight tracking-tight cursor-pointer" onClick={handleClearSelectedStore}>
+                AçaíFood
+              </h1>
               {selectedStoreId && store.users?.[selectedStoreId] && (
                 <p className="text-[10px] text-purple-600 dark:text-purple-400 font-black uppercase tracking-wide">
                   {store.users[selectedStoreId].role === 'fornecedor' ? '🏭 Fornecedor Oficial' : '🏪 Loja Selecionada'} • {store.users[selectedStoreId].name}
@@ -581,7 +624,16 @@ export default function StorefrontPage() {
               )}
             </div>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
+             {selectedStoreId && (
+               <button
+                 onClick={handleClearSelectedStore}
+                 className="text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shrink-0"
+                 title="Ver catálogo e cardápio de todas as batedeiras e lojas cadastradas"
+               >
+                 🏪 <span className="hidden sm:inline">Ver</span> Todas as Lojas
+               </button>
+             )}
              <Link
                href="/apresentacao"
                className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-2xs border border-purple-300 dark:border-purple-800 transition-all"
@@ -601,15 +653,24 @@ export default function StorefrontPage() {
              </button>
              {!currentUser ? (
                 <>
-                  <Link href="/login" className="bg-transparent hover:bg-purple-50 dark:hover:bg-purple-950/40 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 transition">
+                  <Link href={loginUrl} className="bg-transparent hover:bg-purple-50 dark:hover:bg-purple-950/40 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 transition">
                     Entrar
                   </Link>
-                  <Link href="/cadastro" className="bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition">
+                  <Link href={cadastroUrl} className="bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition">
                     Criar Conta
                   </Link>
                 </>
               ) : (
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                  {partnerDashboard && (
+                    <Link
+                      href={partnerDashboard.href}
+                      className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-900 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-900 px-3 py-1.5 rounded-xl font-black flex items-center gap-1 shadow-2xs border border-purple-300 dark:border-purple-800 transition-all"
+                      title="Acessar painel do seu estabelecimento"
+                    >
+                      {partnerDashboard.label}
+                    </Link>
+                  )}
                   <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 hidden sm:inline-block bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-xl">
                     👋 Olá, {currentUser.name.split(' ')[0]}
                   </span>
@@ -659,6 +720,16 @@ export default function StorefrontPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap shrink-0 w-full sm:w-auto">
+            {selectedStoreId && (
+              <button
+                onClick={handleClearSelectedStore}
+                className="text-xs bg-white/20 hover:bg-white/30 text-white font-black px-3 py-2 rounded-xl border border-white/30 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                title="Ver outras lojas e batedeiras cadastradas"
+              >
+                🏪 Ver Outras Lojas
+              </button>
+            )}
+
             {currentUser ? (
               <span className="text-xs bg-black/40 text-purple-200 font-bold px-3 py-2 rounded-xl border border-purple-400/30 flex items-center gap-1.5 backdrop-blur-xs">
                 📍 {currentUser.bairro ? `${currentUser.bairro} (${currentUser.cidade || 'Belém'})` : (currentUser.cidade || 'Belém')}
@@ -725,7 +796,7 @@ export default function StorefrontPage() {
                           </button>
 
                           <button 
-                            onClick={() => setSelectedStoreId(null)}
+                            onClick={handleClearSelectedStore}
                             className="text-xs sm:text-sm bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 text-white font-black px-4 py-2.5 rounded-xl transition-all shadow-md hover:shadow-purple-500/30 border border-purple-300/40 flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
                             title="Voltar para a lista com todas as lojas e batedeiras"
                           >
@@ -744,7 +815,7 @@ export default function StorefrontPage() {
                             </div>
                           </div>
                           <button 
-                            onClick={() => setSelectedStoreId(null)}
+                            onClick={handleClearSelectedStore}
                             className="shrink-0 bg-white hover:bg-red-50 text-red-700 font-black px-4 py-2.5 rounded-xl text-xs shadow-md transition active:scale-95 cursor-pointer"
                           >
                             ⬅️ Ver Outras Lojas Abertas
@@ -843,7 +914,7 @@ export default function StorefrontPage() {
 
                             <div className="pt-4 mt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-center">
                               <button 
-                                onClick={() => setSelectedStoreId(null)}
+                                onClick={handleClearSelectedStore}
                                 className="w-full sm:w-auto text-xs sm:text-sm bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-extrabold px-6 py-3 rounded-xl transition border border-zinc-300 dark:border-zinc-700 flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
                               >
                                 ⬅️ Voltar e Ver Outras Lojas / Fornecedores
@@ -914,7 +985,7 @@ export default function StorefrontPage() {
 
                             <div className="pt-4 mt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-center">
                               <button 
-                                onClick={() => setSelectedStoreId(null)}
+                                onClick={handleClearSelectedStore}
                                 className="w-full sm:w-auto text-xs sm:text-sm bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-extrabold px-6 py-3 rounded-xl transition border border-zinc-300 dark:border-zinc-700 flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
                               >
                                 ⬅️ Voltar e Ver Outras Lojas / Batedeiras
