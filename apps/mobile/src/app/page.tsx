@@ -733,181 +733,133 @@ export default function StorefrontPage() {
                         </div>
                       )}
 
-                      {selLoja.role === 'fornecedor' ? (
-                        <>
-                          <h4 className="font-bold text-sm text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-3">
-                            📦 Catálogo de Fruto & Insumos B2B
-                          </h4>
+                      {selLoja.role === 'fornecedor' ? (() => {
+                        const fornItems = [
+                          {
+                            key: 'lata',
+                            name: 'Lata de Açaí Fruto',
+                            desc: 'Fruto em caroço selecionado',
+                            price: selLoja.priceB2B ?? 140,
+                            unit: '/ lata',
+                            isAvail: selLoja.availabilityB2B?.lata !== false,
+                            photo: selLoja.imagesB2B?.lata || (selLoja as any).b2bImage || selLoja.imagesB2C?.popular,
+                            emoji: '🌴'
+                          },
+                          ...(selLoja.products || []).map(p => ({
+                            key: p.id,
+                            name: p.name,
+                            desc: 'Insumo / Produto B2B',
+                            price: p.price,
+                            unit: '',
+                            isAvail: p.isAvailable !== false,
+                            photo: p.imageUrl,
+                            emoji: '📦'
+                          }))
+                        ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                            {/* LATA DE AÇAÍ FRUTO */}
-                            {(() => {
-                              const isAvail = selLoja.availabilityB2B?.lata !== false;
-                              const photo = selLoja.imagesB2B?.lata || (selLoja as any).b2bImage || selLoja.imagesB2C?.popular;
-                              const priceLata = selLoja.priceB2B ?? 140;
-                              return (
-                                <div className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
-                                  isAvail 
-                                    ? 'bg-white dark:bg-zinc-900 border-purple-300 dark:border-purple-800 shadow-sm' 
-                                    : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
-                                }`}>
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-14 h-14 rounded-xl bg-purple-100 dark:bg-purple-950 overflow-hidden shrink-0 border border-purple-200 dark:border-purple-800 flex items-center justify-center">
-                                      {photo ? (
-                                        <img src={photo} alt="Lata de Açaí Fruto" className="w-full h-full object-cover" />
-                                      ) : (
-                                        <span className="text-2xl">🌴</span>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">Lata de Açaí Fruto</p>
-                                        {!isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
-                                      </div>
-                                      <p className="text-[11px] text-zinc-500 font-medium">Fruto em caroço selecionado</p>
-                                      <p className="text-sm text-purple-600 dark:text-purple-400 font-black">{formatMoney(priceLata)} <span className="text-[10px] font-normal text-zinc-500">/ lata</span></p>
-                                    </div>
-                                  </div>
-                                  {isAvail ? (
-                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: 'lata', quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow shrink-0 active:scale-95">
-                                      + Adicionar
-                                    </button>
-                                  ) : (
-                                    <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2 py-1.5 rounded-lg shrink-0">
-                                      Esgotado
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })()}
+                        return (
+                          <>
+                            <h4 className="font-bold text-sm text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-3">
+                              📦 Catálogo de Fruto & Insumos B2B
+                            </h4>
 
-                            {/* PRODUTOS EXTRAS & INSUMOS DO FORNECEDOR */}
-                            {selLoja.products && [...selLoja.products].sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map(p => {
-                              const isAvail = p.isAvailable !== false;
-                              return (
-                                <div key={p.id} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
-                                  isAvail 
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                              {fornItems.map(item => (
+                                <div key={item.key} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
+                                  item.isAvail 
                                     ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' 
                                     : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
                                 }`}>
                                   <div className="flex items-center gap-3 min-w-0">
                                     <div className="w-14 h-14 rounded-xl bg-purple-100 dark:bg-purple-950 overflow-hidden shrink-0 border border-purple-200 dark:border-purple-800 flex items-center justify-center">
-                                      {p.imageUrl ? (
-                                        <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                                      {item.photo ? (
+                                        <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
                                       ) : (
-                                        <span className="text-2xl">📦</span>
+                                        <span className="text-2xl">{item.emoji}</span>
                                       )}
                                     </div>
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-1.5 flex-wrap">
-                                        <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{p.name}</p>
-                                        {!isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
+                                        <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{item.name}</p>
+                                        {!item.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
                                       </div>
-                                      <p className="text-[11px] text-zinc-500 font-medium">Insumo / Produto B2B</p>
-                                      <p className="text-sm text-purple-600 dark:text-purple-400 font-black">{formatMoney(p.price)}</p>
+                                      <p className="text-[11px] text-zinc-500 font-medium">{item.desc}</p>
+                                      <p className="text-sm font-black text-zinc-900 dark:text-white">{formatMoney(item.price)} {item.unit && <span className="text-[10px] font-normal text-zinc-500">{item.unit}</span>}</p>
                                     </div>
                                   </div>
-                                  {isAvail ? (
-                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: p.id, quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow shrink-0 active:scale-95">
+                                  {item.isAvail ? (
+                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer">
                                       + Adicionar
                                     </button>
                                   ) : (
-                                    <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2 py-1.5 rounded-lg shrink-0">
+                                    <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
                                       Esgotado
                                     </span>
                                   )}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <h4 className="font-bold text-sm text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-3">Cardápio & Produtos</h4>
+                              ))}
+                            </div>
+                          </>
+                        );
+                      })() : (() => {
+                        const storeItems = [
+                          { key: 'popular', name: 'Açaí Popular (1L)', price: selLoja.priceB2C?.popular ?? 20, isAvail: selLoja.availabilityB2C?.popular !== false, photo: selLoja.imagesB2C?.popular, emoji: '🥣', isTeal: false },
+                          { key: 'medio', name: 'Açaí Médio (1L)', price: selLoja.priceB2C?.medio ?? 26, isAvail: selLoja.availabilityB2C?.medio !== false, photo: selLoja.imagesB2C?.medio, emoji: '🥣', isTeal: false },
+                          { key: 'grosso', name: 'Açaí Grosso Especial (1L)', price: selLoja.priceB2C?.grosso ?? 35, isAvail: selLoja.availabilityB2C?.grosso !== false, photo: selLoja.imagesB2C?.grosso, emoji: '🥣', isTeal: false },
+                          { key: 'branco', name: 'Açaí Branco Especial (1L)', price: selLoja.priceB2C?.branco ?? 38, isAvail: selLoja.availabilityB2C?.branco !== false, photo: selLoja.imagesB2C?.branco, emoji: '🥥', isTeal: true },
+                          ...(selLoja.products || []).map(p => ({
+                            key: p.id,
+                            name: p.name,
+                            price: p.price,
+                            isAvail: p.isAvailable !== false,
+                            photo: p.imageUrl,
+                            emoji: '📦',
+                            isTeal: false
+                          }))
+                        ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                            {/* LISTA DE AÇAÍS (ORDENADOS: DISPONÍVEIS PRIMEIRO, ESGOTADOS NO FINAL) */}
-                            {[
-                              { key: 'popular', name: 'Açaí Popular (1L)', price: selLoja.priceB2C?.popular ?? 20, isAvail: selLoja.availabilityB2C?.popular !== false, photo: selLoja.imagesB2C?.popular, emoji: '🥣', isTeal: false },
-                              { key: 'medio', name: 'Açaí Médio (1L)', price: selLoja.priceB2C?.medio ?? 26, isAvail: selLoja.availabilityB2C?.medio !== false, photo: selLoja.imagesB2C?.medio, emoji: '🥣', isTeal: false },
-                              { key: 'grosso', name: 'Açaí Grosso Especial (1L)', price: selLoja.priceB2C?.grosso ?? 35, isAvail: selLoja.availabilityB2C?.grosso !== false, photo: selLoja.imagesB2C?.grosso, emoji: '🥣', isTeal: false },
-                              { key: 'branco', name: 'Açaí Branco Especial (1L)', price: selLoja.priceB2C?.branco ?? 38, isAvail: selLoja.availabilityB2C?.branco !== false, photo: selLoja.imagesB2C?.branco, emoji: '🥥', isTeal: true },
-                            ]
-                            .sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0))
-                            .map(acai => (
-                              <div key={acai.key} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
-                                acai.isAvail 
-                                  ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' 
-                                  : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
-                              }`}>
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div className={`w-12 h-12 rounded-xl ${acai.isTeal ? 'bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800' : 'bg-purple-100 dark:bg-purple-950 border-purple-200 dark:border-purple-800'} overflow-hidden shrink-0 border flex items-center justify-center`}>
-                                    {acai.photo ? (
-                                      <img src={acai.photo} alt={acai.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <span className="text-xl">{acai.emoji}</span>
-                                    )}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{acai.name}</p>
-                                      {!acai.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
-                                    </div>
-                                    <p className={`text-xs ${acai.isTeal ? 'text-teal-600 dark:text-teal-400' : 'text-purple-600 dark:text-purple-400'} font-extrabold`}>{formatMoney(acai.price)}</p>
-                                  </div>
-                                </div>
-                                {acai.isAvail ? (
-                                  <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: acai.key, quantity: 1 })} className={`${acai.isTeal ? 'bg-teal-600 hover:bg-teal-700' : 'bg-purple-600 hover:bg-purple-700'} text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow shrink-0 active:scale-95`}>
-                                    + Adicionar
-                                  </button>
-                                ) : (
-                                  <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2 py-1.5 rounded-lg shrink-0">
-                                    Esgotado
-                                  </span>
-                                )}
-                              </div>
-                            ))}
+                        return (
+                          <>
+                            <h4 className="font-bold text-sm text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-3">Cardápio & Produtos</h4>
 
-                            {/* PRODUTOS EXTRAS (ORDENADOS: DISPONÍVEIS PRIMEIRO, ESGOTADOS NO FINAL) */}
-                            {selLoja.products && [...selLoja.products].sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map(p => {
-                              const isAvail = p.isAvailable !== false;
-                              return (
-                                <div key={p.id} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
-                                  isAvail 
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                              {storeItems.map(item => (
+                                <div key={item.key} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
+                                  item.isAvail 
                                     ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' 
                                     : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
                                 }`}>
                                   <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-950 overflow-hidden shrink-0 border border-purple-200 dark:border-purple-800 flex items-center justify-center">
-                                      {p.imageUrl ? (
-                                        <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                                    <div className={`w-12 h-12 rounded-xl ${item.isTeal ? 'bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800' : 'bg-purple-100 dark:bg-purple-950 border-purple-200 dark:border-purple-800'} overflow-hidden shrink-0 border flex items-center justify-center`}>
+                                      {item.photo ? (
+                                        <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
                                       ) : (
-                                        <span className="text-xl">📦</span>
+                                        <span className="text-xl">{item.emoji}</span>
                                       )}
                                     </div>
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-1.5 flex-wrap">
-                                        <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{p.name}</p>
-                                        {!isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
+                                        <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{item.name}</p>
+                                        {!item.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
                                       </div>
-                                      <p className="text-xs text-purple-600 dark:text-purple-400 font-extrabold">{formatMoney(p.price)}</p>
+                                      <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">{formatMoney(item.price)}</p>
                                     </div>
                                   </div>
-                                  {isAvail ? (
-                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: p.id, quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow shrink-0 active:scale-95">
+                                  {item.isAvail ? (
+                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })} className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700' : 'bg-purple-600 hover:bg-purple-700'} text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer`}>
                                       + Adicionar
                                     </button>
                                   ) : (
-                                    <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2 py-1.5 rounded-lg shrink-0">
+                                    <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
                                       Esgotado
                                     </span>
                                   )}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </>
-                      )}
+                              ))}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   );
                 })() : (
@@ -1378,68 +1330,54 @@ export default function StorefrontPage() {
                       const isLataAvail = loja?.availabilityB2B?.lata !== false;
 
                       if (isSupplier) {
+                        const fornSelectItems = [
+                          { key: 'lata', label: `Lata de Açaí Fruto - ${formatMoney(priceLata)}`, isAvail: isLataAvail },
+                          ...(loja?.products || []).map(p => ({
+                            key: p.id,
+                            label: `${p.name} - ${formatMoney(p.price)}`,
+                            isAvail: p.isAvailable !== false
+                          }))
+                        ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
+
                         return (
                           <select 
                             value={productSelectModal.tipo} 
                             onChange={e => setProductSelectModal({ ...productSelectModal, tipo: e.target.value })}
-                            className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-4"
+                            className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-4 cursor-pointer"
                           >
-                            <optgroup label="Matéria-Prima B2B (Fruto)">
-                              <option value="lata" disabled={!isLataAvail}>
-                                Lata de Açaí Fruto - {formatMoney(priceLata)} {!isLataAvail ? '(Esgotado)' : ''}
+                            {fornSelectItems.map(item => (
+                              <option key={item.key} value={item.key} disabled={!item.isAvail}>
+                                {item.label} {!item.isAvail ? '(Esgotado)' : ''}
                               </option>
-                            </optgroup>
-
-                              {loja?.products && loja.products.length > 0 && (
-                                <optgroup label="Produtos & Insumos Extras">
-                                  {[...loja.products].sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map(p => {
-                                    const isProdAvail = p.isAvailable !== false;
-                                    return (
-                                      <option key={p.id} value={p.id} disabled={!isProdAvail}>
-                                        {p.name} - {formatMoney(p.price)} {!isProdAvail ? '(Esgotado)' : ''}
-                                      </option>
-                                    );
-                                  })}
-                                </optgroup>
-                              )}
+                            ))}
                           </select>
                         );
                       }
 
-                      const acaiOptions = [
-                        { key: 'popular', label: 'Açaí Popular', price: pricePopular, isAvail: isPopAvail },
-                        { key: 'medio', label: 'Açaí Médio', price: priceMedio, isAvail: isMedAvail },
-                        { key: 'grosso', label: 'Açaí Grosso (Especial)', price: priceGrosso, isAvail: isGroAvail },
-                        { key: 'branco', label: 'Açaí Branco (Especial)', price: priceBranco, isAvail: isBraAvail },
+                      const storeSelectItems = [
+                        { key: 'popular', label: `Açaí Popular (1L) - ${formatMoney(pricePopular)}`, isAvail: isPopAvail },
+                        { key: 'medio', label: `Açaí Médio (1L) - ${formatMoney(priceMedio)}`, isAvail: isMedAvail },
+                        { key: 'grosso', label: `Açaí Grosso Especial (1L) - ${formatMoney(priceGrosso)}`, isAvail: isGroAvail },
+                        { key: 'branco', label: `Açaí Branco Especial (1L) - ${formatMoney(priceBranco)}`, isAvail: isBraAvail },
+                        ...(loja?.products || []).map(p => ({
+                          key: p.id,
+                          label: `${p.name} - ${formatMoney(p.price)}`,
+                          isAvail: p.isAvailable !== false
+                        }))
                       ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
                       return (
-                          <select 
-                            value={productSelectModal.tipo} 
-                            onChange={e => setProductSelectModal({ ...productSelectModal, tipo: e.target.value })}
-                            className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-4"
-                          >
-                              <optgroup label="Açaí Padrão & Especiais (1L)">
-                                  {acaiOptions.map(opt => (
-                                    <option key={opt.key} value={opt.key} disabled={!opt.isAvail}>
-                                      {opt.label} - {formatMoney(opt.price)} {!opt.isAvail ? '(Esgotado)' : ''}
-                                    </option>
-                                  ))}
-                              </optgroup>
-                              
-                              {loja?.products && loja.products.length > 0 && (
-                                  <optgroup label="Produtos Extras">
-                                      {[...loja.products].sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map(p => {
-                                          const isProdAvail = p.isAvailable !== false;
-                                          return (
-                                            <option key={p.id} value={p.id} disabled={!isProdAvail}>
-                                              {p.name} - {formatMoney(p.price)} {!isProdAvail ? '(Esgotado)' : ''}
-                                            </option>
-                                          );
-                                      })}
-                                  </optgroup>
-                              )}
-                          </select>
+                        <select 
+                          value={productSelectModal.tipo} 
+                          onChange={e => setProductSelectModal({ ...productSelectModal, tipo: e.target.value })}
+                          className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-4 cursor-pointer"
+                        >
+                          {storeSelectItems.map(item => (
+                            <option key={item.key} value={item.key} disabled={!item.isAvail}>
+                              {item.label} {!item.isAvail ? '(Esgotado)' : ''}
+                            </option>
+                          ))}
+                        </select>
                       );
                   })()}
 

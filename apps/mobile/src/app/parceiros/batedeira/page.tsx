@@ -1393,90 +1393,58 @@ export default function BatedeiraDashboard() {
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                    {/* LATA DE AÇAÍ FRUTO */}
                     {(() => {
                       const isLataAvail = selForn.availabilityB2B?.lata !== false;
                       const lataPhoto = selForn.imagesB2B?.lata || defaultB2BImage;
                       const priceLata = selForn.priceB2B || 140;
-                      return (
-                        <div className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
-                          isLataAvail 
+
+                      const b2bItems = [
+                        {
+                          id: 'base',
+                          name: 'Paneiro / Lata de Açaí Fruto',
+                          desc: 'Frutos in natura em caroço',
+                          price: priceLata,
+                          unit: '/ lata',
+                          isAvail: isLataAvail,
+                          photo: lataPhoto,
+                          emoji: '🌴'
+                        },
+                        ...(selForn.products || []).map(p => ({
+                          id: p.id,
+                          name: p.name,
+                          desc: 'Insumo / Produto B2B',
+                          price: p.price,
+                          unit: '',
+                          isAvail: p.isAvailable !== false,
+                          photo: p.imageUrl,
+                          emoji: '📦'
+                        }))
+                      ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
+
+                      return b2bItems.map(item => (
+                        <div key={item.id} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
+                          item.isAvail 
                             ? 'bg-white dark:bg-zinc-900 border-emerald-200 dark:border-emerald-800 shadow-sm' 
                             : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
                         }`}>
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-14 h-14 rounded-xl bg-emerald-100 dark:bg-emerald-950 overflow-hidden shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
-                              <img src={lataPhoto} alt="Lata de Açaí Fruto" className="w-full h-full object-cover" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">Paneiro / Lata de Açaí Fruto</p>
-                                {!isLataAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
-                              </div>
-                              <p className="text-[11px] text-zinc-500 font-medium">Frutos in natura em caroço</p>
-                              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-black">{formatMoney(priceLata)} <span className="text-[10px] font-normal text-zinc-500">/ lata</span></p>
-                            </div>
-                          </div>
-                          {isLataAvail ? (
-                            <button 
-                              onClick={() => {
-                                if (cart.storeId && cart.storeId !== selForn.id && cart.items.length > 0) {
-                                  const fornAtualNome = store.users?.[cart.storeId]?.name || 'outro fornecedor';
-                                  if (!confirm(`⚠️ Seu carrinho possui itens do fornecedor "${fornAtualNome}". Você só pode comprar de um fornecedor por vez.\n\nDeseja limpar o carrinho anterior e adicionar os itens de "${selForn.name}"?`)) {
-                                    return;
-                                  }
-                                  clearCart();
-                                }
-                                setProductSelectModalB2B({
-                                  open: true,
-                                  fornId: selForn.id,
-                                  productId: 'base',
-                                  name: 'Paneiro / Lata de Açaí (In Natura)',
-                                  price: priceLata,
-                                  imageUrl: lataPhoto,
-                                  quantity: 1
-                                });
-                              }}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow shrink-0 active:scale-95"
-                            >
-                              + Adicionar
-                            </button>
-                          ) : (
-                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2 py-1.5 rounded-lg shrink-0">
-                              Esgotado
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* PRODUTOS EXTRAS (DISPONÍVEIS PRIMEIRO, ESGOTADOS AO FINAL) */}
-                    {selForn.products && [...selForn.products].sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map(p => {
-                      const isAvail = p.isAvailable !== false;
-                      return (
-                        <div key={p.id} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
-                          isAvail 
-                            ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' 
-                            : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-60'
-                        }`}>
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-14 h-14 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
-                              {p.imageUrl ? (
-                                <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                              {item.photo ? (
+                                <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-2xl">📦</span>
+                                <span className="text-2xl">{item.emoji}</span>
                               )}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{p.name}</p>
-                                {!isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
+                                <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">{item.name}</p>
+                                {!item.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
                               </div>
-                              <p className="text-[11px] text-zinc-500 font-medium">Insumo / Produto B2B</p>
-                              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-black">{formatMoney(p.price)}</p>
+                              <p className="text-[11px] text-zinc-500 font-medium">{item.desc}</p>
+                              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-black">{formatMoney(item.price)} {item.unit && <span className="text-[10px] font-normal text-zinc-500">{item.unit}</span>}</p>
                             </div>
                           </div>
-                          {isAvail ? (
+                          {item.isAvail ? (
                             <button 
                               onClick={() => {
                                 if (cart.storeId && cart.storeId !== selForn.id && cart.items.length > 0) {
@@ -1489,25 +1457,25 @@ export default function BatedeiraDashboard() {
                                 setProductSelectModalB2B({
                                   open: true,
                                   fornId: selForn.id,
-                                  productId: p.id,
-                                  name: p.name,
-                                  price: p.price,
-                                  imageUrl: p.imageUrl,
+                                  productId: item.id,
+                                  name: item.name,
+                                  price: item.price,
+                                  imageUrl: item.photo,
                                   quantity: 1
                                 });
                               }}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow shrink-0 active:scale-95"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer"
                             >
                               + Adicionar
                             </button>
                           ) : (
-                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2 py-1.5 rounded-lg shrink-0">
+                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
                               Esgotado
                             </span>
                           )}
                         </div>
-                      );
-                    })}
+                      ));
+                    })()}
                   </div>
                 </div>
               );
