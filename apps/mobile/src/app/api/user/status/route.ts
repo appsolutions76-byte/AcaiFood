@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: userError.message }, { status: 500 });
     }
 
-    // 2. Atualizar storefronts se existir
+    // 2. Atualizar storefronts se existir (executados de forma segura e individual)
     try {
       await supabase
         .from('storefronts')
@@ -40,10 +40,18 @@ export async function POST(request: Request) {
           is_active: isOnline,
           updated_at: new Date().toISOString()
         })
-        .or(`partner_id.eq.${userId},id.eq.${userId}`);
-    } catch (_sfErr) {
-      // storefronts opcional
-    }
+        .eq('partner_id', userId);
+    } catch (_sfErr1) {}
+
+    try {
+      await supabase
+        .from('storefronts')
+        .update({
+          is_active: isOnline,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+    } catch (_sfErr2) {}
 
     return NextResponse.json({
       success: true,

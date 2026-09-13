@@ -118,6 +118,8 @@ export interface User {
   activationPaid?: boolean;
   activationPaymentId?: string;
   products?: Product[];
+  storefrontId?: string;
+  storefronts?: any[];
 }
 
 export interface Order {
@@ -969,13 +971,15 @@ export const useAppStore = create<AppState>()(
                 Object.keys(newUsers).forEach(id => {
                     if (newUsers[id].role === 'loja') delete newUsers[id];
                 });
+                let updatedCurrentUser = state.currentUser;
                 dbLojas.forEach(dbUser => {
                     const sf = extractStorefront(dbUser.storefronts);
                     const sfMeta = parseStorefrontMeta(sf?.logo_url);
-                    const userStatus = String(dbUser.status || '').toLowerCase();
-                    const isPaused = userStatus === 'paused' || dbUser.is_online === false || (sf && sf.is_active === false);
-                    const storeStatus: 'active' | 'paused' | 'blocked' = userStatus === 'blocked' ? 'blocked' : (isPaused ? 'paused' : 'active');
-                    newUsers[dbUser.id] = {
+                    const rawStatus = String(dbUser.status || '').toLowerCase().trim();
+                    const isPaused = rawStatus === 'paused';
+                    const isBlocked = rawStatus === 'blocked';
+                    const storeStatus: 'active' | 'paused' | 'blocked' = isBlocked ? 'blocked' : (isPaused ? 'paused' : 'active');
+                    const userObj: User = {
                         id: dbUser.id,
                         role: 'loja',
                         name: sf?.store_name || dbUser.name,
@@ -1006,8 +1010,12 @@ export const useAppStore = create<AppState>()(
                         products: mapDbProducts(sf?.products),
                         cpfCnpj: dbUser.cpf_cnpj
                     };
+                    newUsers[dbUser.id] = userObj;
+                    if (state.currentUser && state.currentUser.id === dbUser.id) {
+                        updatedCurrentUser = { ...state.currentUser, ...userObj, status: storeStatus };
+                    }
                 });
-                return { users: newUsers };
+                return { users: newUsers, currentUser: updatedCurrentUser };
             });
         }
       },
@@ -1029,8 +1037,9 @@ export const useAppStore = create<AppState>()(
         }
 
         if (dbUsers) {
-            set(() => {
+            set((state) => {
                 const newUsers: Record<string, any> = {};
+                let updatedCurrentUser = state.currentUser;
                 dbUsers.forEach(dbUser => {
                     const sf = extractStorefront(dbUser.storefronts);
                     const sfMeta = parseStorefrontMeta(sf?.logo_url);
@@ -1044,11 +1053,12 @@ export const useAppStore = create<AppState>()(
                                     dbUser.vehicle_type === 'TRUCK' ? 'Caminhão' : 
                                     dbUser.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined;
 
-                    const userStatus = String(dbUser.status || '').toLowerCase();
-                    const isPaused = userStatus === 'paused' || dbUser.is_online === false || (sf && sf.is_active === false);
-                    const storeStatus: 'active' | 'paused' | 'blocked' = userStatus === 'blocked' ? 'blocked' : (isPaused ? 'paused' : 'active');
+                    const rawStatus = String(dbUser.status || '').toLowerCase().trim();
+                    const isPaused = rawStatus === 'paused';
+                    const isBlocked = rawStatus === 'blocked';
+                    const storeStatus: 'active' | 'paused' | 'blocked' = isBlocked ? 'blocked' : (isPaused ? 'paused' : 'active');
 
-                    newUsers[dbUser.id] = {
+                    const userObj: User = {
                         id: dbUser.id,
                         role: appRole as Role,
                         name: sf?.store_name || dbUser.name,
@@ -1086,8 +1096,12 @@ export const useAppStore = create<AppState>()(
                         storefrontId: sf?.id,
                         storefronts: sf ? [sf] : []
                     };
+                    newUsers[dbUser.id] = userObj;
+                    if (state.currentUser && state.currentUser.id === dbUser.id) {
+                        updatedCurrentUser = { ...state.currentUser, ...userObj, status: storeStatus };
+                    }
                 });
-                return { users: newUsers };
+                return { users: newUsers, currentUser: updatedCurrentUser };
             });
         }
       },
