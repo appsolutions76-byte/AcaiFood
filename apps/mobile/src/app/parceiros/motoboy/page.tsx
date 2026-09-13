@@ -122,6 +122,24 @@ export default function MotoboyDashboard() {
   const motoHistoryOrders = minhasCorridasAll.filter(o => isDelivered(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
   const minhasCorridas = [...motoActiveOrders, ...motoHistoryOrders];
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      if (currentUser?.id) {
+        await Promise.all([
+          store.fetchOrders(currentUser.id, true),
+          store.fetchAllUsers(true),
+          store.fetchRates(true)
+        ]);
+      }
+    } catch (e) {
+      console.warn("Erro ao atualizar dados:", e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const isPaused = currentUser.status === 'paused';
   const handleToggleStatus = () => {
     store.updateUserStatus(currentUser.id, isPaused ? 'active' : 'paused');
@@ -212,10 +230,12 @@ export default function MotoboyDashboard() {
                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-lg font-bold border border-emerald-200 dark:border-emerald-800">Asaas Ativo ✅</span>
             )}
             <button 
-              onClick={() => { store.fetchAllUsers(true); if (currentUser?.id) store.fetchOrders(currentUser.id, true); }} 
-              className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+              className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
+              title="Atualizar dados e corridas"
             >
-              🔄 Atualizar
+              <span className={isRefreshing ? "animate-spin inline-block" : "inline-block"}>🔄</span> {isRefreshing ? "Atualizando..." : "Atualizar"}
             </button>
             <button 
               onClick={() => setPartnerManualOpen(true)} 
