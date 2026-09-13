@@ -1,4 +1,4 @@
-# 📘 Manual Mestre e Relatório Completo do Ecossistema AçaíFood
+﻿# 📘 Manual Mestre e Relatório Completo do Ecossistema AçaíFood
 **Versão:** 2.0 • **Ano:** 2026  
 **Plataforma Oficial:** [https://www.acaifood.app.br/](https://www.acaifood.app.br/)  
 **Espelho de Produção:** [https://acai-food-mobile.vercel.app/](https://acai-food-mobile.vercel.app/)
@@ -96,7 +96,7 @@ sequenceDiagram
 
 ## 4. Ciclo de Vida B2B: Batedeira & Fornecedor de Frutos
 
-As batedeiras necessitam de grandes volumes de matéria-prima (latas de 14kg ou sacas de 60kg). O fluxo B2B automatiza o pedido, frete pesado e retenção do pagamento.
+As batedeiras necessitam de grandes volumes de matéria-prima (latas ou sacas de 60kg). O fluxo B2B automatiza o pedido, frete pesado e retenção do pagamento.
 
 ```mermaid
 sequenceDiagram
@@ -196,3 +196,4 @@ O protocolo de PIN é o núcleo anti-fraude do AçaíFood em todas as operaçõe
 ### 🌐 Endereços Oficiais
 - **Produção Web:** [https://www.acaifood.app.br/](https://www.acaifood.app.br/)
 - **Deploy Vercel:** [https://acai-food-mobile.vercel.app/](https://acai-food-mobile.vercel.app/)
+

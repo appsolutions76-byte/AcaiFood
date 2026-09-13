@@ -357,7 +357,7 @@ export default function StorefrontPage() {
         return;
       }
       price = loja.priceB2B ?? 140;
-      name = 'Lata de Açaí Fruto (14kg)';
+      name = 'Lata de Açaí Fruto';
     } else if (['popular', 'medio', 'grosso', 'branco'].includes(tipo)) {
       if (loja.availabilityB2C?.[tipo as keyof typeof loja.availabilityB2C] === false) {
         alert('Este item está esgotado nesta loja.');
@@ -728,7 +728,7 @@ export default function StorefrontPage() {
                           </h4>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                            {/* LATA DE AÇAÍ FRUTO (14KG) */}
+                            {/* LATA DE AÇAÍ FRUTO */}
                             {(() => {
                               const isAvail = selLoja.availabilityB2B?.lata !== false;
                               const photo = selLoja.imagesB2B?.lata || (selLoja as any).b2bImage || selLoja.imagesB2C?.popular;
@@ -749,7 +749,7 @@ export default function StorefrontPage() {
                                     </div>
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-1.5 flex-wrap">
-                                        <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">Lata de Açaí Fruto (14kg)</p>
+                                        <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">Lata de Açaí Fruto</p>
                                         {!isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
                                       </div>
                                       <p className="text-[11px] text-zinc-500 font-medium">Fruto em caroço selecionado</p>
@@ -1353,7 +1353,7 @@ export default function StorefrontPage() {
                           >
                             <optgroup label="Matéria-Prima B2B (Fruto)">
                               <option value="lata" disabled={!isLataAvail}>
-                                Lata de Açaí Fruto (14kg) - {formatMoney(priceLata)} {!isLataAvail ? '(Esgotado)' : ''}
+                                Lata de Açaí Fruto - {formatMoney(priceLata)} {!isLataAvail ? '(Esgotado)' : ''}
                               </option>
                             </optgroup>
 

@@ -1393,7 +1393,7 @@ export default function BatedeiraDashboard() {
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                    {/* LATA DE AÇAÍ FRUTO (14KG) */}
+                    {/* LATA DE AÇAÍ FRUTO */}
                     {(() => {
                       const isLataAvail = selForn.availabilityB2B?.lata !== false;
                       const lataPhoto = selForn.imagesB2B?.lata || defaultB2BImage;
@@ -1410,7 +1410,7 @@ export default function BatedeiraDashboard() {
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">Paneiro / Lata de Açaí Fruto (14kg)</p>
+                                <p className="font-bold text-zinc-800 dark:text-white text-sm truncate">Paneiro / Lata de Açaí Fruto</p>
                                 {!isLataAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
                               </div>
                               <p className="text-[11px] text-zinc-500 font-medium">Frutos in natura em caroço</p>
@@ -1707,7 +1707,7 @@ export default function BatedeiraDashboard() {
                             {/* BOX DE PREÇOS */}
                             <div className="bg-zinc-50 dark:bg-zinc-950/70 p-2.5 rounded-xl flex flex-col gap-1 text-xs mb-2.5 border border-zinc-100 dark:border-zinc-800/80">
                               <div className="flex justify-between items-center text-xs">
-                                <span className="text-zinc-500 font-medium">Lata Açaí (14kg):</span>
+                                <span className="text-zinc-500 font-medium">Lata Açaí:</span>
                                 <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
                                   {formatMoney(forn.priceB2B || 140)} <span className="text-[10px] text-zinc-400 font-normal">/lata</span>
                                 </span>
@@ -1721,7 +1721,7 @@ export default function BatedeiraDashboard() {
                             {/* TAGS DE PRODUTOS DISPONÍVEIS */}
                             <div className="flex items-center gap-1 flex-wrap">
                               <span className="text-[9px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 px-1.5 py-0.5 rounded font-bold">
-                                🌴 Lata Fruto (14kg)
+                                🌴 Lata Fruto
                               </span>
                               {forn.products && forn.products.length > 0 && (
                                 <span className="text-[9px] bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/40 px-1.5 py-0.5 rounded font-bold">

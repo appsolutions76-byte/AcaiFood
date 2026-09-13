@@ -570,7 +570,7 @@ export default function FornecedorDashboard() {
                   <p className="text-xs text-zinc-500">Matéria-prima e latas de açaí vendidas diretamente para as batedeiras.</p>
                 </div>
                 <span className="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-2.5 py-1 rounded-full">
-                  Base B2B (~14kg)
+                  Base B2B
                 </span>
               </div>
 
@@ -614,7 +614,7 @@ export default function FornecedorDashboard() {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-zinc-500">Frutos in natura padrão (aprox. 14kg por lata)</p>
+                        <p className="text-xs text-zinc-500">Frutos in natura padrão (por lata)</p>
                         <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
                           {formatMoney(b2bPrice)} <span className="text-[10px] font-normal text-zinc-500">/ lata</span>
                         </p>

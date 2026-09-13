@@ -1,4 +1,4 @@
-# 🥑 AçaíFood — Manuais de Uso Completos para Todos os Usuários
+﻿# 🥑 AçaíFood — Manuais de Uso Completos para Todos os Usuários
 
 **Ambiente Oficial de Produção:** [https://www.acaifood.app.br/](https://www.acaifood.app.br/)  
 *Versão Atualizada: 2026 (Com Radar sob Demanda, Validação de PIN de 4 dígitos, Chat Integrado, Estornos Pix e Divisão Asaas)*
@@ -79,7 +79,7 @@
 ## 3. 🏭 Manual do Fornecedor de Frutos (Atacado B2B)
 
 ### 3.1. Gestão do Catálogo Atacadista
-- Cadastre lotes em grande volume: sacas de frutos de safra, latas de 14kg ou 28kg, paneiros e insumos industriais complementares.
+- Cadastre lotes em grande volume: sacas de frutos de safra, latas, paneiros e insumos industriais complementares.
 - Configure preços no atacado e subsídio de frete B2B para atrair mais batedeiras da região.
 - 📌 **Escopo do Fornecedor:** O fornecedor é exclusivamente o produtor/vendedor dos frutos frescos e **NÃO recebe nem tem obrigação de receber caroços de volta**.
 
@@ -170,3 +170,4 @@ O **AçaíFood** conta com uma Landing Page comercial interativa projetada para 
 ---
 
 *AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí no Brasil.*
+
