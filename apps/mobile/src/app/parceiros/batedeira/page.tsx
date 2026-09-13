@@ -779,36 +779,48 @@ export default function BatedeiraDashboard() {
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
       <PartnerManualModal isOpen={partnerManualOpen} onClose={() => setPartnerManualOpen(false)} role="batedeira" />
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
-        <div className="flex justify-between items-center max-w-5xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 max-w-5xl mx-auto w-full">
           <div className="flex items-center gap-3">
-            <Store className="text-purple-600" />
+            <Store className="text-purple-600 shrink-0" />
             <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Painel da Loja</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end w-full sm:w-auto">
             {currentUser.asaasLinked && (
-               <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold border border-purple-200 hidden sm:inline-block">Asaas Ativo ✅</span>
+               <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-lg font-bold border border-purple-200 dark:border-purple-800">Asaas Ativo ✅</span>
             )}
             <button 
               onClick={() => setPrinterModalOpen(true)} 
-              className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-purple-200 dark:border-purple-800"
+              className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm transition-all border border-purple-200 dark:border-purple-800 cursor-pointer active:scale-95"
               title="Configurar Impressora Térmica"
             >
-              <Printer size={14} /> 🖨️ Impressora
+              <Printer size={13} /> Impressora
             </button>
-            <button onClick={() => window.location.reload()} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">🔄 Atualizar</button>
-            <button onClick={() => setPartnerManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">
+            <button 
+              onClick={() => { store.fetchAllUsers(true); if (currentUser?.id) store.fetchOrders(currentUser.id, true); }} 
+              className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
+            >
+              🔄 Atualizar
+            </button>
+            <button 
+              onClick={() => setPartnerManualOpen(true)} 
+              className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
+            >
               <BookOpen size={13} /> Manual
             </button>
-
             <button 
               onClick={() => setShareLandingModalOpen(true)}
-              className="text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-pink-200 dark:border-pink-800"
+              className="text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-pink-200 dark:border-pink-800 active:scale-95 cursor-pointer"
               title="Compartilhar apresentação e vendas do AçaíFood"
             >
-              <Share2 size={13} /> <span className="hidden sm:inline">Divulgar App</span>
+              <Share2 size={13} /> Compartilhar
             </button>
             <ThemeToggle />
-            <button onClick={() => { store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 underline">Sair</button>
+            <button 
+              onClick={() => { store.logout(); router.push('/login'); }} 
+              className="text-xs sm:text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline cursor-pointer"
+            >
+              Sair
+            </button>
           </div>
         </div>
       </header>
