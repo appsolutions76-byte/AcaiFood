@@ -19,12 +19,18 @@ const emptySubscribe = () => () => {};
 
 function DirectStoreUrlHandler({ onStoreFound }: { onStoreFound: (storeId: string) => void }) {
   const searchParams = useSearchParams();
+  const store = useAppStore();
   useEffect(() => {
     const lojaParam = searchParams.get('loja') || searchParams.get('store');
     if (lojaParam) {
+      const targetStore = store.users?.[lojaParam];
+      if (targetStore && targetStore.status === 'paused') {
+        alert(`⛔ A loja "${targetStore.name}" está fechada no momento e não está aceitando novos pedidos.`);
+        return;
+      }
       onStoreFound(lojaParam);
     }
-  }, [searchParams, onStoreFound]);
+  }, [searchParams, onStoreFound, store.users]);
   return null;
 }
 
@@ -208,6 +214,20 @@ export default function StorefrontPage() {
     store.fetchLojas(true);
     store.fetchRates(true);
     store.startRealtime();
+
+    const interval = setInterval(() => {
+      store.fetchLojas(true);
+    }, 8000);
+
+    const handleFocus = () => {
+      store.fetchLojas(true);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -314,7 +334,7 @@ export default function StorefrontPage() {
   const handleSelectStore = (lojaId: string) => {
     const loja = store.users?.[lojaId];
     if (loja?.status === 'paused') {
-      alert(`⚠️ "${loja.name}" está fechada no momento e não está aceitando pedidos agora.`);
+      alert(`⛔ A batedeira "${loja.name}" está FECHADA no momento e não está aceitando pedidos. Por favor, escolha outra loja aberta.`);
       return;
     }
 
@@ -660,7 +680,7 @@ export default function StorefrontPage() {
         {!selectedStoreId && (
           <AdBannerCarousel 
             city={currentUser?.cidade} 
-            onSelectStore={(id) => setSelectedStoreId(id)} 
+            onSelectStore={(id) => handleSelectStore(id)} 
           />
         )}
 
@@ -714,9 +734,20 @@ export default function StorefrontPage() {
                       </div>
 
                       {selLoja.status === 'paused' && (
-                        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 p-3.5 rounded-xl mb-4 flex items-center gap-2.5 text-red-700 dark:text-red-300 text-xs font-bold shadow-xs">
-                          <span className="text-base">⛔</span>
-                          <span>{selLoja.role === 'fornecedor' ? 'Este fornecedor' : 'Esta batedeira'} está <strong>fechado(a) no momento</strong> e pausou o recebimento de pedidos.</span>
+                        <div className="bg-red-600 text-white p-5 rounded-2xl mb-5 shadow-lg border border-red-500 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in">
+                          <div className="flex items-center gap-3">
+                            <span className="text-3xl bg-white/20 p-2 rounded-xl">⛔</span>
+                            <div>
+                              <h4 className="font-black text-base sm:text-lg">{selLoja.role === 'fornecedor' ? 'Fornecedor Fechado / Pausado' : 'Esta Loja Está Fechada no Momento'}</h4>
+                              <p className="text-xs text-red-100 font-medium mt-0.5">O estabelecimento pausou o recebimento de novos pedidos. O cardápio está em modo apenas visualização.</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => setSelectedStoreId(null)}
+                            className="shrink-0 bg-white hover:bg-red-50 text-red-700 font-black px-4 py-2.5 rounded-xl text-xs shadow-md transition active:scale-95 cursor-pointer"
+                          >
+                            ⬅️ Ver Outras Lojas Abertas
+                          </button>
                         </div>
                       )}
 
@@ -728,9 +759,15 @@ export default function StorefrontPage() {
                       {isCartStore && (
                         <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 p-3.5 rounded-xl text-xs sm:text-sm font-bold mb-4 flex justify-between items-center shadow-xs">
                           <span>🛒 Você tem {cartTotalQuantity} item(ns) no carrinho desta loja ({formatMoney(cartItemsTotal)})</span>
-                          <button onClick={() => setCheckoutModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3.5 py-2 rounded-xl shadow transition cursor-pointer">
-                            Finalizar Pedido
-                          </button>
+                          {selLoja.status === 'paused' ? (
+                            <span className="bg-red-600 text-white font-extrabold px-3.5 py-2 rounded-xl text-xs shadow">
+                              Loja Fechada
+                            </span>
+                          ) : (
+                            <button onClick={() => setCheckoutModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3.5 py-2 rounded-xl shadow transition cursor-pointer">
+                              Finalizar Pedido
+                            </button>
+                          )}
                         </div>
                       )}
 
@@ -790,13 +827,13 @@ export default function StorefrontPage() {
                                       </p>
                                     </div>
                                   </div>
-                                  {item.isAvail ? (
+                                  {item.isAvail && selLoja.status !== 'paused' ? (
                                     <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-extrabold px-4 py-2.5 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer">
                                       + Adicionar
                                     </button>
                                   ) : (
                                     <span className="text-[11px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-3 py-1.5 rounded-lg shrink-0">
-                                      Esgotado
+                                      {selLoja.status === 'paused' ? 'Loja Fechada' : 'Esgotado'}
                                     </span>
                                   )}
                                 </div>
@@ -861,13 +898,13 @@ export default function StorefrontPage() {
                                       </p>
                                     </div>
                                   </div>
-                                  {item.isAvail ? (
+                                  {item.isAvail && selLoja.status !== 'paused' ? (
                                     <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })} className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700' : 'bg-purple-600 hover:bg-purple-700'} text-white text-xs sm:text-sm font-extrabold px-4 py-2.5 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer`}>
                                       + Adicionar
                                     </button>
                                   ) : (
                                     <span className="text-[11px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-3 py-1.5 rounded-lg shrink-0">
-                                      Esgotado
+                                      {selLoja.status === 'paused' ? 'Loja Fechada' : 'Esgotado'}
                                     </span>
                                   )}
                                 </div>
@@ -997,11 +1034,13 @@ export default function StorefrontPage() {
                         return (
                           <div 
                             key={loja.id} 
-                            className={`group bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl shadow-xs border transition-all duration-200 hover:shadow-lg flex flex-col justify-between gap-3 relative overflow-hidden ${
+                            className={`group bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl shadow-xs border transition-all duration-200 flex flex-col justify-between gap-3 relative overflow-hidden ${
                               isSelectedLoja 
                                 ? 'border-purple-500 ring-2 ring-purple-500/30' 
-                                : 'border-zinc-200/90 dark:border-zinc-800/90 hover:border-purple-400 dark:hover:border-purple-600'
-                            } ${isLojaPaused ? 'opacity-70 bg-zinc-50/90 dark:bg-zinc-950/70' : ''}`}
+                                : isLojaPaused
+                                ? 'border-red-300 dark:border-red-900/60 bg-red-50/20 dark:bg-zinc-950/90 opacity-80'
+                                : 'border-zinc-200/90 dark:border-zinc-800/90 hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-lg'
+                            }`}
                           >
                               {isSelectedLoja && (
                                 <div className="absolute top-0 right-0 bg-purple-600 text-white text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-bl-lg shadow-xs">
@@ -1009,7 +1048,13 @@ export default function StorefrontPage() {
                                 </div>
                               )}
 
-                              <div>
+                              {isLojaPaused && (
+                                <div className="absolute top-0 left-0 right-0 bg-red-600 text-white text-[10px] font-black tracking-wider uppercase py-0.5 text-center shadow-xs">
+                                  ⛔ Fechada no Momento
+                                </div>
+                              )}
+
+                              <div className={isLojaPaused ? 'pt-3' : ''}>
                                 {/* TOPO DO CARD: ÍCONE, NOME COMPLETO E DISTÂNCIA */}
                                 <div className="flex items-start justify-between gap-2.5 mb-2.5">
                                   <div className="flex items-start gap-2.5 min-w-0">
@@ -1052,7 +1097,7 @@ export default function StorefrontPage() {
                                 {/* BADGES DE STATUS & TEMPO */}
                                 <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
                                   {isLojaPaused ? (
-                                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md">🔴 Fechada</span>
+                                    <span className="text-[10px] font-black text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/80 border border-red-300 dark:border-red-800 px-2 py-0.5 rounded-md">🔴 Fechada</span>
                                   ) : (
                                     <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">🟢 Aberta</span>
                                   )}
@@ -1094,10 +1139,10 @@ export default function StorefrontPage() {
                               
                                {isLojaPaused ? (
                                  <button 
-                                   onClick={() => alert(`⚠️ A batedeira "${loja.name}" está fechada no momento e não está aceitando pedidos agora.`)}
-                                   className="w-full mt-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700/60 text-zinc-400 dark:text-zinc-500 font-bold py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700/60 transition flex justify-center items-center gap-1.5 text-xs"
+                                   onClick={() => alert(`⛔ A batedeira "${loja.name}" está FECHADA no momento e não está aceitando pedidos. Por favor, escolha outra loja aberta.`)}
+                                   className="w-full mt-1 bg-red-100 hover:bg-red-200 dark:bg-red-950/60 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 font-extrabold py-2.5 px-3 rounded-xl border border-red-300 dark:border-red-800 transition flex justify-center items-center gap-1.5 text-xs cursor-pointer shadow-2xs active:scale-95"
                                  >
-                                   ⛔ Fechada no Momento
+                                   ⛔ Loja Fechada (Indisponível)
                                  </button>
                                ) : (
                                  <button 

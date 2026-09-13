@@ -972,6 +972,8 @@ export const useAppStore = create<AppState>()(
                 dbLojas.forEach(dbUser => {
                     const sf = extractStorefront(dbUser.storefronts);
                     const sfMeta = parseStorefrontMeta(sf?.logo_url);
+                    const isPaused = dbUser.status === 'paused' || dbUser.is_online === false || sf?.is_active === false;
+                    const storeStatus: 'active' | 'paused' | 'blocked' = isPaused ? 'paused' : (dbUser.status === 'blocked' ? 'blocked' : 'active');
                     newUsers[dbUser.id] = {
                         id: dbUser.id,
                         role: 'loja',
@@ -982,7 +984,7 @@ export const useAppStore = create<AppState>()(
                         lat: dbUser.latitude || 0,
                         lng: dbUser.longitude || 0,
                         icon: '🏪',
-                        status: (dbUser.status || (sf?.is_active === false ? 'paused' : 'active')) as 'active' | 'paused' | 'blocked',
+                        status: storeStatus,
                         priceB2B: sf?.price_b2b ?? 140,
                         priceB2C: {
                             popular: sf?.price_b2c_popular ?? 20,
@@ -1040,6 +1042,9 @@ export const useAppStore = create<AppState>()(
                                     dbUser.vehicle_type === 'TRUCK' ? 'Caminhão' : 
                                     dbUser.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined;
 
+                    const isPaused = dbUser.status === 'paused' || dbUser.is_online === false || sf?.is_active === false;
+                    const storeStatus: 'active' | 'paused' | 'blocked' = isPaused ? 'paused' : (dbUser.status === 'blocked' ? 'blocked' : (dbUser.status || 'active'));
+
                     newUsers[dbUser.id] = {
                         id: dbUser.id,
                         role: appRole as Role,
@@ -1053,7 +1058,7 @@ export const useAppStore = create<AppState>()(
                         lng: dbUser.longitude || 0,
                         icon: appRole === 'loja' ? '🏪' : appRole === 'fornecedor' ? '🏭' : appRole === 'motorista' ? '🛵' : '👤',
                         veiculo,
-                        status: dbUser.status as 'active'|'paused'|'blocked',
+                        status: storeStatus,
                         priceB2B: sf?.price_b2b ?? 140,
                         priceB2C: {
                             popular: sf?.price_b2c_popular ?? 20,
