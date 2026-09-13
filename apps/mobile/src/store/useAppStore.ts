@@ -977,21 +977,21 @@ export const useAppStore = create<AppState>()(
                     const sf = extractStorefront(dbUser.storefronts);
                     const sfMeta = parseStorefrontMeta(sf?.logo_url);
                     const rawStatus = String(dbUser.status || '').toLowerCase().trim();
-                    
+                    const isBlocked = rawStatus === 'blocked';
                     let isPaused = false;
-                    if (sfMeta.isOpen !== undefined) {
+                    
+                    if (typeof dbUser.is_online === 'boolean') {
+                      isPaused = !dbUser.is_online;
+                    } else if (typeof sfMeta.isOpen === 'boolean') {
                       isPaused = !sfMeta.isOpen;
+                    } else if (typeof sf?.is_active === 'boolean') {
+                      isPaused = !sf.is_active;
                     } else if (rawStatus === 'paused') {
                       isPaused = true;
                     } else if (rawStatus === 'active') {
                       isPaused = false;
-                    } else if (dbUser.is_online !== undefined && dbUser.is_online !== null) {
-                      isPaused = !dbUser.is_online;
-                    } else if (sf?.is_active !== undefined && sf?.is_active !== null) {
-                      isPaused = !sf.is_active;
                     }
 
-                    const isBlocked = rawStatus === 'blocked';
                     const storeStatus: 'active' | 'paused' | 'blocked' = isBlocked ? 'blocked' : (isPaused ? 'paused' : 'active');
                     const userObj: User = {
                         id: dbUser.id,
@@ -1068,21 +1068,21 @@ export const useAppStore = create<AppState>()(
                                     dbUser.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined;
 
                     const rawStatus = String(dbUser.status || '').toLowerCase().trim();
-                    
+                    const isBlocked = rawStatus === 'blocked';
                     let isPaused = false;
-                    if (sfMeta.isOpen !== undefined) {
+                    
+                    if (typeof dbUser.is_online === 'boolean') {
+                      isPaused = !dbUser.is_online;
+                    } else if (typeof sfMeta.isOpen === 'boolean') {
                       isPaused = !sfMeta.isOpen;
+                    } else if (typeof sf?.is_active === 'boolean') {
+                      isPaused = !sf.is_active;
                     } else if (rawStatus === 'paused') {
                       isPaused = true;
                     } else if (rawStatus === 'active') {
                       isPaused = false;
-                    } else if (dbUser.is_online !== undefined && dbUser.is_online !== null) {
-                      isPaused = !dbUser.is_online;
-                    } else if (sf?.is_active !== undefined && sf?.is_active !== null) {
-                      isPaused = !sf.is_active;
                     }
 
-                    const isBlocked = rawStatus === 'blocked';
                     const storeStatus: 'active' | 'paused' | 'blocked' = isBlocked ? 'blocked' : (isPaused ? 'paused' : 'active');
 
                     const userObj: User = {

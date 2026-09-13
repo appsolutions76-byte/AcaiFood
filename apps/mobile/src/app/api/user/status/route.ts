@@ -24,8 +24,7 @@ export async function POST(request: Request) {
         .from('users')
         .update({ 
           status: cleanStatus,
-          is_online: isOnline,
-          updated_at: new Date().toISOString()
+          is_online: isOnline
         })
         .eq('id', userId)
         .select();
@@ -51,8 +50,7 @@ export async function POST(request: Request) {
             .from('users')
             .update({ 
               status: cleanStatus,
-              is_online: isOnline,
-              updated_at: new Date().toISOString()
+              is_online: isOnline
             })
             .eq('id', userId)
             .select();
@@ -75,15 +73,14 @@ export async function POST(request: Request) {
         for (const sf of sfData) {
           let parsedMeta: any = {};
           try {
-            if (sf.logo_url) parsedMeta = JSON.parse(sf.logo_url);
+            if (sf.logo_url && sf.logo_url.startsWith('{')) parsedMeta = JSON.parse(sf.logo_url);
           } catch (_) {}
           const newLogoUrl = JSON.stringify({ ...parsedMeta, isOpen: isOnline });
           await adminSupabase
             .from('storefronts')
             .update({
               is_active: isOnline,
-              logo_url: newLogoUrl,
-              updated_at: new Date().toISOString()
+              logo_url: newLogoUrl
             })
             .eq('id', sf.id);
         }
@@ -91,8 +88,7 @@ export async function POST(request: Request) {
         await adminSupabase
           .from('storefronts')
           .update({
-            is_active: isOnline,
-            updated_at: new Date().toISOString()
+            is_active: isOnline
           })
           .eq('partner_id', userId);
       }
@@ -102,8 +98,7 @@ export async function POST(request: Request) {
       await adminSupabase
         .from('storefronts')
         .update({
-          is_active: isOnline,
-          updated_at: new Date().toISOString()
+          is_active: isOnline
         })
         .eq('id', userId);
     } catch (_sf2) {}
