@@ -982,7 +982,7 @@ export const useAppStore = create<AppState>()(
                         lat: dbUser.latitude || 0,
                         lng: dbUser.longitude || 0,
                         icon: '🏪',
-                        status: dbUser.status as 'active',
+                        status: (dbUser.status || (sf?.is_active === false ? 'paused' : 'active')) as 'active' | 'paused' | 'blocked',
                         priceB2B: sf?.price_b2b ?? 140,
                         priceB2C: {
                             popular: sf?.price_b2c_popular ?? 20,
@@ -1331,18 +1331,48 @@ export const useAppStore = create<AppState>()(
       },
 
       updateUserStatus: async (userId, status) => {
+        // 1. Atualização Otimista no Zustand State
         set((state) => {
-          const user = state.users[userId];
-          if (!user) return state;
-          const updatedUser = { ...user, status };
+          const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           const isCurrent = state.currentUser?.id === userId;
+          if (!user && !isCurrent) return state;
+
+          const baseUser = user || state.currentUser;
+          const updatedUser: User = { ...(baseUser as User), status };
           return { 
             users: { ...state.users, [userId]: updatedUser },
             currentUser: isCurrent ? updatedUser : state.currentUser
           };
         });
-        const { error } = await supabase.from('users').update({ status }).eq('id', userId);
-        if (error) console.error("Error updating status in DB:", error);
+
+        // 2. Persistir no Supabase com fallback garantido via API Server
+        const isOnline = status === 'active';
+        try {
+          const { error } = await supabase.from('users').update({ status, is_online: isOnline }).eq('id', userId);
+          if (error) {
+            console.warn("Aviso ao atualizar status via client supabase, acionando API Server:", error.message);
+            await fetch('/api/user/status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId, status })
+            });
+          } else {
+            // Atualiza storefronts se for loja ou fornecedor
+            try {
+              await supabase.from('storefronts').update({ is_active: isOnline }).eq('partner_id', userId);
+            } catch (_sfE) {}
+          }
+        } catch (_err) {
+          try {
+            await fetch('/api/user/status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId, status })
+            });
+          } catch (_apiErr) {
+            console.error("Erro ao sincronizar status do usuário via API:", _apiErr);
+          }
+        }
       },
 
       deleteUser: async (userId) => {

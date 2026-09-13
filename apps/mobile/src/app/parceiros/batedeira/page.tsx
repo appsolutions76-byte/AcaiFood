@@ -848,6 +848,18 @@ export default function BatedeiraDashboard() {
                   >
                     ✏️ Trocar Nome
                   </button>
+
+                  <button
+                    onClick={handleToggleStatus}
+                    className={`text-xs font-black px-3 py-1 rounded-lg border transition shadow flex items-center gap-1 cursor-pointer active:scale-95 ${
+                      isPaused
+                        ? 'bg-red-600 hover:bg-red-700 text-white border-red-400 animate-pulse'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-400'
+                    }`}
+                    title={isPaused ? "Sua loja está fechada. Clique para abrir e receber pedidos." : "Sua loja está aberta recebendo pedidos. Clique para pausar/fechar."}
+                  >
+                    {isPaused ? '🔴 Loja Fechada (Abrir)' : '🟢 Loja Aberta'}
+                  </button>
                 </div>
                 <p className="text-purple-300 text-xs mt-1">📍 Bairro: {currentUser.bairro || 'Central'}</p>
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -936,13 +948,13 @@ export default function BatedeiraDashboard() {
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={handleToggleStatus} 
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm border flex items-center gap-1.5 ${
+                    className={`px-4 py-2.5 rounded-xl text-xs font-black transition shadow-sm border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
                       isPaused 
-                        ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-800' 
-                        : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800'
+                        ? 'bg-red-500 hover:bg-red-600 text-white border-red-400 animate-pulse' 
+                        : 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-400'
                     }`}
                   >
-                    {isPaused ? '🔴 Loja Fechada' : '🟢 Loja Aberta (Recebendo Pedidos)'}
+                    {isPaused ? '🔴 Loja Fechada (Clique para Abrir)' : '🟢 Loja Aberta (Recebendo Pedidos)'}
                   </button>
                   <button 
                     onClick={() => setPriceModalOpen(true)} 

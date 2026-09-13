@@ -341,8 +341,15 @@ export default function CaminhaoDashboard() {
                     ⚠️ Limite diário de 2 saques atingido (retorna amanhã)
                   </p>
                 )}
-                <button onClick={handleToggleStatus} className={`mt-2 px-3 py-1 rounded-lg text-xs font-bold transition border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
-                    {isPaused ? 'Offline 🚫' : 'Online ✅'}
+                <button 
+                  onClick={handleToggleStatus} 
+                  className={`mt-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition border shadow-sm cursor-pointer active:scale-95 ${
+                    isPaused 
+                      ? 'bg-red-500 hover:bg-red-600 text-white border-red-400 animate-pulse' 
+                      : 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-400'
+                  }`}
+                >
+                  {isPaused ? '🔴 Offline (Ficar Online)' : '🟢 Online (Recebendo Fretes)'}
                 </button>
             </div>
         </div>

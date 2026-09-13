@@ -458,6 +458,18 @@ export default function FornecedorDashboard() {
                   >
                     ✏️ Trocar Nome
                   </button>
+
+                  <button
+                    onClick={handleToggleStatus}
+                    className={`text-xs font-black px-3 py-1 rounded-lg border transition shadow flex items-center gap-1 cursor-pointer active:scale-95 ${
+                      isPaused
+                        ? 'bg-red-600 hover:bg-red-700 text-white border-red-400 animate-pulse'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-400'
+                    }`}
+                    title={isPaused ? "Fornecedor pausado/fechado. Clique para abrir." : "Fornecedor aberto e recebendo pedidos. Clique para pausar."}
+                  >
+                    {isPaused ? '🔴 Pausado (Abrir)' : '🟢 Operando'}
+                  </button>
                 </div>
                 <p className="text-emerald-300 text-xs mt-1">📍 Bairro: {currentUser.bairro || 'Central'}</p>
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -530,8 +542,15 @@ export default function FornecedorDashboard() {
                   <p className="text-[10px] text-zinc-500">Controle se seu estabelecimento está operando e recebendo pedidos das lojas.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap mt-2 sm:mt-0">
-                  <button onClick={handleToggleStatus} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm border ${isPaused ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
-                    {isPaused ? 'Pausado 🚫' : 'Operando ✅'}
+                  <button 
+                    onClick={handleToggleStatus} 
+                    className={`px-4 py-2.5 rounded-xl text-xs font-black transition shadow-sm border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                      isPaused 
+                        ? 'bg-red-500 hover:bg-red-600 text-white border-red-400 animate-pulse' 
+                        : 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-400'
+                    }`}
+                  >
+                    {isPaused ? '🔴 Pausado (Clique para Abrir)' : '🟢 Operando (Recebendo Pedidos)'}
                   </button>
                   <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700">
                     <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Lata:</span>
