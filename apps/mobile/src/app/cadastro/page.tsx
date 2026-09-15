@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, Role, User } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
-import { ShieldCheck, BookOpen, Sparkles, CheckCircle2, QrCode, Copy, ArrowRight, Clock, AlertCircle } from "lucide-react";
+import { ShieldCheck, BookOpen, Sparkles, CheckCircle2, QrCode, Copy, ArrowRight, Clock, AlertCircle, Store, Truck, Bike, PackageOpen, User as UserIcon, Recycle, ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 
@@ -38,7 +38,7 @@ function CadastroForm() {
   const [manualOpen, setManualOpen] = useState(false);
   const [isRegisteringAtStore, setIsRegisteringAtStore] = useState(true);
   
-  const [step, setStep] = useState(1); // 1 = Formulario, 2 = Ativação / Homologação
+  const [step, setStep] = useState(searchParams?.get('role') || searchParams?.get('pendingUserId') ? 1 : 0); // 0 = Escolher Perfil, 1 = Formulario, 2 = Ativação
   const [newUserId, setNewUserId] = useState("");
 
   // Estado da cota e taxa de ativação
@@ -350,6 +350,165 @@ function CadastroForm() {
   return (
     <>
       <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role="login" />
+      
+      {/* PASSO 0: ESCOLHA VISUAL DE PERFIL NA CADEIA DO AÇAÍ */}
+      {step === 0 && (
+        <div className="max-w-3xl mx-auto w-full p-4 sm:p-6 flex flex-col justify-center animate-in fade-in zoom-in-95 duration-200">
+          <div className="text-center mb-8">
+            <div className="flex flex-col justify-center items-center mb-4 text-center">
+              <img src="/banner.png?v=4" alt="Marca Oficial AçaíFood" className="w-32 h-32 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-2 max-w-xs">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight mb-2">
+              Quem é você na cadeia do Açaí?
+            </h2>
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm sm:text-base max-w-lg mx-auto">
+              Escolha o seu perfil de atuação para acessar as ferramentas focadas no seu negócio.
+            </p>
+            <p className="mt-3 text-center text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+              Ou <Link href={returnUrl ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : "/login"} className="font-bold text-purple-600 hover:text-purple-500 underline">faça login se já for cadastrado</Link>
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {/* Cliente */}
+            <button
+              type="button"
+              onClick={() => {
+                setRole('cliente');
+                setStep(1);
+              }}
+              className="group md:col-span-2 lg:col-span-3 text-left w-full cursor-pointer focus:outline-none"
+            >
+              <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-pink-500 dark:hover:border-pink-500 hover:shadow-lg transition-all flex items-center justify-start gap-4 h-full shadow-sm">
+                <div className="bg-pink-100 dark:bg-pink-900/30 p-3.5 rounded-xl text-pink-600 dark:text-pink-400 group-hover:scale-110 transition-transform shrink-0">
+                  <UserIcon size={32} />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-0.5">Cliente (Consumidor Final)</h3>
+                  <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                    Quero apenas pedir açaí para mim ou para minha família.
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            {/* Batedeira */}
+            <button
+              type="button"
+              onClick={() => {
+                setRole('loja');
+                setStep(1);
+              }}
+              className="group text-left w-full cursor-pointer focus:outline-none"
+            >
+              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-lg transition-all flex items-start gap-3.5 h-full shadow-sm">
+                <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-xl text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform shrink-0">
+                  <Store size={28} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">Batedeira (Ponto de Açaí)</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Para quem bate e vende o açaí pronto (Varejo B2C). Receba pedidos de clientes.
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            {/* Fornecedor */}
+            <button
+              type="button"
+              onClick={() => {
+                setRole('fornecedor');
+                setStep(1);
+              }}
+              className="group text-left w-full cursor-pointer focus:outline-none"
+            >
+              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-lg transition-all flex items-start gap-3.5 h-full shadow-sm">
+                <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-xl text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform shrink-0">
+                  <PackageOpen size={28} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">Fornecedor (Atacadista)</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Para quem vende o fruto bruto ou caixas de açaí (Atacado B2B) para as batedeiras.
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            {/* Motoboy */}
+            <button
+              type="button"
+              onClick={() => {
+                setRole('motorista');
+                setVeiculo('Moto');
+                setStep(1);
+              }}
+              className="group text-left w-full cursor-pointer focus:outline-none"
+            >
+              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-amber-500 dark:hover:border-amber-500 hover:shadow-lg transition-all flex items-start gap-3.5 h-full shadow-sm">
+                <div className="bg-amber-100 dark:bg-amber-900/30 p-3 rounded-xl text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform shrink-0">
+                  <Bike size={28} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">Entregador (Motoboy)</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Logística leve B2C. Entregue pedidos fracionados aos clientes finais.
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            {/* Caminhão */}
+            <button
+              type="button"
+              onClick={() => {
+                setRole('motorista');
+                setVeiculo('Caminhão');
+                setStep(1);
+              }}
+              className="group text-left w-full cursor-pointer focus:outline-none"
+            >
+              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-lg transition-all flex items-start gap-3.5 h-full shadow-sm">
+                <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform shrink-0">
+                  <Truck size={28} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">Caminhão Fruto Açaí</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Logística pesada B2B. Transporte cargas de fruto e caixas até as lojas.
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            {/* Caçamba Logística Reversa */}
+            <button
+              type="button"
+              onClick={() => {
+                setRole('motorista');
+                setVeiculo('Caçamba');
+                setStep(1);
+              }}
+              className="group text-left w-full cursor-pointer focus:outline-none"
+            >
+              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-amber-500 dark:hover:border-amber-500 hover:shadow-lg transition-all flex items-start gap-3.5 h-full shadow-sm">
+                <div className="bg-amber-100 dark:bg-amber-900/30 p-3 rounded-xl text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform shrink-0">
+                  <Recycle size={28} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">Caçamba Logística Reversa</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Retirada de caroço de açaí nas batedeiras para levar ao ecoponto.
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+
       {step === 1 && (
         <>
           <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -409,6 +568,19 @@ function CadastroForm() {
 
             <div className="bg-white dark:bg-zinc-900 py-8 px-4 shadow sm:rounded-2xl sm:px-10 border border-zinc-200 dark:border-zinc-800">
               <form className="space-y-4" onSubmit={handleCadastro}>
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setStep(0)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 hover:underline cursor-pointer"
+                  >
+                    <span>←</span>
+                    <span>Trocar Perfil</span>
+                  </button>
+                  <span className="text-[11px] font-extrabold uppercase px-2.5 py-1 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                    {role === 'cliente' ? '👤 Cliente' : role === 'loja' ? '🏪 Batedeira' : role === 'fornecedor' ? '📦 Fornecedor' : `🛵 Logística (${veiculo})`}
+                  </span>
+                </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Tipo de Perfil</label>
