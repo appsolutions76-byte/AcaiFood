@@ -138,6 +138,27 @@ function AdminDashboardContent() {
     pricePaid: 50,
     active: true
   });
+  const [uploadedMediaList, setUploadedMediaList] = useState<Array<{
+    id: string;
+    name: string;
+    path: string;
+    url: string;
+    mediaType: 'image' | 'video';
+    size: number;
+    createdAt: string;
+  }>>([]);
+  const [isLoadingMediaList, setIsLoadingMediaList] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [mediaUploadProgressText, setMediaUploadProgressText] = useState<string>('');
+  const [convertedMediaResult, setConvertedMediaResult] = useState<{
+    url: string;
+    fileName: string;
+    mediaType: 'image' | 'video';
+    size?: number;
+  } | null>(null);
+  const [isUploadingInModal, setIsUploadingInModal] = useState(false);
+  const [copiedUrlState, setCopiedUrlState] = useState<string | null>(null);
+
   const [isSavingActivationConfig, setIsSavingActivationConfig] = useState(false);
   const [isPayingAll, setIsPayingAll] = useState(false);
   const [payAllProgress, setPayAllProgress] = useState<{ current: number; total: number; name: string } | null>(null);
@@ -507,6 +528,117 @@ function AdminDashboardContent() {
     } finally {
       setIsSavingActivationConfig(false);
     }
+  };
+
+  const fetchMediaList = async () => {
+    setIsLoadingMediaList(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = {};
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch('/api/admin/media-upload', { headers: authHeaders });
+      if (res.ok) {
+        const data = await res.json();
+        setUploadedMediaList(data.files || []);
+      }
+    } catch (e) {
+      console.error("Erro ao listar mídias:", e);
+    } finally {
+      setIsLoadingMediaList(false);
+    }
+  };
+
+  const handleUploadFile = async (file: File, isFromModal = false) => {
+    if (!file) return;
+
+    if (isFromModal) {
+      setIsUploadingInModal(true);
+    } else {
+      setIsUploadingMedia(true);
+      setMediaUploadProgressText('Enviando e convertendo arquivo em URL pública...');
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = {};
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/admin/media-upload', {
+        method: 'POST',
+        headers: authHeaders,
+        body: formData
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success && data.url) {
+        showToast("✅ Mídia convertida em URL pública com sucesso!");
+        if (isFromModal) {
+          setAdFormData(prev => ({
+            ...prev,
+            mediaUrl: data.url,
+            mediaType: data.mediaType || (file.type.startsWith('video/') ? 'video' : 'image'),
+            title: prev.title || file.name.replace(/\.[^/.]+$/, '')
+          }));
+        } else {
+          setConvertedMediaResult({
+            url: data.url,
+            fileName: data.fileName || file.name,
+            mediaType: data.mediaType || (file.type.startsWith('video/') ? 'video' : 'image'),
+            size: data.size || file.size
+          });
+          fetchMediaList();
+        }
+      } else {
+        alert("Erro no upload da mídia: " + (data.error || 'Falha ao processar arquivo'));
+      }
+    } catch (err: any) {
+      alert("Erro ao enviar mídia: " + err.message);
+    } finally {
+      setIsUploadingMedia(false);
+      setIsUploadingInModal(false);
+      setMediaUploadProgressText('');
+    }
+  };
+
+  const handleDeleteMediaFile = async (path: string) => {
+    if (!confirm("Tem certeza de que deseja excluir este arquivo de mídia do armazenamento?")) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 'Content-Type': 'application/json' };
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch('/api/admin/media-upload', {
+        method: 'DELETE',
+        headers: authHeaders,
+        body: JSON.stringify({ path })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast("🗑️ Arquivo de mídia removido com sucesso!");
+        if (convertedMediaResult?.url?.includes(path)) {
+          setConvertedMediaResult(null);
+        }
+        fetchMediaList();
+      } else {
+        alert("Erro ao remover: " + (data.error || 'Falha de comunicação'));
+      }
+    } catch (err: any) {
+      alert("Erro ao excluir mídia: " + err.message);
+    }
+  };
+
+  const handleCopyPublicUrl = (url: string) => {
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopiedUrlState(url);
+    showToast("📋 URL copiada para a área de transferência!");
+    setTimeout(() => {
+      setCopiedUrlState(null);
+    }, 3000);
   };
 
   const fetchAds = async () => {
@@ -2622,6 +2754,245 @@ function AdminDashboardContent() {
               </div>
             </div>
 
+            {/* NOVO: Espaço de Conversão e Hospedagem de Mídias (Vídeo / Imagem em URL) */}
+            <div className="bg-gradient-to-br from-purple-900/10 via-white to-purple-50 dark:from-purple-950/40 dark:via-zinc-900 dark:to-zinc-900 p-5 rounded-2xl border border-purple-200 dark:border-purple-900/50 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-purple-100 dark:border-zinc-800 pb-3">
+                <div>
+                  <h4 className="font-bold text-sm text-purple-950 dark:text-purple-300 flex items-center gap-2">
+                    <span>🪄</span> Conversor & Hospedador de Mídias (Vídeos / Imagens para URL)
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Envie fotos ou vídeos do seu computador ou celular para gerar um link público direto e usar nos anúncios ou stories.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800">
+                    MP4 • WebM • PNG • JPG • WebP (Máx 50MB)
+                  </span>
+                </div>
+              </div>
+
+              {/* Upload Zone & Result Card */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                {/* Drag & Drop Upload Area */}
+                <div className="md:col-span-6 flex flex-col justify-center">
+                  <label
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const f = e.dataTransfer.files?.[0];
+                      if (f) handleUploadFile(f);
+                    }}
+                    className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition relative group ${
+                      isUploadingMedia
+                        ? 'border-purple-400 bg-purple-50/50 dark:bg-purple-950/30'
+                        : 'border-purple-300 dark:border-purple-800/80 hover:border-purple-500 hover:bg-purple-50/30 dark:hover:bg-purple-950/20 bg-white/70 dark:bg-zinc-800/50'
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                      disabled={isUploadingMedia}
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleUploadFile(f);
+                        e.target.value = '';
+                      }}
+                    />
+                    {isUploadingMedia ? (
+                      <div className="space-y-2 py-4">
+                        <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                        <p className="text-xs font-bold text-purple-700 dark:text-purple-300">
+                          {mediaUploadProgressText || 'Enviando e gerando link público...'}
+                        </p>
+                        <p className="text-[10px] text-zinc-400">Por favor, aguarde a conclusão do upload.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto group-hover:scale-110 transition">
+                          <span className="text-2xl">📤</span>
+                        </div>
+                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                          Arraste o arquivo ou <span className="text-purple-600 dark:text-purple-400 underline">clique para selecionar</span>
+                        </p>
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                          Suporta Vídeos Curtos (MP4) e Imagens de Alta Resolução
+                        </p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+
+                {/* Converted Result Box */}
+                <div className="md:col-span-6 bg-white dark:bg-zinc-800/80 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-4 flex flex-col justify-between">
+                  {convertedMediaResult ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                            {convertedMediaResult.mediaType === 'video' ? '🎥 Vídeo Convertido' : '🖼️ Imagem Convertida'}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-mono truncate max-w-[160px]">
+                            {convertedMediaResult.fileName}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setConvertedMediaResult(null)}
+                          className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                          title="Limpar prévia"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Visual Preview */}
+                      <div className="w-full h-36 bg-black rounded-xl overflow-hidden flex items-center justify-center relative border border-zinc-200 dark:border-zinc-700">
+                        {convertedMediaResult.mediaType === 'video' ? (
+                          <video src={convertedMediaResult.url} controls className="w-full h-full object-contain" />
+                        ) : (
+                          <img src={convertedMediaResult.url} alt="Preview" className="w-full h-full object-contain" />
+                        )}
+                      </div>
+
+                      {/* URL Box with 1-Click Copy */}
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400">
+                          URL Pública Gerada
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={convertedMediaResult.url}
+                            className="w-full bg-zinc-50 dark:bg-zinc-900 border dark:border-zinc-700 rounded-xl px-2.5 py-1.5 text-[11px] font-mono select-all outline-none"
+                          />
+                          <button
+                            onClick={() => handleCopyPublicUrl(convertedMediaResult.url)}
+                            className="bg-purple-100 hover:bg-purple-200 dark:bg-purple-950 dark:hover:bg-purple-900 text-purple-700 dark:text-purple-300 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 shrink-0 transition"
+                          >
+                            {copiedUrlState === convertedMediaResult.url ? '✅ Copiado' : '📋 Copiar'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Action Button: Create Ad */}
+                      <button
+                        onClick={() => {
+                          setEditingAd(null);
+                          setAdFormData({
+                            partnerId: '',
+                            partnerName: '',
+                            title: convertedMediaResult.fileName.replace(/\.[^/.]+$/, ''),
+                            description: '',
+                            mediaType: convertedMediaResult.mediaType,
+                            mediaUrl: convertedMediaResult.url,
+                            targetUrl: '',
+                            placement: 'both',
+                            city: 'all',
+                            startDate: new Date().toISOString().slice(0, 10),
+                            endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+                            pricePaid: 50,
+                            active: true
+                          });
+                          setAdModalOpen(true);
+                        }}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95"
+                      >
+                        <span>🚀</span> Criar Anúncio com esta Mídia
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-zinc-400 space-y-2">
+                      <span className="text-3xl">🔗</span>
+                      <p className="text-xs font-bold text-zinc-600 dark:text-zinc-300">
+                        Nenhuma mídia convertida no momento
+                      </p>
+                      <p className="text-[11px] text-zinc-400 max-w-xs">
+                        Faça o upload do seu arquivo ao lado para receber a URL pública instantaneamente e visualizar a prévia aqui.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Galeria de Mídias Recentes Salvas */}
+              {uploadedMediaList.length > 0 && (
+                <div className="pt-2 border-t border-purple-100 dark:border-zinc-800/80 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <h5 className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <span>📁</span> Mídias Hospedadas Recentemente ({uploadedMediaList.length})
+                    </h5>
+                    <button
+                      onClick={fetchMediaList}
+                      disabled={isLoadingMediaList}
+                      className="text-[11px] text-purple-600 hover:text-purple-700 dark:text-purple-400 font-bold"
+                    >
+                      {isLoadingMediaList ? '🔄 Atualizando...' : '🔄 Atualizar Galeria'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 max-h-48 overflow-y-auto p-1">
+                    {uploadedMediaList.map((m) => (
+                      <div
+                        key={m.id || m.path}
+                        className="group relative bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 aspect-video flex flex-col justify-between"
+                      >
+                        <div className="w-full h-full bg-black flex items-center justify-center overflow-hidden">
+                          {m.mediaType === 'video' ? (
+                            <video src={m.url} className="w-full h-full object-cover" muted />
+                          ) : (
+                            <img src={m.url} alt={m.name} className="w-full h-full object-cover" />
+                          )}
+                        </div>
+
+                        <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-black/70 text-white backdrop-blur-xs">
+                          {m.mediaType === 'video' ? '🎥 Vídeo' : '🖼️ Img'}
+                        </span>
+
+                        {/* Overlay Controls */}
+                        <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1.5 p-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConvertedMediaResult({
+                                url: m.url,
+                                fileName: m.name,
+                                mediaType: m.mediaType,
+                                size: m.size
+                              });
+                            }}
+                            className="bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold px-2 py-1 rounded-lg w-full flex items-center justify-center gap-1"
+                            title="Visualizar Mídia"
+                          >
+                            👁️ Ver
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPublicUrl(m.url)}
+                            className="bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold px-2 py-1 rounded-lg w-full flex items-center justify-center gap-1"
+                            title="Copiar URL"
+                          >
+                            {copiedUrlState === m.url ? '✅ Copiado' : '📋 Copiar'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMediaFile(m.path)}
+                            className="bg-red-600/80 hover:bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg w-full flex items-center justify-center gap-1"
+                            title="Excluir Mídia"
+                          >
+                            🗑️ Excluir
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+
             {/* Tabela de Campanhas */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
               <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
@@ -2839,15 +3210,72 @@ function AdminDashboardContent() {
               </div>
 
               <div>
-                <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase mb-1">URL da Mídia (Imagem ou Vídeo) *</label>
-                <input
-                  type="url"
-                  placeholder="https://exemplo.com/imagem-anuncio.jpg"
-                  value={adFormData.mediaUrl}
-                  onChange={e => setAdFormData({...adFormData, mediaUrl: e.target.value})}
-                  className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-mono"
-                  required
-                />
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-zinc-600 dark:text-zinc-400 font-bold uppercase">
+                    URL da Mídia (Imagem ou Vídeo) *
+                  </label>
+                  <label className="cursor-pointer text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 flex items-center gap-1 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800 transition">
+                    {isUploadingInModal ? (
+                      <span className="animate-spin">🔄 Enviando...</span>
+                    ) : (
+                      <>
+                        <span>📁</span>
+                        <span>Fazer Upload / Converter</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      disabled={isUploadingInModal}
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleUploadFile(f, true);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+                <div className="relative">
+                  <input
+                    type="url"
+                    placeholder="https://... ou faça upload pelo botão acima"
+                    value={adFormData.mediaUrl}
+                    onChange={e => setAdFormData({...adFormData, mediaUrl: e.target.value})}
+                    className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                    required
+                  />
+                  {adFormData.mediaUrl && (
+                    <button
+                      type="button"
+                      onClick={() => handleCopyPublicUrl(adFormData.mediaUrl)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                      title="Copiar URL"
+                    >
+                      {copiedUrlState === adFormData.mediaUrl ? '✅' : '📋'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Mini Live Preview no Modal */}
+                {adFormData.mediaUrl && (
+                  <div className="mt-2 p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 flex items-center gap-3">
+                    <div className="w-16 h-16 rounded-lg bg-black overflow-hidden shrink-0 flex items-center justify-center">
+                      {adFormData.mediaType === 'video' ? (
+                        <video src={adFormData.mediaUrl} controls className="w-full h-full object-cover" />
+                      ) : (
+                        <img src={adFormData.mediaUrl} alt="Preview" className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 truncate">Pré-visualização da Mídia</p>
+                      <p className="text-[10px] text-zinc-500 font-mono truncate">{adFormData.mediaUrl}</p>
+                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[9px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                        {adFormData.mediaType === 'video' ? '🎥 Formato Vídeo' : '🖼️ Formato Imagem'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
