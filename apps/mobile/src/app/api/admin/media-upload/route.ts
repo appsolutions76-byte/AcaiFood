@@ -16,9 +16,7 @@ async function ensureBucket(supabase: any) {
     const exists = buckets?.some((b: any) => b.name === BUCKET_NAME || b.id === BUCKET_NAME);
     if (!exists) {
       const { error: createErr } = await supabase.storage.createBucket(BUCKET_NAME, {
-        public: true,
-        fileSizeLimit: 104857600, // 100MB
-        allowedMimeTypes: ['image/*', 'video/*']
+        public: true
       });
       if (createErr) {
         console.warn('Aviso ao criar bucket commercials:', createErr.message);
