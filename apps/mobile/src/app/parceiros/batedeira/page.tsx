@@ -52,43 +52,43 @@ const QUICK_EXTRAS_CATEGORIES = [
 
 const QUICK_EXTRAS_PRESETS = [
   // Açaí & Adicionais
-  { name: 'Farinha de Tapioca', price: 5, category: 'acai', icon: '🥣' },
-  { name: 'Farinha D\'Água', price: 5, category: 'acai', icon: '🌾' },
-  { name: 'Banana Fatiada', price: 3, category: 'acai', icon: '🍌' },
-  { name: 'Granola Crocante', price: 4, category: 'acai', icon: '🥣' },
-  { name: 'Leite em Pó', price: 4, category: 'acai', icon: '🥛' },
-  { name: 'Leite Condensado', price: 4, category: 'acai', icon: '🍯' },
-  { name: 'Paçoca de Amendoim', price: 2.5, category: 'acai', icon: '🥜' },
-  { name: 'Morango Fresco', price: 6, category: 'acai', icon: '🍓' },
-  { name: 'Mel Puro de Abelha', price: 4, category: 'acai', icon: '🍯' },
-  { name: 'Calda de Chocolate', price: 3.5, category: 'acai', icon: '🍫' },
+  { name: 'Farinha de Tapioca', price: 5, category: 'acai', icon: '🥣', description: 'Farinha de tapioca branca tradicional, flocada, crocante e leve para acompanhar o açaí.' },
+  { name: 'Farinha D\'Água', price: 5, category: 'acai', icon: '🌾', description: 'Farinha d\'água de Bragança torrada, crocante e amarelinha, sabor inconfundível.' },
+  { name: 'Banana Fatiada', price: 3, category: 'acai', icon: '🍌', description: 'Porção generosa de banana prata fatiada na hora, fresquinha e doce.' },
+  { name: 'Granola Crocante', price: 4, category: 'acai', icon: '🥣', description: 'Granola artesanal com cereais nobres, castanhas e uvas passas.' },
+  { name: 'Leite em Pó', price: 4, category: 'acai', icon: '🥛', description: 'Porção de leite em pó integral de alta qualidade.' },
+  { name: 'Leite Condensado', price: 4, category: 'acai', icon: '🍯', description: 'Leite condensado cremoso e doce para finalizar seu açaí.' },
+  { name: 'Paçoca de Amendoim', price: 2.5, category: 'acai', icon: '🥜', description: 'Paçoca de amendoim esfarelada e saborosa.' },
+  { name: 'Morango Fresco', price: 6, category: 'acai', icon: '🍓', description: 'Porção de morangos frescos fatiados e selecionados.' },
+  { name: 'Mel Puro de Abelha', price: 4, category: 'acai', icon: '🍯', description: 'Mel de abelha puro 100% natural.' },
+  { name: 'Calda de Chocolate', price: 3.5, category: 'acai', icon: '🍫', description: 'Calda especial de chocolate meio amargo cremosa.' },
 
   // Churrasco & Carnes
-  { name: 'Churrasco Misto', price: 23, category: 'carnes', icon: '🍖' },
-  { name: 'Maminha na Brasa', price: 28, category: 'carnes', icon: '🥩' },
-  { name: 'Sobre Coxa Frango', price: 25, category: 'carnes', icon: '🍗' },
-  { name: 'Picanha na Brasa', price: 35, category: 'carnes', icon: '🥩' },
-  { name: 'Espetinho de Carne', price: 12, category: 'carnes', icon: '🍢' },
-  { name: 'Espetinho de Frango c/ Bacon', price: 12, category: 'carnes', icon: '🍢' },
-  { name: 'Espetinho de Calabresa', price: 10, category: 'carnes', icon: '🌭' },
-  { name: 'Peixe Frito (Posta)', price: 25, category: 'carnes', icon: '🐟' },
-  { name: 'Camarão Seco Regional', price: 15, category: 'carnes', icon: '🦐' },
+  { name: 'Churrasco Misto', price: 23, category: 'carnes', icon: '🍖', description: 'Churrasco misto suculento na brasa com carnes selecionadas, acompanha farofa e vinagrete.' },
+  { name: 'Maminha na Brasa', price: 28, category: 'carnes', icon: '🥩', description: 'Maminha assada na brasa no ponto certo, macia e saborosa.' },
+  { name: 'Sobre Coxa Frango', price: 25, category: 'carnes', icon: '🍗', description: 'Sobrecoxa de frango dourada e suculenta assada no carvão.' },
+  { name: 'Picanha na Brasa', price: 35, category: 'carnes', icon: '🥩', description: 'Picanha fatiada premium assada na brasa, maciez incomparável.' },
+  { name: 'Espetinho de Carne', price: 12, category: 'carnes', icon: '🍢', description: 'Espeto de alcatra selecionada assada na brasa.' },
+  { name: 'Espetinho de Frango c/ Bacon', price: 12, category: 'carnes', icon: '🍢', description: 'Cubos de peito de frango enrolados em fatias de bacon crocante.' },
+  { name: 'Espetinho de Calabresa', price: 10, category: 'carnes', icon: '🌭', description: 'Espeto de linguiça calabresa defumada assada na brasa.' },
+  { name: 'Peixe Frito (Posta)', price: 25, category: 'carnes', icon: '🐟', description: 'Posta de peixe regional frito crocante e sequinho, tempero paraense autêntico.' },
+  { name: 'Camarão Seco Regional', price: 15, category: 'carnes', icon: '🦐', description: 'Porção de camarão seco salgado selecionado, tradição paraense que combina perfeitamente com açaí.' },
 
   // Bebidas
-  { name: 'Água Mineral 500ml', price: 3, category: 'bebidas', icon: '💧' },
-  { name: 'Água c/ Gás 500ml', price: 4, category: 'bebidas', icon: '🫧' },
-  { name: 'Refrigerante Lata 350ml', price: 5, category: 'bebidas', icon: '🥤' },
-  { name: 'Coca-Cola 2L', price: 12, category: 'bebidas', icon: '🍾' },
-  { name: 'Guaraná Antarctica 2L', price: 10, category: 'bebidas', icon: '🍾' },
-  { name: 'Suco Natural Cupuaçu 500ml', price: 8, category: 'bebidas', icon: '🧃' },
-  { name: 'Suco Natural Graviola 500ml', price: 8, category: 'bebidas', icon: '🧃' },
-  { name: 'Cerveja Lata 350ml', price: 6, category: 'bebidas', icon: '🍺' },
+  { name: 'Água Mineral 500ml', price: 3, category: 'bebidas', icon: '💧', description: 'Garrafa de água mineral natural sem gás 500ml gelada.' },
+  { name: 'Água c/ Gás 500ml', price: 4, category: 'bebidas', icon: '🫧', description: 'Garrafa de água mineral com gás 500ml gelada.' },
+  { name: 'Refrigerante Lata 350ml', price: 5, category: 'bebidas', icon: '🥤', description: 'Refrigerante em lata 350ml super gelado.' },
+  { name: 'Coca-Cola 2L', price: 12, category: 'bebidas', icon: '🍾', description: 'Garrafa Pet de Coca-Cola 2 Litros gelada.' },
+  { name: 'Guaraná Antarctica 2L', price: 10, category: 'bebidas', icon: '🍾', description: 'Garrafa Pet de Guaraná Antarctica 2 Litros gelada.' },
+  { name: 'Suco Natural Cupuaçu 500ml', price: 8, category: 'bebidas', icon: '🧃', description: 'Suco natural da polpa pura de cupuaçu 500ml refrescante.' },
+  { name: 'Suco Natural Graviola 500ml', price: 8, category: 'bebidas', icon: '🧃', description: 'Suco natural de graviola da Amazônia 500ml.' },
+  { name: 'Cerveja Lata 350ml', price: 6, category: 'bebidas', icon: '🍺', description: 'Cerveja em lata 350ml estupidamente gelada.' },
 
   // Porções & Outros
-  { name: 'Porção Batata Frita', price: 15, category: 'outros', icon: '🍟' },
-  { name: 'Porção Macaxeira Frita', price: 15, category: 'outros', icon: '🥔' },
-  { name: 'Caldo de Carne', price: 12, category: 'outros', icon: '🍲' },
-  { name: 'Vatapá Paraense', price: 18, category: 'outros', icon: '🍲' },
+  { name: 'Porção Batata Frita', price: 15, category: 'outros', icon: '🍟', description: 'Porção de batatas fritas crocantes e sequinhas com sal a gosto.' },
+  { name: 'Porção Macaxeira Frita', price: 15, category: 'outros', icon: '🥔', description: 'Macaxeira frita macia por dentro e dourada por fora.' },
+  { name: 'Caldo de Carne', price: 12, category: 'outros', icon: '🍲', description: 'Caldo quente encorpado de carne com cheiro-verde e torradas.' },
+  { name: 'Vatapá Paraense', price: 18, category: 'outros', icon: '🍲', description: 'Vatapá cremoso tradicional paraense com azeite de dendê, camarão e leite de coco.' },
 ];
 
 export default function BatedeiraDashboard() {
@@ -107,6 +107,7 @@ export default function BatedeiraDashboard() {
   const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33, branco: 38 });
+  const [acaiDescriptions, setAcaiDescriptions] = useState<{ popular?: string; medio?: string; grosso?: string; branco?: string }>(() => currentUser?.descriptionsB2C || {});
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
 
   const [photoModalData, setPhotoModalData] = useState<{
@@ -122,7 +123,10 @@ export default function BatedeiraDashboard() {
     if (currentUser?.priceB2C) {
       setPrices(currentUser.priceB2C);
     }
-  }, [currentUser?.priceB2C]);
+    if (currentUser?.descriptionsB2C) {
+      setAcaiDescriptions(currentUser.descriptionsB2C);
+    }
+  }, [currentUser?.priceB2C, currentUser?.descriptionsB2C]);
 
   useEffect(() => {
     if (currentUser?.freteSubsidyPct !== undefined) {
@@ -137,6 +141,7 @@ export default function BatedeiraDashboard() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+  const [newProductDesc, setNewProductDesc] = useState('');
   const [extraSearchQuery, setExtraSearchQuery] = useState('');
   const [extraFilterStatus, setExtraFilterStatus] = useState<'all' | 'available' | 'unavailable'>('all');
   const [extraPresetCategory, setExtraPresetCategory] = useState<'acai' | 'carnes' | 'bebidas' | 'outros'>('acai');
@@ -144,6 +149,7 @@ export default function BatedeiraDashboard() {
     id: string;
     name: string;
     price: number;
+    description?: string;
     imageUrl?: string;
     isAvailable?: boolean;
   } | null>(null);
@@ -266,14 +272,16 @@ export default function BatedeiraDashboard() {
   const handleSavePrices = () => {
     if (!currentUser) return;
     store.updateUserPrice(currentUser.id, prices);
+    store.updateAcaiDescriptions(currentUser.id, acaiDescriptions);
     setPriceModalOpen(false);
-    alert('Preços atualizados com sucesso!');
+    alert('Preços e detalhes do açaí atualizados com sucesso!');
   };
 
-  const handleAddProduct = (presetName?: string, presetPrice?: number) => {
+  const handleAddProduct = (presetName?: string, presetPrice?: number, presetDesc?: string) => {
     if (!currentUser) return;
     const nameToAdd = (presetName || newProductName).trim();
     const rawPrice = presetPrice !== undefined ? presetPrice : parseFloat(newProductPrice.replace(',', '.'));
+    const descToAdd = (presetDesc !== undefined ? presetDesc : newProductDesc).trim();
     if (!nameToAdd || isNaN(rawPrice) || rawPrice < 0) {
       alert("Informe o nome e um preço válido para o produto extra.");
       return;
@@ -282,11 +290,13 @@ export default function BatedeiraDashboard() {
       id: generateUUID(),
       name: nameToAdd,
       price: rawPrice,
+      description: descToAdd || undefined,
       imageUrl: newProductImage,
       isAvailable: true
     });
     setNewProductName('');
     setNewProductPrice('');
+    setNewProductDesc('');
     setNewProductImage(undefined);
   };
 
@@ -295,6 +305,7 @@ export default function BatedeiraDashboard() {
       id: p.id,
       name: p.name,
       price: p.price,
+      description: p.description || p.desc || '',
       imageUrl: p.imageUrl,
       isAvailable: p.isAvailable !== false
     });
@@ -309,6 +320,7 @@ export default function BatedeiraDashboard() {
     store.updateProduct(currentUser.id, editingProduct.id, {
       name: editingProduct.name.trim(),
       price: editingProduct.price,
+      description: editingProduct.description?.trim() || undefined,
       imageUrl: editingProduct.imageUrl,
       isAvailable: editingProduct.isAvailable !== false
     });
@@ -1452,9 +1464,10 @@ export default function BatedeiraDashboard() {
                       onClick={() => {
                         setNewProductName(preset.name);
                         setNewProductPrice(preset.price.toString());
+                        setNewProductDesc(preset.description || '');
                       }}
                       className="group flex items-center gap-2 bg-white dark:bg-zinc-800 hover:bg-purple-50 dark:hover:bg-purple-950/60 border border-purple-200/90 dark:border-purple-800/60 hover:border-purple-400 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 dark:text-zinc-200 transition shadow-xs hover:shadow-sm cursor-pointer active:scale-95"
-                      title={`Clique para preencher "${preset.name}" por R$ ${preset.price.toFixed(2)}`}
+                      title={`Clique para preencher "${preset.name}" por R$ ${preset.price.toFixed(2)}: ${preset.description || ''}`}
                     >
                       <span className="text-base">{preset.icon}</span>
                       <span>{preset.name}</span>
@@ -1475,63 +1488,74 @@ export default function BatedeiraDashboard() {
                   e.preventDefault();
                   handleAddProduct();
                 }}
-                className="bg-zinc-50 dark:bg-zinc-950/80 p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-2.5 items-center"
+                className="bg-zinc-50 dark:bg-zinc-950/80 p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2.5"
               >
-                <button
-                  type="button"
-                  onClick={() => setPhotoModalData({
-                    open: true,
-                    title: 'Foto do Produto Extra',
-                    category: 'adicional',
-                    currentUrl: newProductImage,
-                    onSelect: (url) => setNewProductImage(url)
-                  })}
-                  className="w-full sm:w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0 border border-purple-300 dark:border-purple-700 transition"
-                  title="Escolher Foto do Produto"
-                >
-                  {newProductImage ? (
-                    <img src={newProductImage} alt="Foto" className="w-full h-full object-cover rounded-xl" />
-                  ) : (
-                    <span className="text-lg">📸</span>
-                  )}
-                </button>
-                <div className="relative flex-1 w-full">
-                  <input 
-                    type="text" 
-                    placeholder="Nome do produto extra (ex: Churrasco Misto, Farinha de Tapioca...)" 
-                    value={newProductName} 
-                    onChange={e => setNewProductName(e.target.value)} 
-                    className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl py-3 px-3.5 text-xs sm:text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-medium" 
-                  />
-                  {newProductName && (
-                    <button
-                      type="button"
-                      onClick={() => setNewProductName('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs"
-                    >
-                      ✕
-                    </button>
-                  )}
+                <div className="flex flex-col sm:flex-row gap-2.5 items-center w-full">
+                  <button
+                    type="button"
+                    onClick={() => setPhotoModalData({
+                      open: true,
+                      title: 'Foto do Produto Extra',
+                      category: 'adicional',
+                      currentUrl: newProductImage,
+                      onSelect: (url) => setNewProductImage(url)
+                    })}
+                    className="w-full sm:w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0 border border-purple-300 dark:border-purple-700 transition"
+                    title="Escolher Foto do Produto"
+                  >
+                    {newProductImage ? (
+                      <img src={newProductImage} alt="Foto" className="w-full h-full object-cover rounded-xl" />
+                    ) : (
+                      <span className="text-lg">📸</span>
+                    )}
+                  </button>
+                  <div className="relative flex-1 w-full">
+                    <input 
+                      type="text" 
+                      placeholder="Nome do produto extra (ex: Churrasco Misto, Farinha de Tapioca...)" 
+                      value={newProductName} 
+                      onChange={e => setNewProductName(e.target.value)} 
+                      className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl py-3 px-3.5 text-xs sm:text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-medium" 
+                    />
+                    {newProductName && (
+                      <button
+                        type="button"
+                        onClick={() => setNewProductName('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative w-full sm:w-36">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-xs sm:text-sm font-bold">R$</span>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder="0,00" 
+                      value={newProductPrice} 
+                      onChange={e => setNewProductPrice(e.target.value)} 
+                      className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl py-3 pl-9 pr-3 text-xs sm:text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-bold" 
+                    />
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={!newProductName.trim() || !newProductPrice}
+                    className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black px-6 py-3 rounded-xl text-xs sm:text-sm transition shrink-0 shadow-sm flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Cadastrar Produto
+                  </button>
                 </div>
-                <div className="relative w-full sm:w-36">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-xs sm:text-sm font-bold">R$</span>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    placeholder="0,00" 
-                    value={newProductPrice} 
-                    onChange={e => setNewProductPrice(e.target.value)} 
-                    className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl py-3 pl-9 pr-3 text-xs sm:text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-bold" 
+                <div className="w-full">
+                  <input
+                    type="text"
+                    placeholder="Descrição / Detalhes (ex: Porção 300g, acompanha farofa e vinagrete...)"
+                    value={newProductDesc}
+                    onChange={e => setNewProductDesc(e.target.value)}
+                    className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl py-2 px-3.5 text-xs outline-none focus:border-purple-500 font-normal text-zinc-700 dark:text-zinc-300"
                   />
                 </div>
-                <button 
-                  type="submit"
-                  disabled={!newProductName.trim() || !newProductPrice}
-                  className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black px-6 py-3 rounded-xl text-xs sm:text-sm transition shrink-0 shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
-                >
-                  <Plus className="w-4 h-4" />
-                  Cadastrar Produto
-                </button>
               </form>
 
               {/* Barra de Busca e Filtros de Status */}
@@ -1649,6 +1673,11 @@ export default function BatedeiraDashboard() {
                             <p className="text-base sm:text-lg font-black text-purple-700 dark:text-purple-400 mt-1 tracking-tight">
                               R$ {p.price.toFixed(2)}
                             </p>
+                            {p.description && (
+                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 mt-1 leading-snug italic" title={p.description}>
+                                📝 {p.description}
+                              </p>
+                            )}
                           </div>
                         </div>
 
@@ -2212,34 +2241,104 @@ export default function BatedeiraDashboard() {
 
       {priceModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
-            <div className="bg-purple-900 text-white p-5 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-lg">✏️ Editar Preços do Açaí</h3>
-                <button onClick={() => setPriceModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] border border-zinc-200 dark:border-zinc-800">
+            <div className="bg-gradient-to-r from-purple-800 to-indigo-800 text-white p-4 sm:p-5 flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">✏️</span>
+                  <h3 className="font-extrabold text-base sm:text-lg">Editar Preços e Detalhes do Açaí</h3>
+                </div>
+                <button onClick={() => setPriceModalOpen(false)} className="text-white/80 hover:text-white font-bold text-2xl leading-none cursor-pointer">&times;</button>
             </div>
             
-            <div className="p-6 space-y-4">
-              <div>
-                  <label className="text-xs uppercase text-zinc-500 font-bold">Açaí Popular (R$)</label>
-                  <input type="number" step="0.1" value={prices.popular} onChange={e => setPrices({...prices, popular: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 mt-1 font-bold text-lg"/>
+            <div className="p-5 space-y-4 overflow-y-auto">
+              <p className="text-xs text-zinc-500">
+                Personalize os preços e a descrição apresentada aos clientes no cardápio para cada tipo de açaí:
+              </p>
+
+              {/* Açaí Popular */}
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-950/60 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase text-purple-700 dark:text-purple-300 font-extrabold flex items-center gap-1">
+                    <span>🥣</span> Açaí Popular (1L)
+                  </label>
+                  <div className="relative w-28">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-xs">R$</span>
+                    <input type="number" step="0.1" value={prices.popular} onChange={e => setPrices({...prices, popular: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg py-1.5 pl-8 pr-2 outline-none focus:ring-2 focus:ring-purple-500 font-black text-sm text-right"/>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={acaiDescriptions.popular || ''}
+                  onChange={e => setAcaiDescriptions({...acaiDescriptions, popular: e.target.value})}
+                  placeholder="Ex: Açaí tradicional suave e refrescante para consumo diário..."
+                  className="w-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-purple-500"
+                />
               </div>
-              <div>
-                  <label className="text-xs uppercase text-zinc-500 font-bold">Açaí Médio (R$)</label>
-                  <input type="number" step="0.1" value={prices.medio} onChange={e => setPrices({...prices, medio: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 mt-1 font-bold text-lg"/>
+
+              {/* Açaí Médio */}
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-950/60 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase text-purple-700 dark:text-purple-300 font-extrabold flex items-center gap-1">
+                    <span>🥣</span> Açaí Médio (1L)
+                  </label>
+                  <div className="relative w-28">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-xs">R$</span>
+                    <input type="number" step="0.1" value={prices.medio} onChange={e => setPrices({...prices, medio: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg py-1.5 pl-8 pr-2 outline-none focus:ring-2 focus:ring-purple-500 font-black text-sm text-right"/>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={acaiDescriptions.medio || ''}
+                  onChange={e => setAcaiDescriptions({...acaiDescriptions, medio: e.target.value})}
+                  placeholder="Ex: Açaí balanceado de sabor autêntico e encorpado..."
+                  className="w-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-purple-500"
+                />
               </div>
-              <div>
-                  <label className="text-xs uppercase text-zinc-500 font-bold">Açaí Grosso Especial (R$)</label>
-                  <input type="number" step="0.1" value={prices.grosso} onChange={e => setPrices({...prices, grosso: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 mt-1 font-bold text-lg"/>
+
+              {/* Açaí Grosso */}
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-950/60 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase text-purple-700 dark:text-purple-300 font-extrabold flex items-center gap-1">
+                    <span>🥣</span> Açaí Grosso Especial (1L)
+                  </label>
+                  <div className="relative w-28">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-xs">R$</span>
+                    <input type="number" step="0.1" value={prices.grosso} onChange={e => setPrices({...prices, grosso: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg py-1.5 pl-8 pr-2 outline-none focus:ring-2 focus:ring-purple-500 font-black text-sm text-right"/>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={acaiDescriptions.grosso || ''}
+                  onChange={e => setAcaiDescriptions({...acaiDescriptions, grosso: e.target.value})}
+                  placeholder="Ex: Açaí super concentrado, máxima densidade e cremosidade..."
+                  className="w-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-purple-500"
+                />
               </div>
-              <div>
-                  <label className="text-xs uppercase text-zinc-500 font-bold">Açaí Branco Especial (R$)</label>
-                  <input type="number" step="0.1" value={prices.branco ?? 38} onChange={e => setPrices({...prices, branco: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 mt-1 font-bold text-lg"/>
+
+              {/* Açaí Branco */}
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-950/60 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase text-teal-700 dark:text-teal-300 font-extrabold flex items-center gap-1">
+                    <span>🥥</span> Açaí Branco Especial (1L)
+                  </label>
+                  <div className="relative w-28">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-xs">R$</span>
+                    <input type="number" step="0.1" value={prices.branco ?? 38} onChange={e => setPrices({...prices, branco: Number(e.target.value)})} className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg py-1.5 pl-8 pr-2 outline-none focus:ring-2 focus:ring-purple-500 font-black text-sm text-right"/>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={acaiDescriptions.branco || ''}
+                  onChange={e => setAcaiDescriptions({...acaiDescriptions, branco: e.target.value})}
+                  placeholder="Ex: Açaí raro de polpa clara e suave, iguaria amazônica..."
+                  className="w-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-purple-500"
+                />
               </div>
             </div>
 
-            <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
-                <button onClick={() => setPriceModalOpen(false)} className="px-5 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
-                <button onClick={handleSavePrices} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition">Salvar Preços</button>
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-2.5 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
+                <button onClick={() => setPriceModalOpen(false)} className="px-4 py-2 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition text-xs cursor-pointer">Cancelar</button>
+                <button onClick={handleSavePrices} className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition text-xs shadow-sm cursor-pointer active:scale-95">Salvar Preços & Detalhes</button>
             </div>
           </div>
         </div>
@@ -2704,6 +2803,23 @@ export default function BatedeiraDashboard() {
                   className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm font-semibold outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                   placeholder="Nome do produto"
                 />
+              </div>
+
+              {/* Descrição / Detalhes */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1 uppercase tracking-wider">
+                  Descrição & Detalhes (Ingredientes, Porção, Acompanhamentos)
+                </label>
+                <textarea
+                  rows={3}
+                  value={editingProduct.description || ''}
+                  onChange={(e) => setEditingProduct(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-medium outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none leading-relaxed"
+                  placeholder="Ex: Porção de 200g de camarão rosa frito no azeite com vinagrete e farofa de açaí..."
+                />
+                <p className="text-[11px] text-zinc-400 mt-1">
+                  Esta descrição aparecerá no botão &quot;Detalhes ▼&quot; para os clientes no cardápio.
+                </p>
               </div>
 
               {/* Preço com Botões de Ajuste Rápido */}

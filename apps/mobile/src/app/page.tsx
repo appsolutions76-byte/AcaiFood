@@ -849,7 +849,7 @@ export default function StorefrontPage() {
                           {
                             key: 'lata',
                             name: 'Lata de Açaí Fruto',
-                            desc: 'Fruto de açaí em caroço fresco e selecionado para batimento',
+                            desc: selLoja.descriptionsB2B?.lata || 'Fruto de açaí em caroço fresco e selecionado para batimento',
                             price: selLoja.priceB2B ?? 140,
                             unit: '/ lata',
                             isAvail: selLoja.availabilityB2B?.lata !== false,
@@ -859,7 +859,7 @@ export default function StorefrontPage() {
                           ...(selLoja.products || []).map(p => ({
                             key: p.id,
                             name: p.name,
-                            desc: (p as any).description || (p as any).desc || 'Insumo / Produto B2B com procedência e qualidade garantida.',
+                            desc: p.description || (p as any).desc || 'Insumo / Produto B2B com procedência e qualidade garantida.',
                             price: p.price,
                             unit: '',
                             isAvail: p.isAvailable !== false,
@@ -967,7 +967,7 @@ export default function StorefrontPage() {
                           { 
                             key: 'popular', 
                             name: 'Açaí Popular (1L)', 
-                            desc: 'Açaí tradicional mais suave e refrescante, ideal para o consumo diário (1 Litro)',
+                            desc: selLoja.descriptionsB2C?.popular || 'Açaí tradicional mais suave e refrescante, ideal para o consumo diário (1 Litro)',
                             price: selLoja.priceB2C?.popular ?? 20, 
                             isAvail: selLoja.availabilityB2C?.popular !== false, 
                             photo: selLoja.imagesB2C?.popular, 
@@ -977,7 +977,7 @@ export default function StorefrontPage() {
                           { 
                             key: 'medio', 
                             name: 'Açaí Médio (1L)', 
-                            desc: 'Açaí com densidade média balanceada, sabor autêntico e encorpado (1 Litro)',
+                            desc: selLoja.descriptionsB2C?.medio || 'Açaí com densidade média balanceada, sabor autêntico e encorpado (1 Litro)',
                             price: selLoja.priceB2C?.medio ?? 26, 
                             isAvail: selLoja.availabilityB2C?.medio !== false, 
                             photo: selLoja.imagesB2C?.medio, 
@@ -987,7 +987,7 @@ export default function StorefrontPage() {
                           { 
                             key: 'grosso', 
                             name: 'Açaí Grosso Especial (1L)', 
-                            desc: 'Açaí super concentrado, máxima densidade, rendimento e cremosidade especial (1 Litro)',
+                            desc: selLoja.descriptionsB2C?.grosso || 'Açaí super concentrado, máxima densidade, rendimento e cremosidade especial (1 Litro)',
                             price: selLoja.priceB2C?.grosso ?? 35, 
                             isAvail: selLoja.availabilityB2C?.grosso !== false, 
                             photo: selLoja.imagesB2C?.grosso, 
@@ -997,7 +997,7 @@ export default function StorefrontPage() {
                           { 
                             key: 'branco', 
                             name: 'Açaí Branco Especial (1L)', 
-                            desc: 'Açaí raro de polpa clara, sabor suave e único, iguaria da Amazônia (1 Litro)',
+                            desc: selLoja.descriptionsB2C?.branco || 'Açaí raro de polpa clara, sabor suave e único, iguaria da Amazônia (1 Litro)',
                             price: selLoja.priceB2C?.branco ?? 38, 
                             isAvail: selLoja.availabilityB2C?.branco !== false, 
                             photo: selLoja.imagesB2C?.branco, 
@@ -1007,7 +1007,7 @@ export default function StorefrontPage() {
                           ...(selLoja.products || []).map(p => ({
                             key: p.id,
                             name: p.name,
-                            desc: (p as any).description || (p as any).desc || 'Produto de alta qualidade preparado com ingredientes selecionados pela loja.',
+                            desc: p.description || (p as any).desc || 'Produto de alta qualidade preparado com ingredientes selecionados pela loja.',
                             price: p.price,
                             isAvail: p.isAvailable !== false,
                             photo: p.imageUrl,

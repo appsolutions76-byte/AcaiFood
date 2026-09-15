@@ -103,6 +103,7 @@ export default function FornecedorDashboard() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+  const [newProductDesc, setNewProductDesc] = useState('');
   const [newProductImage, setNewProductImage] = useState<string | undefined>(undefined);
   const [photoModalData, setPhotoModalData] = useState<{
     open: boolean;
@@ -154,13 +155,15 @@ export default function FornecedorDashboard() {
       if (!currentUser || !newProductName || !newProductPrice) return;
       store.addProduct(currentUser.id, {
           id: generateUUID(),
-          name: newProductName,
+          name: newProductName.trim(),
           price: Number(newProductPrice),
+          description: newProductDesc.trim() || undefined,
           imageUrl: newProductImage,
           isAvailable: true
       });
       setNewProductName('');
       setNewProductPrice('');
+      setNewProductDesc('');
       setNewProductImage(undefined);
   };
 
@@ -175,8 +178,10 @@ export default function FornecedorDashboard() {
       alert("Preço inválido.");
       return;
     }
+    const newDesc = prompt("Editar descrição / detalhes do produto:", p.description || p.desc || '');
+    if (newDesc === null) return;
     const cleanName = newName.trim() || p.name;
-    store.updateProduct(currentUser.id, p.id, { name: cleanName, price: newPrice });
+    store.updateProduct(currentUser.id, p.id, { name: cleanName, price: newPrice, description: newDesc.trim() || undefined });
   };
 
   const linkAsaasAccount = store.linkAsaasAccount;
@@ -740,24 +745,35 @@ export default function FornecedorDashboard() {
                     <span>📸</span>
                   )}
                 </button>
-                <input 
-                  type="text" 
-                  placeholder="Nome (ex: Saca de Açaí Selecionado)" 
-                  value={newProductName} 
-                  onChange={e => setNewProductName(e.target.value)} 
-                  className="flex-1 w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-emerald-500" 
-                />
-                <input 
-                  type="number" 
-                  step="0.1" 
-                  placeholder="R$" 
-                  value={newProductPrice} 
-                  onChange={e => setNewProductPrice(e.target.value)} 
-                  className="w-full sm:w-28 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-emerald-500" 
-                />
+                <div className="flex-1 flex flex-col gap-1.5 w-full">
+                  <div className="flex gap-2 w-full">
+                    <input 
+                      type="text" 
+                      placeholder="Nome (ex: Saca de Açaí Selecionado)" 
+                      value={newProductName} 
+                      onChange={e => setNewProductName(e.target.value)} 
+                      className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-emerald-500 font-semibold" 
+                    />
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      placeholder="R$" 
+                      value={newProductPrice} 
+                      onChange={e => setNewProductPrice(e.target.value)} 
+                      className="w-24 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-emerald-500 font-bold" 
+                    />
+                  </div>
+                  <input 
+                    type="text" 
+                    placeholder="Descrição / Detalhes (ex: Saca com 50kg de açaí de várzea selecionado...)" 
+                    value={newProductDesc} 
+                    onChange={e => setNewProductDesc(e.target.value)} 
+                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg p-1.5 text-xs outline-none focus:border-emerald-500 text-zinc-600 dark:text-zinc-300" 
+                  />
+                </div>
                 <button 
                   onClick={handleAddProduct} 
-                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition shrink-0 shadow-sm"
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs transition shrink-0 shadow-sm self-stretch sm:self-auto flex items-center justify-center cursor-pointer"
                 >
                   + Adicionar
                 </button>
@@ -791,6 +807,11 @@ export default function FornecedorDashboard() {
                         <div className="min-w-0">
                           <p className={`font-extrabold text-sm sm:text-base truncate ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`}>{p.name}</p>
                           <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">R$ {p.price.toFixed(2)}</p>
+                          {p.description && (
+                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1 italic">
+                              📝 {p.description}
+                            </p>
+                          )}
                         </div>
                       </div>
 
