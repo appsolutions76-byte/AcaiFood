@@ -1418,20 +1418,20 @@ export default function BatedeiraDashboard() {
 
               {/* Sugestões Rápidas de 1 Clique (Preset Chips) */}
               <div className="bg-gradient-to-br from-purple-50/80 via-indigo-50/40 to-pink-50/30 dark:from-purple-950/40 dark:via-zinc-900 dark:to-zinc-950 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/50">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
-                  <span className="text-xs font-black text-purple-900 dark:text-purple-300 uppercase flex items-center gap-1.5 tracking-wider">
-                    <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 mb-3">
+                  <span className="text-xs font-black text-purple-900 dark:text-purple-300 uppercase flex items-center gap-1.5 tracking-wider shrink-0">
+                    <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                     Adicionar Rápido com 1 Clique (Sugestões Regionais)
                   </span>
 
                   {/* Tabs de Categoria dos Presets */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {QUICK_EXTRAS_CATEGORIES.map(cat => (
                       <button
                         key={cat.id}
                         type="button"
                         onClick={() => setExtraPresetCategory(cat.id as any)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                           extraPresetCategory === cat.id
                             ? 'bg-purple-600 text-white shadow-xs'
                             : 'bg-white/90 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-purple-100 dark:hover:bg-zinc-700 border border-zinc-200/70 dark:border-zinc-700'
@@ -1643,7 +1643,7 @@ export default function BatedeiraDashboard() {
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <p className={`font-extrabold text-sm sm:text-base leading-tight truncate ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`}>
+                            <p className={`font-extrabold text-sm sm:text-base leading-tight line-clamp-2 ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`} title={p.name}>
                               {p.name}
                             </p>
                             <p className="text-base sm:text-lg font-black text-purple-700 dark:text-purple-400 mt-1 tracking-tight">
