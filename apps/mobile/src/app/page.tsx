@@ -85,6 +85,7 @@ export default function StorefrontPage() {
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number; address?: string } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
+  const [expandedProductDesc, setExpandedProductDesc] = useState<Record<string, boolean>>({});
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategoryChip, setSelectedCategoryChip] = useState<'all' | 'open' | 'free_frete' | 'nearest' | 'grosso' | 'branco' | 'lowest_price'>('all');
@@ -848,7 +849,7 @@ export default function StorefrontPage() {
                           {
                             key: 'lata',
                             name: 'Lata de Açaí Fruto',
-                            desc: 'Fruto em caroço selecionado',
+                            desc: 'Fruto de açaí em caroço fresco e selecionado para batimento',
                             price: selLoja.priceB2B ?? 140,
                             unit: '/ lata',
                             isAvail: selLoja.availabilityB2B?.lata !== false,
@@ -858,7 +859,7 @@ export default function StorefrontPage() {
                           ...(selLoja.products || []).map(p => ({
                             key: p.id,
                             name: p.name,
-                            desc: 'Insumo / Produto B2B',
+                            desc: (p as any).description || (p as any).desc || 'Insumo / Produto B2B com procedência e qualidade garantida.',
                             price: p.price,
                             unit: '',
                             isAvail: p.isAvailable !== false,
@@ -873,43 +874,82 @@ export default function StorefrontPage() {
                               <span>📦</span> Catálogo de Fruto & Insumos B2B
                             </h4>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-4">
-                              {fornItems.map(item => (
-                                <div key={item.key} className={`p-4 rounded-2xl border transition-all flex justify-between items-center gap-3.5 ${
-                                  item.isAvail 
-                                    ? 'bg-white dark:bg-zinc-950 border-zinc-200/90 dark:border-zinc-800 shadow-xs hover:border-purple-400 dark:hover:border-purple-600' 
-                                    : 'bg-zinc-100/80 dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-850 opacity-60'
-                                }`}>
-                                  <div className="flex items-center gap-3.5 min-w-0">
-                                    <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950 overflow-hidden shrink-0 border border-purple-200 dark:border-purple-800 flex items-center justify-center shadow-xs">
-                                      {item.photo ? (
-                                        <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <span className="text-3xl">{item.emoji}</span>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        <p className="font-extrabold text-zinc-950 dark:text-white text-base sm:text-lg leading-tight truncate">{item.name}</p>
-                                        {!item.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                              {fornItems.map(item => {
+                                const isExpanded = !!expandedProductDesc[item.key];
+                                return (
+                                  <div key={item.key} className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col justify-between gap-2.5 ${
+                                    item.isAvail 
+                                      ? 'bg-white dark:bg-zinc-950 border-zinc-200/90 dark:border-zinc-800 shadow-xs hover:border-purple-400 dark:hover:border-purple-600' 
+                                      : 'bg-zinc-100/80 dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-850 opacity-60'
+                                  }`}>
+                                    <div className="flex items-start justify-between gap-3 min-w-0">
+                                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-purple-50 dark:bg-purple-950 overflow-hidden shrink-0 border border-purple-200 dark:border-purple-800 flex items-center justify-center shadow-xs">
+                                          {item.photo ? (
+                                            <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
+                                          ) : (
+                                            <span className="text-2xl sm:text-3xl">{item.emoji}</span>
+                                          )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <h5 className="font-extrabold text-zinc-950 dark:text-white text-sm sm:text-base leading-snug break-words">
+                                              {item.name}
+                                            </h5>
+                                            {!item.isAvail && (
+                                              <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase shrink-0">
+                                                Esgotado
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                            <p className="text-sm sm:text-base font-black text-zinc-950 dark:text-white tracking-tight">
+                                              {formatMoney(item.price)} {item.unit && <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{item.unit}</span>}
+                                            </p>
+                                            {item.desc && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setExpandedProductDesc(prev => ({ ...prev, [item.key]: !prev[item.key] }));
+                                                }}
+                                                className="inline-flex items-center gap-0.5 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 py-0.5 cursor-pointer select-none"
+                                                title={isExpanded ? "Ocultar detalhes" : "Ver detalhes do produto"}
+                                              >
+                                                <span>Detalhes</span>
+                                                <span className="text-[8px] leading-none">{isExpanded ? '▲' : '▼'}</span>
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
                                       </div>
-                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">{item.desc}</p>
-                                      <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-1 tracking-tight">
-                                        {formatMoney(item.price)} {item.unit && <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{item.unit}</span>}
-                                      </p>
+                                      <div className="shrink-0 flex items-center pt-0.5">
+                                        {item.isAvail && selLoja.status !== 'paused' ? (
+                                          <button
+                                            onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })}
+                                            className="bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-black px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition shadow-sm shrink-0 active:scale-95 cursor-pointer flex items-center gap-1 text-xs sm:text-sm hover:brightness-110"
+                                            title="Adicionar ao pedido"
+                                          >
+                                            <span className="text-sm leading-none">🛒</span>
+                                            <span className="text-base font-black leading-none">+</span>
+                                          </button>
+                                        ) : (
+                                          <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 rounded-lg shrink-0">
+                                            {selLoja.status === 'paused' ? 'Fechado' : 'Esgotado'}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
+
+                                    {item.desc && isExpanded && (
+                                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50/80 dark:bg-zinc-900/60 p-2.5 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
+                                        <p className="leading-relaxed">{item.desc}</p>
+                                      </div>
+                                    )}
                                   </div>
-                                  {item.isAvail && selLoja.status !== 'paused' ? (
-                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })} className="bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-extrabold px-4 py-2.5 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer">
-                                      + Adicionar
-                                    </button>
-                                  ) : (
-                                    <span className="text-[11px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-3 py-1.5 rounded-lg shrink-0">
-                                      {selLoja.status === 'paused' ? 'Loja Fechada' : 'Esgotado'}
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
 
                             <div className="pt-4 mt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-center">
@@ -924,13 +964,50 @@ export default function StorefrontPage() {
                         );
                       })() : (() => {
                         const storeItems = [
-                          { key: 'popular', name: 'Açaí Popular (1L)', price: selLoja.priceB2C?.popular ?? 20, isAvail: selLoja.availabilityB2C?.popular !== false, photo: selLoja.imagesB2C?.popular, emoji: '🥣', isTeal: false },
-                          { key: 'medio', name: 'Açaí Médio (1L)', price: selLoja.priceB2C?.medio ?? 26, isAvail: selLoja.availabilityB2C?.medio !== false, photo: selLoja.imagesB2C?.medio, emoji: '🥣', isTeal: false },
-                          { key: 'grosso', name: 'Açaí Grosso Especial (1L)', price: selLoja.priceB2C?.grosso ?? 35, isAvail: selLoja.availabilityB2C?.grosso !== false, photo: selLoja.imagesB2C?.grosso, emoji: '🥣', isTeal: false },
-                          { key: 'branco', name: 'Açaí Branco Especial (1L)', price: selLoja.priceB2C?.branco ?? 38, isAvail: selLoja.availabilityB2C?.branco !== false, photo: selLoja.imagesB2C?.branco, emoji: '🥥', isTeal: true },
+                          { 
+                            key: 'popular', 
+                            name: 'Açaí Popular (1L)', 
+                            desc: 'Açaí tradicional mais suave e refrescante, ideal para o consumo diário (1 Litro)',
+                            price: selLoja.priceB2C?.popular ?? 20, 
+                            isAvail: selLoja.availabilityB2C?.popular !== false, 
+                            photo: selLoja.imagesB2C?.popular, 
+                            emoji: '🥣', 
+                            isTeal: false 
+                          },
+                          { 
+                            key: 'medio', 
+                            name: 'Açaí Médio (1L)', 
+                            desc: 'Açaí com densidade média balanceada, sabor autêntico e encorpado (1 Litro)',
+                            price: selLoja.priceB2C?.medio ?? 26, 
+                            isAvail: selLoja.availabilityB2C?.medio !== false, 
+                            photo: selLoja.imagesB2C?.medio, 
+                            emoji: '🥣', 
+                            isTeal: false 
+                          },
+                          { 
+                            key: 'grosso', 
+                            name: 'Açaí Grosso Especial (1L)', 
+                            desc: 'Açaí super concentrado, máxima densidade, rendimento e cremosidade especial (1 Litro)',
+                            price: selLoja.priceB2C?.grosso ?? 35, 
+                            isAvail: selLoja.availabilityB2C?.grosso !== false, 
+                            photo: selLoja.imagesB2C?.grosso, 
+                            emoji: '🥣', 
+                            isTeal: false 
+                          },
+                          { 
+                            key: 'branco', 
+                            name: 'Açaí Branco Especial (1L)', 
+                            desc: 'Açaí raro de polpa clara, sabor suave e único, iguaria da Amazônia (1 Litro)',
+                            price: selLoja.priceB2C?.branco ?? 38, 
+                            isAvail: selLoja.availabilityB2C?.branco !== false, 
+                            photo: selLoja.imagesB2C?.branco, 
+                            emoji: '🥥', 
+                            isTeal: true 
+                          },
                           ...(selLoja.products || []).map(p => ({
                             key: p.id,
                             name: p.name,
+                            desc: (p as any).description || (p as any).desc || 'Produto de alta qualidade preparado com ingredientes selecionados pela loja.',
                             price: p.price,
                             isAvail: p.isAvailable !== false,
                             photo: p.imageUrl,
@@ -945,42 +1022,82 @@ export default function StorefrontPage() {
                               <span>🍽️</span> Cardápio & Produtos
                             </h4>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-4">
-                              {storeItems.map(item => (
-                                <div key={item.key} className={`p-4 rounded-2xl border transition-all flex justify-between items-center gap-3.5 ${
-                                  item.isAvail 
-                                    ? 'bg-white dark:bg-zinc-950 border-zinc-200/90 dark:border-zinc-800 shadow-xs hover:border-purple-400 dark:hover:border-purple-600' 
-                                    : 'bg-zinc-100/80 dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-850 opacity-60'
-                                }`}>
-                                  <div className="flex items-center gap-3.5 min-w-0">
-                                    <div className={`w-16 h-16 rounded-2xl ${item.isTeal ? 'bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800' : 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800'} overflow-hidden shrink-0 border flex items-center justify-center shadow-xs`}>
-                                      {item.photo ? (
-                                        <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <span className="text-3xl">{item.emoji}</span>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        <p className="font-extrabold text-zinc-950 dark:text-white text-base sm:text-lg leading-tight truncate">{item.name}</p>
-                                        {!item.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                              {storeItems.map(item => {
+                                const isExpanded = !!expandedProductDesc[item.key];
+                                return (
+                                  <div key={item.key} className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col justify-between gap-2.5 ${
+                                    item.isAvail 
+                                      ? 'bg-white dark:bg-zinc-950 border-zinc-200/90 dark:border-zinc-800 shadow-xs hover:border-purple-400 dark:hover:border-purple-600' 
+                                      : 'bg-zinc-100/80 dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-850 opacity-60'
+                                  }`}>
+                                    <div className="flex items-start justify-between gap-3 min-w-0">
+                                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl ${item.isTeal ? 'bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800' : 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800'} overflow-hidden shrink-0 border flex items-center justify-center shadow-xs`}>
+                                          {item.photo ? (
+                                            <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
+                                          ) : (
+                                            <span className="text-2xl sm:text-3xl">{item.emoji}</span>
+                                          )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <h5 className="font-extrabold text-zinc-950 dark:text-white text-sm sm:text-base leading-snug break-words">
+                                              {item.name}
+                                            </h5>
+                                            {!item.isAvail && (
+                                              <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase shrink-0">
+                                                Esgotado
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                            <p className="text-sm sm:text-base font-black text-zinc-950 dark:text-white tracking-tight">
+                                              {formatMoney(item.price)}
+                                            </p>
+                                            {item.desc && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setExpandedProductDesc(prev => ({ ...prev, [item.key]: !prev[item.key] }));
+                                                }}
+                                                className="inline-flex items-center gap-0.5 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 py-0.5 cursor-pointer select-none"
+                                                title={isExpanded ? "Ocultar detalhes" : "Ver detalhes do produto"}
+                                              >
+                                                <span>Detalhes</span>
+                                                <span className="text-[8px] leading-none">{isExpanded ? '▲' : '▼'}</span>
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
                                       </div>
-                                      <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-1 tracking-tight">
-                                        {formatMoney(item.price)}
-                                      </p>
+                                      <div className="shrink-0 flex items-center pt-0.5">
+                                        {item.isAvail && selLoja.status !== 'paused' ? (
+                                          <button
+                                            onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })}
+                                            className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800' : 'bg-purple-600 hover:bg-purple-700 active:bg-purple-800'} text-white font-black px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition shadow-sm shrink-0 active:scale-95 cursor-pointer flex items-center gap-1 text-xs sm:text-sm hover:brightness-110`}
+                                            title="Adicionar ao pedido"
+                                          >
+                                            <span className="text-sm leading-none">🛒</span>
+                                            <span className="text-base font-black leading-none">+</span>
+                                          </button>
+                                        ) : (
+                                          <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 rounded-lg shrink-0">
+                                            {selLoja.status === 'paused' ? 'Fechado' : 'Esgotado'}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
+
+                                    {item.desc && isExpanded && (
+                                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50/80 dark:bg-zinc-900/60 p-2.5 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
+                                        <p className="leading-relaxed">{item.desc}</p>
+                                      </div>
+                                    )}
                                   </div>
-                                  {item.isAvail && selLoja.status !== 'paused' ? (
-                                    <button onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })} className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700' : 'bg-purple-600 hover:bg-purple-700'} text-white text-xs sm:text-sm font-extrabold px-4 py-2.5 rounded-xl transition shadow shrink-0 active:scale-95 cursor-pointer`}>
-                                      + Adicionar
-                                    </button>
-                                  ) : (
-                                    <span className="text-[11px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-3 py-1.5 rounded-lg shrink-0">
-                                      {selLoja.status === 'paused' ? 'Loja Fechada' : 'Esgotado'}
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
 
                             <div className="pt-4 mt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-center">
