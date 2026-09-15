@@ -147,13 +147,39 @@ export async function DELETE(request: Request) {
   if (!auth.authorized) return unauthorizedResponse(auth.error);
 
   try {
-    const { path } = await request.json();
-    if (!path) {
+    const body = await request.json().catch(() => ({}));
+    const { path, paths, clearAll } = body;
+    const supabase = getSupabaseAdmin();
+
+    if (clearAll) {
+      const { data: files, error: listErr } = await supabase.storage.from(BUCKET_NAME).list('ads', { limit: 1000 });
+      if (listErr) {
+        return NextResponse.json({ error: listErr.message }, { status: 500 });
+      }
+      const filesToRemove = (files || [])
+        .filter(f => f.name && f.name !== '.emptyFolderPlaceholder')
+        .map(f => `ads/${f.name}`);
+
+      if (filesToRemove.length > 0) {
+        const { error: removeErr } = await supabase.storage.from(BUCKET_NAME).remove(filesToRemove);
+        if (removeErr) {
+          return NextResponse.json({ error: removeErr.message }, { status: 500 });
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Todo o histórico de imagens e vídeos (${filesToRemove.length} mídias) foi limpo com sucesso!`,
+        count: filesToRemove.length
+      });
+    }
+
+    const targetPaths = paths && Array.isArray(paths) ? paths : (path ? [path] : []);
+    if (targetPaths.length === 0) {
       return NextResponse.json({ error: 'Caminho do arquivo não fornecido.' }, { status: 400 });
     }
 
-    const supabase = getSupabaseAdmin();
-    const { error } = await supabase.storage.from(BUCKET_NAME).remove([path]);
+    const { error } = await supabase.storage.from(BUCKET_NAME).remove(targetPaths);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -165,3 +191,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: error.message || 'Falha ao remover mídia' }, { status: 500 });
   }
 }
+

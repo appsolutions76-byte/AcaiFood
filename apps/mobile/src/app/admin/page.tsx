@@ -158,6 +158,8 @@ function AdminDashboardContent() {
   } | null>(null);
   const [isUploadingInModal, setIsUploadingInModal] = useState(false);
   const [copiedUrlState, setCopiedUrlState] = useState<string | null>(null);
+  const [isClearingMedia, setIsClearingMedia] = useState(false);
+  const [deletingMediaPath, setDeletingMediaPath] = useState<string | null>(null);
 
   const [isSavingActivationConfig, setIsSavingActivationConfig] = useState(false);
   const [isPayingAll, setIsPayingAll] = useState(false);
@@ -606,6 +608,7 @@ function AdminDashboardContent() {
 
   const handleDeleteMediaFile = async (path: string) => {
     if (!confirm("Tem certeza de que deseja excluir este arquivo de mídia do armazenamento?")) return;
+    setDeletingMediaPath(path);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const authHeaders: any = { 'Content-Type': 'application/json' };
@@ -628,6 +631,44 @@ function AdminDashboardContent() {
       }
     } catch (err: any) {
       alert("Erro ao excluir mídia: " + err.message);
+    } finally {
+      setDeletingMediaPath(null);
+    }
+  };
+
+  const handleClearAllMedia = async () => {
+    if (uploadedMediaList.length === 0) {
+      alert("A galeria de mídias já está vazia.");
+      return;
+    }
+    const confirmMsg = `⚠️ EXCLUIR TODO O HISTÓRICO DE MÍDIAS?\n\n` +
+      `Serão apagadas todas as ${uploadedMediaList.length} imagens e vídeos hospedados no storage.\n\n` +
+      `Tem certeza de que deseja limpar todo o histórico?`;
+    if (!confirm(confirmMsg)) return;
+
+    setIsClearingMedia(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 'Content-Type': 'application/json' };
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch('/api/admin/media-upload', {
+        method: 'DELETE',
+        headers: authHeaders,
+        body: JSON.stringify({ clearAll: true })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`🗑️ ${data.message || 'Histórico de mídias limpo com sucesso!'}`);
+        setConvertedMediaResult(null);
+        fetchMediaList();
+      } else {
+        alert("Erro ao limpar histórico: " + (data.error || 'Falha de comunicação'));
+      }
+    } catch (err: any) {
+      alert("Erro ao limpar histórico de mídias: " + err.message);
+    } finally {
+      setIsClearingMedia(false);
     }
   };
 
@@ -2919,77 +2960,139 @@ function AdminDashboardContent() {
 
               {/* Galeria de Mídias Recentes Salvas */}
               {uploadedMediaList.length > 0 && (
-                <div className="pt-2 border-t border-purple-100 dark:border-zinc-800/80 space-y-2">
-                  <div className="flex justify-between items-center">
+                <div className="pt-3 border-t border-purple-100 dark:border-zinc-800/80 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <h5 className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <span>📁</span> Mídias Hospedadas Recentemente ({uploadedMediaList.length})
+                      <span>📁</span> Mídias Hospedadas ({uploadedMediaList.length})
                     </h5>
-                    <button
-                      onClick={fetchMediaList}
-                      disabled={isLoadingMediaList}
-                      className="text-[11px] text-purple-600 hover:text-purple-700 dark:text-purple-400 font-bold"
-                    >
-                      {isLoadingMediaList ? '🔄 Atualizando...' : '🔄 Atualizar Galeria'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={fetchMediaList}
+                        disabled={isLoadingMediaList || isClearingMedia}
+                        className="text-[11px] bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-purple-600 dark:text-purple-400 font-bold px-2.5 py-1 rounded-lg border border-purple-200 dark:border-zinc-700 transition"
+                      >
+                        {isLoadingMediaList ? '🔄 Atualizando...' : '🔄 Atualizar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClearAllMedia}
+                        disabled={isClearingMedia || isLoadingMediaList}
+                        className="text-[11px] bg-red-50 hover:bg-red-100 dark:bg-red-950/50 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 font-bold px-2.5 py-1 rounded-lg border border-red-200 dark:border-red-900/60 transition flex items-center gap-1 shadow-xs active:scale-95"
+                        title="Excluir todas as mídias salvas no histórico"
+                      >
+                        {isClearingMedia ? '⏳ Limpando...' : '🗑️ Limpar Todo Histórico'}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 max-h-48 overflow-y-auto p-1">
-                    {uploadedMediaList.map((m) => (
-                      <div
-                        key={m.id || m.path}
-                        className="group relative bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 aspect-video flex flex-col justify-between"
-                      >
-                        <div className="w-full h-full bg-black flex items-center justify-center overflow-hidden">
-                          {m.mediaType === 'video' ? (
-                            <video src={m.url} className="w-full h-full object-cover" muted />
-                          ) : (
-                            <img src={m.url} alt={m.name} className="w-full h-full object-cover" />
-                          )}
-                        </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 max-h-72 overflow-y-auto p-1">
+                    {uploadedMediaList.map((m) => {
+                      const isDeletingThis = deletingMediaPath === m.path;
+                      return (
+                        <div
+                          key={m.id || m.path}
+                          className="group relative bg-white dark:bg-zinc-800/90 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 shadow-xs flex flex-col transition hover:border-purple-300 dark:hover:border-purple-700"
+                        >
+                          {/* Preview Area */}
+                          <div className="relative aspect-video w-full bg-black flex items-center justify-center overflow-hidden">
+                            {m.mediaType === 'video' ? (
+                              <video src={m.url} className="w-full h-full object-cover" muted />
+                            ) : (
+                              <img src={m.url} alt={m.name} className="w-full h-full object-cover" />
+                            )}
 
-                        <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-black/70 text-white backdrop-blur-xs">
-                          {m.mediaType === 'video' ? '🎥 Vídeo' : '🖼️ Img'}
-                        </span>
+                            {/* Tipo */}
+                            <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-black/75 text-white backdrop-blur-xs z-10">
+                              {m.mediaType === 'video' ? '🎥 Vídeo' : '🖼️ Img'}
+                            </span>
 
-                        {/* Overlay Controls */}
-                        <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1.5 p-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setConvertedMediaResult({
-                                url: m.url,
-                                fileName: m.name,
-                                mediaType: m.mediaType,
-                                size: m.size
-                              });
-                            }}
-                            className="bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold px-2 py-1 rounded-lg w-full flex items-center justify-center gap-1"
-                            title="Visualizar Mídia"
-                          >
-                            👁️ Ver
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyPublicUrl(m.url)}
-                            className="bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold px-2 py-1 rounded-lg w-full flex items-center justify-center gap-1"
-                            title="Copiar URL"
-                          >
-                            {copiedUrlState === m.url ? '✅ Copiado' : '📋 Copiar'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteMediaFile(m.path)}
-                            className="bg-red-600/80 hover:bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg w-full flex items-center justify-center gap-1"
-                            title="Excluir Mídia"
-                          >
-                            🗑️ Excluir
-                          </button>
+                            {/* Botão de Excluir Direto no Card (Acesso rápido no Celular e PC) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteMediaFile(m.path);
+                              }}
+                              disabled={isDeletingThis}
+                              className="absolute top-1 right-1 p-1 rounded-full bg-red-600/90 hover:bg-red-700 text-white shadow-md active:scale-90 transition z-10"
+                              title="Excluir esta mídia"
+                            >
+                              {isDeletingThis ? (
+                                <span className="text-[10px] block animate-spin">⏳</span>
+                              ) : (
+                                <span className="text-[10px] block leading-none">🗑️</span>
+                              )}
+                            </button>
+
+                            {/* Hover Overlay para Desktop */}
+                            <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition hidden sm:flex flex-col items-center justify-center gap-1 p-2 z-20">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setConvertedMediaResult({
+                                    url: m.url,
+                                    fileName: m.name,
+                                    mediaType: m.mediaType,
+                                    size: m.size
+                                  });
+                                }}
+                                className="bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold px-2 py-1 rounded-lg w-full flex items-center justify-center gap-1"
+                              >
+                                👁️ Visualizar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyPublicUrl(m.url)}
+                                className="bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold px-2 py-1 rounded-lg w-full flex items-center justify-center gap-1"
+                              >
+                                {copiedUrlState === m.url ? '✅ Copiado' : '📋 Copiar URL'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Footer Actions (Sempre visível no Mobile e Desktop) */}
+                          <div className="p-1.5 bg-zinc-50 dark:bg-zinc-900/60 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPublicUrl(m.url)}
+                              className="flex-1 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-[9px] py-1 px-1.5 rounded text-center truncate transition"
+                              title={m.name}
+                            >
+                              {copiedUrlState === m.url ? '✅ Copiado' : '📋 Copiar'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConvertedMediaResult({
+                                  url: m.url,
+                                  fileName: m.name,
+                                  mediaType: m.mediaType,
+                                  size: m.size
+                                });
+                              }}
+                              className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-bold text-[9px] py-1 px-1.5 rounded transition"
+                              title="Visualizar"
+                            >
+                              👁️
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMediaFile(m.path)}
+                              disabled={isDeletingThis}
+                              className="bg-red-100 hover:bg-red-200 dark:bg-red-950/60 text-red-600 dark:text-red-300 font-bold text-[9px] py-1 px-1.5 rounded transition"
+                              title="Excluir mídia"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
+
             </div>
 
 
