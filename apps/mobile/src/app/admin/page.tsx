@@ -3144,9 +3144,9 @@ function AdminDashboardContent() {
                               <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
                                   {ad.mediaType === 'video' ? (
-                                    <video src={ad.mediaUrl} className="w-full h-full object-cover" muted />
+                                    <video src={ad.mediaUrl} className="w-full h-full object-contain" muted />
                                   ) : (
-                                    <img src={ad.mediaUrl} alt={ad.title} className="w-full h-full object-cover" />
+                                    <img src={ad.mediaUrl} alt={ad.title} className="w-full h-full object-contain" />
                                   )}
                                 </div>
                                 <div className="min-w-0 max-w-xs">
@@ -3371,9 +3371,9 @@ function AdminDashboardContent() {
                   <div className="mt-2 p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 flex items-center gap-3">
                     <div className="w-16 h-16 rounded-lg bg-black overflow-hidden shrink-0 flex items-center justify-center">
                       {adFormData.mediaType === 'video' ? (
-                        <video src={adFormData.mediaUrl} controls className="w-full h-full object-cover" />
+                        <video src={adFormData.mediaUrl} controls className="w-full h-full object-contain" />
                       ) : (
-                        <img src={adFormData.mediaUrl} alt="Preview" className="w-full h-full object-cover" />
+                        <img src={adFormData.mediaUrl} alt="Preview" className="w-full h-full object-contain" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
