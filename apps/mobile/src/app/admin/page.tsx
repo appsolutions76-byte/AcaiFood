@@ -484,7 +484,11 @@ function AdminDashboardContent() {
 
   const fetchActivationConfig = async () => {
     try {
-      const res = await fetch('/api/admin/activation-config');
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = {};
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch('/api/admin/activation-config', { headers: authHeaders });
       const data = await res.json();
       if (data && data.success) {
         setActivationConfig({
@@ -496,6 +500,8 @@ function AdminDashboardContent() {
           pendingCount: Number(data.pendingCount ?? 0),
           freeSlotsRemaining: Number(data.freeSlotsRemaining ?? 50)
         });
+      } else {
+        console.warn("Aviso ao carregar config de ativação:", data?.error || res.statusText);
       }
     } catch (_e) {
       console.warn("Aviso ao carregar config de ativação:", _e);
