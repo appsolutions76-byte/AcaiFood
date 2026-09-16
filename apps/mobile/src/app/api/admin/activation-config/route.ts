@@ -1,67 +1,26 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { getFounderQuotaStatus } from '@/lib/founderQuota';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const auth = await authorizeRequest(request, ['admin']);
+  if (!auth.authorized) return unauthorizedResponse(auth.error);
+
   try {
-    const supabase = getSupabaseAdmin();
-
-    let activationFee = 12.90;
-    let freeQuota = 50;
-    let activationEnabled = true;
-
-    try {
-      const { data: row } = await supabase
-        .from('platform_settings')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (row?.asaas_platform_wallet_id) {
-        try {
-          const parsed = JSON.parse(row.asaas_platform_wallet_id);
-          if (parsed && typeof parsed === 'object') {
-            if (parsed.activationFee !== undefined) activationFee = Number(parsed.activationFee);
-            if (parsed.freeQuota !== undefined) freeQuota = Number(parsed.freeQuota);
-            if (parsed.activationEnabled !== undefined) activationEnabled = Boolean(parsed.activationEnabled);
-          }
-        } catch (_e) {}
-      }
-    } catch (_e) {}
-
-    // Contar parceiros fundadores (todos os parceiros existentes na plataforma exceto cliente/admin)
-    let subsidizedCount = 0;
-    let paidCount = 0;
-    let pendingCount = 0;
-
-    try {
-      const { data: allUsers } = await supabase
-        .from('users')
-        .select('id, role, asaas_wallet_id, pix_key');
-
-      if (allUsers && Array.isArray(allUsers)) {
-        const partners = allUsers.filter(u => {
-          const r = String(u.role || '').toLowerCase();
-          return r !== 'cliente' && r !== 'admin' && r !== 'customer' && r !== 'client';
-        });
-
-        subsidizedCount = Math.min(partners.length, freeQuota);
-        paidCount = partners.filter(u => Boolean(u.asaas_wallet_id)).length;
-        pendingCount = partners.filter(u => !u.asaas_wallet_id).length;
-      }
-    } catch (_e) {}
+    const quota = await getFounderQuotaStatus();
 
     return NextResponse.json({
       success: true,
-      activationFee,
-      freeQuota,
-      activationEnabled,
-      subsidizedCount,
-      paidCount,
-      pendingCount,
-      freeSlotsRemaining: Math.max(0, freeQuota - subsidizedCount)
+      activationFee: quota.activationFee,
+      freeQuota: quota.freeQuota,
+      activationEnabled: quota.activationEnabled,
+      subsidizedCount: quota.subsidizedCount,
+      paidCount: quota.paidCount,
+      pendingCount: quota.pendingCount,
+      freeSlotsRemaining: quota.freeSlotsRemaining
     });
 
   } catch (error: any) {

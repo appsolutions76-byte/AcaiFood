@@ -7,3 +7,4 @@
   - Modern Next.js server/client components separation with explicit `'use client'` where hooks or browser APIs are used.
   - Responsive, mobile-first design prioritizing smooth UI/UX on mobile devices and desktop views.
   - Safe Supabase queries with proper error handling and optimistic UI updates where applicable.
+- **Idioma de Comunicação:** Responder sempre em Português do Brasil (PT-BR).

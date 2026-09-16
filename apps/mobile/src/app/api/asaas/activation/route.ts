@@ -8,17 +8,33 @@ import { getFounderQuotaStatus } from '@/lib/founderQuota';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
-  if (!auth.authorized) return unauthorizedResponse(auth.error);
-
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const paymentId = searchParams.get('paymentId');
 
+    // Se não houver userId, é uma consulta pública sobre a cota de ativação (usada pela tela de cadastro pública)
+    if (!userId) {
+      const quota = await getFounderQuotaStatus();
+      return NextResponse.json({
+        success: true,
+        activationEnabled: quota.activationEnabled,
+        activationFee: quota.activationFee,
+        freeQuota: quota.freeQuota,
+        subsidizedCount: quota.subsidizedCount,
+        freeSlotsRemaining: quota.freeSlotsRemaining,
+        isFree: quota.isFree,
+        userStatus: null
+      });
+    }
+
+    // Se userId for fornecido, exige autenticação do usuário ou admin
+    const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
+    if (!auth.authorized) return unauthorizedResponse(auth.error);
+
     const callerId = auth.user?.id || auth.profile?.id;
     const isAdmin = auth.source === 'internal_secret' || String(auth.profile?.role || '').toLowerCase() === 'admin';
-    if (!isAdmin && userId && callerId !== userId) {
+    if (!isAdmin && callerId !== userId) {
       return NextResponse.json({ error: 'Você só pode consultar os dados da sua própria ativação.' }, { status: 403 });
     }
 

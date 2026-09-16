@@ -100,11 +100,12 @@ export async function POST(request: Request) {
       if (sf?.partner_id) {
         const { data: uSeller } = await supabase
           .from('users')
-          .select('asaas_wallet_id')
+          .select('asaas_wallet_id, split_enabled, asaas_account_status')
           .eq('id', sf.partner_id)
           .maybeSingle();
 
-        if (uSeller?.asaas_wallet_id && isValidAsaasWalletId(uSeller.asaas_wallet_id)) {
+        const isSellerSplitActive = uSeller?.split_enabled === true || (uSeller?.split_enabled !== false && uSeller?.asaas_account_status === 'APPROVED');
+        if (uSeller?.asaas_wallet_id && isSellerSplitActive && isValidAsaasWalletId(uSeller.asaas_wallet_id)) {
           const freteSubsidyPct = Number(sf.frete_subsidy_pct || 0);
           const freteLoja = deliveryTotal * (freteSubsidyPct / 100);
           const platformFee = Number(order.applied_platform_fee_percent ?? 10);
@@ -125,11 +126,12 @@ export async function POST(request: Request) {
     if (order.driver_id) {
       const { data: uDriver } = await supabase
         .from('users')
-        .select('asaas_wallet_id')
+        .select('asaas_wallet_id, split_enabled, asaas_account_status')
         .eq('id', order.driver_id)
         .maybeSingle();
 
-      if (uDriver?.asaas_wallet_id && isValidAsaasWalletId(uDriver.asaas_wallet_id)) {
+      const isDriverSplitActive = uDriver?.split_enabled === true || (uDriver?.split_enabled !== false && uDriver?.asaas_account_status === 'APPROVED');
+      if (uDriver?.asaas_wallet_id && isDriverSplitActive && isValidAsaasWalletId(uDriver.asaas_wallet_id)) {
         const platPct = Number(order.applied_delivery_platform_fee_percent ?? 10);
         const driverVal = Number((deliveryTotal * (1 - platPct / 100)).toFixed(2));
 

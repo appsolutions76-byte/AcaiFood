@@ -6,6 +6,9 @@ import { AdItem } from '@/app/api/ads/route';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const auth = await authorizeRequest(request, ['admin']);
+  if (!auth.authorized) return unauthorizedResponse(auth.error);
+
   try {
     const supabase = getSupabaseAdmin();
     const { data: row } = await supabase

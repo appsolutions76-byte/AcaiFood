@@ -100,10 +100,12 @@ export async function POST(request: Request) {
 
     let walletId = '';
     let accountId = '';
+    let accountApiKey = '';
 
     if (searchData && searchData.data && searchData.data.length > 0) {
       walletId = searchData.data[0].walletId;
       accountId = searchData.data[0].id;
+      accountApiKey = searchData.data[0].apiKey || '';
     }
 
     if (!walletId) {
@@ -152,6 +154,7 @@ export async function POST(request: Request) {
 
       walletId = accountData.walletId;
       accountId = accountData.id;
+      accountApiKey = accountData.apiKey || '';
     }
 
     // Salva no banco de dados Supabase via Service Role garantindo integridade
@@ -162,14 +165,20 @@ export async function POST(request: Request) {
     }
 
     if (userId) {
+      const updateData: any = {
+        asaas_wallet_id: walletId,
+        asaas_account_id: accountId,
+        asaas_account_status: 'PENDING_DOCUMENTS',
+        split_enabled: false
+      };
+
+      if (accountApiKey) {
+        updateData.asaas_account_api_key = accountApiKey;
+      }
+
       await supabase
         .from('users')
-        .update({
-          asaas_wallet_id: walletId,
-          asaas_account_id: accountId,
-          asaas_account_status: 'APPROVED',
-          split_enabled: true
-        })
+        .update(updateData)
         .eq('id', userId);
     }
 

@@ -5,6 +5,8 @@ export interface FounderQuotaStatus {
   freeQuota: number;
   activationEnabled: boolean;
   subsidizedCount: number;
+  paidCount: number;
+  pendingCount: number;
   freeSlotsRemaining: number;
   isUserAlreadyFounder: boolean;
   isFree: boolean;
@@ -37,6 +39,8 @@ export async function getFounderQuotaStatus(userId?: string): Promise<FounderQuo
   } catch (_e) {}
 
   let subsidizedCount = 0;
+  let paidCount = 0;
+  let pendingCount = 0;
   let isUserAlreadyFounder = false;
 
   try {
@@ -53,6 +57,8 @@ export async function getFounderQuotaStatus(userId?: string): Promise<FounderQuo
 
       const founderPartners = partners.slice(0, freeQuota);
       subsidizedCount = founderPartners.length;
+      paidCount = partners.filter(u => Boolean(u.asaas_wallet_id)).length;
+      pendingCount = partners.filter(u => !u.asaas_wallet_id).length;
 
       if (userId) {
         isUserAlreadyFounder = founderPartners.some(p => p.id === userId);
@@ -68,6 +74,8 @@ export async function getFounderQuotaStatus(userId?: string): Promise<FounderQuo
     freeQuota,
     activationEnabled,
     subsidizedCount,
+    paidCount,
+    pendingCount,
     freeSlotsRemaining,
     isUserAlreadyFounder,
     isFree
