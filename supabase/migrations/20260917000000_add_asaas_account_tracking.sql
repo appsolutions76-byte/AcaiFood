@@ -36,7 +36,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users u
     WHERE u.id = auth.uid()
-    AND (lower(COALESCE(u.role, '')) = 'admin' OR u.is_admin = true)
+    AND lower(COALESCE(u.role, '')) IN ('admin', 'administrador')
   )
 );
 
