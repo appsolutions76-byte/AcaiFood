@@ -11,7 +11,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
     return (
       <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 text-[11px] font-semibold shadow-xs ${className}`}>
         <ShieldCheck size={13} className="text-purple-600 dark:text-purple-400 shrink-0" />
-        <span>Pagamentos & Custódia por <strong>Asaas IP S.A.</strong></span>
+        <span>Pagamentos & Custódia por <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA S.A.)</strong></span>
       </div>
     );
   }
@@ -20,7 +20,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
     return (
       <span className={`inline-flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium ${className}`}>
         <ShieldCheck size={12} className="text-emerald-500 shrink-0" />
-        <span>Parceira Financeira: <strong>Asaas IP S.A.</strong> (Banco Central do Brasil)</span>
+        <span>Parceira Financeira: <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA S.A.)</strong> (Banco Central do Brasil)</span>
       </span>
     );
   }
@@ -29,7 +29,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
     return (
       <div className={`text-[11px] text-zinc-500 dark:text-zinc-400 font-medium flex items-center justify-center gap-1 ${className}`}>
         <ShieldCheck size={12} className="text-purple-500 shrink-0" />
-        <span>Tecnologia AçaíFood • Parceira Financeira <strong>Asaas IP S.A. (BACEN)</strong></span>
+        <span>Tecnologia AçaíFood • Parceira Financeira <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA S.A.)</strong></span>
       </div>
     );
   }
@@ -40,7 +40,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
       <span>•</span>
       <span className="inline-flex items-center gap-1">
         <ShieldCheck size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
-        <span>Parceira Financeira & BaaS: <strong>Asaas IP S.A.</strong> (Banco Central do Brasil)</span>
+        <span>Parceira Financeira & BaaS: <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA S.A.)</strong> (Banco Central do Brasil)</span>
       </span>
     </div>
   );
