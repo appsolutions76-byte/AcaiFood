@@ -56,7 +56,7 @@ export default function PoliticaPrivacidadePage() {
             <ul className="list-disc pl-5 space-y-1 text-zinc-300">
               <li><strong>Dados de Cadastro:</strong> Nome completo, e-mail, senha criptografada, telefone/WhatsApp, CPF ou CNPJ.</li>
               <li><strong>Dados de Endereço e Geolocalização (GPS):</strong> Endereço completo de entrega e coordenadas GPS (latitude e longitude) enviadas com permissão para cálculo exato do frete e acompanhamento em tempo real no mapa.</li>
-              <li><strong>Dados Financeiros e de Pagamento:</strong> Chave Pix e ID de carteira de pagamentos para processamento de cobranças e repasses automatizados (via instituição parceira Asaas IP S.A.).</li>
+              <li><strong>Dados Financeiros e de Pagamento:</strong> Chave Pix e ID de carteira de pagamentos para processamento de cobranças e repasses automatizados (via instituição parceira Asaas IP S.A. - ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21).</li>
               <li><strong>Dados do Dispositivo:</strong> Endereço IP, dados de conexão, navegador e tipo de sistema operacional.</li>
             </ul>
           </section>
@@ -89,7 +89,7 @@ export default function PoliticaPrivacidadePage() {
             </p>
             <ul className="list-disc pl-5 space-y-1 text-zinc-300">
               <li><strong>Com os Parceiros da Transação:</strong> Nome do cliente, telefone e endereço são exibidos para a loja e o entregador responsável pelo pedido.</li>
-              <li><strong>Com Gateway de Pagamentos (Asaas):</strong> CPF/CNPJ, nome e dados da cobrança para liquidação bancária via Pix.</li>
+              <li><strong>Com Gateway de Pagamentos e Subcontas BaaS (Asaas IP S.A. / ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21):</strong> CPF/CNPJ, nome e dados da cobrança para liquidação bancária via Pix.</li>
               <li><strong>Autoridades Judiciais:</strong> Mediante ordem judicial ou obrigação legal.</li>
             </ul>
           </section>

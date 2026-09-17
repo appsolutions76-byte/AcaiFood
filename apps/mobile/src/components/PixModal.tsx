@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Copy, CheckCircle, ExternalLink, X } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
+import { SeloAsaas } from "@/components/SeloAsaas";
 
 export interface PixModalData {
   open: boolean;
@@ -224,6 +225,9 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
                 <span className="font-bold">Aguardando confirmação do Asaas...</span>
               </div>
               <span className="text-[11px] text-zinc-500 dark:text-zinc-400">O pedido será liberado automaticamente para a loja assim que o Pix for recebido.</span>
+              <div className="pt-1">
+                <SeloAsaas variant="positivo" width={130} height={39} />
+              </div>
             </div>
 
             <button

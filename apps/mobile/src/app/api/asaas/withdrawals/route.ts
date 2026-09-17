@@ -1,48 +1,28 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getPartnerAvailableBalance } from '@/lib/partnerBalance';
+import { authorizeRequest } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
-async function authorizePartner(request: Request) {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-  const token = authHeader.split(' ')[1];
-  const adminSupabase = getSupabaseAdmin();
-  const { data: { user }, error } = await adminSupabase.auth.getUser(token);
-  if (error || !user) return null;
-
-  const { data: dbUser } = await adminSupabase
-    .from('users')
-    .select('id, name, email, role, phone, cpf_cnpj, pix_key, asaas_wallet_id')
-    .eq('id', user.id)
-    .single();
-
-  if (!dbUser) return null;
-
-  const roleStr = String(dbUser.role || '').toUpperCase();
-  const appRole = (roleStr === 'PARTNER' || roleStr === 'LOJA') ? 'loja' :
-                  (roleStr === 'SUPPLIER' || roleStr === 'FORNECEDOR') ? 'fornecedor' :
-                  (roleStr === 'COURIER' || roleStr === 'MOTORISTA' || roleStr === 'MOTOBOY') ? 'motorista' :
-                  (roleStr === 'ADMIN') ? 'admin' : 'cliente';
-
-  if (!['loja', 'fornecedor', 'motorista', 'admin'].includes(appRole)) {
-    return null;
-  }
-
-  return { user: dbUser, role: appRole };
+function getAppRole(profileRole?: string) {
+  const roleStr = String(profileRole || '').toUpperCase();
+  if (roleStr === 'PARTNER' || roleStr === 'LOJA' || roleStr === 'BATEDEIRA') return 'loja';
+  if (roleStr === 'SUPPLIER' || roleStr === 'FORNECEDOR') return 'fornecedor';
+  if (roleStr === 'COURIER' || roleStr === 'MOTORISTA' || roleStr === 'MOTOBOY' || roleStr === 'CAMINHAO' || roleStr === 'DRIVER') return 'motorista';
+  if (roleStr === 'ADMIN' || roleStr === 'ADMINISTRADOR') return 'admin';
+  return 'cliente';
 }
 
 export async function GET(request: Request) {
   try {
-    const authData = await authorizePartner(request);
-    if (!authData) {
-      return NextResponse.json({ error: 'Não autorizado. Apenas parceiros podem consultar saques.' }, { status: 401 });
+    const auth = await authorizeRequest(request, ['loja', 'fornecedor', 'motorista', 'admin']);
+    if (!auth.authorized || !auth.profile) {
+      return NextResponse.json({ error: auth.error || 'Não autorizado. Apenas parceiros podem consultar saques.' }, { status: 401 });
     }
 
-    const { user, role } = authData;
+    const user = auth.profile;
+    const role = getAppRole(user.role);
     const adminSupabase = getSupabaseAdmin();
 
     // 1. Obter valor mínimo de saque em platform_settings
@@ -97,12 +77,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const authData = await authorizePartner(request);
-    if (!authData) {
-      return NextResponse.json({ error: 'Não autorizado. Apenas parceiros podem solicitar saques.' }, { status: 401 });
+    const auth = await authorizeRequest(request, ['loja', 'fornecedor', 'motorista', 'admin']);
+    if (!auth.authorized || !auth.profile) {
+      return NextResponse.json({ error: auth.error || 'Não autorizado. Apenas parceiros podem solicitar saques.' }, { status: 401 });
     }
 
-    const { user, role } = authData;
+    const user = auth.profile;
+    const role = getAppRole(user.role);
     const adminSupabase = getSupabaseAdmin();
 
     // 1. Revalidar se já existe solicitação PENDENTE ou APROVADO

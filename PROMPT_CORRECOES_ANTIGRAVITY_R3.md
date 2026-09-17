@@ -13,6 +13,26 @@
 
 ---
 
+## P(-1) — MAIS URGENTE DE TODOS, E NÃO É CÓDIGO: risco de bloqueio automático por "período de avaliação" do Asaas
+
+**Isso não é uma tarefa para o Antigravity aplicar — é uma ação de negócio/prazo que precisa acontecer em paralelo, porque pode derrubar partes do app em produção independente de qualquer correção de código deste prompt.**
+
+Segundo a documentação oficial do Asaas (FAQ "Período de avaliação"), toda conta-pai nova opera sob um **período de avaliação de até 60 dias corridos, contados da criação da primeira subconta em produção** (ou até a homologação regulatória ser concluída — o que vier primeiro). Durante esse período valem três limites simultâneos:
+
+- **Máximo de 10 subcontas criadas** na conta-pai;
+- **Limite de R$ 2.000,00 por subconta** em cobranças + assinaturas combinadas;
+- **60 dias** desde a criação da primeira subconta em produção.
+
+Ao estourar qualquer um dos três limites, o Asaas bloqueia automaticamente: não deixa criar novas subcontas, a subconta afetada para de conseguir emitir novas cobranças, assinaturas ativas são canceladas automaticamente, e links de pagamento são desativados (o saldo já existente não fica bloqueado — dá para sacar). **A única forma de remover essas restrições é concluir a homologação regulatória junto ao Asaas** (o processo que já está em andamento com a Eliana Carvalho) — não tem como esperar os 60 dias nem pedir prorrogação.
+
+**Ação imediata (fora do código, para você/equipe verificar agora, não para o Antigravity):**
+1. Levantar a data de criação da **primeira subconta em produção** do AçaíFood (via painel Asaas ou pela coluna de data de criação em `users`/log de auditoria) e calcular quantos dias já se passaram — para saber quanto tempo resta antes do limite de 60 dias.
+2. Contar quantas subcontas em produção existem hoje (`SELECT count(*) FROM users WHERE asaas_account_id IS NOT NULL` ou equivalente) e comparar com o limite de 10 — se o app já tem mais parceiros ativos do que isso, uma nova subconta pode já estar sendo recusada pelo Asaas silenciosamente sem que o app trate esse erro (vale conferir os logs de erro de `POST /v3/accounts` em produção).
+3. Tratar a conclusão da homologação (contrato de BaaS + checklist de Segurança da Informação + adequação de interface, que é justamente o que as seções P3/P5/P6 abaixo endereçam do lado de código) como **prioridade máxima de prazo**, mais urgente que qualquer item de código deste prompt — porque nenhuma correção de bug evita esse bloqueio automático, só a homologação evita.
+4. Se algum parceiro real já estiver perto do limite de R$ 2.000,00 em cobranças na subconta dele, considerar isso um risco imediato de interrupção de cobrança para esse parceiro específico, não só um número abstrato.
+
+---
+
 ## P0 — CRÍTICO: painel admin e tela de cadastro mostram números de vagas diferentes
 
 **Causa raiz confirmada (não é só visual, é um bug funcional):** `GET /api/asaas/activation` — o endpoint que devolve `freeQuota`/`freeSlotsRemaining` — exige autenticação via `authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente'])` (`apps/mobile/src/app/api/asaas/activation/route.ts`, linha 11). `authorizeRequest` (`lib/apiAuth.ts`) só aceita segredo interno, segredo de webhook, ou um JWT válido do Supabase — **não existe caminho anônimo**.
@@ -122,23 +142,61 @@ imediatamente após `POST /v3/accounts` retornar um `walletId` — antes de qual
 
 **Problema:** `getTermosText()` em `apps/mobile/src/app/cadastro/page.tsx` (por volta da linha 318) não menciona o Asaas em nenhum dos três blocos de perfil (cliente, loja/fornecedor, motorista) — mas a Resolução Conjunta nº 16/2025 exige que a identificação do prestador apareça em contratos e documentos.
 
-**Ação:** adicionar um item (comum aos três perfis, ou pelo menos aos de parceiro que têm subconta) explicando que os pagamentos, custódia e repasses são processados pela instituição parceira **Asaas IP S.A.**, nos mesmos termos já usados na Política de Privacidade (`politica-de-privacidade/page.tsx`, linha 58/91) — manter a redação consistente entre os dois documentos.
+**Texto oficial (o "Playbook de BaaS para clientes Asaas", recebido diretamente do Asaas, traz o modelo de cláusula pronto — usar essa redação, não parafrasear):**
+
+> "Os serviços financeiros e de pagamentos disponibilizados por meio da presente plataforma, incluindo abertura e manutenção de conta de pagamento, processamento de transações, emissão de boletos, transferências, pagamentos e demais movimentações de valores, são prestados pelo ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., instituição de pagamento autorizada a funcionar pelo Banco Central do Brasil.
+>
+> A AçaíFood atua exclusivamente como integradora tecnológica e distribuidora da experiência do produto, não sendo instituição financeira ou de pagamento, nem realizando intermediação financeira em nome próprio.
+>
+> O cliente declara ciência de que o relacionamento financeiro/de pagamentos e a responsabilidade regulatória pelos serviços acima descritos são do ASAAS GESTÃO FINANCEIRA S.A., nos termos da regulamentação vigente."
+
+**Ação:**
+1. Adicionar essa cláusula (adaptada só no nome da tomadora, "AçaíFood", já no formato certo) aos três blocos de `getTermosText()` que envolvem movimentação de valores (loja, fornecedor, motorista — o de cliente também deve receber, já que o cliente paga via Pix processado pelo Asaas).
+2. Manter a redação consistente com a Política de Privacidade (`politica-de-privacidade/page.tsx`, linha 58/91) — se o texto de lá for diferente, alinhar os dois para não ter duas descrições divergentes do mesmo relacionamento.
+3. **Vedações a checar ao revisar todo o texto público do app** (site, termos, telas de cadastro, materiais de marketing) — por norma do Bacen, não pode: usar termos como "Bank", "Pay", "Payments", "Financeira", "Wallet" ou "Instituição de Pagamento" no nome/posicionamento da AçaíFood sem a licença; a AçaíFood se apresentar como instituição financeira ou de pagamento em qualquer canal; dar a entender que a AçaíFood é responsável pela operação financeira; cobrar tarifas financeiras (Pix, conta, saque) como se fosse a prestadora desse serviço (a AçaíFood **pode** cobrar pelo uso da própria plataforma/produto, desde que fique claro que quem executa a operação financeira é o Asaas). Vale uma checagem rápida de texto em `cadastro/page.tsx`, na home e no rodapé do site.
+
+---
+
+## P6 — Selo "Serviços financeiros ASAAS" nas telas de movimentação de valores
+
+**Problema:** a Resolução Conjunta nº 16/2025 exige identificação visível do prestador (Asaas) nas telas de produto onde há movimentação ou gestão de valores — hoje o app não exibe nenhum selo/identificação visual do Asaas em lugar nenhum, só o nome aparece em texto solto em algumas telas.
+
+**URLs do selo (recebidas diretamente do suporte Asaas, não são as de exemplo do playbook — as de exemplo tinham `id=XXXX` como placeholder e vêm acompanhadas do aviso "não devem ser utilizadas na prática"; estas têm um id real):**
+- Colorido/positivo (fundo claro): `https://baas.asaas.com/selos/Servicos_financeiros_Asaas-Reduzida-Positivo.svg?id=55be4694-40a6-46bd-8342-0a8f310e627b`
+- Negativo preto (fundo claro, monocromático): `https://baas.asaas.com/selos/Servicos_financeiros_Asaas-Reduzida-Negativo-Preto.svg?id=55be4694-40a6-46bd-8342-0a8f310e627b`
+- Negativo branco (fundo escuro): `https://baas.asaas.com/selos/Servicos_financeiros_Asaas-Reduzida-Negativo-Branco.svg?id=55be4694-40a6-46bd-8342-0a8f310e627b`
+
+Antes de subir para produção, **confirmar com a Eliana (suporte Asaas) que esses são de fato os links definitivos de produção** para a conta do AçaíFood — o playbook é enfático que os links de exemplo não devem ser usados, e vale ter certeza por escrito de que os que vocês receberam já são os de produção e não também um exemplo de amostra.
+
+**Ação:**
+1. Criar um componente único (ex: `components/SeloAsaas.tsx`) que renderiza o `<img>` do selo, escolhendo a variante (positivo / negativo-preto / negativo-branco) conforme o fundo da tela (claro/escuro), no padrão que o próprio playbook recomenda:
+   ```html
+   <img src="https://baas.asaas.com/selos/Servicos_financeiros_Asaas-Reduzida-Positivo.svg?id=55be4694-40a6-46bd-8342-0a8f310e627b"
+        alt="Selo Banco Asaas" width="160" height="48" style="display: inline-block;" />
+   ```
+   **Importante:** não aplicar nenhuma política de `referrer-policy="no-referrer"` nessa tag — o Asaas usa o referrer para confirmar que o selo está carregando na aplicação certa. Se for usado como link clicável, seguir o padrão do playbook (`target="_blank" rel="noopener noreferrer"` no `<a>`, apontando para `https://asaas.com`).
+2. Exibir o componente nas telas onde há movimentação/gestão de valores: tela de criação de subconta do parceiro (a mesma tela de ativação/cadastro que hoje já cita "Asaas" em texto), tela de checkout/pagamento do cliente, e a tela de status/painel financeiro do parceiro (onde aparece saldo, repasse, split).
+3. Não hardcodear o `id` da URL em mais de um lugar — centralizar no componente único, para que se o Asaas atualizar/trocar o id no futuro baste mudar em um arquivo.
 
 ---
 
 ## Ordem recomendada de execução
 
+0. **P(-1) — em paralelo, começando agora, fora do código:** levantar data da 1ª subconta em produção e contagem atual de subcontas, e tratar a conclusão da homologação com o Asaas como prazo mais urgente que qualquer item de código abaixo — o bloqueio automático por período de avaliação não espera o cronograma de deploy.
 1. **P0 + P0-B juntos** — são o mesmo bug raiz visto de dois ângulos (o endpoint errado sendo chamado sem auth, e a causa estrutural de por que existem números divergentes). Faz sentido corrigir os dois no mesmo commit: consolidar a lógica de cota em `founderQuota.ts`, expor um modo público explícito nela, e resolver a questão de autenticação dos dois `GET` de `/admin/*` ao mesmo tempo. É o que já está afetando usuários reais em produção agora — priorizar e fazer deploy isolado, não precisa esperar o resto.
 2. **P1** — sem a apiKey da subconta salva, nada do P3/P4 funciona.
 3. **P2** — corrigir o status otimista logo em seguida, é o item que mais expõe a risco financeiro real (repasse liberado sem aprovação).
 4. **P4** — webhook de status de conta (pode ser feito em paralelo ao P3, já que P3 é mais front-end e P4 é mais backend).
 5. **P3** — fluxo de documentos na UI.
 6. **P5** — rápido, pode ser feito a qualquer momento, sem dependência dos outros.
+7. **P6** — selo do Asaas nas telas; depende só de confirmar com o suporte se os links recebidos já são os de produção, não depende de nenhum outro item deste prompt.
 
 ## Fora do escopo deste prompt (não são de código)
 
-- Assinar o contrato de prestação de serviços de BaaS que o Asaas (Eliana Carvalho, suporte de integrações) vai enviar após aprovar a homologação.
+- **P(-1) (ver acima) é o item mais urgente de todos e não é código** — é prazo/negócio, e pode bloquear o app independente do que for feito nos demais itens.
+- Assinar o contrato de prestação de serviços de BaaS que o Asaas (Eliana Carvalho, suporte de integrações) vai enviar após aprovar a homologação — o "Playbook de BaaS para clientes Asaas" já traz o modelo de cláusula usado no P5 e confirma que o AçaíFood opera no "Modelo A — Direto Tomador" (Asaas → AçaíFood como tomadora → cliente final), que é exatamente a arquitetura atual de subcontas.
 - Confirmar com o Asaas se a subconta pode receber cobrança antes da aprovação geral (pergunta já enviada, aguardando resposta) — isso pode simplificar o P2 se a resposta for "sim, só o repasse é bloqueado".
+- Confirmar por escrito com a Eliana se os 3 links de selo do P6 já são definitivos de produção.
 - Prazo regulatório final: 31/12/2026 para toda a adequação (identificação visível + contrato).
 
 ## Escopo desta auditoria (o que foi e o que não foi revisado)

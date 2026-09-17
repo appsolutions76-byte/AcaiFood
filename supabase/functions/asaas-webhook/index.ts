@@ -125,7 +125,7 @@ serve(async (req) => {
           let newSplitEnabled: boolean | undefined = undefined;
 
           if (event.includes('APPROVED')) {
-            if (event.includes('GENERAL_APPROVAL') || event === 'ACCOUNT_STATUS_COMMERCIAL_INFO_APPROVED') {
+            if (event.includes('GENERAL_APPROVAL')) {
               newStatus = 'APPROVED';
               newSplitEnabled = true;
             } else if (newStatus === 'PENDING_DOCUMENTS') {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { Copy, Clock, LogOut, RefreshCw, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { SeloAsaas } from '@/components/SeloAsaas';
 
 interface PartnerActivationGuardProps {
   children: React.ReactNode;
@@ -254,6 +255,9 @@ export default function PartnerActivationGuard({ children, roleName }: PartnerAc
           <p className="text-[10px] text-zinc-400 leading-tight">
             🛡️ O acesso à operação da plataforma é liberado automaticamente após a compensação do Pix pela infraestrutura bancária Asaas.
           </p>
+          <div className="pt-2 flex justify-center">
+            <SeloAsaas variant="positivo" width={140} height={42} />
+          </div>
         </div>
       </div>
     );

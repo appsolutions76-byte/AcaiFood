@@ -1,41 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { processWithdrawalApproval } from '@/lib/withdrawalApproval';
+import { authorizeRequest } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
-
-async function authorizeAdmin(request: Request) {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-  const token = authHeader.split(' ')[1];
-  const adminSupabase = getSupabaseAdmin();
-  const { data: { user }, error } = await adminSupabase.auth.getUser(token);
-  if (error || !user) return null;
-
-  const { data: dbUser } = await adminSupabase
-    .from('users')
-    .select('id, role')
-    .eq('id', user.id)
-    .single();
-
-  if (!dbUser || String(dbUser.role).toUpperCase() !== 'ADMIN') {
-    return null;
-  }
-
-  return dbUser;
-}
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const admin = await authorizeAdmin(request);
-    if (!admin) {
-      return NextResponse.json({ error: 'Acesso não autorizado. Apenas administradores.' }, { status: 403 });
+    const auth = await authorizeRequest(request, ['admin']);
+    if (!auth.authorized || !auth.profile) {
+      return NextResponse.json({ error: auth.error || 'Acesso não autorizado. Apenas administradores.' }, { status: 403 });
     }
+
+    const admin = auth.profile;
 
     const { id } = await params;
     if (!id) {

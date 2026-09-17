@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAuthHeaders } from '@/store/useAppStore';
 import { Wallet, ArrowDownToLine, Clock, CheckCircle2, XCircle, AlertCircle, RefreshCw, KeyRound } from 'lucide-react';
+import { SeloAsaas } from '@/components/SeloAsaas';
 
 interface PartnerWithdrawalSectionProps {
   partnerId: string;
@@ -173,6 +174,11 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast }: Partner
             <span>Faltam {formatMoney(minVal - totalDisponivel)} de repasses para atingir o valor mínimo de saque de {formatMoney(minVal)}.</span>
           </div>
         )}
+
+        <div className="mt-4 pt-3 border-t border-purple-900/40 flex items-center justify-between flex-wrap gap-2">
+          <span className="text-[10px] text-zinc-400 font-medium">Operações Financeiras & BaaS</span>
+          <SeloAsaas variant="negativo-branco" width={130} height={39} />
+        </div>
       </div>
 
       {/* Histórico Recente de Solicitações */}
