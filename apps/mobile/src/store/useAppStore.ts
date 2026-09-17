@@ -1081,7 +1081,9 @@ export const useAppStore = create<AppState>()(
                     const isBlocked = rawStatus === 'blocked';
                     let isPaused = false;
                     
-                    if (typeof dbUser.is_online === 'boolean') {
+                    if (appRole === 'admin' || appRole === 'cliente') {
+                      isPaused = false;
+                    } else if (typeof dbUser.is_online === 'boolean') {
                       isPaused = !dbUser.is_online;
                     } else if (typeof sfMeta.isOpen === 'boolean') {
                       isPaused = !sfMeta.isOpen;
@@ -1093,7 +1095,9 @@ export const useAppStore = create<AppState>()(
                       isPaused = false;
                     }
 
-                    const storeStatus: 'active' | 'paused' | 'blocked' = isBlocked ? 'blocked' : (isPaused ? 'paused' : 'active');
+                    const storeStatus: 'active' | 'paused' | 'blocked' = (appRole === 'admin') 
+                      ? (isBlocked ? 'blocked' : 'active')
+                      : (isBlocked ? 'blocked' : (isPaused ? 'paused' : 'active'));
 
                     const userObj: User = {
                         id: dbUser.id,
@@ -1391,7 +1395,10 @@ export const useAppStore = create<AppState>()(
         await supabase.from('users').update({ cpf_cnpj: cleaned }).eq('id', state.currentUser.id);
       },
 
-      updateUserStatus: async (userId, status) => {
+      updateUserStatus: async (userId, targetStatus) => {
+        const existingUser = get().users[userId] || get().currentUser;
+        const status = (existingUser && existingUser.role === 'admin' && targetStatus === 'paused') ? 'active' : targetStatus;
+
         // 1. Atualização Otimista no Zustand State
         set((state) => {
           const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
