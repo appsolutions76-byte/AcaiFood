@@ -11,6 +11,7 @@ import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { OrderChatModal } from "@/components/OrderChatModal";
 import { PhotoPickerModal } from "@/components/PhotoPickerModal";
 import { PartnerShareModal, StoreShareCard } from "@/components/PartnerShareModal";
+import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 import { SupportChatButton } from "@/components/SupportChatButton";
 import {
   getPrinterConfig,
@@ -77,7 +78,7 @@ export default function FornecedorDashboard() {
   useEffect(() => {
     if (!mounted || !printerConfig.enabled || printerConfig.printMode !== 'auto' || !currentUser) return;
 
-    const autoOrders = (store.orders || []).filter(o =>
+    const autoOrders = (store.orders || []).filter((o: any) =>
       o.fornecedorId === currentUser.id &&
       o.type === 'B2B' &&
       o.status === 'preparo' &&
@@ -227,8 +228,8 @@ export default function FornecedorDashboard() {
           authHeaders['Authorization'] = `Bearer ${session.access_token}`;
         }
 
-        const pendingOrders = meusPedidos.filter(o => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2B' && !o.payoutSellerDone);
-        const pendingOrderIds = pendingOrders.map(o => o.id);
+        const pendingOrders = meusPedidos.filter((o: any) => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2B' && !o.payoutSellerDone);
+        const pendingOrderIds = pendingOrders.map((o: any) => o.id);
 
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
@@ -347,18 +348,18 @@ export default function FornecedorDashboard() {
     return isSupplier;
   };
 
-  const meusPedidosAll = (store.orders || []).filter(o => isMyOrder(o));
-  const vendasHoje = meusPedidosAll.filter(o => isCompleted(o.status) && !o.payoutSellerDone).reduce((acc, curr) => acc + getSupplierRepasse(curr), 0);
-  const emProcessamento = meusPedidosAll.filter(o => isPaidOrProcessing(o.status)).reduce((acc, curr) => acc + getSupplierRepasse(curr), 0);
+  const meusPedidosAll = (store.orders || []).filter((o: any) => isMyOrder(o));
+  const vendasHoje = meusPedidosAll.filter((o: any) => isCompleted(o.status) && !o.payoutSellerDone).reduce((acc: number, curr: any) => acc + getSupplierRepasse(curr), 0);
+  const emProcessamento = meusPedidosAll.filter((o: any) => isPaidOrProcessing(o.status)).reduce((acc: number, curr: any) => acc + getSupplierRepasse(curr), 0);
   const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
 
-  const fornActiveOrders = meusPedidosAll.filter(o => 
+  const fornActiveOrders = meusPedidosAll.filter((o: any) => 
     o.status !== 'aguardando_pagamento' && 
     !isCompleted(o.status) && 
     o.status !== 'cancelado' && 
     o.status !== 'arquivado'
   );
-  const fornHistoryOrders = meusPedidosAll.filter(o => isCompleted(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
+  const fornHistoryOrders = meusPedidosAll.filter((o: any) => isCompleted(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
   const meusPedidos = [...fornActiveOrders, ...fornHistoryOrders];
 
   const handleSaveSubsidy = () => {
@@ -470,6 +471,9 @@ export default function FornecedorDashboard() {
           storeName={currentUser.name} 
           role="fornecedor" 
         />
+
+        {/* Seção de Saldo e Solicitação de Saque do Parceiro */}
+        <PartnerWithdrawalSection partnerId={currentUser.id} role={currentUser.role} />
 
         {/* Banner Cofre Virtual & Pix Automático (Sempre Visível) */}
         <div className="bg-emerald-900 text-white p-5 rounded-2xl shadow flex justify-between items-center border border-emerald-800">
@@ -784,7 +788,7 @@ export default function FornecedorDashboard() {
               </div>
 
               <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 mt-2">
-                {[...(currentUser?.products || [])].sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map(p => {
+                {[...(currentUser?.products || [])].sort((a: any, b: any) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map((p: any) => {
                   const isAvail = p.isAvailable !== false;
                   return (
                     <li key={p.id} className="flex justify-between items-center py-2.5 gap-2">
@@ -857,7 +861,7 @@ export default function FornecedorDashboard() {
                 <span className="text-4xl mb-3 opacity-50">🚢</span>
                 <p className="text-zinc-500 font-medium">Nenhum pedido de batedeira no momento.</p>
             </div>
-          ) : meusPedidos.map(o => {
+          ) : meusPedidos.map((o: any) => {
             const isCanceled = o.status === 'cancelado';
             return (
             <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-xl shadow-sm border border-l-4 ${isCanceled ? 'border-red-300 opacity-60 border-l-red-400' : 'border-l-emerald-500'} border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`}>

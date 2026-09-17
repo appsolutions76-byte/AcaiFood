@@ -395,7 +395,7 @@ let lastFetchLojasTime = 0;
 let lastFetchRatesTime = 0;
 const lastFetchOrdersTime: Record<string, number> = {};
 
-async function getAuthHeaders() {
+export async function getAuthHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'

@@ -24,7 +24,7 @@ interface PixModalProps {
 export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
   const [copied, setCopied] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
-  const acaoPedido = useAppStore((state) => state.acaoPedido);
+  const acaoPedido = useAppStore((state: any) => state.acaoPedido);
 
   useEffect(() => {
     if (!data.open) {

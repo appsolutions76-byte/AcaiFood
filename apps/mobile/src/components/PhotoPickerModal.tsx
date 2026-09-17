@@ -29,7 +29,7 @@ export function PhotoPickerModal({
   if (!isOpen) return null;
 
   const filteredPresets = category 
-    ? PHOTO_PRESETS.filter(p => p.category === category || p.category === 'acai' || p.category === 'adicional')
+    ? PHOTO_PRESETS.filter((p: any) => p.category === category || p.category === 'acai' || p.category === 'adicional')
     : PHOTO_PRESETS;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

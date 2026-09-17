@@ -22,7 +22,7 @@ export function SupportChatButton({ currentUser, positionClassName }: SupportCha
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<SupportConfig>(DEFAULT_SUPPORT_CONFIG);
 
-  const storeUser = useAppStore((state) => state.currentUser);
+  const storeUser = useAppStore((state: any) => state.currentUser);
   const activeUser = currentUser ?? storeUser;
   const isRegisteredUser = Boolean(activeUser && activeUser.id);
 

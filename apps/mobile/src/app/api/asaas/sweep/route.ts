@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { getAsaasApiKey } from '@/lib/asaasConfig';
 import { isAuthorizedRequest, authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { processWithdrawalApproval } from '@/lib/withdrawalApproval';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   // Verificar autenticação: aceita admin JWT, internal-secret ou cron da Vercel
@@ -15,67 +17,125 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = getSupabaseAdmin();
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const adminSupabase = getSupabaseAdmin();
 
-    // 1. Tentar acionar a Edge Function payout-sweep no Supabase
-    if (supabaseUrl && supabaseAnonKey) {
-      try {
-        const edgeRes = await fetch(`${supabaseUrl}/functions/v1/payout-sweep`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseAnonKey,
-            'Authorization': `Bearer ${supabaseAnonKey}`
-          }
+    // 1. Obter configurações de auto payout em platform_settings
+    const { data: settings } = await adminSupabase
+      .from('platform_settings')
+      .select('auto_payout_enabled, auto_payout_time, auto_payout_timezone, last_auto_payout_run_at')
+      .limit(1)
+      .maybeSingle();
+
+    const isEnabled = settings?.auto_payout_enabled === true;
+    const targetTime = (settings?.auto_payout_time || '18:00').substring(0, 5);
+    const timeZone = settings?.auto_payout_timezone || 'America/Belem';
+    const lastRunAt = settings?.last_auto_payout_run_at ? new Date(settings.last_auto_payout_run_at) : null;
+
+    if (!isEnabled) {
+      console.log("[Sweep Payout] Pagamento automático está DESLIGADO no painel admin.");
+      return NextResponse.json({
+        success: true,
+        autoPayoutEnabled: false,
+        message: 'Pagamento automático desativado pelo administrador. Nenhuma solicitação foi processada.'
+      });
+    }
+
+    // 2. Verificar data e horário no fuso horário configurado
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(now);
+    const dateMap: Record<string, string> = {};
+    parts.forEach(p => { dateMap[p.type] = p.value; });
+
+    const todayStr = `${dateMap.year}-${dateMap.month}-${dateMap.day}`;
+    const currentHHMM = `${dateMap.hour}:${dateMap.minute}`;
+
+    // Verificar se já rodou hoje no mesmo fuso
+    if (lastRunAt) {
+      const lastParts = formatter.formatToParts(lastRunAt);
+      const lastDateMap: Record<string, string> = {};
+      lastParts.forEach(p => { lastDateMap[p.type] = p.value; });
+      const lastRunDateStr = `${lastDateMap.year}-${lastDateMap.month}-${lastDateMap.day}`;
+
+      if (lastRunDateStr === todayStr) {
+        console.log(`[Sweep Payout] Pagamento automático já foi executado hoje (${todayStr}).`);
+        return NextResponse.json({
+          success: true,
+          alreadyRunToday: true,
+          message: `Pagamento automático já foi executado hoje (${todayStr}).`
         });
-        if (edgeRes.ok) {
-          const edgeData = await edgeRes.json();
-          return NextResponse.json({ success: true, mode: 'edge-function', ...edgeData });
-        }
-      } catch (edgeErr) {
-        console.warn("Edge function payout-sweep falhou, executando varredura via backend Next.js:", edgeErr);
       }
     }
 
-    // 2. Fallback: Identificar pedidos com repasses pendentes para revisão manual
-    // IMPORTANTE: Este fallback NÃO envia PIX automaticamente e NÃO marca como liquidado.
-    // A liquidação real deve ocorrer via Asaas (Edge Function) ou via admin manual no painel.
-    const ASAAS_API_KEY = await getAsaasApiKey();
-    if (!ASAAS_API_KEY) {
-      return NextResponse.json({ error: 'ASAAS_API_KEY não configurada' }, { status: 400 });
+    // 3. Buscar solicitações de saque PENDENTES
+    const { data: pendingRequests } = await adminSupabase
+      .from('withdrawal_requests')
+      .select('id, requested_amount, partner_id')
+      .eq('status', 'PENDENTE')
+      .order('created_at', { ascending: true });
+
+    if (!pendingRequests || pendingRequests.length === 0) {
+      console.log("[Sweep Payout] Nenhuma solicitação PENDENTE encontrada para processar.");
+      return NextResponse.json({
+        success: true,
+        pendingCount: 0,
+        message: 'Nenhuma solicitação de saque pendente encontrada para pagamento automático.'
+      });
     }
 
-    const validStatuses = ['RECEIVED', 'DELIVERED', 'COMPLETED', 'entregue', 'concluido'];
-    const { data: rawOrders } = await supabase
-      .from('orders')
-      .select('id, order_type, status, products_subtotal, delivery_distance_km, seller_storefront_id, driver_id, payout_seller_done, payout_driver_done')
-      .order('created_at', { ascending: false })
-      .limit(100);
+    console.log(`⏰ [Sweep Payout] Iniciando pagamento automático de ${pendingRequests.length} solicitações pendentes...`);
 
-    const pendingOrders = (rawOrders || []).filter((o: any) => 
-      validStatuses.includes(String(o.status || '')) && (!o.payout_seller_done || !o.payout_driver_done)
-    );
+    const results: any[] = [];
+    let successCount = 0;
+    let failCount = 0;
 
-    const pendingList = pendingOrders.map((o: any) => ({
-      id: o.id,
-      sellerPending: !o.payout_seller_done,
-      driverPending: !o.payout_driver_done,
-    }));
+    for (const req of pendingRequests) {
+      try {
+        const res = await processWithdrawalApproval(req.id, null); // actorId = null -> processed_automatically
+        results.push({ requestId: req.id, ...res });
+        if (res.success) successCount++;
+        else failCount++;
+      } catch (procErr: any) {
+        results.push({ requestId: req.id, success: false, error: procErr.message });
+        failCount++;
+      }
+    }
 
-    console.log(`[Sweep] ${pendingOrders.length} pedidos com repasses pendentes identificados. Nenhum PIX foi enviado automaticamente neste fallback.`);
+    // 4. Registrar horário da última execução em platform_settings
+    const nowIso = new Date().toISOString();
+    const { data: firstRow } = await adminSupabase
+      .from('platform_settings')
+      .select('id')
+      .limit(1)
+      .maybeSingle();
+
+    if (firstRow?.id) {
+      await adminSupabase.from('platform_settings').update({ last_auto_payout_run_at: nowIso }).eq('id', firstRow.id);
+    }
+
+    console.log(`✅ [Sweep Payout] Varredura concluída: ${successCount} pagas com sucesso, ${failCount} falhas.`);
 
     return NextResponse.json({
       success: true,
-      message: `Varredura executada. ${pendingOrders.length} pedidos com repasses pendentes para revisão.`,
-      pendingCount: pendingOrders.length,
-      pendingOrders: pendingList,
-      note: 'O fallback identifica pendências mas não envia PIX automaticamente. Use o painel admin ou a Edge Function payout-sweep para liquidar.'
+      autoPayoutEnabled: true,
+      executedAt: nowIso,
+      totalPending: pendingRequests.length,
+      successCount,
+      failCount,
+      results
     });
 
   } catch (err: any) {
-    console.error("Exceção na rota /api/asaas/sweep:", err);
-    return NextResponse.json({ error: err.message || 'Erro interno na varredura' }, { status: 500 });
+    console.error("Exceção na varredura de pagamento automático:", err);
+    return NextResponse.json({ error: err.message || 'Erro interno ao executar varredura.' }, { status: 500 });
   }
 }

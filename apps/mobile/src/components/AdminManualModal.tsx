@@ -47,7 +47,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
 
         {/* Tab Nav */}
         <div className="bg-purple-950/30 border-b border-zinc-200 dark:border-zinc-800 px-3 flex gap-1.5 overflow-x-auto shrink-0 py-2">
-          {sections.map(s => (
+          {sections.map((s: any) => (
             <button
               key={s.key}
               onClick={() => setActiveSection(s.key)}

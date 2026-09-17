@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAppStore, haversineKm, getRatesForCity, generateUUID, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
+import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 import { supabase } from "@/lib/supabase";
 import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -334,7 +335,7 @@ export default function BatedeiraDashboard() {
     const actionText = available ? 'marcar como DISPONÍVEIS' : 'marcar como ESGOTADOS / PAUSADOS';
     if (!confirm(`Deseja ${actionText} todos os ${count} produtos extras de uma só vez?`)) return;
     
-    currentUser.products.forEach(p => {
+    currentUser.products.forEach((p: any) => {
       if ((p.isAvailable !== false) !== available) {
         store.updateProduct(currentUser.id, p.id, { isAvailable: available });
       }
@@ -382,8 +383,8 @@ export default function BatedeiraDashboard() {
           authHeaders['Authorization'] = `Bearer ${session.access_token}`;
         }
 
-        const pendingOrders = meusPedidosAll.filter(o => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone);
-        const pendingOrderIds = pendingOrders.map(o => o.id);
+        const pendingOrders = meusPedidosAll.filter((o: any) => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone);
+        const pendingOrderIds = pendingOrders.map((o: any) => o.id);
 
         const res = await fetch('/api/asaas/transfer', {
           method: 'POST',
@@ -471,7 +472,7 @@ export default function BatedeiraDashboard() {
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const mySfIds = ((store.users[currentUser.id] as any)?.storefronts || []).map((s: any) => s.id);
-  const meusPedidosAll = (store.orders || []).filter(o => {
+  const meusPedidosAll = (store.orders || []).filter((o: any) => {
     if (!currentUser?.id) return false;
     const targetSfId = (o as any).seller_storefront_id || (o as any).sellerStorefrontId;
     const isMyStore = o.lojaId === currentUser.id || 
@@ -481,19 +482,19 @@ export default function BatedeiraDashboard() {
                       (o.type === 'B2C' && o.lojaNome && currentUser.name && o.lojaNome.toLowerCase().trim() === currentUser.name.toLowerCase().trim());
     return isMyStore;
   });
-  const vendasHoje = meusPedidosAll.filter(o => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone).reduce((acc, curr) => acc + (curr.taxas?.repasse || 0), 0);
+  const vendasHoje = meusPedidosAll.filter((o: any) => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone).reduce((acc: number, curr: any) => acc + (curr.taxas?.repasse || 0), 0);
   const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
   
-  const batedeiraActiveOrders = meusPedidosAll.filter(o => 
+  const batedeiraActiveOrders = meusPedidosAll.filter((o: any) => 
     o.status !== 'aguardando_pagamento' && 
     o.status !== 'entregue' && 
     o.status !== 'cancelado' && 
     o.status !== 'arquivado'
   );
-  const batedeiraHistoryOrders = meusPedidosAll.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
+  const batedeiraHistoryOrders = meusPedidosAll.filter((o: any) => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   const meusPedidos = [...batedeiraActiveOrders, ...batedeiraHistoryOrders];
   const allFornecedores = Object.values(store.users || {})
-    .filter(u => {
+    .filter((u: any) => {
       if (u.role !== 'fornecedor' || u.status === 'blocked') return false;
       if (!u.cidade || !currentUser.cidade) return true; // Se alguma das partes estiver sem cidade, mostra mesmo assim para evitar sumiço
       const c1 = u.cidade.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -502,33 +503,33 @@ export default function BatedeiraDashboard() {
     });
 
   const countAllFornecedores = allFornecedores.length;
-  const countOpenFornecedores = allFornecedores.filter(u => u.status !== 'paused').length;
-  const countSubsidizedFornecedores = allFornecedores.filter(u => (u.freteSubsidyPct || 0) > 0).length;
-  const countStockFornecedores = allFornecedores.filter(u => u.availabilityB2B?.lata !== false || (u.products || []).some(p => p.isAvailable !== false)).length;
+  const countOpenFornecedores = allFornecedores.filter((u: any) => u.status !== 'paused').length;
+  const countSubsidizedFornecedores = allFornecedores.filter((u: any) => (u.freteSubsidyPct || 0) > 0).length;
+  const countStockFornecedores = allFornecedores.filter((u: any) => u.availabilityB2B?.lata !== false || (u.products || []).some((p: any) => p.isAvailable !== false)).length;
 
   const filteredFornecedores = allFornecedores
-    .filter(forn => {
+    .filter((forn: any) => {
       if (!b2bSearchQuery.trim()) return true;
       const q = b2bSearchQuery.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
       const name = (forn.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const bairro = (forn.bairro || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const cidade = (forn.cidade || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const productsMatch = (forn.products || []).some(p => (p.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q));
+      const productsMatch = (forn.products || []).some((p: any) => (p.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q));
       return name.includes(q) || bairro.includes(q) || cidade.includes(q) || productsMatch;
     })
-    .filter(forn => {
+    .filter((forn: any) => {
       if (b2bSortFilter === 'open') {
         return forn.status !== 'paused';
       }
       if (b2bSortFilter === 'has_stock') {
-        return forn.availabilityB2B?.lata !== false || (forn.products || []).some(p => p.isAvailable !== false);
+        return forn.availabilityB2B?.lata !== false || (forn.products || []).some((p: any) => p.isAvailable !== false);
       }
       if (b2bSortFilter === 'subsidy') {
         return (forn.freteSubsidyPct || 0) > 0;
       }
       return true;
     })
-    .sort((a, b) => {
+    .sort((a: any, b: any) => {
       const aOpen = a.status !== 'paused' ? 1 : 0;
       const bOpen = b.status !== 'paused' ? 1 : 0;
       if (aOpen !== bOpen) return bOpen - aOpen;
@@ -547,7 +548,7 @@ export default function BatedeiraDashboard() {
       return distA - distB;
     });
 
-  const bestMarketPrice = allFornecedores.reduce((min, f) => {
+  const bestMarketPrice = allFornecedores.reduce((min: number, f: any) => {
     const p = f.priceB2B || 0;
     if (p > 0 && (min === 0 || p < min)) return p;
     return min;
@@ -577,8 +578,8 @@ export default function BatedeiraDashboard() {
   const cartB2BStore = cart.storeId ? store.users[cart.storeId] : null;
   const isB2BCart = cartB2BStore?.role === 'fornecedor';
   const b2bCartItems = isB2BCart ? cart.items : [];
-  const b2bCartItemsTotal = b2bCartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const b2bCartTotalQuantity = b2bCartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const b2bCartItemsTotal = b2bCartItems.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
+  const b2bCartTotalQuantity = b2bCartItems.reduce((acc: number, item: any) => acc + item.quantity, 0);
   const b2bCartFreteLoja = (isB2BCart && cart.storeId) ? calcFreteB2B(cart.storeId).freteLoja : 0;
   const b2bFinalCartTotal = b2bCartItemsTotal + b2bCartFreteLoja;
 
@@ -1014,6 +1015,9 @@ export default function BatedeiraDashboard() {
           role="loja" 
         />
 
+        {/* Seção de Saldo e Solicitação de Saque do Parceiro */}
+        <PartnerWithdrawalSection partnerId={currentUser.id} role={currentUser.role} />
+
         {/* Banner Cofre Virtual & Pix Automático (Sempre Visível) */}
         <div className="bg-purple-900 text-white p-5 rounded-2xl shadow flex justify-between items-center border border-purple-800">
             <div>
@@ -1311,7 +1315,7 @@ export default function BatedeiraDashboard() {
                   </button>
                   
                   {(() => {
-                      const activeColeta = (store.orders || []).find(o => 
+                      const activeColeta = (store.orders || []).find((o: any) => 
                         o.type === 'COLETA' && 
                         (o.origemId === currentUser.id || o.lojaId === currentUser.id || o.criadoPor === currentUser.id || (o as any).buyerId === currentUser.id || (o as any).seller_storefront_id === currentUser.id || (currentUser as any).storefrontId === (o as any).seller_storefront_id) && 
                         o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado'
@@ -1605,7 +1609,7 @@ export default function BatedeiraDashboard() {
                         : 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-400 border border-zinc-200 dark:border-zinc-800'
                     }`}
                   >
-                    🟢 Ativos ({(currentUser?.products || []).filter(p => p.isAvailable !== false).length})
+                    🟢 Ativos ({(currentUser?.products || []).filter((p: any) => p.isAvailable !== false).length})
                   </button>
                   <button
                     type="button"
@@ -1616,7 +1620,7 @@ export default function BatedeiraDashboard() {
                         : 'bg-white dark:bg-zinc-900 text-red-700 dark:text-red-400 border border-zinc-200 dark:border-zinc-800'
                     }`}
                   >
-                    🔴 Esgotados ({(currentUser?.products || []).filter(p => p.isAvailable === false).length})
+                    🔴 Esgotados ({(currentUser?.products || []).filter((p: any) => p.isAvailable === false).length})
                   </button>
                 </div>
               </div>
@@ -1624,7 +1628,7 @@ export default function BatedeiraDashboard() {
               {/* Grid de Cards de Produtos Extras (Visão Ampla e Larga) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 max-h-[580px] overflow-y-auto pr-1">
                 {[...(currentUser?.products || [])]
-                  .filter(p => {
+                  .filter((p: any) => {
                     if (extraFilterStatus === 'available' && p.isAvailable === false) return false;
                     if (extraFilterStatus === 'unavailable' && p.isAvailable !== false) return false;
                     if (extraSearchQuery.trim()) {
@@ -1633,8 +1637,8 @@ export default function BatedeiraDashboard() {
                     }
                     return true;
                   })
-                  .sort((a, b) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0)))
-                  .map(p => {
+                  .sort((a: any, b: any) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0)))
+                  .map((p: any) => {
                     const isAvail = p.isAvailable !== false;
                     return (
                       <div 
@@ -1865,7 +1869,7 @@ export default function BatedeiraDashboard() {
                           photo: lataPhoto,
                           emoji: '🌴'
                         },
-                        ...(selForn.products || []).map(p => ({
+                        ...(selForn.products || []).map((p: any) => ({
                           id: p.id,
                           name: p.name,
                           desc: 'Insumo / Produto B2B',
@@ -1875,9 +1879,9 @@ export default function BatedeiraDashboard() {
                           photo: p.imageUrl,
                           emoji: '📦'
                         }))
-                      ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
+                      ].sort((a: any, b: any) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
-                      return b2bItems.map(item => {
+                      return b2bItems.map((item: any) => {
                         const canOrder = item.isAvail && !isPaused;
                         return (
                         <div key={item.id} className={`p-3.5 rounded-2xl border transition-all flex justify-between items-center gap-3 ${
@@ -2063,7 +2067,7 @@ export default function BatedeiraDashboard() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-                    {displayedFornecedores.map(forn => {
+                    {displayedFornecedores.map((forn: any) => {
                       const { freteTotal, freteLoja, subsidy, dist } = calcFreteB2B(forn.id);
                       const isSelectedForn = cart.storeId === forn.id && b2bCartItems.length > 0;
                       const isFornPaused = forn.status === 'paused';
@@ -2485,11 +2489,11 @@ export default function BatedeiraDashboard() {
                     {/* Lista de Itens do Carrinho */}
                     <div className="space-y-2.5">
                       <p className="text-xs font-bold uppercase text-zinc-500 tracking-wider">Itens do Pedido ({b2bCartTotalQuantity}):</p>
-                      {b2bCartItems.map((item) => {
+                      {b2bCartItems.map((item: any) => {
                         const isBase = item.id === 'base' || item.id === 'B2B';
                         const itemImg = isBase
                           ? (forn.imagesB2B?.lata || 'https://images.unsplash.com/photo-1628557044797-f21a177c37ec?auto=format&fit=crop&w=400&q=80')
-                          : forn.products?.find(p => p.id === item.id)?.imageUrl;
+                          : forn.products?.find((p: any) => p.id === item.id)?.imageUrl;
 
                         return (
                           <div key={item.id} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700/60 gap-2">

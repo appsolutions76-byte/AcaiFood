@@ -15,10 +15,10 @@ function CadastroForm() {
   const defaultRole = searchParams?.get('role') || 'cliente';
   const returnUrl = searchParams?.get('returnUrl') || searchParams?.get('redirect') || '';
   
-  const registerUser = useAppStore(state => state.registerUser);
-  const linkAsaasAccount = useAppStore(state => state.linkAsaasAccount);
-  const cities = useAppStore(state => state.cities);
-  const fetchCities = useAppStore(state => state.fetchCities);
+  const registerUser = useAppStore((state: any) => state.registerUser);
+  const linkAsaasAccount = useAppStore((state: any) => state.linkAsaasAccount);
+  const cities = useAppStore((state: any) => state.cities);
+  const fetchCities = useAppStore((state: any) => state.fetchCities);
   
   const [role, setRole] = useState<Role>(defaultRole as Role);
   const [veiculo, setVeiculo] = useState("Moto"); // Para motoristas
@@ -652,7 +652,7 @@ function CadastroForm() {
                     className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
                   >
                     {cities.length > 0 ? (
-                       cities.filter(c => c.status === 'active').map(c => (
+                        cities.filter((c: any) => c.status === 'active').map((c: any) => (
                           <option key={c.id} value={c.name}>{c.name}</option>
                        ))
                     ) : (

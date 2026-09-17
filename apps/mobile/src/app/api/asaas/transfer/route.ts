@@ -5,11 +5,11 @@ import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { calculateSellerPayout, calculateDriverPayout } from '@/lib/payoutCalc';
 
 export async function POST(request: Request) {
-  // Transferências financeiras ativas são permitidas para admin ou parceiros operacionais (loja, fornecedor, motorista)
-  const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista']);
+  // Transferências diretas legadas são restritas exclusivamente a administradores
+  const auth = await authorizeRequest(request, ['admin']);
   if (!auth.authorized) {
     console.warn("Acesso negado em /api/asaas/transfer:", auth.error);
-    return unauthorizedResponse(auth.error);
+    return unauthorizedResponse("Transferência direta desativada para parceiros. Utilize a solicitação de saque pelo aplicativo.");
   }
 
   try {

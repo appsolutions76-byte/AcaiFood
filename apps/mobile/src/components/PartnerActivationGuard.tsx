@@ -13,8 +13,8 @@ interface PartnerActivationGuardProps {
 
 export default function PartnerActivationGuard({ children, roleName }: PartnerActivationGuardProps) {
   const router = useRouter();
-  const currentUser = useAppStore(state => state.currentUser);
-  const logout = useAppStore(state => state.logout);
+  const currentUser = useAppStore((state: any) => state.currentUser);
+  const logout = useAppStore((state: any) => state.logout);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);

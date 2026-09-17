@@ -160,7 +160,7 @@ export function OrderChatModal({
   };
 
   const store = useAppStore();
-  const currentOrder = (store.orders || []).find(o => o.id === orderId);
+  const currentOrder = (store.orders || []).find((o: any) => o.id === orderId);
   const isB2B = currentOrder?.type === 'B2B';
 
   const getRoleBadge = (msg: OrderMessage) => {

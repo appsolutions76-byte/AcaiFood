@@ -12,7 +12,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect') || '';
-  const loginWithCredentials = useAppStore(state => state.loginWithCredentials);
+  const loginWithCredentials = useAppStore((state: any) => state.loginWithCredentials);
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

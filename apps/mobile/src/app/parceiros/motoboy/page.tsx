@@ -13,6 +13,7 @@ import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { supabase } from "@/lib/supabase";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
+import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 
 const emptySubscribe = () => () => {};
 
@@ -109,18 +110,18 @@ export default function MotoboyDashboard() {
 
   const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
 
-  const corridasDisponiveis = (store.orders || []).filter(o => {
+  const corridasDisponiveis = (store.orders || []).filter((o: any) => {
     // Motoboy só vê a corrida após a loja preparar e clicar em "Chamar Moto" (status pronto / READY / SEARCHING_OPERATOR)
     const isReady = (o.status === 'pronto' || (o.status as string) === 'READY' || (o.status as string) === 'SEARCHING_OPERATOR') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
     if (!isReady) return false;
     return true;
   });
-  const minhasCorridasAll = (store.orders || []).filter(o => o.motoristaId === currentUser.id);
-  const ganhosHoje = minhasCorridasAll.filter(o => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc, curr) => acc + getMotoboyFee(curr), 0);
+  const minhasCorridasAll = (store.orders || []).filter((o: any) => o.motoristaId === currentUser.id);
+  const ganhosHoje = minhasCorridasAll.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + getMotoboyFee(curr), 0);
   const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
 
-  const motoActiveOrders = minhasCorridasAll.filter(o => !isDelivered(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
-  const motoHistoryOrders = minhasCorridasAll.filter(o => isDelivered(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
+  const motoActiveOrders = minhasCorridasAll.filter((o: any) => !isDelivered(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
+  const motoHistoryOrders = minhasCorridasAll.filter((o: any) => isDelivered(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
   const minhasCorridas = [...motoActiveOrders, ...motoHistoryOrders];
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -275,6 +276,9 @@ export default function MotoboyDashboard() {
       </div>
 
       <main className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+        {currentUser?.id && (
+          <PartnerWithdrawalSection partnerId={currentUser.id} role={currentUser.role} />
+        )}
         {!currentUser?.asaasLinked && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 text-center shadow-sm">
             <h3 className="text-amber-700 dark:text-amber-400 font-bold text-lg mb-2">Atenção: Repasses Pendentes!</h3>
@@ -385,7 +389,7 @@ export default function MotoboyDashboard() {
                         <span className="text-4xl mb-3 opacity-50">📡</span>
                         <p className="text-zinc-500 font-medium">Nenhum chamado no radar no momento.</p>
                     </div>
-                  ) : corridasDisponiveis.map(o => {
+                  ) : corridasDisponiveis.map((o: any) => {
                     const origem = store.users?.[o.origemId];
                     const destino = store.users?.[o.destinoId];
                     return (
@@ -437,7 +441,7 @@ export default function MotoboyDashboard() {
                         <span className="text-4xl mb-3 opacity-50">✅</span>
                         <p className="text-zinc-500 font-medium">Você está livre.</p>
                     </div>
-                  ) : minhasCorridas.map(o => {
+                  ) : minhasCorridas.map((o: any) => {
                     const isCanceled = o.status === 'cancelado';
                     const lojaUser = store.users?.[o.lojaId!] || store.users?.[o.origemId];
                     const clienteId = o.clienteId || (o.type === 'B2C' ? o.criadoPor : undefined) || o.destinoId;

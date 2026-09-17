@@ -95,7 +95,7 @@ export function IncidentReportSection({ orders, users, showToast }: IncidentRepo
       orders.forEach(o => {
         if (o.status === 'cancelado') {
           const u = o.clienteId ? users[o.clienteId] : null;
-          const exists = loadedList.some(i => i.orderId === o.id && i.category === 'CANCELAMENTO');
+          const exists = loadedList.some((i: any) => i.orderId === o.id && i.category === 'CANCELAMENTO');
           if (!exists) {
             loadedList.push({
               id: `auto-cancel-${o.id}`,
@@ -119,7 +119,7 @@ export function IncidentReportSection({ orders, users, showToast }: IncidentRepo
       // Usuários bloqueados pelo admin
       Object.values(users).forEach(u => {
         if (u.status === 'blocked') {
-          const exists = loadedList.some(i => i.userId === u.id && i.category === 'BLOQUEIO_CONTA');
+          const exists = loadedList.some((i: any) => i.userId === u.id && i.category === 'BLOQUEIO_CONTA');
           if (!exists) {
             loadedList.push({
               id: `auto-block-${u.id}`,
@@ -169,7 +169,7 @@ export function IncidentReportSection({ orders, users, showToast }: IncidentRepo
 
   // Filtragem dos dados
   const filteredIncidents = useMemo(() => {
-    return incidents.filter(item => {
+    return incidents.filter((item: any) => {
       // Categoria
       if (categoryFilter !== 'TODAS' && item.category !== categoryFilter) return false;
 
@@ -250,7 +250,7 @@ export function IncidentReportSection({ orders, users, showToast }: IncidentRepo
   const handleUpdateStatus = async (id: string, newStatus: Incident['status']) => {
     try {
       if (id.startsWith('auto-')) {
-        setIncidents(prev => prev.map(i => i.id === id ? { ...i, status: newStatus } : i));
+        setIncidents(prev => prev.map((i: any) => i.id === id ? { ...i, status: newStatus } : i));
         showToast(`Status atualizado para ${newStatus}`);
         return;
       }
@@ -291,7 +291,7 @@ export function IncidentReportSection({ orders, users, showToast }: IncidentRepo
       "Status"
     ];
 
-    const rows = filteredIncidents.map(item => {
+    const rows = filteredIncidents.map((item: any) => {
       const dt = formatDateTimeFull(item.createdAt);
       return [
         `"${item.id}"`,
@@ -554,19 +554,19 @@ export function IncidentReportSection({ orders, users, showToast }: IncidentRepo
         <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/50 p-3 rounded-xl">
           <p className="text-[10px] font-bold text-orange-700 dark:text-orange-400 uppercase">Pendentes</p>
           <p className="text-xl font-extrabold text-orange-900 dark:text-orange-200 mt-0.5">
-            {filteredIncidents.filter(i => i.status === 'PENDENTE').length}
+            {filteredIncidents.filter((i: any) => i.status === 'PENDENTE').length}
           </p>
         </div>
         <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 p-3 rounded-xl">
           <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase">Em Análise</p>
           <p className="text-xl font-extrabold text-amber-900 dark:text-amber-200 mt-0.5">
-            {filteredIncidents.filter(i => i.status === 'EM_ANALISE').length}
+            {filteredIncidents.filter((i: any) => i.status === 'EM_ANALISE').length}
           </p>
         </div>
         <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50 p-3 rounded-xl">
           <p className="text-[10px] font-bold text-green-700 dark:text-green-400 uppercase">Resolvidas</p>
           <p className="text-xl font-extrabold text-green-900 dark:text-green-200 mt-0.5">
-            {filteredIncidents.filter(i => i.status === 'RESOLVIDO').length}
+            {filteredIncidents.filter((i: any) => i.status === 'RESOLVIDO').length}
           </p>
         </div>
       </div>
@@ -594,7 +594,7 @@ export function IncidentReportSection({ orders, users, showToast }: IncidentRepo
                   </td>
                 </tr>
               ) : (
-                filteredIncidents.map(item => {
+                filteredIncidents.map((item: any) => {
                   const dt = formatDateTimeFull(item.createdAt);
                   return (
                     <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition">
@@ -714,7 +714,7 @@ export function IncidentReportSection({ orders, users, showToast }: IncidentRepo
                   className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium text-zinc-800 dark:text-zinc-200"
                 >
                   <option value="">Selecione o usuário (ou deixe vazio se externo)...</option>
-                  {Object.values(users).map(u => (
+                  {Object.values(users).map((u: any) => (
                     <option key={u.id} value={u.id}>
                       {u.name} ({u.role}) — {u.telefone || u.email || u.id}
                     </option>

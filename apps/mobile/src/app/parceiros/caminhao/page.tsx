@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabase";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { initAudioUnlock, playDeliveryAlertTone } from "@/lib/soundAlerts";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
+import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 
 const emptySubscribe = () => () => {};
 
@@ -111,7 +112,7 @@ export default function CaminhaoDashboard() {
 
   const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
 
-  const corridasDisponiveis = (store.orders || []).filter(o => {
+  const corridasDisponiveis = (store.orders || []).filter((o: any) => {
     if (o.motoristaId) return false;
     if (o.status === 'cancelado' || o.status === 'arquivado' || o.status === 'entregue') return false;
     
@@ -134,8 +135,8 @@ export default function CaminhaoDashboard() {
     lastAvailableCountRef.current = corridasDisponiveis.length;
   }, [corridasDisponiveis.length]);
 
-  const minhasCorridas = (store.orders || []).filter(o => o.motoristaId === currentUser.id);
-  const ganhosHoje = minhasCorridas.filter(o => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc, curr) => acc + getDriverFee(curr), 0);
+  const minhasCorridas = (store.orders || []).filter((o: any) => o.motoristaId === currentUser.id);
+  const ganhosHoje = minhasCorridas.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + getDriverFee(curr), 0);
   const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -290,6 +291,9 @@ export default function CaminhaoDashboard() {
       </div>
 
       <main className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+        {currentUser?.id && (
+          <PartnerWithdrawalSection partnerId={currentUser.id} role={currentUser.role} />
+        )}
         {!currentUser?.asaasLinked && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 text-center shadow-sm">
             <h3 className="text-amber-700 dark:text-amber-400 font-bold text-lg mb-2">Atenção: Repasses Pendentes!</h3>
@@ -402,7 +406,7 @@ export default function CaminhaoDashboard() {
                         <span className="text-4xl mb-3 opacity-50">📡</span>
                         <p className="text-zinc-500 font-medium">Nenhum frete pesado no momento.</p>
                     </div>
-                  ) : corridasDisponiveis.map(o => {
+                  ) : corridasDisponiveis.map((o: any) => {
                     const isColeta = o.type === 'COLETA';
                     const origId = o.origemId || o.lojaId;
                     const destId = o.destinoId;
@@ -473,7 +477,7 @@ export default function CaminhaoDashboard() {
                         <span className="text-4xl mb-3 opacity-50">✅</span>
                         <p className="text-zinc-500 font-medium">Você está livre.</p>
                     </div>
-                  ) : minhasCorridas.map(o => {
+                  ) : minhasCorridas.map((o: any) => {
                     const isColeta = o.type === 'COLETA';
                     const origId = o.fornecedorId || o.origemId || o.lojaId;
                     const destId = o.destinoId || o.lojaId;

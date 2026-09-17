@@ -138,7 +138,7 @@ export function InteractiveVideoModal({ initialVideoId, isOpen, onClose }: Inter
     }
   }, [initialVideoId]);
 
-  const activeVideo = VIDEO_CATALOG.find(v => v.id === currentVideoId) || VIDEO_CATALOG[0];
+  const activeVideo = VIDEO_CATALOG.find((v: any) => v.id === currentVideoId) || VIDEO_CATALOG[0];
 
   // Text-to-Speech narration for animated characters
   const speakNarration = (text: string) => {

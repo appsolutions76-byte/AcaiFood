@@ -6,8 +6,8 @@ import { ShieldAlert, LogOut } from 'lucide-react';
 
 export function BlockedUserGuard() {
   const [mounted, setMounted] = useState(false);
-  const currentUser = useAppStore(state => state.currentUser);
-  const logout = useAppStore(state => state.logout);
+  const currentUser = useAppStore((state: any) => state.currentUser);
+  const logout = useAppStore((state: any) => state.logout);
 
   useEffect(() => {
     setMounted(true);

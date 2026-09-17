@@ -15,6 +15,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminManualModal } from "@/components/AdminManualModal";
 import { IncidentReportSection } from "@/components/IncidentReportSection";
 import { AdminSupportSection } from "@/components/admin/AdminSupportSection";
+import { AdminWithdrawalsSection } from "@/components/admin/AdminWithdrawalsSection";
 import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
@@ -87,7 +88,7 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques'>('dashboard');
   const [activationConfig, setActivationConfig] = useState<{
     activationFee: number;
     freeQuota: number;
@@ -280,7 +281,7 @@ function AdminDashboardContent() {
       return { pendingOrders: [] as Order[], amountOwed: 0 };
     }
 
-    const pendingOrders = orders.filter(o => {
+    const pendingOrders = orders.filter((o: Order) => {
       if (!o) return false;
       const isConcluido = o.status === 'entregue' || o.status === 'arquivado';
       if (!isConcluido) return false;
@@ -309,7 +310,7 @@ function AdminDashboardContent() {
       }
     });
 
-    const amountOwed = pendingOrders.reduce((acc, o) => {
+    const amountOwed = pendingOrders.reduce((acc: number, o: Order) => {
       if (u.role === 'motorista') {
         return acc + (o.taxas?.entregaMotorista || (o as any).driver_amount || getDynamicTaxes(o).repasseMoto || 0);
       } else if (u.role === 'loja') {
@@ -868,7 +869,7 @@ function AdminDashboardContent() {
       }
 
       // 3. Atualizar store Zustand removendo o usuário
-      useAppStore.setState((state) => {
+      useAppStore.setState((state: any) => {
         const newUsers = { ...state.users };
         delete newUsers[targetUser.id];
         return { users: newUsers };
@@ -974,7 +975,7 @@ function AdminDashboardContent() {
     let admins = 0;
     let outros = 0;
 
-    all.forEach(u => {
+    all.forEach((u: any) => {
       const role = (u.role || '').toLowerCase();
 
       if (role === 'admin') {
@@ -1006,7 +1007,7 @@ function AdminDashboardContent() {
     };
   }, [users]);
 
-  const filteredUsers = Object.values(users).filter(u => {
+  const filteredUsers = Object.values(users).filter((u: any) => {
     if (!u) return false;
     
     if (userFilterRole !== 'all') {
@@ -1043,14 +1044,14 @@ function AdminDashboardContent() {
     return true;
   });
 
-  const filteredCities = (cities || []).filter(c => {
+  const filteredCities = (cities || []).filter((c: City) => {
     if (!c || !c.name) return false;
     if (!citySearchText.trim()) return true;
     return c.name.toLowerCase().includes(citySearchText.toLowerCase().trim());
   });
 
   const partnerList = useMemo(() => {
-    return Object.values(users).filter(u => u && u.role !== 'cliente' && u.role !== 'admin');
+    return Object.values(users).filter((u: any) => u && u.role !== 'cliente' && u.role !== 'admin');
   }, [users]);
 
   const subsidizedPartnersCount = useMemo(() => {
@@ -1065,7 +1066,7 @@ function AdminDashboardContent() {
 
   // 6. Cálculos de Dashboard
   // 6. Cálculos de Dashboard
-  const concluidos = orders.filter(o => o && (o.status === 'entregue' || o.status === 'arquivado'));
+  const concluidos = orders.filter((o: Order) => o && (o.status === 'entregue' || o.status === 'arquivado'));
   
   const getDynamicTaxes = (o: Order) => {
     if (!o) return { repasseLoja: 0, repasseForn: 0, repasseMoto: 0, platVenda: 0, platEntrega: 0, entregaTotal: 0 };
@@ -1096,7 +1097,7 @@ function AdminDashboardContent() {
     const now = new Date();
     
     // Filtra os pedidos com base no período selecionado
-    const periodOrders = orders.filter(o => {
+    const periodOrders = orders.filter((o: Order) => {
       if (!o) return false;
       if (period === 'historical') return true;
       if (!o.createdAt) return false;
@@ -1111,10 +1112,10 @@ function AdminDashboardContent() {
       return true;
     });
 
-    const concluidosList = periodOrders.filter(o => o.status === 'entregue' || o.status === 'arquivado');
-    const aceitosList = periodOrders.filter(o => ['preparo', 'pronto', 'em_rota', 'aguardando_cliente', 'entregue', 'arquivado'].includes(o.status));
-    const canceladosList = periodOrders.filter(o => o.status === 'cancelado');
-    const emRotaList = periodOrders.filter(o => o.status === 'em_rota' || o.status === 'aguardando_cliente');
+    const concluidosList = periodOrders.filter((o: Order) => o.status === 'entregue' || o.status === 'arquivado');
+    const aceitosList = periodOrders.filter((o: Order) => ['preparo', 'pronto', 'em_rota', 'aguardando_cliente', 'entregue', 'arquivado'].includes(o.status));
+    const canceladosList = periodOrders.filter((o: Order) => o.status === 'cancelado');
+    const emRotaList = periodOrders.filter((o: Order) => o.status === 'em_rota' || o.status === 'aguardando_cliente');
 
     let localVendas = 0, localFretes = 0, localMov = 0;
     let localBatBruto = 0, localBatLiq = 0;
@@ -1122,7 +1123,7 @@ function AdminDashboardContent() {
     let localMotBruto = 0, localMotLiq = 0;
     let localCamBruto = 0, localCamLiq = 0;
 
-    concluidosList.forEach(o => {
+    concluidosList.forEach((o: Order) => {
       const dyn = getDynamicTaxes(o);
       localVendas += dyn.platVenda || 0;
       localFretes += dyn.platEntrega || 0;
@@ -1195,7 +1196,7 @@ function AdminDashboardContent() {
 
   const partnersWithPendingPayouts = useMemo(() => {
     const list: Array<{ user: any; pendingOrders: Order[]; amountOwed: number }> = [];
-    Object.values(users).forEach(u => {
+    Object.values(users).forEach((u: any) => {
       if (u && (u.role === 'motorista' || u.role === 'loja' || u.role === 'fornecedor')) {
         const { pendingOrders, amountOwed } = getPendingOrdersAndOwedForUser(u);
         if (amountOwed > 0) {
@@ -1207,12 +1208,12 @@ function AdminDashboardContent() {
   }, [users, orders, rates, cities]);
 
   const totalOwedAllPartners = useMemo(() => {
-    return partnersWithPendingPayouts.reduce((acc, curr) => acc + curr.amountOwed, 0);
+    return partnersWithPendingPayouts.reduce((acc: number, curr: any) => acc + curr.amountOwed, 0);
   }, [partnersWithPendingPayouts]);
 
   const pendingPayoutsByCity = useMemo(() => {
     const map: Record<string, { cityName: string; partners: typeof partnersWithPendingPayouts; totalOwed: number }> = {};
-    partnersWithPendingPayouts.forEach(item => {
+    partnersWithPendingPayouts.forEach((item: any) => {
       const rawCity = (item.user.cidade || (item.pendingOrders[0] as any)?.cidade || 'Belém').trim();
       const city = rawCity || 'Belém';
       if (!map[city]) {
@@ -1232,11 +1233,11 @@ function AdminDashboardContent() {
   }, [selectedCityToPay, partnersWithPendingPayouts, pendingPayoutsByCity]);
 
   const currentActiveOwedTotal = useMemo(() => {
-    return currentActivePartners.reduce((acc, curr) => acc + curr.amountOwed, 0);
+    return currentActivePartners.reduce((acc: number, curr: any) => acc + curr.amountOwed, 0);
   }, [currentActivePartners]);
 
   const filteredOrdersForReport = useMemo(() => {
-    return orders.filter(o => {
+    return orders.filter((o: Order) => {
       if (!o) return false;
       
       // Status filter
@@ -1306,7 +1307,7 @@ function AdminDashboardContent() {
     let totalDriverNet = 0;
     let totalSellerNet = 0;
 
-    filteredOrdersForReport.forEach(o => {
+    filteredOrdersForReport.forEach((o: Order) => {
       const dyn = getDynamicTaxes(o);
       totalProductVolume += (o.valor || 0);
       totalFreightVolume += (dyn.entregaTotal || 0);
@@ -1363,7 +1364,7 @@ function AdminDashboardContent() {
       "Hora Finalizado"
     ];
 
-    const rows = filteredOrdersForReport.map(o => {
+    const rows = filteredOrdersForReport.map((o: Order) => {
       const dyn = getDynamicTaxes(o);
       const uClient = o.clienteId ? users[o.clienteId] : null;
       const uStore = o.lojaId ? users[o.lojaId] : null;
@@ -1490,7 +1491,7 @@ function AdminDashboardContent() {
             </tr>
           </thead>
           <tbody>
-            ${filteredOrdersForReport.map((o, idx) => {
+            ${filteredOrdersForReport.map((o: Order, idx: number) => {
               const dyn = getDynamicTaxes(o);
               const uClient = o.clienteId ? users[o.clienteId] : null;
               const uStore = o.lojaId ? users[o.lojaId] : null;
@@ -1829,6 +1830,9 @@ function AdminDashboardContent() {
           </button>
           <button onClick={() => setActiveTab('suporte')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'suporte' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
             <span>🎧 Atendimento & Suporte</span>
+          </button>
+          <button onClick={() => setActiveTab('saques')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'saques' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
+            <span>💸 Saques & Resgastes</span>
           </button>
           <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
           <button onClick={() => setActiveTab('ocorrencias')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📋 Ocorrências & Auditoria</button>
@@ -2170,7 +2174,7 @@ function AdminDashboardContent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                    {filteredOrdersForReport.map(o => {
+                    {filteredOrdersForReport.map((o: Order) => {
                       const dyn = getDynamicTaxes(o);
                       const uClient = o.clienteId ? users[o.clienteId] : null;
                       const uStore = o.lojaId ? users[o.lojaId] : null;
@@ -2638,7 +2642,7 @@ function AdminDashboardContent() {
                     <tr><th className="p-4">Usuário</th><th className="p-4">Contato / Local</th><th className="p-4">Tipo</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {filteredUsers.map(u => (
+                    {filteredUsers.map((u: any) => (
                         <tr key={u.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                             <td className="p-4">
                                 <div className="flex flex-col gap-1">
@@ -2787,7 +2791,7 @@ function AdminDashboardContent() {
                         <tr><th className="p-4">Nome da Cidade</th><th className="p-4">Status</th><th className="p-4">Repasses Pendentes</th><th className="p-4 text-right">Ações</th></tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        {filteredCities.map(c => {
+                        {filteredCities.map((c: City) => {
                             const cityPending = pendingPayoutsByCity[c.name];
                             return (
                             <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
@@ -2972,7 +2976,7 @@ function AdminDashboardContent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {partnerList.map(u => {
+                    {partnerList.map((u: any) => {
                         const isSubsidized = u.isFounderSubsidized !== false || Boolean((u as any).is_founder_subsidized) || Boolean(u.asaasWalletId) || Boolean((u as any).asaas_wallet_id) || Boolean(u.pixKey);
                         const isPaid = u.activationPaid !== false || Boolean((u as any).activation_paid);
                         const asaasLinked = Boolean(u.asaasWalletId || (u as any).asaas_wallet_id || u.asaasLinked);
@@ -3554,6 +3558,12 @@ function AdminDashboardContent() {
           </div>
         )}
 
+        {activeTab === 'saques' && (
+          <div className="animate-in fade-in zoom-in-95 duration-200">
+            <AdminWithdrawalsSection showToast={showToast} />
+          </div>
+        )}
+
       </main>
 
       <MapModal 
@@ -3710,7 +3720,7 @@ function AdminDashboardContent() {
                     className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
                   >
                     <option value="">Anunciante Geral / AçaíFood</option>
-                    {partnerList.map(p => (
+                    {partnerList.map((p: any) => (
                       <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
                     ))}
                   </select>
@@ -3724,7 +3734,7 @@ function AdminDashboardContent() {
                     className="w-full border dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
                   >
                     <option value="all">Todas as Cidades</option>
-                    {cities.map(c => (
+                    {cities.map((c: City) => (
                       <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
                   </select>

@@ -148,7 +148,7 @@ export default function StorefrontPage() {
 
     const checkStatus = async () => {
       // 1. Checar status no banco local via store
-      const localOrder = (store.orders || []).find(o => o.id === pixModalData.orderId);
+      const localOrder = (store.orders || []).find((o: any) => o.id === pixModalData.orderId);
       if (localOrder) {
         const s = String(localOrder.status).toLowerCase();
         if (['pago', 'preparo', 'pronto', 'em_rota', 'entregue', 'paid', 'preparing', 'ready', 'delivering', 'delivered', 'received', 'completed'].includes(s)) {
@@ -198,7 +198,7 @@ export default function StorefrontPage() {
     if (tipo === 'lata') {
         return loja.priceB2B ?? 140;
     }
-    const customProd = loja.products?.find(p => p.id === tipo);
+    const customProd = loja.products?.find((p: any) => p.id === tipo);
     return customProd ? customProd.price : 0;
   };
 
@@ -258,37 +258,37 @@ export default function StorefrontPage() {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;
   }
 
-  let meusPedidos = currentUser ? (store.orders || []).filter(o => o.clienteId === currentUser.id || o.criadoPor === currentUser.id) : [];
-  const clientActiveOrders = meusPedidos.filter(o => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
-  const clientHistoryOrders = meusPedidos.filter(o => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
+  let meusPedidos = currentUser ? (store.orders || []).filter((o: any) => o.clienteId === currentUser.id || o.criadoPor === currentUser.id) : [];
+  const clientActiveOrders = meusPedidos.filter((o: any) => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
+  const clientHistoryOrders = meusPedidos.filter((o: any) => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   meusPedidos = [...clientActiveOrders, ...clientHistoryOrders];
   const norm = (s?: string | null) => String(s || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   const userCityNorm = norm(currentUser?.cidade);
 
   const batedeirasAll = Object.values(store.users || {})
-    .filter(u => u.role === 'loja' && u.status !== 'blocked')
-    .filter(u => {
+    .filter((u: any) => u.role === 'loja' && u.status !== 'blocked')
+    .filter((u: any) => {
       // Oculta estabelecimentos não ativados da vitrine pública
       const hasWalletOrPix = Boolean(u.asaasWalletId || (u as any).asaas_wallet_id || u.pixKey);
       const isFounder = u.isFounderSubsidized === true || (u.isFounderSubsidized !== false && hasWalletOrPix);
       return isFounder || hasWalletOrPix;
     })
-    .filter(u => {
+    .filter((u: any) => {
       if (!userCityNorm || !u.cidade) return true;
       return norm(u.cidade) === userCityNorm;
     });
 
   // Extração de bairros distintos disponíveis
-  const bairrosList = Array.from(new Set(batedeirasAll.map(u => u.bairro?.trim()).filter(Boolean) as string[])).sort();
+  const bairrosList = Array.from(new Set(batedeirasAll.map((u: any) => u.bairro?.trim()).filter(Boolean) as string[])).sort();
 
   // Contadores para os Chips Rápidos
   const countTotal = batedeirasAll.length;
-  const countOpen = batedeirasAll.filter(u => u.status !== 'paused').length;
-  const countFreeFrete = batedeirasAll.filter(u => (u.freteSubsidyPct || 0) > 0).length;
-  const countGrosso = batedeirasAll.filter(u => u.availabilityB2C?.grosso !== false).length;
-  const countBranco = batedeirasAll.filter(u => u.availabilityB2C?.branco !== false).length;
+  const countOpen = batedeirasAll.filter((u: any) => u.status !== 'paused').length;
+  const countFreeFrete = batedeirasAll.filter((u: any) => (u.freteSubsidyPct || 0) > 0).length;
+  const countGrosso = batedeirasAll.filter((u: any) => u.availabilityB2C?.grosso !== false).length;
+  const countBranco = batedeirasAll.filter((u: any) => u.availabilityB2C?.branco !== false).length;
 
-  const batedeirasFiltered = batedeirasAll.filter(loja => {
+  const batedeirasFiltered = batedeirasAll.filter((loja: any) => {
     if (selectedBairro !== 'all') {
       if (!loja.bairro || norm(loja.bairro) !== norm(selectedBairro)) return false;
     }
@@ -298,7 +298,7 @@ export default function StorefrontPage() {
       const nameMatch = norm(loja.name).includes(q);
       const bairroMatch = norm(loja.bairro).includes(q);
       const cidadeMatch = norm(loja.cidade).includes(q);
-      const prodMatch = loja.products?.some(p => norm(p.name).includes(q));
+      const prodMatch = loja.products?.some((p: any) => norm(p.name).includes(q));
       if (!nameMatch && !bairroMatch && !cidadeMatch && !prodMatch) return false;
     }
 
@@ -308,7 +308,7 @@ export default function StorefrontPage() {
     if (selectedCategoryChip === 'branco' && loja.availabilityB2C?.branco === false) return false;
 
     return true;
-  }).sort((a, b) => {
+  }).sort((a: any, b: any) => {
     // 1. Prioridade Máxima: Lojas Abertas (status !== 'paused') aparecem primeiro
     const aOpen = a.status !== 'paused' ? 1 : 0;
     const bOpen = b.status !== 'paused' ? 1 : 0;
@@ -399,7 +399,7 @@ export default function StorefrontPage() {
       price = (loja.priceB2C as any)?.[tipo] || (tipo === 'branco' ? 38 : tipo === 'grosso' ? 35 : tipo === 'medio' ? 26 : 20);
       name = tipo === 'branco' ? 'Açaí Branco Especial (1L)' : `Açaí ${tipo.charAt(0).toUpperCase() + tipo.slice(1)} (1L)`;
     } else {
-      const customProd = loja.products?.find(p => p.id === tipo);
+      const customProd = loja.products?.find((p: any) => p.id === tipo);
       if (customProd) {
         if (customProd.isAvailable === false) {
           alert('Este produto está esgotado nesta loja.');
@@ -567,8 +567,8 @@ export default function StorefrontPage() {
     await processCheckout();
   };
 
-  const cartItemsTotal = cart.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const cartTotalQuantity = cart.items.reduce((acc, item) => acc + item.quantity, 0);
+  const cartItemsTotal = cart.items.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
+  const cartTotalQuantity = cart.items.reduce((acc: number, item: any) => acc + item.quantity, 0);
   const cartFrete = cart.storeId ? calcFreteCliente(cart.storeId).freteCliente : 0;
   const finalCartTotal = cartItemsTotal + cartFrete;
 
@@ -856,7 +856,7 @@ export default function StorefrontPage() {
                             photo: selLoja.imagesB2B?.lata || (selLoja as any).b2bImage || selLoja.imagesB2C?.popular,
                             emoji: '🌴'
                           },
-                          ...(selLoja.products || []).map(p => ({
+                          ...(selLoja.products || []).map((p: any) => ({
                             key: p.id,
                             name: p.name,
                             desc: p.description || (p as any).desc || 'Insumo / Produto B2B com procedência e qualidade garantida.',
@@ -866,7 +866,7 @@ export default function StorefrontPage() {
                             photo: p.imageUrl,
                             emoji: '📦'
                           }))
-                        ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
+                        ].sort((a: any, b: any) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
                         return (
                           <>
@@ -1004,7 +1004,7 @@ export default function StorefrontPage() {
                             emoji: '🥥', 
                             isTeal: true 
                           },
-                          ...(selLoja.products || []).map(p => ({
+                          ...(selLoja.products || []).map((p: any) => ({
                             key: p.id,
                             name: p.name,
                             desc: p.description || (p as any).desc || 'Produto de alta qualidade preparado com ingredientes selecionados pela loja.',
@@ -1014,7 +1014,7 @@ export default function StorefrontPage() {
                             emoji: '📦',
                             isTeal: false
                           }))
-                        ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
+                        ].sort((a: any, b: any) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
                         return (
                           <>
@@ -1220,7 +1220,7 @@ export default function StorefrontPage() {
                             </button>
                           )}
                         </div>
-                      ) : batedeiras.map(loja => {
+                      ) : batedeiras.map((loja: any) => {
                         const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
                         const isSelectedLoja = cart.storeId === loja.id && cart.items.length > 0;
                         const isLojaPaused = loja.status === 'paused';
@@ -1394,7 +1394,7 @@ export default function StorefrontPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {clientActiveOrders.map(o => {
+                {clientActiveOrders.map((o: any) => {
                   const isCanceled = o.status === 'cancelado';
                   
                   return (
@@ -1598,12 +1598,12 @@ export default function StorefrontPage() {
                       if (isSupplier) {
                         const fornSelectItems = [
                           { key: 'lata', label: `Lata de Açaí Fruto - ${formatMoney(priceLata)}`, isAvail: isLataAvail },
-                          ...(loja?.products || []).map(p => ({
+                          ...(loja?.products || []).map((p: any) => ({
                             key: p.id,
                             label: `${p.name} - ${formatMoney(p.price)}`,
                             isAvail: p.isAvailable !== false
                           }))
-                        ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
+                        ].sort((a: any, b: any) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
                         return (
                           <select 
@@ -1611,7 +1611,7 @@ export default function StorefrontPage() {
                             onChange={e => setProductSelectModal({ ...productSelectModal, tipo: e.target.value })}
                             className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-4 cursor-pointer"
                           >
-                            {fornSelectItems.map(item => (
+                            {fornSelectItems.map((item: any) => (
                               <option key={item.key} value={item.key} disabled={!item.isAvail}>
                                 {item.label} {!item.isAvail ? '(Esgotado)' : ''}
                               </option>
@@ -1625,12 +1625,12 @@ export default function StorefrontPage() {
                         { key: 'medio', label: `Açaí Médio (1L) - ${formatMoney(priceMedio)}`, isAvail: isMedAvail },
                         { key: 'grosso', label: `Açaí Grosso Especial (1L) - ${formatMoney(priceGrosso)}`, isAvail: isGroAvail },
                         { key: 'branco', label: `Açaí Branco Especial (1L) - ${formatMoney(priceBranco)}`, isAvail: isBraAvail },
-                        ...(loja?.products || []).map(p => ({
+                        ...(loja?.products || []).map((p: any) => ({
                           key: p.id,
                           label: `${p.name} - ${formatMoney(p.price)}`,
                           isAvail: p.isAvailable !== false
                         }))
-                      ].sort((a, b) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
+                      ].sort((a: any, b: any) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
                       return (
                         <select 
@@ -1638,7 +1638,7 @@ export default function StorefrontPage() {
                           onChange={e => setProductSelectModal({ ...productSelectModal, tipo: e.target.value })}
                           className="w-full border-2 border-purple-100 dark:border-zinc-700 rounded-xl p-3 bg-purple-50 dark:bg-zinc-800 text-purple-900 dark:text-purple-300 font-bold outline-none focus:border-purple-500 transition mb-4 cursor-pointer"
                         >
-                          {storeSelectItems.map(item => (
+                          {storeSelectItems.map((item: any) => (
                             <option key={item.key} value={item.key} disabled={!item.isAvail}>
                               {item.label} {!item.isAvail ? '(Esgotado)' : ''}
                             </option>
@@ -1684,7 +1684,7 @@ export default function StorefrontPage() {
                   <h4 className="font-bold text-zinc-800 dark:text-white text-xl mb-4">{store.users?.[cart.storeId]?.name}</h4>
                   
                   <div className="space-y-4 mb-6">
-                      {cart.items.map(item => (
+                      {cart.items.map((item: any) => (
                           <div key={item.id} className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3">
                               <div className="flex-1">
                                   <p className="font-bold text-zinc-800 dark:text-white">{item.name}</p>
@@ -2088,7 +2088,7 @@ export default function StorefrontPage() {
                       : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-300'
                   }`}
                 >
-                  ✅ Entregues ({clientHistoryOrders.filter(o => o.status === 'entregue' || o.status === 'arquivado').length})
+                  ✅ Entregues ({clientHistoryOrders.filter((o: any) => o.status === 'entregue' || o.status === 'arquivado').length})
                 </button>
                 <button
                   onClick={() => setHistoryFilter('canceled')}
@@ -2098,7 +2098,7 @@ export default function StorefrontPage() {
                       : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-300'
                   }`}
                 >
-                  ❌ Cancelados ({clientHistoryOrders.filter(o => o.status === 'cancelado').length})
+                  ❌ Cancelados ({clientHistoryOrders.filter((o: any) => o.status === 'cancelado').length})
                 </button>
               </div>
             </div>
@@ -2106,7 +2106,7 @@ export default function StorefrontPage() {
             {/* Lista de Pedidos com Scroll */}
             <div className="p-3 sm:p-5 overflow-y-auto flex-1 space-y-3.5 divide-y divide-zinc-100 dark:divide-zinc-800/60">
               {(() => {
-                const filtered = clientHistoryOrders.filter(o => {
+                const filtered = clientHistoryOrders.filter((o: any) => {
                   if (historyFilter === 'delivered' && o.status !== 'entregue' && o.status !== 'arquivado') return false;
                   if (historyFilter === 'canceled' && o.status !== 'cancelado') return false;
                   if (!historySearchQuery.trim()) return true;
@@ -2128,7 +2128,7 @@ export default function StorefrontPage() {
                   );
                 }
 
-                return filtered.map(o => {
+                return filtered.map((o: any) => {
                   const isCanceled = o.status === 'cancelado';
                   const isDelivered = o.status === 'entregue' || o.status === 'arquivado';
                   const dateStr = o.createdAt ? new Date(o.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data não registrada';
