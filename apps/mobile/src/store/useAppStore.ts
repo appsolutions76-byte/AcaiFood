@@ -1081,18 +1081,18 @@ export const useAppStore = create<AppState>()(
                     const isBlocked = rawStatus === 'blocked';
                     let isPaused = false;
                     
-                    if (appRole === 'admin' || appRole === 'cliente') {
+                    if (appRole === 'admin') {
                       isPaused = false;
-                    } else if (typeof dbUser.is_online === 'boolean') {
-                      isPaused = !dbUser.is_online;
-                    } else if (typeof sfMeta.isOpen === 'boolean') {
-                      isPaused = !sfMeta.isOpen;
-                    } else if (typeof sf?.is_active === 'boolean') {
-                      isPaused = !sf.is_active;
                     } else if (rawStatus === 'paused') {
                       isPaused = true;
                     } else if (rawStatus === 'active') {
                       isPaused = false;
+                    } else if (typeof dbUser.is_online === 'boolean' && (appRole === 'loja' || appRole === 'fornecedor' || appRole === 'motorista')) {
+                      isPaused = !dbUser.is_online;
+                    } else if (typeof sfMeta.isOpen === 'boolean' && appRole === 'loja') {
+                      isPaused = !sfMeta.isOpen;
+                    } else if (typeof sf?.is_active === 'boolean' && appRole === 'loja') {
+                      isPaused = !sf.is_active;
                     }
 
                     const storeStatus: 'active' | 'paused' | 'blocked' = (appRole === 'admin') 

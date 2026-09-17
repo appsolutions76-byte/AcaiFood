@@ -2720,6 +2720,24 @@ function AdminDashboardContent() {
                             <td className="p-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                     {u.role !== 'admin' && (
+                                        <button 
+                                            onClick={() => { 
+                                                if(typeof store.updateUserStatus === 'function') { 
+                                                    const target = u.status === 'paused' ? 'active' : 'paused';
+                                                    store.updateUserStatus(u.id, target); 
+                                                    showToast(target === 'paused' ? `⏸️ Usuário ${u.name} pausado` : `▶️ Usuário ${u.name} ativado`); 
+                                                } 
+                                            }} 
+                                            className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${
+                                                u.status === 'paused' 
+                                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                                                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                                            }`}
+                                        >
+                                            {u.status === 'paused' ? '▶️ Ativar' : '⏸️ Pausar'}
+                                        </button>
+                                    )}
+                                    {u.role !== 'admin' && (
                                         <button onClick={() => { if(typeof store.updateUserStatus === 'function') { store.updateUserStatus(u.id, u.status === 'blocked' ? 'active' : 'blocked'); showToast(u.status === 'blocked' ? `🔓 Usuário ${u.name} desbloqueado` : `🚫 Usuário ${u.name} bloqueado`); } }} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${u.status === 'blocked' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}`}>
                                             {u.status === 'blocked' ? '🔓 Desbloquear' : '🚫 Bloquear'}
                                         </button>
