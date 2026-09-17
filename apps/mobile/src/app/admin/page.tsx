@@ -943,15 +943,85 @@ function AdminDashboardContent() {
     }
   };
 
+  const userCounts = useMemo(() => {
+    const all = Object.values(users).filter(Boolean);
+    let clientes = 0;
+    let lojas = 0;
+    let fornecedores = 0;
+    let motoboys = 0;
+    let caminhoneiros = 0;
+    let admins = 0;
+    let outros = 0;
+
+    all.forEach(u => {
+      const role = (u.role || '').toLowerCase();
+      const veiculo = (u.veiculo || '').toLowerCase();
+
+      if (role === 'admin') {
+        admins++;
+      } else if (role === 'loja') {
+        lojas++;
+      } else if (role === 'fornecedor') {
+        fornecedores++;
+      } else if (role === 'motorista') {
+        if (veiculo === 'caminhao') {
+          caminhoneiros++;
+        } else {
+          motoboys++;
+        }
+      } else if (role === 'cliente' || role === 'customer' || !role) {
+        clientes++;
+      } else {
+        outros++;
+      }
+    });
+
+    return {
+      total: all.length,
+      clientes,
+      lojas,
+      fornecedores,
+      motoboys,
+      caminhoneiros,
+      admins,
+      outros
+    };
+  }, [users]);
+
   const filteredUsers = Object.values(users).filter(u => {
     if (!u) return false;
-    if (userFilterRole !== 'all' && u.role !== userFilterRole) return false;
+    
+    if (userFilterRole !== 'all') {
+      const role = (u.role || '').toLowerCase();
+      const veiculo = (u.veiculo || '').toLowerCase();
+
+      if (userFilterRole === 'cliente') {
+        if (role !== 'cliente' && role !== 'customer' && role !== '') return false;
+      } else if (userFilterRole === 'loja') {
+        if (role !== 'loja') return false;
+      } else if (userFilterRole === 'fornecedor') {
+        if (role !== 'fornecedor') return false;
+      } else if (userFilterRole === 'motoboy') {
+        if (role !== 'motorista' || veiculo === 'caminhao') return false;
+      } else if (userFilterRole === 'caminhao') {
+        if (role !== 'motorista' || veiculo !== 'caminhao') return false;
+      } else if (userFilterRole === 'motorista') {
+        if (role !== 'motorista') return false;
+      } else if (userFilterRole === 'admin') {
+        if (role !== 'admin') return false;
+      } else {
+        if (role !== userFilterRole) return false;
+      }
+    }
+
     const search = userFilterText.toLowerCase();
     if (search) {
        const nameMatch = (u.name || '').toLowerCase().includes(search);
        const emailMatch = (u.email || '').toLowerCase().includes(search);
        const bairroMatch = (u.bairro || '').toLowerCase().includes(search);
-       if (!nameMatch && !emailMatch && !bairroMatch) return false;
+       const phoneMatch = ((u.telefone || (u as any).phone || '') as string).toLowerCase().includes(search);
+       const cpfMatch = ((u.cpfCnpj || (u as any).cpf_cnpj || '') as string).toLowerCase().includes(search);
+       if (!nameMatch && !emailMatch && !bairroMatch && !phoneMatch && !cpfMatch) return false;
     }
     return true;
   });
@@ -1846,6 +1916,63 @@ function AdminDashboardContent() {
                 </div>
             </div>
           </div>
+
+          {/* Contador de Usuários por Personagem no Dashboard */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-3">
+              <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 flex items-center gap-2">
+                <span>👥 Cadastros da Plataforma</span>
+                <span className="text-xs bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold px-2 py-0.5 rounded-full">
+                  {userCounts.total} Cadastrados
+                </span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setActiveTab('usuarios')}
+                className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                Gerenciar Usuários →
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm text-center">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">Total Geral</p>
+                <p className="text-xl font-black text-purple-600 dark:text-purple-400 mt-1">{userCounts.total}</p>
+                <p className="text-[9px] text-zinc-400 mt-0.5">Contas Registradas</p>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm text-center">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">👤 Clientes</p>
+                <p className="text-xl font-black text-blue-600 dark:text-blue-400 mt-1">{userCounts.clientes}</p>
+                <p className="text-[9px] text-zinc-400 mt-0.5">Consumidores B2C</p>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm text-center">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">🥣 Batedeiras</p>
+                <p className="text-xl font-black text-purple-700 dark:text-purple-300 mt-1">{userCounts.lojas}</p>
+                <p className="text-[9px] text-zinc-400 mt-0.5">Lojas Açaí</p>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm text-center">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">🏭 Fornecedores</p>
+                <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{userCounts.fornecedores}</p>
+                <p className="text-[9px] text-zinc-400 mt-0.5">Produtores B2B</p>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm text-center">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">🏍️ Motoboys</p>
+                <p className="text-xl font-black text-amber-600 dark:text-amber-400 mt-1">{userCounts.motoboys}</p>
+                <p className="text-[9px] text-zinc-400 mt-0.5">Entregadores Moto</p>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm text-center">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">🚛 Caminhões</p>
+                <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{userCounts.caminhoneiros}</p>
+                <p className="text-[9px] text-zinc-400 mt-0.5">Frete & Caçamba</p>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm text-center">
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">🛡️ Admins</p>
+                <p className="text-xl font-black text-red-600 dark:text-red-400 mt-1">{userCounts.admins}</p>
+                <p className="text-[9px] text-zinc-400 mt-0.5">Gestores do App</p>
+              </div>
+            </div>
+          </div>
           </div>
         )}
 
@@ -2332,17 +2459,161 @@ function AdminDashboardContent() {
                 )}
               </div>
             </div>
+
+            {/* Grid Interativo de Contadores de Usuários por Personagem */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mt-4">
+              <button
+                type="button"
+                onClick={() => setUserFilterRole('all')}
+                className={`p-3 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+                  userFilterRole === 'all'
+                    ? 'bg-purple-600 text-white border-purple-600 ring-2 ring-purple-400 font-bold'
+                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-purple-300'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider opacity-80">
+                  <span>Total</span>
+                  <span>👥</span>
+                </div>
+                <div className="text-xl font-black mt-1">{userCounts.total}</div>
+                <div className="text-[10px] opacity-75">Cadastrados</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserFilterRole('cliente')}
+                className={`p-3 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+                  userFilterRole === 'cliente'
+                    ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-400 font-bold'
+                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-blue-300'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider opacity-80">
+                  <span>Clientes</span>
+                  <span>👤</span>
+                </div>
+                <div className={`text-xl font-black mt-1 ${userFilterRole === 'cliente' ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`}>{userCounts.clientes}</div>
+                <div className="text-[10px] opacity-75">Consumidores</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserFilterRole('loja')}
+                className={`p-3 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+                  userFilterRole === 'loja'
+                    ? 'bg-purple-600 text-white border-purple-600 ring-2 ring-purple-400 font-bold'
+                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-purple-300'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider opacity-80">
+                  <span>Batedeiras</span>
+                  <span>🥣</span>
+                </div>
+                <div className={`text-xl font-black mt-1 ${userFilterRole === 'loja' ? 'text-white' : 'text-purple-600 dark:text-purple-400'}`}>{userCounts.lojas}</div>
+                <div className="text-[10px] opacity-75">Lojas Açaí</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserFilterRole('fornecedor')}
+                className={`p-3 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+                  userFilterRole === 'fornecedor'
+                    ? 'bg-emerald-600 text-white border-emerald-600 ring-2 ring-emerald-400 font-bold'
+                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-emerald-300'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider opacity-80">
+                  <span>Fornecedores</span>
+                  <span>🏭</span>
+                </div>
+                <div className={`text-xl font-black mt-1 ${userFilterRole === 'fornecedor' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`}>{userCounts.fornecedores}</div>
+                <div className="text-[10px] opacity-75">Produtores B2B</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserFilterRole('motoboy')}
+                className={`p-3 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+                  userFilterRole === 'motoboy'
+                    ? 'bg-amber-600 text-white border-amber-600 ring-2 ring-amber-400 font-bold'
+                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-amber-300'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider opacity-80">
+                  <span>Motoboys</span>
+                  <span>🏍️</span>
+                </div>
+                <div className={`text-xl font-black mt-1 ${userFilterRole === 'motoboy' ? 'text-white' : 'text-amber-600 dark:text-amber-400'}`}>{userCounts.motoboys}</div>
+                <div className="text-[10px] opacity-75">Entregadores</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserFilterRole('caminhao')}
+                className={`p-3 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+                  userFilterRole === 'caminhao'
+                    ? 'bg-indigo-600 text-white border-indigo-600 ring-2 ring-indigo-400 font-bold'
+                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-indigo-300'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider opacity-80">
+                  <span>Caminhões</span>
+                  <span>🚛</span>
+                </div>
+                <div className={`text-xl font-black mt-1 ${userFilterRole === 'caminhao' ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`}>{userCounts.caminhoneiros}</div>
+                <div className="text-[10px] opacity-75">Frete & Caçamba</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserFilterRole('admin')}
+                className={`p-3 rounded-xl border text-left transition-all shadow-sm cursor-pointer ${
+                  userFilterRole === 'admin'
+                    ? 'bg-red-600 text-white border-red-600 ring-2 ring-red-400 font-bold'
+                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-red-300'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider opacity-80">
+                  <span>Admins</span>
+                  <span>🛡️</span>
+                </div>
+                <div className={`text-xl font-black mt-1 ${userFilterRole === 'admin' ? 'text-white' : 'text-red-600 dark:text-red-400'}`}>{userCounts.admins}</div>
+                <div className="text-[10px] opacity-75">Gestores App</div>
+              </button>
+            </div>
             
-            <div className="flex flex-col sm:flex-row gap-3 mt-4">
-            <input type="text" placeholder="Buscar por Nome, E-mail ou Bairro..." value={userFilterText} onChange={e => setUserFilterText(e.target.value)} className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500" />
-            <select value={userFilterRole} onChange={e => setUserFilterRole(e.target.value)} className="w-full sm:w-auto border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500">
-                <option value="all">Todos os Tipos</option>
-                <option value="cliente">Clientes</option>
-                <option value="loja">Batedeiras (Lojas)</option>
-                <option value="fornecedor">Fornecedores</option>
-                <option value="motorista">Motoristas / Logística</option>
-            </select>
-        </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-4">
+              <div className="flex-1 flex gap-3">
+                <input 
+                  type="text" 
+                  placeholder="Buscar por Nome, E-mail, Telefone, CPF ou Bairro..." 
+                  value={userFilterText} 
+                  onChange={e => setUserFilterText(e.target.value)} 
+                  className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500" 
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select 
+                  value={userFilterRole} 
+                  onChange={e => setUserFilterRole(e.target.value)} 
+                  className="w-full sm:w-auto border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                >
+                  <option value="all">👥 Todos os Tipos ({userCounts.total})</option>
+                  <option value="cliente">👤 Clientes ({userCounts.clientes})</option>
+                  <option value="loja">🥣 Batedeiras / Lojas ({userCounts.lojas})</option>
+                  <option value="fornecedor">🏭 Fornecedores ({userCounts.fornecedores})</option>
+                  <option value="motoboy">🏍️ Motoboys / Entregadores ({userCounts.motoboys})</option>
+                  <option value="caminhao">🚛 Caminhões / Caçambas ({userCounts.caminhoneiros})</option>
+                  <option value="motorista">🚚 Todos os Motoristas ({userCounts.motoboys + userCounts.caminhoneiros})</option>
+                  <option value="admin">🛡️ Administradores ({userCounts.admins})</option>
+                </select>
+
+                <span className="text-xs text-zinc-500 font-bold whitespace-nowrap bg-zinc-100 dark:bg-zinc-800 px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                  {filteredUsers.length} exibido(s)
+                </span>
+              </div>
+            </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-x-auto mt-4 mb-10">
             <table className="w-full text-left text-sm min-w-max">
