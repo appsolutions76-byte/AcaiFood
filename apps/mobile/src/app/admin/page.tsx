@@ -16,6 +16,7 @@ import { AdminManualModal } from "@/components/AdminManualModal";
 import { IncidentReportSection } from "@/components/IncidentReportSection";
 import { AdminSupportSection } from "@/components/admin/AdminSupportSection";
 import { ShareLandingModal } from "@/components/ShareLandingModal";
+import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
 const emptySubscribe = () => () => {};
 
@@ -1691,7 +1692,10 @@ function AdminDashboardContent() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-3">
             <Settings className="text-purple-600" />
-            <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
+            <div>
+              <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
+              <AsaasPartnerBadge variant="inline" />
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end">
               <button onClick={() => setAdminManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">
@@ -3996,6 +4000,7 @@ function AdminDashboardContent() {
         </div>
       )}
 
+      <AsaasPartnerBadge variant="footer" className="mt-8 mb-4" />
     </div>
   );
 }

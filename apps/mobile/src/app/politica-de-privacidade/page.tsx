@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { ShieldCheck, ArrowLeft, Lock, FileText, Smartphone, Users } from "lucide-react";
+import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
 export default function PoliticaPrivacidadePage() {
   const currentDate = "7 de Agosto de 2026";
@@ -114,8 +115,9 @@ export default function PoliticaPrivacidadePage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center text-xs text-zinc-500 pb-8">
-          © 2026 AçaíFood Tecnologia Ltda. Todos os direitos reservados.
+        <div className="text-center text-xs text-zinc-500 pb-8 space-y-3">
+          <p>© 2026 AçaíFood Tecnologia Ltda. Todos os direitos reservados.</p>
+          <AsaasPartnerBadge variant="footer" />
         </div>
 
       </div>

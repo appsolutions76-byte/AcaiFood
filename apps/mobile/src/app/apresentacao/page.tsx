@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InteractiveVideoModal, VideoId } from "@/components/InteractiveVideoModal";
+import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
 export default function LandingPage() {
   const [copied, setCopied] = useState(false);
@@ -947,6 +948,7 @@ export default function LandingPage() {
             </Link>
           </div>
         </div>
+        <AsaasPartnerBadge variant="footer" className="mt-6 border-t border-zinc-900 pt-4" />
       </footer>
 
       {/* MODAL DE VÍDEO INTERATIVO & OPERAÇÃO */}

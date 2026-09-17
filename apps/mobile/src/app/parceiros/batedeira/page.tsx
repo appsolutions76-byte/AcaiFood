@@ -40,6 +40,7 @@ import {
   PrinterConfig,
 } from "@/lib/thermalPrinter";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
+import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
 const emptySubscribe = () => () => {};
 
@@ -923,7 +924,10 @@ export default function BatedeiraDashboard() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 max-w-5xl mx-auto w-full">
           <div className="flex items-center gap-3">
             <Store className="text-purple-600 shrink-0" />
-            <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Painel da Loja</h1>
+            <div>
+              <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Painel da Loja</h1>
+              <AsaasPartnerBadge variant="inline" />
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end w-full sm:w-auto">
             {currentUser.asaasLinked && (
@@ -2958,6 +2962,7 @@ export default function BatedeiraDashboard() {
 
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
+      <AsaasPartnerBadge variant="footer" className="mt-8 mb-4" />
     </div>
     </PartnerActivationGuard>
   );

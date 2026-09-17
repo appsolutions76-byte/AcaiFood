@@ -13,6 +13,7 @@ import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { supabase } from "@/lib/supabase";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { initAudioUnlock, playDeliveryAlertTone } from "@/lib/soundAlerts";
+import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
 const emptySubscribe = () => () => {};
 
@@ -238,7 +239,10 @@ export default function CaminhaoDashboard() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 max-w-4xl mx-auto w-full">
           <div className="flex items-center gap-3">
             <Truck className="text-blue-600 shrink-0" />
-            <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Fretes Pesados (B2B / Coleta)</h1>
+            <div>
+              <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Fretes Pesados (B2B / Coleta)</h1>
+              <AsaasPartnerBadge variant="inline" />
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end w-full sm:w-auto">
             {currentUser?.asaasLinked && (
@@ -684,6 +688,7 @@ export default function CaminhaoDashboard() {
 
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
+      <AsaasPartnerBadge variant="footer" className="mt-8 mb-4" />
     </div>
     </PartnerActivationGuard>
   );
