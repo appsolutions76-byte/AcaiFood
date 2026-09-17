@@ -1396,8 +1396,8 @@ export const useAppStore = create<AppState>()(
       },
 
       updateUserStatus: async (userId, targetStatus) => {
-        const existingUser = get().users[userId] || get().currentUser;
-        const status = (existingUser && existingUser.role === 'admin' && targetStatus === 'paused') ? 'active' : targetStatus;
+        const existingUser = get().users[userId] || (get().currentUser?.id === userId ? get().currentUser : null);
+        const status = (existingUser && existingUser.role === 'admin') ? 'active' : targetStatus;
 
         // 1. Atualização Otimista no Zustand State
         set((state) => {

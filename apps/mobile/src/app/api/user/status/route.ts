@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Parâmetros inválidos: userId e status são obrigatórios.' }, { status: 400 });
     }
 
-    const cleanStatus = status === 'paused' ? 'paused' : 'active';
+    const cleanStatus = status === 'blocked' ? 'blocked' : (status === 'paused' ? 'paused' : 'active');
     const isOnline = cleanStatus === 'active';
 
     // 1. Tentar com Supabase Admin (Service Role)
