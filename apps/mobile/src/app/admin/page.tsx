@@ -943,6 +943,27 @@ function AdminDashboardContent() {
     }
   };
 
+  const isCaminhaoUser = (u: any) => {
+    if (!u) return false;
+    const roleStr = String(u.role || '').toLowerCase();
+    const veicStr = String(u.veiculo || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (roleStr === 'caminhao' || roleStr === 'caminhoneiro') return true;
+    if (roleStr === 'motorista') {
+      return veicStr.includes('caminh') || veicStr.includes('cacamb') || veicStr.includes('truck') || veicStr.includes('dump');
+    }
+    return veicStr.includes('caminh') || veicStr.includes('cacamb') || veicStr.includes('truck') || veicStr.includes('dump');
+  };
+
+  const isMotoboyUser = (u: any) => {
+    if (!u) return false;
+    const roleStr = String(u.role || '').toLowerCase();
+    if (isCaminhaoUser(u)) return false;
+    if (roleStr === 'motoboy') return true;
+    if (roleStr === 'motorista') return true;
+    const veicStr = String(u.veiculo || '').toLowerCase();
+    return veicStr.includes('moto');
+  };
+
   const userCounts = useMemo(() => {
     const all = Object.values(users).filter(Boolean);
     let clientes = 0;
@@ -955,7 +976,6 @@ function AdminDashboardContent() {
 
     all.forEach(u => {
       const role = (u.role || '').toLowerCase();
-      const veiculo = (u.veiculo || '').toLowerCase();
 
       if (role === 'admin') {
         admins++;
@@ -963,12 +983,10 @@ function AdminDashboardContent() {
         lojas++;
       } else if (role === 'fornecedor') {
         fornecedores++;
-      } else if (role === 'motorista') {
-        if (veiculo === 'caminhao') {
-          caminhoneiros++;
-        } else {
-          motoboys++;
-        }
+      } else if (isCaminhaoUser(u)) {
+        caminhoneiros++;
+      } else if (isMotoboyUser(u)) {
+        motoboys++;
       } else if (role === 'cliente' || role === 'customer' || !role) {
         clientes++;
       } else {
@@ -993,7 +1011,6 @@ function AdminDashboardContent() {
     
     if (userFilterRole !== 'all') {
       const role = (u.role || '').toLowerCase();
-      const veiculo = (u.veiculo || '').toLowerCase();
 
       if (userFilterRole === 'cliente') {
         if (role !== 'cliente' && role !== 'customer' && role !== '') return false;
@@ -1002,11 +1019,11 @@ function AdminDashboardContent() {
       } else if (userFilterRole === 'fornecedor') {
         if (role !== 'fornecedor') return false;
       } else if (userFilterRole === 'motoboy') {
-        if (role !== 'motorista' || veiculo === 'caminhao') return false;
+        if (!isMotoboyUser(u)) return false;
       } else if (userFilterRole === 'caminhao') {
-        if (role !== 'motorista' || veiculo !== 'caminhao') return false;
+        if (!isCaminhaoUser(u)) return false;
       } else if (userFilterRole === 'motorista') {
-        if (role !== 'motorista') return false;
+        if (!isMotoboyUser(u) && !isCaminhaoUser(u)) return false;
       } else if (userFilterRole === 'admin') {
         if (role !== 'admin') return false;
       } else {
@@ -2678,8 +2695,22 @@ function AdminDashboardContent() {
                                 <div className="font-bold mt-0.5">{u.bairro || 'Sem bairro'}</div>
                             </td>
                             <td className="p-4">
-                                <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold text-zinc-700 dark:text-zinc-300 capitalize">{u.role}</span>
-                                {u.veiculo && <span className="ml-1 text-[10px] text-zinc-500">({u.veiculo})</span>}
+                                <span className={`px-2 py-1 rounded text-[10px] font-bold ${
+                                  isCaminhaoUser(u)
+                                    ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                                    : isMotoboyUser(u)
+                                    ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                    : u.role === 'loja'
+                                    ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                                    : u.role === 'fornecedor'
+                                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                    : u.role === 'admin'
+                                    ? 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
+                                    : 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                                }`}>
+                                  {isCaminhaoUser(u) ? '🚛 Caminhão / Caçamba' : isMotoboyUser(u) ? '🛵 Motoboy' : u.role === 'loja' ? '🥣 Batedeira' : u.role === 'fornecedor' ? '🏭 Fornecedor' : u.role === 'admin' ? '🛡️ Admin' : '👤 Cliente'}
+                                </span>
+                                {u.veiculo && <span className="ml-1 text-[10px] text-zinc-500 font-medium">({u.veiculo})</span>}
                             </td>
                             <td className="p-4">
                                 {!u.status || u.status === 'active' ? <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Ativo</span> : 
