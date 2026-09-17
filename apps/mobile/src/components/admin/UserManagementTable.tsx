@@ -128,31 +128,13 @@ export function UserManagementTable({
 
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {user.status !== 'active' && (
+                      {user.role !== 'admin' && (
                         <button
-                          onClick={() => onUpdateStatus(user.id, 'active')}
-                          className="p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-600 rounded-lg transition"
-                          title="Ativar Usuário"
+                          onClick={() => onUpdateStatus(user.id, user.status === 'blocked' ? 'active' : 'blocked')}
+                          className={`p-1.5 rounded-lg transition ${user.status === 'blocked' ? 'hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-600' : 'hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600'}`}
+                          title={user.status === 'blocked' ? "Desbloquear Usuário" : "Bloquear Usuário"}
                         >
-                          <CheckCircle size={16} />
-                        </button>
-                      )}
-                      {user.status !== 'paused' && (
-                        <button
-                          onClick={() => onUpdateStatus(user.id, 'paused')}
-                          className="p-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-600 rounded-lg transition"
-                          title="Pausar Usuário"
-                        >
-                          <PauseCircle size={16} />
-                        </button>
-                      )}
-                      {user.status !== 'blocked' && (
-                        <button
-                          onClick={() => onUpdateStatus(user.id, 'blocked')}
-                          className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 rounded-lg transition"
-                          title="Bloquear Usuário"
-                        >
-                          <Ban size={16} />
+                          {user.status === 'blocked' ? <CheckCircle size={16} /> : <Ban size={16} />}
                         </button>
                       )}
                     </div>
