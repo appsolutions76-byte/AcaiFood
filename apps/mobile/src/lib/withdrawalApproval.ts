@@ -73,22 +73,29 @@ export async function processWithdrawalApproval(
 
   // 4. Recalcular o saldo disponível no exato momento da aprovação
   const balanceResult = await getPartnerAvailableBalance(requestRow.partner_id, requestRow.role || partnerUser.role);
-  const finalAmount = balanceResult.totalDisponivel > 0 ? balanceResult.totalDisponivel : Number(requestRow.requested_amount || 0);
-  const finalOrderIds = balanceResult.orderIds.length > 0 ? balanceResult.orderIds : (requestRow.order_ids || []);
-
-  if (finalAmount <= 0) {
-    const failMsg = 'Nenhum valor pendente elegível para saque neste momento.';
+  
+  // Se o saldo elegível é 0 (significa que os pedidos já foram repassados/marcados pagos anteriormente), conclui o saque como PAGO
+  if (balanceResult.totalDisponivel <= 0) {
     await adminSupabase
       .from('withdrawal_requests')
       .update({
-        status: 'FALHOU',
-        failure_reason: failMsg,
+        status: 'PAGO',
+        failure_reason: null,
         reviewed_by: actorId,
         reviewed_at: new Date().toISOString()
       })
       .eq('id', requestId);
-    return { success: false, status: 'FALHOU', error: failMsg };
+
+    return {
+      success: true,
+      status: 'PAGO',
+      amount: Number(requestRow.requested_amount || 0),
+      message: 'Solicitação concluída com sucesso: os valores referentes a esta solicitação já haviam sido liquidados nos pedidos anteriormente.'
+    };
   }
+
+  const finalAmount = balanceResult.totalDisponivel;
+  const finalOrderIds = balanceResult.orderIds;
 
   // 5. Resolver payload de transferência Asaas (exclusivamente do cadastro do banco)
   const transferPayload = buildAsaasTransferPayload(

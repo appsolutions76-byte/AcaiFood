@@ -46,7 +46,25 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
       .limit(1);
 
-    const pendingRequest = pendingRows && pendingRows.length > 0 ? pendingRows[0] : null;
+    let pendingRequest = pendingRows && pendingRows.length > 0 ? pendingRows[0] : null;
+
+    // Auto-reconciliação: Se houver solicitação pendente mas o saldo disponível zerou por liquidação prévia dos pedidos
+    if (pendingRequest && balanceInfo.totalDisponivel <= 0) {
+      try {
+        await adminSupabase
+          .from('withdrawal_requests')
+          .update({
+            status: 'PAGO',
+            failure_reason: null,
+            reviewed_at: new Date().toISOString()
+          })
+          .eq('id', pendingRequest.id);
+
+        pendingRequest = null;
+      } catch (recErr) {
+        console.warn("Aviso na auto-reconciliação de saque:", recErr);
+      }
+    }
 
     // 4. Histórico recente das últimas 10 solicitações
     const { data: recentRequests } = await adminSupabase
