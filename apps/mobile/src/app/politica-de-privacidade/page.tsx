@@ -112,11 +112,25 @@ export default function PoliticaPrivacidadePage() {
             </p>
           </section>
 
+          <hr className="border-zinc-800" />
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <ShieldCheck className="text-purple-400" size={18} /> 6. Empresa Controladora e Processamento Financeiro
+            </h2>
+            <p>
+              A marca e plataforma <strong>AçaíFood</strong> é desenvolvida e mantida pela <strong>AppSolutions76</strong>, divisão de tecnologia pertencente à <strong>Eletromecânica Baia Ltda</strong> (Razão Social controladora oficial).
+            </p>
+            <p className="bg-purple-950/40 border border-purple-800/60 p-4 rounded-2xl text-purple-200">
+              ℹ️ <strong>Identificação Bancária e Pix:</strong> Todas as cobranças, faturas e liquidações via Pix processadas pela nossa parceira BaaS <strong>Asaas IP S.A.</strong> ocorrem formalmente em nome da <strong>Eletromecânica Baia Ltda</strong>. Por isso, nos aplicativos de bancos e comprovantes Pix, o nome do beneficiário/favorecido é exibido como <strong>Eletromecânica Baia Ltda</strong>.
+            </p>
+          </section>
+
         </div>
 
         {/* Footer */}
         <div className="text-center text-xs text-zinc-500 pb-8 space-y-3">
-          <p>© 2026 AçaíFood Tecnologia Ltda. Todos os direitos reservados.</p>
+          <p>© 2026 AçaíFood • AppSolutions76 • Eletromecânica Baia Ltda. Todos os direitos reservados.</p>
           <AsaasPartnerBadge variant="footer" />
         </div>
 

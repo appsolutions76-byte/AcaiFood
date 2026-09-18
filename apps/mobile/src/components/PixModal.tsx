@@ -163,7 +163,7 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
             </p>
 
             {data.totalValue !== undefined && (
-              <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-2.5 mb-4 text-center">
+              <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-2.5 mb-3 text-center">
                 <span className="text-xs text-purple-900 dark:text-purple-300 font-medium">
                   💰 Valor Total:{" "}
                 </span>
@@ -172,6 +172,15 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
                 </span>
               </div>
             )}
+
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 mb-4 text-left text-[11px] text-amber-900 dark:text-amber-200">
+              <p className="font-bold flex items-center gap-1 text-amber-800 dark:text-amber-300">
+                ℹ️ Beneficiário no seu Banco:
+              </p>
+              <p className="mt-0.5 leading-tight">
+                No app do seu banco, o recebedor do Pix aparecerá como <strong>Eletromecânica Baia Ltda</strong> (Empresa detentora da AppSolutions76 / AçaíFood).
+              </p>
+            </div>
 
             {qrSrc && (
               <div className="bg-white p-3 rounded-xl border border-zinc-200 inline-block mb-4 shadow-inner">

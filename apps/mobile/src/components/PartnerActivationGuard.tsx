@@ -196,6 +196,15 @@ export default function PartnerActivationGuard({ children, roleName }: PartnerAc
             </p>
           </div>
 
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 text-left space-y-0.5">
+            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
+              ℹ️ Recebedor no seu Banco:
+            </p>
+            <p className="text-[11px] text-amber-900 dark:text-amber-200 leading-tight">
+              No comprovante ou tela do banco, o favorecido do Pix será exibido como <strong>Eletromecânica Baia Ltda</strong> (Razão Social detentora da AçaíFood e AppSolutions76).
+            </p>
+          </div>
+
           {pixData?.pixQrCode ? (
             <div className="flex flex-col items-center justify-center p-3 bg-zinc-50 dark:bg-zinc-800/80 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-inner">
               <img 
