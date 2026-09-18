@@ -859,7 +859,7 @@ export default function FornecedorDashboard() {
                           </span>
                         ) : (
                           <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800/60 shadow-sm flex items-center gap-1">
-                            ⏳ No Cofre Virtual (R$ {(o.taxas?.repasse || getSupplierRepasse(o)).toFixed(2)})
+                            ⏳ Saldo p/ Saque Asaas (R$ {(o.taxas?.repasse || getSupplierRepasse(o)).toFixed(2)})
                           </span>
                         )}
                       </div>

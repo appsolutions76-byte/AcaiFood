@@ -812,7 +812,7 @@ export default function BatedeiraDashboard() {
                     </span>
                   ) : (
                     <span className="text-[10px] bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 font-bold px-2 py-1 rounded border border-purple-200 dark:border-purple-800/60 shadow-sm flex items-center gap-1">
-                      ⏳ No Cofre Virtual (R$ {o.taxas?.repasse?.toFixed(2)})
+                      ⏳ Saldo p/ Saque Asaas (R$ {o.taxas?.repasse?.toFixed(2)})
                     </span>
                   )}
                 </div>

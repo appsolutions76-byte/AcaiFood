@@ -491,7 +491,7 @@ export default function MotoboyDashboard() {
                                   </span>
                                 ) : (
                                   <span className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold px-2 py-1 rounded border border-amber-200 dark:border-amber-800/60 shadow-sm flex items-center gap-1">
-                                    ⏳ No Cofre Virtual (R$ {getMotoboyFee(o).toFixed(2)})
+                                    ⏳ Saldo p/ Saque Asaas (R$ {getMotoboyFee(o).toFixed(2)})
                                   </span>
                                 )}
                             </div>

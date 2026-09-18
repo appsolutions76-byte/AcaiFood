@@ -541,9 +541,9 @@ export default function CaminhaoDashboard() {
                                     ✅ Repasse Liquidado (R$ {getDriverFee(o).toFixed(2)})
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-bold px-2 py-1 rounded border border-blue-200 dark:border-blue-800/60 shadow-sm flex items-center gap-1">
-                                    ⏳ No Cofre Virtual (R$ {getDriverFee(o).toFixed(2)})
-                                  </span>
+                                   <span className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-bold px-2 py-1 rounded border border-blue-200 dark:border-blue-800/60 shadow-sm flex items-center gap-1">
+                                     ⏳ Saldo p/ Saque Asaas (R$ {getDriverFee(o).toFixed(2)})
+                                   </span>
                                 )}
                             </div>
                         ) : null}

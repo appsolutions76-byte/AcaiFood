@@ -225,17 +225,6 @@ export function PartnerDashboardLayout({
                 </div>
               </div>
 
-              {/* Cofre Virtual (A Receber) */}
-              <div className="text-left md:text-right bg-zinc-950/60 p-3.5 rounded-2xl border border-zinc-800 shrink-0">
-                <span className="text-[11px] text-zinc-400 font-medium block">Cofre Virtual (A Receber)</span>
-                <span className={`text-2xl font-black ${themeClasses.vaultText}`}>
-                  {formatMoney(virtualVaultValue)}
-                </span>
-                <span className="text-[10px] text-zinc-500 block mt-0.5">
-                  📅 Pix Automático: às 18:00
-                </span>
-              </div>
-
             </div>
           </div>
 
