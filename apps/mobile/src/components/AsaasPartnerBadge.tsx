@@ -33,7 +33,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
           <span>Tecnologia AçaíFood • Parceira Financeira <strong>Asaas IP S.A. (CNPJ 19.468.242/0001-32)</strong></span>
         </div>
         <div className="text-[10px] text-zinc-400 dark:text-zinc-500">
-          Favorecido no Pix/Banco: <strong>Eletromecânica Baia Ltda</strong> (AppSolutions76)
+          Favorecido no Pix/Banco: <strong>Eletromecânica Baia Ltda</strong> (Empresa detentora da AppSolutions76/AçaíFood)
         </div>
       </div>
     );
@@ -51,7 +51,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
       </div>
       <div className="text-[10px] text-zinc-400 dark:text-zinc-500 flex items-center justify-center gap-1 flex-wrap">
         <Info size={11} className="text-amber-500 shrink-0" />
-        <span>Razão Social recebedora no Pix/Banco: <strong>Eletromecânica Baia Ltda</strong> (Empresa detentora da AppSolutions76)</span>
+        <span>Razão Social recebedora no Pix/Banco: <strong>Eletromecânica Baia Ltda</strong> (Empresa detentora da AppSolutions76/AçaíFood)</span>
       </div>
     </div>
   );
