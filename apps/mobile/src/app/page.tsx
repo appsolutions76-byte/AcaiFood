@@ -14,6 +14,7 @@ import { AdBannerCarousel } from "@/components/AdBannerCarousel";
 import { SupportChatButton } from "@/components/SupportChatButton";
 import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
+import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { validateCpfCnpjDigits } from "@/lib/pix";
 
 const emptySubscribe = () => () => {};
@@ -1587,15 +1588,8 @@ export default function StorefrontPage() {
 
       </main>
 
-      <footer className="mt-12 py-8 border-t border-zinc-200 dark:border-zinc-800 text-center flex flex-col items-center justify-center space-y-4">
-        <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-xs border border-zinc-200 dark:border-zinc-800 inline-block">
-          <img src="/appsolutions76-logo.png" alt="AppSolutions76" className="max-w-[220px] h-auto object-contain" />
-        </div>
-        <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
-           <p className="font-extrabold text-zinc-800 dark:text-zinc-200">Desenvolvido por AppSolutions76</p>
-           <p className="text-[11px]">TECNOLOGIA & INOVAÇÃO PARAENSE | Belém - PA</p>
-           <p className="text-[11px]">Contato: <a href="mailto:appsolutions76@gmail.com" className="text-purple-600 dark:text-purple-400 font-semibold hover:underline">appsolutions76@gmail.com</a></p>
-        </div>
+      <footer className="mt-12 py-8 border-t border-zinc-200 dark:border-zinc-800 text-center flex flex-col items-center justify-center">
+        <AppSolutionsBrandCard />
       </footer>
 
       {/* Product Select Modal */}
