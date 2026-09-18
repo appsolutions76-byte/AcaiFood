@@ -284,7 +284,7 @@ export default function StorefrontPage() {
   }
 
   let meusPedidos = currentUser ? (store.orders || []).filter((o: any) => o.clienteId === currentUser.id || o.criadoPor === currentUser.id) : [];
-  const clientActiveOrders = meusPedidos.filter((o: any) => o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
+  const clientActiveOrders = meusPedidos.filter((o: any) => o.status !== 'aguardando_pagamento' && o.status !== 'entregue' && o.status !== 'cancelado' && o.status !== 'arquivado');
   const clientHistoryOrders = meusPedidos.filter((o: any) => o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado');
   meusPedidos = [...clientActiveOrders, ...clientHistoryOrders];
   const norm = (s?: string | null) => String(s || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();

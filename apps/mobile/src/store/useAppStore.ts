@@ -891,7 +891,8 @@ export const useAppStore = create<AppState>()(
                         if (
                           (userRole === 'loja' || userRole === 'batedeira' || userRole === 'fornecedor') &&
                           (newOrder.loja_id === u.id || newOrder.lojaId === u.id || newOrder.fornecedor_id === u.id || newOrder.fornecedorId === u.id) &&
-                          (eventType === 'INSERT' || newOrder.status === 'preparo' || newOrder.status === 'aguardando_loja')
+                          newOrder.status !== 'aguardando_pagamento' && newOrder.status !== 'PENDING' &&
+                          (newOrder.status === 'pendente' || newOrder.status === 'PAID' || newOrder.status === 'preparo' || newOrder.status === 'PREPARING' || newOrder.status === 'aguardando_loja')
                         ) {
                           playNewOrderChime();
                         }

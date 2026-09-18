@@ -896,18 +896,7 @@ export default function FornecedorDashboard() {
                       </button>
                     )}
 
-                    {/* Interações */}
-                    {!isCanceled && o.status === 'aguardando_pagamento' && (
-                      <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                          <button onClick={() => {
-                            const reason = prompt("Informe o motivo da recusa:", "Sem estoque suficiente");
-                            if (reason !== null && reason.trim() !== "") {
-                              store.acaoPedido(o.id, 'cancelar_pedido', undefined, reason.trim());
-                              alert("❌ Pedido recusado e estorno acionado no Asaas.");
-                            }
-                          }} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
-                      </div>
-                    )}
+
 
                     {!isCanceled && o.status === 'pendente' && (
                       <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">

@@ -824,7 +824,7 @@ export default function BatedeiraDashboard() {
               )}
 
               {/* Interações */}
-              {!isCanceled && o.type === 'B2C' && (o.status === 'pendente' || o.status === 'aguardando_pagamento') && (
+              {!isCanceled && o.type === 'B2C' && o.status === 'pendente' && (
                 <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                     <button onClick={() => {
                       const reason = prompt("Informe o motivo da recusa do pedido:", "Impossibilidade de atendimento");
