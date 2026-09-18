@@ -935,6 +935,7 @@ export default function LandingPage() {
           <div>
             <p className="font-bold text-zinc-300">AçaíFood © 2026 — O Marketplace Definitivo de Açaí</p>
             <p className="text-[11px] text-zinc-500">Conectando a cadeia do fruto com tecnologia brasileira de alta performance.</p>
+            <p className="text-[11px] text-zinc-400 mt-1">Contato & Suporte: <a href="mailto:appsolutions76@gmail.com" className="text-purple-400 font-semibold hover:underline">appsolutions76@gmail.com</a></p>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/politica-de-privacidade" className="hover:text-purple-400 underline transition">
