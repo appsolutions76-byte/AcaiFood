@@ -2767,7 +2767,7 @@ export const useAppStore = create<AppState>()(
              sfIds.push(currentUser.id);
              query = query.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
           } else if (roleLower === 'motorista' || roleLower === 'courier' || roleLower === 'caminhao' || roleLower === 'motoboy' || roleLower === 'driver') {
-             query = query.or(`driver_id.is.null,driver_id.eq.${currentUser.id},status.in.(READY,PREPARING,DELIVERING,PAID,PENDING,pronto,preparo)`);
+             query = query.or(`driver_id.is.null,driver_id.eq.${currentUser.id}`);
           } else if (roleLower === 'cliente' || roleLower === 'client') {
              query = query.eq('buyer_id', currentUser.id);
           } else if (roleLower === 'admin') {

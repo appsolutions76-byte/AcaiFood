@@ -96,12 +96,12 @@ export default function MotoboyDashboard() {
 
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
   const getMotoboyFee = (o: any) => {
+    if (!o) return 0;
     if (o.taxas?.entregaMotorista && o.taxas.entregaMotorista > 0) {
       return o.taxas.entregaMotorista;
     }
-    const orderCity = o.cidadeOrigem || (o.lojaId && store.users[o.lojaId] ? store.users[o.lojaId]?.cidade : undefined) || currentUser?.cidade || 'Belém';
+    const orderCity = o.cidadeOrigem || (o.lojaId && store.users?.[o.lojaId] ? store.users[o.lojaId]?.cidade : undefined) || currentUser?.cidade || 'Belém';
     const cityRates = getRatesForCity(orderCity, store.rates, store.cities) || rates;
     const dist = o.distancia || 1.0;
     const totalFrete = calculateOrderFreight('B2C', dist, cityRates);
@@ -112,19 +112,18 @@ export default function MotoboyDashboard() {
   const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
 
   const corridasDisponiveis = (store.orders || []).filter((o: any) => {
-    // Motoboy só vê a corrida após a loja preparar e clicar em "Chamar Moto" (status pronto / READY / SEARCHING_OPERATOR)
+    if (!o) return false;
     const isReady = (o.status === 'pronto' || (o.status as string) === 'READY' || (o.status as string) === 'SEARCHING_OPERATOR') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
     if (!isReady) return false;
     return true;
   });
-  const minhasCorridasAll = (store.orders || []).filter((o: any) => o.motoristaId === currentUser.id);
-  const ganhosHoje = minhasCorridasAll.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + getMotoboyFee(curr), 0);
-  const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
+  const minhasCorridasAll = (store.orders || []).filter((o: any) => o && currentUser?.id && o.motoristaId === currentUser.id);
+  const ganhosHoje = minhasCorridasAll.filter((o: any) => o && isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + (curr ? getMotoboyFee(curr) : 0), 0);
+  const saquesHoje = currentUser?.id ? getDailyWithdrawalCount(currentUser.id) : 0;
 
-  const motoActiveOrders = minhasCorridasAll.filter((o: any) => !isDelivered(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
-  const motoHistoryOrders = minhasCorridasAll.filter((o: any) => isDelivered(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
+  const motoActiveOrders = minhasCorridasAll.filter((o: any) => o && !isDelivered(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
+  const motoHistoryOrders = minhasCorridasAll.filter((o: any) => o && (isDelivered(o.status) || o.status === 'cancelado' || o.status === 'arquivado'));
   const minhasCorridas = [...motoActiveOrders, ...motoHistoryOrders];
-
   const [isRefreshing, setIsRefreshing] = useState(false);
   const handleRefresh = async () => {
     setIsRefreshing(true);
