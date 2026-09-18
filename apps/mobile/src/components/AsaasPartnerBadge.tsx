@@ -9,8 +9,8 @@ interface AsaasPartnerBadgeProps {
 export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasPartnerBadgeProps) {
   if (variant === 'badge') {
     return (
-      <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 text-[11px] font-semibold shadow-xs ${className}`}>
-        <ShieldCheck size={13} className="text-purple-600 dark:text-purple-400 shrink-0" />
+      <div className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 text-xs font-semibold shadow-xs ${className}`}>
+        <ShieldCheck size={14} className="text-purple-600 dark:text-purple-400 shrink-0" />
         <span>Parceira Financeira: <strong>Asaas IP S.A. (CNPJ 19.468.242/0001-32)</strong></span>
       </div>
     );
@@ -18,8 +18,8 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
 
   if (variant === 'inline') {
     return (
-      <span className={`inline-flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium ${className}`}>
-        <ShieldCheck size={12} className="text-emerald-500 shrink-0" />
+      <span className={`inline-flex items-center gap-1 text-xs text-purple-700 dark:text-purple-300 font-semibold ${className}`}>
+        <ShieldCheck size={13} className="text-purple-600 dark:text-purple-400 shrink-0" />
         <span>Parceira Financeira: <strong>Asaas IP S.A. (CNPJ 19.468.242/0001-32)</strong> (Banco Central do Brasil)</span>
       </span>
     );
@@ -27,30 +27,27 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
 
   if (variant === 'subtle') {
     return (
-      <div className={`text-[11px] text-zinc-500 dark:text-zinc-400 font-medium text-center flex flex-col items-center justify-center gap-0.5 ${className}`}>
-        <div className="flex items-center justify-center gap-1">
-          <ShieldCheck size={12} className="text-purple-500 shrink-0" />
-          <span>Tecnologia AçaíFood • Parceira Financeira <strong>Asaas IP S.A. (CNPJ 19.468.242/0001-32)</strong></span>
+      <div className={`text-xs text-purple-700 dark:text-purple-300 font-semibold text-center flex flex-col items-center justify-center gap-1 ${className}`}>
+        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+          <ShieldCheck size={13} className="text-purple-600 dark:text-purple-400 shrink-0" />
+          <span>Tecnologia AçaíFood • Parceira Financeira: <strong>Asaas IP S.A. (CNPJ 19.468.242/0001-32)</strong></span>
         </div>
-        <div className="text-[10px] text-zinc-400 dark:text-zinc-500">
-          Favorecido no Pix/Banco: <strong>Eletromecânica Baia Ltda</strong> (Empresa detentora da AppSolutions76/AçaíFood)
+        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+          <Info size={13} className="text-amber-500 dark:text-amber-400 shrink-0" />
+          <span>Favorecido no Pix/Banco: <strong>Eletromecânica Baia Ltda</strong> (Empresa detentora da AppSolutions76/AçaíFood)</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`text-center py-2 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium flex flex-col items-center justify-center gap-1 ${className}`}>
+    <div className={`text-center py-2 text-xs font-semibold text-purple-700 dark:text-purple-300 flex flex-col items-center justify-center gap-1.5 ${className}`}>
       <div className="flex items-center justify-center gap-1.5 flex-wrap">
-        <span>AçaíFood © 2026</span>
-        <span>•</span>
-        <span className="inline-flex items-center gap-1 text-purple-700 dark:text-purple-300 font-semibold">
-          <ShieldCheck size={13} className="text-purple-600 dark:text-purple-400 shrink-0" />
-          <span>Parceira Financeira & BaaS: <strong>Asaas IP S.A. (CNPJ: 19.468.242/0001-32)</strong></span>
-        </span>
+        <ShieldCheck size={14} className="text-purple-600 dark:text-purple-400 shrink-0" />
+        <span>Parceira Financeira & BaaS: <strong>Asaas IP S.A. (CNPJ: 19.468.242/0001-32)</strong> (Banco Central do Brasil)</span>
       </div>
-      <div className="text-[10px] text-zinc-400 dark:text-zinc-500 flex items-center justify-center gap-1 flex-wrap">
-        <Info size={11} className="text-amber-500 shrink-0" />
+      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+        <Info size={14} className="text-amber-500 dark:text-amber-400 shrink-0" />
         <span>Razão Social recebedora no Pix/Banco: <strong>Eletromecânica Baia Ltda</strong> (Empresa detentora da AppSolutions76/AçaíFood)</span>
       </div>
     </div>

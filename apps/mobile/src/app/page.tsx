@@ -2271,10 +2271,10 @@ export default function StorefrontPage() {
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
 
-      <footer className="text-center py-6 px-4 text-xs text-zinc-500 dark:text-zinc-400 border-t border-zinc-200 dark:border-zinc-800 mt-12 mb-8 space-y-2">
-        <p className="font-semibold text-purple-700 dark:text-purple-400">AçaíFood © 2026 • Uma tecnologia AppSolutions76 por Eletromecânica Baia Ltda.</p>
-        <AsaasPartnerBadge variant="footer" className="mt-2" />
-        <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Belém - PA • Todos os direitos reservados</p>
+      <footer className="text-center py-6 px-4 text-xs border-t border-zinc-200 dark:border-zinc-800 mt-12 mb-8 space-y-1.5">
+        <p className="font-semibold text-purple-700 dark:text-purple-300">AçaíFood © 2026 • Uma tecnologia AppSolutions76 por Eletromecânica Baia Ltda.</p>
+        <AsaasPartnerBadge variant="footer" className="my-1" />
+        <p className="font-semibold text-purple-700 dark:text-purple-300">Belém - PA • Todos os direitos reservados</p>
       </footer>
 
       {/* Floating Toast Notification */}
