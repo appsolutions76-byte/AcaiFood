@@ -131,14 +131,26 @@ export default function FornecedorDashboard() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    setActiveTab('pedidos');
-    if (currentUser?.id) {
-      await Promise.all([
-        store.fetchOrders(currentUser.id, true),
-        store.fetchAllUsers(true)
-      ]);
+    try {
+      if (currentUser?.id) {
+        await Promise.all([
+          store.fetchOrders(currentUser.id, true),
+          store.fetchAllUsers(true),
+          store.fetchLojas(true),
+          store.fetchRates(true)
+        ]);
+      } else {
+        await Promise.all([
+          store.fetchAllUsers(true),
+          store.fetchLojas(true),
+          store.fetchRates(true)
+        ]);
+      }
+    } catch (e) {
+      console.warn("Erro ao atualizar dados do fornecedor:", e);
+    } finally {
+      setIsRefreshing(false);
     }
-    setIsRefreshing(false);
   };
 
   const isPaused = currentUser?.status === 'paused';

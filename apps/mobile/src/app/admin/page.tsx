@@ -1700,13 +1700,14 @@ function AdminDashboardContent() {
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
-      if (typeof store.fetchAllUsers === 'function') await store.fetchAllUsers();
+      if (typeof store.fetchAllUsers === 'function') await store.fetchAllUsers(true);
+      if (typeof store.fetchLojas === 'function') await store.fetchLojas(true);
       if (typeof store.fetchOrders === 'function') {
         const uid = store.currentUser?.id || 'admin';
-        await store.fetchOrders(uid);
+        await store.fetchOrders(uid, true);
       }
       if (typeof store.fetchCities === 'function') await store.fetchCities();
-      if (typeof store.fetchRates === 'function') await store.fetchRates();
+      if (typeof store.fetchRates === 'function') await store.fetchRates(true);
       if (store.rates) setLocalRates(store.rates);
       await fetchAdminBalances();
       showToast("🔄 Painel atualizado com sucesso!");

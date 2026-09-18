@@ -65,10 +65,24 @@ export function PartnerDashboardLayout({
   const logout = useAppStore((state: any) => state.logout);
   const currentUser = useAppStore((state: any) => state.currentUser);
   const [manualOpen, setManualOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
+  };
 
   const handleLogout = () => {
     logout();
     router.push('/login');
+  };
+
+  const handleHeaderRefresh = async () => {
+    try {
+      await onRefresh();
+      showToast("🔄 Painel e dados atualizados com sucesso!");
+    } catch (_err) {
+      showToast("❌ Erro ao atualizar painel.");
+    }
   };
 
   const themeClasses = {
@@ -137,12 +151,13 @@ export function PartnerDashboardLayout({
             {/* Header Action Buttons */}
             <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
               <button
-                onClick={onRefresh}
+                onClick={handleHeaderRefresh}
                 disabled={isRefreshing}
-                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-zinc-700 active:scale-95 disabled:opacity-50"
+                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-zinc-700 active:scale-95 disabled:opacity-50 cursor-pointer"
+                title="Atualizar dados do painel em tempo real"
               >
                 <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-                <span>Atualizar</span>
+                <span>{isRefreshing ? 'Atualizando...' : 'Atualizar'}</span>
               </button>
 
               <button
@@ -234,6 +249,14 @@ export function PartnerDashboardLayout({
           </div>
 
         </main>
+
+        {/* Floating Toast Notification */}
+        {toastMsg && (
+          <div className="fixed bottom-5 right-5 z-50 bg-zinc-900 border border-purple-500/50 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5">
+            <span className="text-xs font-bold">{toastMsg}</span>
+            <button onClick={() => setToastMsg(null)} className="text-zinc-400 hover:text-white font-bold text-sm leading-none">&times;</button>
+          </div>
+        )}
       </div>
     </PartnerActivationGuard>
   );

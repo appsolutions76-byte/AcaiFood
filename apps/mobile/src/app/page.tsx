@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
-import { ShoppingCart, BookOpen, MessageSquare, Share2 } from "lucide-react";
+import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
@@ -84,6 +84,30 @@ export default function StorefrontPage() {
   const [customReference, setCustomReference] = useState("");
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number; address?: string } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        store.fetchLojas(true),
+        store.fetchAllUsers(true),
+        store.fetchRates(true),
+        currentUser?.id ? store.fetchOrders(currentUser.id, true) : Promise.resolve()
+      ]);
+      showToast("🔄 Catálogo e lojas atualizados com sucesso!");
+    } catch (_err) {
+      showToast("❌ Erro ao atualizar catálogo.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const [expandedProductDesc, setExpandedProductDesc] = useState<Record<string, boolean>>({});
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
@@ -684,8 +708,14 @@ export default function StorefrontPage() {
                       📜 <span className="hidden sm:inline">Histórico</span> ({clientHistoryOrders.length})
                     </button>
                   )}
-                  <button onClick={() => window.location.reload()} className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-2xs border border-indigo-200 dark:border-indigo-900/50 transition-all cursor-pointer">
-                    🔄 <span className="hidden sm:inline">Atualizar</span>
+                  <button 
+                    onClick={handleRefresh} 
+                    disabled={isRefreshing}
+                    className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border border-indigo-200 dark:border-indigo-900/50 transition-all cursor-pointer disabled:opacity-50"
+                    title="Atualizar catálogo e produtos em tempo real"
+                  >
+                    <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+                    <span className="hidden sm:inline">{isRefreshing ? 'Atualizando...' : 'Atualizar'}</span>
                   </button>
                   <ThemeToggle />
                   <button onClick={() => store.logout()} className="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-900/50 transition cursor-pointer">
@@ -2244,6 +2274,14 @@ export default function StorefrontPage() {
         <p className="font-semibold text-purple-700 dark:text-purple-400">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
         <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Belém - PA • Todos os direitos reservados</p>
       </footer>
+
+      {/* Floating Toast Notification */}
+      {toastMsg && (
+        <div className="fixed bottom-5 right-5 z-50 bg-zinc-900 border border-purple-500/50 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5">
+          <span className="text-xs font-bold">{toastMsg}</span>
+          <button onClick={() => setToastMsg(null)} className="text-zinc-400 hover:text-white font-bold text-sm leading-none">&times;</button>
+        </div>
+      )}
     </div>
   );
 }

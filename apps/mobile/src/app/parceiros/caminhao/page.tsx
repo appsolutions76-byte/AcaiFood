@@ -148,11 +148,18 @@ export default function CaminhaoDashboard() {
         await Promise.all([
           store.fetchOrders(currentUser.id, true),
           store.fetchAllUsers(true),
+          store.fetchLojas(true),
+          store.fetchRates(true)
+        ]);
+      } else {
+        await Promise.all([
+          store.fetchAllUsers(true),
+          store.fetchLojas(true),
           store.fetchRates(true)
         ]);
       }
     } catch (e) {
-      console.warn("Erro ao atualizar dados:", e);
+      console.warn("Erro ao atualizar dados do caminhão:", e);
     } finally {
       setIsRefreshing(false);
     }

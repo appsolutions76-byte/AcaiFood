@@ -24,7 +24,7 @@ serve(async (req) => {
 
     // 1. Criar ou buscar cliente no Asaas
     let customerId = '';
-    const emailToSearch = customerEmail || 'cliente@acaifood.com.br';
+    const emailToSearch = customerEmail || 'appsolutions76@gmail.com';
     
     const cleanCpfCnpj = (val?: string) => {
       if (!val) return undefined;

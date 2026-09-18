@@ -202,7 +202,7 @@ export async function POST(request: Request) {
 
     // Criar ou Buscar Cliente no Asaas
     let customerId = '';
-    const emailToSearch = customerEmail || 'cliente@acaifood.com.br';
+    const emailToSearch = customerEmail || 'appsolutions76@gmail.com';
     
     const cleanDigits = (val?: string) => {
       if (!val) return undefined;

@@ -1176,7 +1176,7 @@ export const useAppStore = create<AppState>()(
                 body: JSON.stringify({
                   userId,
                   name: uAny?.name || 'Parceiro AçaíFood',
-                  email: uAny?.email || 'parceiro@acaifood.com.br',
+                  email: uAny?.email || 'appsolutions76@gmail.com',
                   cpfCnpj: cpfCnpjToUse,
                   phone: uAny?.telefone || uAny?.phone || '',
                   endereco: uAny?.endereco || '',
@@ -2234,7 +2234,7 @@ export const useAppStore = create<AppState>()(
                       body: JSON.stringify({
                         userId: uData.id,
                         name: uData.name || 'Parceiro AçaíFood',
-                        email: uData.email || 'parceiro@acaifood.com.br',
+                        email: uData.email || 'appsolutions76@gmail.com',
                         cpfCnpj: uData.cpf_cnpj,
                         phone: uData.phone,
                         endereco: uData.endereco,
@@ -2283,7 +2283,7 @@ export const useAppStore = create<AppState>()(
                         body: JSON.stringify({
                           userId: dData.id,
                           name: dData.name || 'Entregador AçaíFood',
-                          email: dData.email || 'entregador@acaifood.com.br',
+                          email: dData.email || 'appsolutions76@gmail.com',
                           cpfCnpj: dData.cpf_cnpj,
                           phone: dData.phone,
                           endereco: dData.endereco,
