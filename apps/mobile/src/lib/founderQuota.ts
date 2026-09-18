@@ -57,8 +57,8 @@ export async function getFounderQuotaStatus(userId?: string): Promise<FounderQuo
 
       const founderPartners = partners.slice(0, freeQuota);
       subsidizedCount = founderPartners.length;
-      paidCount = partners.filter(u => Boolean(u.asaas_wallet_id)).length;
-      pendingCount = partners.filter(u => !u.asaas_wallet_id).length;
+      paidCount = partners.filter(u => u.status === 'active' || Boolean(u.asaas_wallet_id)).length;
+      pendingCount = partners.filter(u => u.status !== 'active' && !u.asaas_wallet_id).length;
 
       if (userId) {
         isUserAlreadyFounder = founderPartners.some(p => p.id === userId);

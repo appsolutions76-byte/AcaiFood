@@ -667,7 +667,7 @@ export const useAppStore = create<AppState>()(
           pix_key: dbRole !== 'CLIENT' ? (cleanedCpfCnpj || newUser.pixKey) : newUser.pixKey,
           cpf_cnpj: cleanedCpfCnpj,
           status: 'active',
-          split_enabled: dbRole !== 'CLIENT'
+          split_enabled: false
         };
 
         let { error: dbError } = await supabase.from('users').insert(insertPayload);

@@ -17,24 +17,28 @@ export async function processWithdrawalApproval(
 ): Promise<ProcessApprovalResult> {
   const adminSupabase = getSupabaseAdmin();
 
-  // 1. Buscar a solicitação pelo ID
-  const { data: requestRow, error: reqErr } = await adminSupabase
+  // 1. Trava atômica (P5): Tentar atualizar status para 'PROCESSING' atipicamente
+  const { data: lockRow, error: lockErr } = await adminSupabase
     .from('withdrawal_requests')
-    .select('*')
+    .update({
+      status: 'PROCESSING',
+      reviewed_by: actorId,
+      reviewed_at: new Date().toISOString()
+    })
     .eq('id', requestId)
-    .single();
+    .in('status', ['PENDENTE', 'FALHOU'])
+    .select('*')
+    .maybeSingle();
 
-  if (reqErr || !requestRow) {
-    return { success: false, status: 'FALHOU', error: 'Solicitação de saque não encontrada.' };
-  }
-
-  if (requestRow.status !== 'PENDENTE' && requestRow.status !== 'FALHOU') {
+  if (lockErr || !lockRow) {
     return {
       success: false,
-      status: requestRow.status as any,
-      error: `Solicitação já processada anteriormente (status atual: ${requestRow.status}).`
+      status: 'FALHOU',
+      error: 'Solicitação não encontrada, já finalizada ou em processamento concorrente.'
     };
   }
+
+  const requestRow = lockRow;
 
   // 2. Buscar dados atualizados do parceiro em users
   const { data: partnerUser, error: pErr } = await adminSupabase
@@ -56,9 +60,13 @@ export async function processWithdrawalApproval(
     return { success: false, status: 'FALHOU', error: 'Parceiro não encontrado.' };
   }
 
-  // 3. Revalidar subconta/status Asaas do parceiro se houver restrição
-  if (partnerUser.asaas_account_status && partnerUser.asaas_account_status === 'REJECTED') {
-    const failMsg = 'A subconta do parceiro no Asaas foi rejeitada pela instituição financeira.';
+  // 3. Revalidar subconta/status Asaas do parceiro (P2)
+  const isAccountActive = partnerUser.split_enabled === true || partnerUser.asaas_account_status === 'APPROVED';
+  if (partnerUser.asaas_account_status === 'REJECTED' || !isAccountActive) {
+    const failMsg = partnerUser.asaas_account_status === 'REJECTED'
+      ? 'A subconta do parceiro no Asaas foi rejeitada pela instituição financeira.'
+      : 'A subconta do parceiro no Asaas ainda não está aprovada/ativa (split_enabled desativado).';
+
     await adminSupabase
       .from('withdrawal_requests')
       .update({
@@ -185,18 +193,32 @@ export async function processWithdrawalApproval(
         .in('id', finalOrderIds);
     }
 
-    // Tentar registrar extrato/ledger se existir a tabela partner_ledger
+    // Registrar extrato/ledger respeitando os CHECK constraints (P4)
     try {
+      const { data: history } = await adminSupabase
+        .from('partner_ledger')
+        .select('amount, type')
+        .eq('partner_id', requestRow.partner_id);
+
+      const currentBal = (history || []).reduce((acc: number, item: any) => {
+        return item.type === 'credit' ? acc + Number(item.amount || 0) : acc - Number(item.amount || 0);
+      }, 0);
+
+      const balanceAfter = Number(Math.max(0, currentBal - finalAmount).toFixed(2));
+
       await adminSupabase
         .from('partner_ledger')
         .insert({
           partner_id: requestRow.partner_id,
-          amount: -finalAmount,
-          description: `Saque processado Pix Asaas (ID: ${asaasTransferId})`,
-          type: 'WITHDRAWAL',
-          reference_id: requestId
+          order_id: finalOrderIds?.[0] || null,
+          amount: finalAmount,
+          type: 'debit',
+          reason: `Saque processado Pix Asaas (ID: ${asaasTransferId})`,
+          balance_after: balanceAfter
         });
-    } catch (_) {}
+    } catch (lErr) {
+      console.warn("Aviso ao registrar débito em partner_ledger:", lErr);
+    }
 
     return {
       success: true,

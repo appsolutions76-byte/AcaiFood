@@ -40,37 +40,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Este pedido já foi pago' }, { status: 409 });
     }
 
-    // 2. Recalcular o valor total e o split no SERVIDO R a partir do pedido e tabelas vinculadas
-    const { data: settings } = await supabase
-      .from('platform_settings')
-      .select('*')
-      .limit(1)
-      .maybeSingle();
+    // 2. Recalcular o valor total e o split no SERVIDOR usando o módulo único de precificação (com cidade)
+    const { calculateOrderPricing } = await import('@/lib/pricingEngine');
+    const cityName = order.delivery_city || order.city || order.cidade || null;
 
-    const orderType = String(order.order_type || 'B2C').toUpperCase();
-    const courierMode = settings?.courier_payment_mode || 'KM';
-    const courierFixed = Number(settings?.courier_fixed_fee ?? 8.00);
-    const transporterMode = settings?.transporter_payment_mode || 'KM';
-    const transporterFixed = Number(settings?.transporter_fixed_fee ?? 150.00);
-    const ecopointMode = settings?.ecopoint_payment_mode || 'KM';
-    const ecopointFixed = Number(settings?.ecopoint_fixed_fee ?? 50.00);
+    const pricing = await calculateOrderPricing({
+      orderType: order.order_type,
+      distanceKm: order.delivery_distance_km,
+      cityName,
+      productsSubtotal: order.products_subtotal,
+      sellerStorefrontId: order.seller_storefront_id
+    }, supabase);
 
-    const distKm = Number(order.delivery_distance_km || 0);
-    const feePerKm = Number(order.applied_delivery_fee_per_km || 0);
-
-    let deliveryTotal = 0;
-    if (distKm > 0 || feePerKm > 0) {
-      if (orderType === 'COLETA') {
-        deliveryTotal = ecopointMode === 'FIXED' ? ecopointFixed : distKm * feePerKm;
-      } else if (orderType === 'B2B') {
-        deliveryTotal = transporterMode === 'FIXED' ? transporterFixed : distKm * feePerKm;
-      } else {
-        deliveryTotal = courierMode === 'FIXED' ? courierFixed : distKm * feePerKm;
-      }
-    }
-
-    const productSubtotal = Number(order.products_subtotal || 0);
-    const calculatedValue = Number((productSubtotal + deliveryTotal).toFixed(2));
+    const calculatedValue = pricing.buyerTotal;
 
     if (calculatedValue <= 0) {
       return NextResponse.json({ error: 'Valor total do pedido inválido para cobrança' }, { status: 400 });
@@ -93,7 +75,7 @@ export async function POST(request: Request) {
     if (order.seller_storefront_id) {
       const { data: sf } = await supabase
         .from('storefronts')
-        .select('partner_id, frete_subsidy_pct')
+        .select('partner_id')
         .eq('id', order.seller_storefront_id)
         .maybeSingle();
 
@@ -106,11 +88,7 @@ export async function POST(request: Request) {
 
         const isSellerSplitActive = uSeller?.split_enabled === true || (uSeller?.split_enabled !== false && uSeller?.asaas_account_status === 'APPROVED');
         if (uSeller?.asaas_wallet_id && isSellerSplitActive && isValidAsaasWalletId(uSeller.asaas_wallet_id)) {
-          const freteSubsidyPct = Number(sf.frete_subsidy_pct || 0);
-          const freteLoja = deliveryTotal * (freteSubsidyPct / 100);
-          const platformFee = Number(order.applied_platform_fee_percent ?? 10);
-          const rawSellerVal = productSubtotal * (1 - platformFee / 100) - freteLoja;
-          const sellerVal = Number(Math.max(0, rawSellerVal).toFixed(2));
+          const sellerVal = pricing.netSellerPayout;
 
           if (sellerVal > 0) {
             calculatedSplits.push({
@@ -132,8 +110,7 @@ export async function POST(request: Request) {
 
       const isDriverSplitActive = uDriver?.split_enabled === true || (uDriver?.split_enabled !== false && uDriver?.asaas_account_status === 'APPROVED');
       if (uDriver?.asaas_wallet_id && isDriverSplitActive && isValidAsaasWalletId(uDriver.asaas_wallet_id)) {
-        const platPct = Number(order.applied_delivery_platform_fee_percent ?? 10);
-        const driverVal = Number((deliveryTotal * (1 - platPct / 100)).toFixed(2));
+        const driverVal = pricing.netDriverPayout;
 
         if (driverVal > 0) {
           calculatedSplits.push({

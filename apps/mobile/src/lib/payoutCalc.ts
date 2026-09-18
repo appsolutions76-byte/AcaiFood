@@ -5,6 +5,7 @@ export interface PayoutSettings {
   transporter_fixed_fee?: number;
   ecopoint_payment_mode?: string;
   ecopoint_fixed_fee?: number;
+  [key: string]: any;
 }
 
 export interface PayoutOrder {
@@ -17,6 +18,9 @@ export interface PayoutOrder {
   applied_delivery_platform_fee_percent?: number;
   seller_storefront_id?: string;
   driver_id?: string;
+  delivery_city?: string;
+  city?: string;
+  cidade?: string;
   [key: string]: any;
 }
 
@@ -29,17 +33,15 @@ export function calculateOrderDeliveryTotal(order: PayoutOrder, settings?: Payou
   const ecopointMode = settings?.ecopoint_payment_mode || 'KM';
   const ecopointFixed = Number(settings?.ecopoint_fixed_fee ?? 50.00);
 
-  const distKm = Number(order.delivery_distance_km || 0);
+  const distKm = Math.max(0, Number(order.delivery_distance_km || 0));
   const feePerKm = Number(order.applied_delivery_fee_per_km || 0);
 
-  if (distKm <= 0 && feePerKm <= 0) return 0;
-
   if (orderType === 'COLETA') {
-    return ecopointMode === 'FIXED' ? ecopointFixed : distKm * feePerKm;
+    return ecopointMode === 'FIXED' ? ecopointFixed : Number((distKm * (feePerKm || 8.00)).toFixed(2));
   } else if (orderType === 'B2B') {
-    return transporterMode === 'FIXED' ? transporterFixed : distKm * feePerKm;
+    return transporterMode === 'FIXED' ? transporterFixed : Number((distKm * (feePerKm || 4.00)).toFixed(2));
   } else {
-    return courierMode === 'FIXED' ? courierFixed : distKm * feePerKm;
+    return courierMode === 'FIXED' ? courierFixed : Number((distKm * (feePerKm || 2.00)).toFixed(2));
   }
 }
 
@@ -50,7 +52,7 @@ export function calculateSellerPayout(
 ): number {
   const deliveryTotal = calculateOrderDeliveryTotal(order, settings);
   const freteLoja = deliveryTotal * (freteSubsidyPct / 100);
-  const productSubtotal = Number(order.products_subtotal || 0);
+  const productSubtotal = Math.max(0, Number(order.products_subtotal || 0));
   const platformFee = Number(order.applied_platform_fee_percent ?? 10);
   const rawSellerValue = productSubtotal * (1 - platformFee / 100) - freteLoja;
   return Number(Math.max(0, rawSellerValue).toFixed(2));
@@ -64,3 +66,4 @@ export function calculateDriverPayout(
   const platPct = Number(order.applied_delivery_platform_fee_percent ?? 10);
   return Number(Math.max(0, deliveryTotal * (1 - platPct / 100)).toFixed(2));
 }
+

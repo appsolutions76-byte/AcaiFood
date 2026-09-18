@@ -71,30 +71,32 @@ export async function POST(request: Request) {
         );
       }
 
-      // Buscar configurações da plataforma e storefront para recalcular repasse líquido
-      const { data: settings } = await supabase
-        .from('platform_settings')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
+      // Buscar precificação autoritativa do servidor (com cidade)
+      const { calculateOrderPricing } = await import('@/lib/pricingEngine');
+      const cityName = dbOrder.delivery_city || dbOrder.city || dbOrder.cidade || null;
+      const pricing = await calculateOrderPricing({
+        orderType: dbOrder.order_type,
+        distanceKm: dbOrder.delivery_distance_km,
+        cityName,
+        productsSubtotal: dbOrder.products_subtotal,
+        sellerStorefrontId: dbOrder.seller_storefront_id
+      }, supabase);
 
       if (isDriverRole) {
-        transferValue = calculateDriverPayout(dbOrder, settings);
+        transferValue = pricing.netDriverPayout;
         orderPartnerId = dbOrder.driver_id || dbOrder.courier_id || null;
       } else {
-        let freteSubsidyPct = 0;
+        transferValue = pricing.netSellerPayout;
         if (dbOrder.seller_storefront_id) {
           const { data: sf } = await supabase
             .from('storefronts')
-            .select('frete_subsidy_pct, partner_id')
+            .select('partner_id')
             .eq('id', dbOrder.seller_storefront_id)
             .maybeSingle();
           if (sf) {
-            freteSubsidyPct = Number(sf.frete_subsidy_pct || 0);
             orderPartnerId = sf.partner_id || null;
           }
         }
-        transferValue = calculateSellerPayout(dbOrder, freteSubsidyPct, settings);
       }
 
       if (transferValue <= 0) {

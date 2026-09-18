@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { calculateOrderPricing } from '@/lib/pricingEngine';
 
 export interface PartnerBalanceResult {
   totalDisponivel: number;
@@ -21,40 +22,34 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     if (isDriver) {
       const { data: driverOrders, error: dErr } = await adminSupabase
         .from('orders')
-        .select('id, order_type, products_subtotal, delivery_distance_km, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent, status')
+        .select('id, order_type, products_subtotal, delivery_distance_km, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent, delivery_city, city, cidade, seller_storefront_id, status')
         .eq('driver_id', partnerId)
         .eq('payout_driver_done', false)
         .in('status', ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue']);
 
       if (!dErr && driverOrders) {
-        driverOrders.forEach(o => {
-          const type = (o.order_type || 'B2C').toUpperCase();
-          const dist = Number(o.delivery_distance_km || 0);
-          const feePerKm = Number(o.applied_delivery_fee_per_km || (type === 'B2B' ? 4 : (type === 'COLETA' ? 8 : 2)));
-          const platFeePct = Number(o.applied_delivery_platform_fee_percent || 15);
-          
-          let deliveryTotal = dist * feePerKm;
-          if (type === 'COLETA' && Number(o.products_subtotal) > 0) {
-            deliveryTotal = Number(o.products_subtotal);
-          }
-          if (deliveryTotal <= 0 && Number(o.products_subtotal) > 0) {
-            deliveryTotal = Number(o.products_subtotal);
-          }
+        for (const o of driverOrders) {
+          const cityName = o.delivery_city || o.city || o.cidade || null;
+          const pricing = await calculateOrderPricing({
+            orderType: o.order_type,
+            distanceKm: o.delivery_distance_km,
+            cityName,
+            productsSubtotal: o.products_subtotal,
+            sellerStorefrontId: o.seller_storefront_id
+          }, adminSupabase);
 
-          const platformFee = Number((deliveryTotal * (platFeePct / 100)).toFixed(2));
-          const netDriver = Math.max(0, Number((deliveryTotal - platformFee).toFixed(2)));
-
+          const netDriver = pricing.netDriverPayout;
           if (netDriver > 0) {
             totalDisponivel += netDriver;
             orderIds.push(o.id);
           }
-        });
+        }
       }
     } else {
       // 2. Se for loja ou fornecedor, busca pelo storefront_id vinculado ao partner_id
       const { data: storefronts } = await adminSupabase
         .from('storefronts')
-        .select('id')
+        .select('id, frete_subsidy_pct')
         .eq('partner_id', partnerId);
 
       const sfIds = storefronts ? storefronts.map(s => s.id) : [];
@@ -62,7 +57,7 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
       if (sfIds.length > 0 || isStore || isSupplier) {
         let query = adminSupabase
           .from('orders')
-          .select('id, seller_storefront_id, buyer_id, order_type, products_subtotal, delivery_distance_km, applied_platform_fee_percent, applied_delivery_fee_per_km, status')
+          .select('id, seller_storefront_id, buyer_id, order_type, products_subtotal, delivery_distance_km, applied_platform_fee_percent, applied_delivery_fee_per_km, delivery_city, city, cidade, status')
           .eq('payout_seller_done', false)
           .in('status', ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue']);
 
@@ -75,17 +70,22 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
         const { data: sellerOrders, error: sErr } = await query;
 
         if (!sErr && sellerOrders) {
-          sellerOrders.forEach(o => {
-            const subtotal = Number(o.products_subtotal || 0);
-            const platPct = Number(o.applied_platform_fee_percent || 10);
-            const platSales = Number((subtotal * (platPct / 100)).toFixed(2));
-            const netSeller = Math.max(0, Number((subtotal - platSales).toFixed(2)));
+          for (const o of sellerOrders) {
+            const cityName = o.delivery_city || o.city || o.cidade || null;
+            const pricing = await calculateOrderPricing({
+              orderType: o.order_type,
+              distanceKm: o.delivery_distance_km,
+              cityName,
+              productsSubtotal: o.products_subtotal,
+              sellerStorefrontId: o.seller_storefront_id
+            }, adminSupabase);
 
+            const netSeller = pricing.netSellerPayout;
             if (netSeller > 0) {
               totalDisponivel += netSeller;
               orderIds.push(o.id);
             }
-          });
+          }
         }
       }
     }
@@ -100,3 +100,4 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     quantidadePedidos: orderIds.length
   };
 }
+

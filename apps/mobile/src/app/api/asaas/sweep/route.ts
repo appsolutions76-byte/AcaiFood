@@ -76,6 +76,26 @@ export async function POST(request: Request) {
       }
     }
 
+    // Verificar se o horário atual no fuso configurado já alcançou o horário agendado (targetTime) (P3)
+    const timeToMinutes = (hhmm: string) => {
+      const [h, m] = hhmm.split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+
+    const currentMinutes = timeToMinutes(currentHHMM);
+    const targetMinutes = timeToMinutes(targetTime);
+
+    if (currentMinutes < targetMinutes) {
+      console.log(`[Sweep Payout] Horário atual (${currentHHMM}) é anterior ao horário agendado (${targetTime}). Varredura ignorada.`);
+      return NextResponse.json({
+        success: true,
+        notTimeYet: true,
+        currentHHMM,
+        targetTime,
+        message: `Horário de pagamento automático (${targetTime}) ainda não foi alcançado hoje (horário atual: ${currentHHMM}).`
+      });
+    }
+
     // 3. Buscar solicitações de saque PENDENTES
     const { data: pendingRequests } = await adminSupabase
       .from('withdrawal_requests')
