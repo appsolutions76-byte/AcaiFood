@@ -1832,7 +1832,12 @@ function AdminDashboardContent() {
             <span>🎧 Atendimento & Suporte</span>
           </button>
           <button onClick={() => setActiveTab('saques')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'saques' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
-            <span>💸 Saques & Resgastes</span>
+            <span>💳 Financeiro & Repasses</span>
+            {partnersWithPendingPayouts.length > 0 && (
+              <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-black">
+                {partnersWithPendingPayouts.length}
+              </span>
+            )}
           </button>
           <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
           <button onClick={() => setActiveTab('ocorrencias')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📋 Ocorrências & Auditoria</button>
@@ -3560,7 +3565,17 @@ function AdminDashboardContent() {
 
         {activeTab === 'saques' && (
           <div className="animate-in fade-in zoom-in-95 duration-200">
-            <AdminWithdrawalsSection showToast={showToast} />
+            <AdminWithdrawalsSection 
+              showToast={showToast}
+              totalOwedAllPartners={totalOwedAllPartners}
+              pendingPayoutsByCity={pendingPayoutsByCity}
+              partnersWithPendingPayouts={partnersWithPendingPayouts}
+              pagarTodosParceiros={pagarTodosParceiros}
+              isPayingAll={isPayingAll}
+              payAllProgress={payAllProgress}
+              totalVolume={currentVolumeTotal}
+              appRevenue={currentAppRevenue}
+            />
           </div>
         )}
 

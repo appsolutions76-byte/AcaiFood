@@ -88,9 +88,32 @@ export async function POST(request: Request) {
         const isAdmin = userRole === 'ADMIN' || auth.profile?.role === 'admin';
 
         if (!isAdmin) {
+          const currentStatus = String(orderData.status || '').toUpperCase();
+          if (['RECEIVED', 'COMPLETED', 'DELIVERED', 'ENTREGUE'].includes(currentStatus)) {
+            return NextResponse.json(
+              { error: 'Não é permitido estorno automático após o pedido ter sido entregue e confirmado com PIN. Em caso de contestação, contate o suporte administrativo.' },
+              { status: 400 }
+            );
+          }
+
+          let isStore = false;
+          if (orderData.seller_storefront_id) {
+            if (orderData.seller_storefront_id === userId) {
+              isStore = true;
+            } else {
+              const { data: sf } = await supabase
+                .from('storefronts')
+                .select('partner_id')
+                .eq('id', orderData.seller_storefront_id)
+                .maybeSingle();
+              if (sf?.partner_id === userId) {
+                isStore = true;
+              }
+            }
+          }
+
           const isBuyer = orderData.buyer_id === userId;
           const isDriver = orderData.driver_id === userId;
-          const isStore = orderData.seller_storefront_id === userId;
 
           if (!isBuyer && !isDriver && !isStore) {
             return NextResponse.json({ error: 'Você não tem permissão para cancelar ou estornar este pedido.' }, { status: 403 });

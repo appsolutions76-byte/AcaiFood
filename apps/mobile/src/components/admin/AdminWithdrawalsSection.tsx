@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getAuthHeaders } from '@/store/useAppStore';
 import { 
   ArrowDownToLine, 
@@ -9,22 +9,41 @@ import {
   Clock, 
   AlertCircle, 
   RefreshCw, 
-  Settings, 
   Zap, 
-  ShieldCheck, 
   Search,
-  Sliders
+  DollarSign,
+  TrendingUp,
+  Wallet
 } from 'lucide-react';
 
 interface AdminWithdrawalsSectionProps {
   showToast?: (msg: string) => void;
+  totalOwedAllPartners?: number;
+  pendingPayoutsByCity?: Record<string, { cityName: string; partners: any[]; totalOwed: number }>;
+  partnersWithPendingPayouts?: Array<{ user: any; pendingOrders: any[]; amountOwed: number }>;
+  pagarTodosParceiros?: (partnersWithOwed: any[], cidadeNome?: string) => Promise<void>;
+  isPayingAll?: boolean;
+  payAllProgress?: { current: number; total: number; name: string } | null;
+  totalVolume?: number;
+  appRevenue?: number;
 }
 
-export function AdminWithdrawalsSection({ showToast }: AdminWithdrawalsSectionProps) {
+export function AdminWithdrawalsSection({ 
+  showToast,
+  totalOwedAllPartners = 0,
+  pendingPayoutsByCity = {},
+  partnersWithPendingPayouts = [],
+  pagarTodosParceiros,
+  isPayingAll = false,
+  payAllProgress = null,
+  totalVolume = 0,
+  appRevenue = 0
+}: AdminWithdrawalsSectionProps) {
   const [activeTab, setActiveTab] = useState<'PENDENTE' | 'PAGO' | 'REJEITADO' | 'FALHOU' | 'all'>('PENDENTE');
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCityToPay, setSelectedCityToPay] = useState<string>('ALL');
 
   // Configurações do Pagamento Automático
   const [payoutSettings, setPayoutSettings] = useState<{
@@ -134,7 +153,7 @@ export function AdminWithdrawalsSection({ showToast }: AdminWithdrawalsSectionPr
   };
 
   const handleReject = async (req: any) => {
-    const reason = prompt(`Informe o motivo do cancelamento/rejeição do saque de R$ ${Number(req.requested_amount).toFixed(2)}:`, "Chave Pix cadastrada incorreta");
+    const reason = prompt(`Informe o motivo da rejeição do saque de R$ ${Number(req.requested_amount).toFixed(2)}:`, "Chave Pix incorreta");
     if (reason === null) return;
     const cleanReason = reason.trim();
     if (!cleanReason) {
@@ -175,6 +194,25 @@ export function AdminWithdrawalsSection({ showToast }: AdminWithdrawalsSectionPr
     } catch (_) { return dateStr; }
   };
 
+  const currentCityPartners = useMemo(() => {
+    if (selectedCityToPay === 'ALL') return partnersWithPendingPayouts;
+    return pendingPayoutsByCity[selectedCityToPay]?.partners || [];
+  }, [selectedCityToPay, partnersWithPendingPayouts, pendingPayoutsByCity]);
+
+  const currentCityOwedTotal = useMemo(() => {
+    return currentCityPartners.reduce((acc, curr) => acc + curr.amountOwed, 0);
+  }, [currentCityPartners]);
+
+  const pendingWithdrawalsTotal = useMemo(() => {
+    return requests
+      .filter(r => r.status === 'PENDENTE')
+      .reduce((acc, r) => acc + Number(r.requested_amount || 0), 0);
+  }, [requests]);
+
+  const pendingWithdrawalsCount = useMemo(() => {
+    return requests.filter(r => r.status === 'PENDENTE').length;
+  }, [requests]);
+
   const filteredRequests = requests.filter((r: any) => {
     const pName = r.partner?.name || '';
     const pEmail = r.partner?.email || '';
@@ -185,7 +223,137 @@ export function AdminWithdrawalsSection({ showToast }: AdminWithdrawalsSectionPr
 
   return (
     <div className="space-y-6">
-      {/* Bloco de Configuração do Modo de Pagamento Automático */}
+      {/* 1. Header Unificado e Cards de Resumo Financeiro da Operação */}
+      <div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-4">
+          <div>
+            <h2 className="text-xl font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
+              <Wallet className="text-purple-600" size={24} /> Central Financeira & Repasses Asaas
+            </h2>
+            <p className="text-xs text-zinc-500">
+              Gestão integrada de faturamento, liquidações em lote por praça e autorização de saques Pix
+            </p>
+          </div>
+          <button
+            onClick={() => { fetchRequests(activeTab); fetchSettings(); }}
+            disabled={loading}
+            className="px-3 py-1.5 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Atualizar Financeiro
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Volume Total Transacionado */}
+          <div className="bg-gradient-to-br from-indigo-900/10 to-purple-900/20 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-800/60 p-4 rounded-2xl shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase text-indigo-700 dark:text-indigo-400">Volume Transacionado</span>
+              <TrendingUp size={18} className="text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <p className="text-2xl font-black text-indigo-950 dark:text-white mt-1">{formatMoney(totalVolume)}</p>
+            <p className="text-[10px] text-zinc-500 mt-1">Total bruto (produtos + fretes entregues)</p>
+          </div>
+
+          {/* Receita da Plataforma */}
+          <div className="bg-gradient-to-br from-purple-900/10 to-pink-900/20 dark:from-purple-950/40 dark:to-pink-950/40 border border-purple-200 dark:border-purple-800/60 p-4 rounded-2xl shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase text-purple-700 dark:text-purple-400">Receita AçaíFood</span>
+              <DollarSign size={18} className="text-purple-600 dark:text-purple-400" />
+            </div>
+            <p className="text-2xl font-black text-purple-950 dark:text-white mt-1">{formatMoney(appRevenue)}</p>
+            <p className="text-[10px] text-zinc-500 mt-1">Taxas retidas (vendas + comissão de frete)</p>
+          </div>
+
+          {/* Saldo Pendente de Repasse aos Parceiros */}
+          <div className="bg-gradient-to-br from-amber-900/10 to-orange-900/20 dark:from-amber-950/40 dark:to-orange-950/40 border border-amber-200 dark:border-amber-800/60 p-4 rounded-2xl shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase text-amber-700 dark:text-amber-400">Pendente de Repasse</span>
+              <Clock size={18} className="text-amber-600 dark:text-amber-400" />
+            </div>
+            <p className="text-2xl font-black text-amber-950 dark:text-white mt-1">{formatMoney(totalOwedAllPartners)}</p>
+            <p className="text-[10px] text-zinc-500 mt-1">{partnersWithPendingPayouts.length} parceiro(s) com saldo a liquidar</p>
+          </div>
+
+          {/* Saques Solicitados Aguardando Aprovação */}
+          <div className="bg-gradient-to-br from-emerald-900/10 to-teal-900/20 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800/60 p-4 rounded-2xl shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase text-emerald-700 dark:text-emerald-400">Saques Solicitados</span>
+              <ArrowDownToLine size={18} className="text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <p className="text-2xl font-black text-emerald-950 dark:text-white mt-1">{formatMoney(pendingWithdrawalsTotal)}</p>
+            <p className="text-[10px] text-zinc-500 mt-1">{pendingWithdrawalsCount} solicitação(ões) pendente(s)</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Painel Unificado de Liquidação Rápida em Lote (Geral / Por Cidade) */}
+      {pagarTodosParceiros && (
+        <div className="bg-gradient-to-r from-purple-900/10 via-indigo-900/10 to-purple-900/5 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-zinc-900 border border-purple-200 dark:border-purple-800/60 p-5 rounded-3xl shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 px-2 py-0.5 rounded-md">
+                ⚡ Liquidação Direta em Lote (Asaas Pix)
+              </span>
+              {selectedCityToPay !== 'ALL' && (
+                <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950/80 px-2 py-0.5 rounded-md">
+                  🏙️ Praça: {selectedCityToPay}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-2xl font-black text-zinc-900 dark:text-white">
+                {formatMoney(currentCityOwedTotal)}
+              </span>
+              <span className="text-xs text-zinc-500 font-medium">
+                a quitar para {currentCityPartners.length} parceiro(s) {selectedCityToPay !== 'ALL' ? `em ${selectedCityToPay}` : 'em todas as cidades'}
+              </span>
+            </div>
+
+            <p className="text-[11px] text-zinc-500">
+              Transfere instantaneamente o saldo líquido dos pedidos entregues direto para a chave Pix dos parceiros no Asaas.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+            {/* Seletor de Cidades */}
+            <select
+              value={selectedCityToPay}
+              onChange={(e) => setSelectedCityToPay(e.target.value)}
+              className="bg-white dark:bg-zinc-900 border border-purple-300 dark:border-purple-700 text-xs font-bold text-zinc-800 dark:text-zinc-200 rounded-xl px-3 py-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+            >
+              <option value="ALL">🌐 Todas as Cidades ({formatMoney(totalOwedAllPartners)})</option>
+              {Object.values(pendingPayoutsByCity).map(c => (
+                <option key={c.cityName} value={c.cityName}>
+                  🏙️ {c.cityName} ({formatMoney(c.totalOwed)} • {c.partners.length} parc.)
+                </option>
+              ))}
+            </select>
+
+            {/* Botão de Disparo */}
+            {currentCityPartners.length > 0 ? (
+              <button
+                disabled={isPayingAll}
+                onClick={() => pagarTodosParceiros(currentCityPartners, selectedCityToPay === 'ALL' ? undefined : selectedCityToPay)}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-400 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 cursor-pointer"
+              >
+                <Zap size={16} className={isPayingAll ? 'animate-spin' : ''} />
+                {isPayingAll 
+                  ? (payAllProgress ? `⏳ Pagando ${payAllProgress.current}/${payAllProgress.total} (${payAllProgress.name})...` : 'Processando...')
+                  : (selectedCityToPay === 'ALL' 
+                      ? '⚡ Pagar Todos (Geral)' 
+                      : `⚡ Pagar Todos de ${selectedCityToPay}`)}
+              </button>
+            ) : (
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800/40 text-center">
+                ✨ Nenhum repasse pendente nesta seleção
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 3. Bloco de Configuração do Modo de Pagamento Automático */}
       <div className="bg-gradient-to-r from-purple-900 via-zinc-900 to-zinc-900 text-white rounded-3xl p-6 border border-purple-800/80 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-purple-800/60 pb-4">
           <div className="flex items-center gap-3">
@@ -193,15 +361,15 @@ export function AdminWithdrawalsSection({ showToast }: AdminWithdrawalsSectionPr
               <Zap size={22} />
             </div>
             <div>
-              <h3 className="font-extrabold text-lg">Modo de Pagamento Automático</h3>
+              <h3 className="font-extrabold text-lg">Modo de Pagamento Automático (Robô Asaas)</h3>
               <p className="text-xs text-purple-200/80">
-                Aprova e paga autonomamente as solicitações pendentes no horário configurado
+                Aprova e executa autonomamente as transferências Pix no horário diário programado
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 bg-purple-950/60 px-4 py-2 rounded-2xl border border-purple-700/50">
-            <span className="text-xs font-bold text-zinc-300">Pagamento Automático</span>
+            <span className="text-xs font-bold text-zinc-300">Automação Diária</span>
             <button
               disabled={savingSettings}
               onClick={() => handleSaveSettings({ auto_payout_enabled: !payoutSettings.auto_payout_enabled })}
@@ -254,7 +422,7 @@ export function AdminWithdrawalsSection({ showToast }: AdminWithdrawalsSectionPr
         </div>
       </div>
 
-      {/* Tabela e Filtros de Solicitações de Saque */}
+      {/* 4. Tabela e Filtros de Solicitações de Saque Individuais */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -262,7 +430,7 @@ export function AdminWithdrawalsSection({ showToast }: AdminWithdrawalsSectionPr
               <ArrowDownToLine className="text-purple-600" size={20} /> Solicitações de Saque de Parceiros
             </h3>
             <p className="text-xs text-zinc-500">
-              Aprovação manual e histórico dos saques realizados na plataforma
+              Aprovação manual 1-clique e histórico de saques realizados na plataforma
             </p>
           </div>
 
@@ -280,7 +448,7 @@ export function AdminWithdrawalsSection({ showToast }: AdminWithdrawalsSectionPr
             <button
               onClick={() => fetchRequests(activeTab)}
               disabled={loading}
-              className="p-2.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl transition"
+              className="p-2.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl transition cursor-pointer"
               title="Atualizar lista"
             >
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -298,7 +466,7 @@ export function AdminWithdrawalsSection({ showToast }: AdminWithdrawalsSectionPr
                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
             }`}
           >
-            <Clock size={13} /> Pendentes
+            <Clock size={13} /> Pendentes ({pendingWithdrawalsCount})
           </button>
           <button
             onClick={() => setActiveTab('PAGO')}
@@ -445,3 +613,4 @@ export function AdminWithdrawalsSection({ showToast }: AdminWithdrawalsSectionPr
     </div>
   );
 }
+

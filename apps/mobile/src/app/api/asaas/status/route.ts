@@ -196,6 +196,9 @@ export async function POST(request: Request) {
                    status === 'RECEIVED' || status === 'CONFIRMED' || status === 'RECEIVED_IN_CASH' ||
                    status === 'DUNNING_RECEIVED' || status === 'PAYMENT_RECEIVED' || status === 'PAYMENT_CONFIRMED';
 
+    const isRefunded = event === 'PAYMENT_REFUNDED' || event === 'PAYMENT_REFUND_IN_PROGRESS' || 
+                       event === 'PAYMENT_DELETED' || status === 'REFUNDED';
+
     if (isPaid) {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
       const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -234,9 +237,36 @@ export async function POST(request: Request) {
           }
         }
       }
+    } else if (isRefunded) {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      if (supabaseUrl && supabaseKey && (orderId || paymentId)) {
+        const supabase = getSupabaseAdmin();
+        let refundQuery = supabase.from('orders').update({
+          status: 'REFUNDED',
+          asaas_refund_status: 'REFUNDED',
+          asaas_charge_status: 'REFUNDED',
+          cancelled_at: new Date().toISOString()
+        });
+
+        if (orderId) {
+          refundQuery = refundQuery.eq('id', orderId);
+        } else if (paymentId) {
+          refundQuery = refundQuery.eq('asaas_payment_id', paymentId);
+        }
+
+        await refundQuery;
+
+        if (orderId) {
+          try {
+            await supabase.from('splits').update({ status: 'REVERSED' }).eq('order_id', orderId);
+          } catch (_e) {}
+        }
+        console.log(`↩️ Webhook Asaas: Pedido #${orderId || paymentId} atualizado para REFUNDED com sucesso!`);
+      }
     }
 
-    return NextResponse.json({ success: true, processed: isPaid });
+    return NextResponse.json({ success: true, processed: isPaid || isRefunded, event });
 
   } catch (err: any) {
     console.error("Erro no processamento do Webhook Asaas (POST):", err);
