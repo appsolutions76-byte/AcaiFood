@@ -1,51 +1,32 @@
--- ==========================================================
--- CORREÇÃO DEFINITIVA DO PIN (PGCRYPTO & EXTENSIONS SCHEMA)
--- Execute no SQL Editor do Supabase para corrigir imediatamente o erro function crypt() does not exist.
--- ==========================================================
+-- Migration: Fix PIN Validation Trigger and RPC Function
+-- Problem: check_delivery_pin RPC function omitted provided_pin in its UPDATE orders statement,
+-- causing validate_delivery_pin_trigger to throw 'Acesso negado: PIN de segurança incorreto ou ausente'
+-- even when the correct PIN was entered.
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
-CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA public;
-
--- 1. Gerador Seguro de PIN (Com search_path contendo extensions e public)
-CREATE OR REPLACE FUNCTION public.generate_delivery_pin(p_order_id UUID)
-RETURNS TEXT
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions
-AS $$
-DECLARE
-  v_raw_pin TEXT;
-  v_existing_pin TEXT;
-  v_salt TEXT;
-  v_hash TEXT;
+CREATE OR REPLACE FUNCTION public.validate_delivery_pin_trigger()
+RETURNS TRIGGER AS $$
 BEGIN
-  SELECT delivery_pin INTO v_existing_pin FROM public.orders WHERE id = p_order_id;
-  
-  IF v_existing_pin IS NOT NULL AND length(trim(v_existing_pin)) = 4 THEN
-    v_raw_pin := trim(v_existing_pin);
-  ELSE
-    v_raw_pin := (floor(random() * 9000 + 1000))::TEXT;
+  IF auth.role() = 'authenticated' AND NOT public.is_admin() THEN
+    IF NEW.status = 'RECEIVED' AND OLD.status != 'RECEIVED' THEN
+      IF NEW.provided_pin IS NULL OR (
+        (OLD.delivery_pin IS NULL OR trim(NEW.provided_pin) != trim(OLD.delivery_pin))
+        AND (OLD.pin_hash IS NULL OR crypt(trim(NEW.provided_pin), OLD.pin_hash) != OLD.pin_hash)
+      ) THEN
+        RAISE EXCEPTION 'Acesso negado: PIN de segurança incorreto ou ausente.';
+      END IF;
+    END IF;
   END IF;
-
-  BEGIN
-    v_salt := gen_salt('bf', 8);
-    v_hash := crypt(v_raw_pin, v_salt);
-  EXCEPTION WHEN OTHERS THEN
-    v_hash := NULL;
-  END;
-
-  UPDATE public.orders
-  SET pin_hash = COALESCE(v_hash, pin_hash),
-      delivery_pin = v_raw_pin,
-      pin_attempts = 0,
-      last_pin_attempt_at = NULL
-  WHERE id = p_order_id;
-
-  RETURN v_raw_pin;
+  NEW.provided_pin := NULL;
+  RETURN NEW;
 END;
-$$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 2. Validação Resiliente de PIN (Valida direto e com hash, sem erro de schema)
+DROP TRIGGER IF EXISTS check_delivery_pin ON public.orders;
+CREATE TRIGGER check_delivery_pin
+BEFORE UPDATE ON public.orders
+FOR EACH ROW
+EXECUTE FUNCTION public.validate_delivery_pin_trigger();
+
 CREATE OR REPLACE FUNCTION public.check_delivery_pin(
   p_order_id UUID,
   p_pin TEXT,
@@ -148,5 +129,3 @@ BEGIN
   END IF;
 END;
 $$;
-
-NOTIFY pgrst, 'reload schema';
