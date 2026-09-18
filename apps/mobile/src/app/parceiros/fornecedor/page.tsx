@@ -12,6 +12,7 @@ import { OrderChatModal } from "@/components/OrderChatModal";
 import { PhotoPickerModal } from "@/components/PhotoPickerModal";
 import { PartnerShareModal, StoreShareCard } from "@/components/PartnerShareModal";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
+import { PartnerDashboardLayout } from "@/components/PartnerDashboardLayout";
 import { SupportChatButton } from "@/components/SupportChatButton";
 import {
   getPrinterConfig,
@@ -369,75 +370,40 @@ export default function FornecedorDashboard() {
 
 
   return (
-    <PartnerActivationGuard roleName="Fornecedor de Frutos (B2B)">
-      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
-      <PartnerManualModal isOpen={partnerManualOpen} onClose={() => setPartnerManualOpen(false)} role="fornecedor" />
-      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 max-w-5xl mx-auto w-full">
-          <div className="flex items-center gap-3">
-            <PackageOpen className="text-emerald-600 shrink-0" />
-            <div>
-              <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Painel do Fornecedor (B2B)</h1>
-              <AsaasPartnerBadge variant="inline" />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end w-full sm:w-auto">
-            {currentUser.asaasLinked && (
-               <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-lg font-bold border border-emerald-200 dark:border-emerald-800">Asaas Ativo ✅</span>
-            )}
-            <button 
-              onClick={() => setPrinterModalOpen(true)} 
-              className="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm transition-all border border-emerald-200 dark:border-emerald-800 cursor-pointer active:scale-95"
-              title="Configurar Impressora Térmica"
-            >
-              <Printer size={13} /> Impressora
-            </button>
-            <button 
-              onClick={handleRefresh} 
-              disabled={isRefreshing}
-              className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
-              title="Atualizar dados e abrir Gestão de Pedidos"
-            >
-              <span className={isRefreshing ? "animate-spin" : ""}>🔄</span> {isRefreshing ? "Atualizando..." : "Atualizar"}
-            </button>
-            <button 
-              onClick={() => setPartnerManualOpen(true)} 
-              className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
-            >
-              <BookOpen size={13} /> Manual
-            </button>
-            <button 
-              onClick={() => setShareLandingModalOpen(true)}
-              className="text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-pink-200 dark:border-pink-800 active:scale-95 cursor-pointer"
-              title="Compartilhar apresentação e vendas do AçaíFood"
-            >
-              <Share2 size={13} /> Compartilhar
-            </button>
-            <ThemeToggle />
-            <button 
-              onClick={() => { store.logout(); router.push('/login'); }} 
-              className="text-xs sm:text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline cursor-pointer"
-            >
-              Sair
-            </button>
-          </div>
-        </div>
-      </header>
-      <PartnerShareModal 
-        isOpen={shareLandingModalOpen} 
-        onClose={() => setShareLandingModalOpen(false)} 
-        storeId={currentUser.id} 
-        storeName={currentUser.name} 
-        role="fornecedor" 
-      />
-      
-      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
-        <div className="max-w-5xl mx-auto px-4 flex gap-6 overflow-x-auto">
-          <button onClick={() => setActiveTab('geral')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'geral' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
-          <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'pedidos' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
+    <PartnerDashboardLayout
+      role="fornecedor"
+      title="Painel do Fornecedor (B2B)"
+      roleIcon={<PackageOpen className="text-emerald-500" size={24} />}
+      themeColor="emerald"
+      partnerId={currentUser.id}
+      partnerName={currentUser.name || 'Fornecedor B2B'}
+      locationText={`Bairro: ${currentUser.bairro || currentUser.cidade || 'Central'}`}
+      pixKeyInfo={currentUser.cpfCnpj || currentUser.pixKey}
+      statusLabel={isPaused ? 'Pausado (Abrir)' : 'Operando'}
+      isOnline={!isPaused}
+      onToggleStatus={handleToggleStatus}
+      isRefreshing={isRefreshing}
+      onRefresh={handleRefresh}
+      onUpdateGPS={handleUpdateGPS}
+      virtualVaultValue={(vendasHoje && vendasHoje > 0) ? vendasHoje : (emProcessamento || 0)}
+      manualRole="fornecedor"
+      shareModal={
+        <PartnerShareModal 
+          isOpen={shareLandingModalOpen} 
+          onClose={() => setShareLandingModalOpen(false)} 
+          storeId={currentUser.id} 
+          storeName={currentUser.name} 
+          role="fornecedor" 
+        />
+      }
+    >
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-2 mb-6">
+        <div className="flex gap-2 overflow-x-auto">
+          <button onClick={() => setActiveTab('geral')} className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap ${activeTab === 'geral' ? 'bg-emerald-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}>📊 Visão Geral</button>
+          <button onClick={() => setActiveTab('pedidos')} className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'pedidos' ? 'bg-emerald-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}>
             <span>🚚 Gestão de Pedidos</span>
             {fornActiveOrders.length > 0 && (
-              <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+              <span className="bg-emerald-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
                 {fornActiveOrders.length}
               </span>
             )}
@@ -445,133 +411,11 @@ export default function FornecedorDashboard() {
         </div>
       </div>
 
-      <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
-        
-        {!currentUser.asaasLinked && (
-          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center shadow-sm">
-            <h3 className="text-emerald-700 dark:text-emerald-400 font-bold text-lg mb-2">Atenção: Vendas Bloqueadas!</h3>
-            <p className="text-emerald-600 dark:text-emerald-300 text-sm mb-4">
-              Para receber os pagamentos das lojas automaticamente via PIX ou Cartão com Split, você precisa informar sua Carteira Asaas / Chave Pix.
-            </p>
-            <button 
-              onClick={handleLinkAsaas}
-              className="inline-block bg-emerald-600 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-emerald-700 transition"
-            >
-              🤝 Vincular Conta / Carteira Asaas
-            </button>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 opacity-80 mt-3">
-              📲 <strong>Dica:</strong> Se você receber um SMS do Asaas com código de verificação, não se preocupe: a sua conta AçaíFood é ativada automaticamente via API!
-            </p>
-          </div>
-        )}
-
-        {/* Card de Divulgação e Cardápio Digital Próprio */}
-        <StoreShareCard 
-          storeId={currentUser.id} 
-          storeName={currentUser.name} 
-          role="fornecedor" 
-        />
-
-        {/* Seção de Saldo e Solicitação de Saque do Parceiro */}
-        <PartnerWithdrawalSection partnerId={currentUser.id} role={currentUser.role} />
-
-        {/* Banner Cofre Virtual & Pix Automático (Sempre Visível) */}
-        <div className="bg-emerald-900 text-white p-5 rounded-2xl shadow flex justify-between items-center border border-emerald-800">
-            <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-xl font-bold">🏭 {currentUser.name}</h2>
-                  <button
-                    onClick={async () => {
-                      const newName = prompt("Digite o novo nome do seu Estabelecimento / Fornecedor:", currentUser.name);
-                      if (newName === null) return;
-                      const clean = newName.trim();
-                      if (!clean) {
-                        alert("O nome não pode ficar em branco.");
-                        return;
-                      }
-                      try {
-                        await store.updateUserName(currentUser.id, clean);
-                        alert(`✅ Nome alterado para "${clean}" com sucesso!`);
-                      } catch (err: any) {
-                        alert("Erro ao alterar nome: " + (err?.message || "Tente novamente."));
-                      }
-                    }}
-                    className="text-[11px] bg-emerald-800/90 hover:bg-emerald-700 text-emerald-200 hover:text-white px-2 py-0.5 rounded-lg border border-emerald-600 transition shadow flex items-center gap-1 active:scale-95"
-                    title="Editar nome do seu estabelecimento"
-                  >
-                    ✏️ Trocar Nome
-                  </button>
-
-                  <button
-                    onClick={handleToggleStatus}
-                    className={`text-xs font-black px-3 py-1 rounded-lg border transition shadow flex items-center gap-1 cursor-pointer active:scale-95 ${
-                      isPaused
-                        ? 'bg-red-600 hover:bg-red-700 text-white border-red-400 animate-pulse'
-                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-400'
-                    }`}
-                    title={isPaused ? "Fornecedor pausado/fechado. Clique para abrir." : "Fornecedor aberto e recebendo pedidos. Clique para pausar."}
-                  >
-                    {isPaused ? '🔴 Pausado (Abrir)' : '🟢 Operando'}
-                  </button>
-                </div>
-                <p className="text-emerald-300 text-xs mt-1">📍 Bairro: {currentUser.bairro || 'Central'}</p>
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <button 
-                    onClick={handleUpdateGPS}
-                    disabled={isUpdatingGPS}
-                    className="text-[10px] bg-emerald-800/80 hover:bg-emerald-700 disabled:bg-emerald-800/40 text-white font-bold px-2.5 py-1 rounded-lg border border-emerald-700 transition shadow flex items-center gap-1 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
-                  >
-                    {isUpdatingGPS ? '⏳ Buscando GPS...' : '📍 Atualizar GPS'}
-                  </button>
-                  <button 
-                    onClick={async () => {
-                      const currentPix = (currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key || '').replace(/\D/g, '').trim();
-                      const newPix = prompt("Conforme regra do Banco Central e Asaas, sua Chave Pix deve ser o CPF ou CNPJ do Titular da Conta:\n\nInforme seu CPF ou CNPJ (somente números):", currentPix);
-                      if (newPix === null) return;
-                      const cleanPix = newPix.replace(/\D/g, '').trim();
-                      if (!cleanPix || (cleanPix.length !== 11 && cleanPix.length !== 14)) {
-                        alert("A Chave Pix obrigatória deve ter 11 dígitos (CPF) ou 14 dígitos (CNPJ).");
-                        return;
-                      }
-                      try {
-                        await store.updateUserPixKey(currentUser.id, cleanPix);
-                        alert("✅ Sua Chave Pix CPF/CNPJ foi atualizada com sucesso!");
-                      } catch (err: any) {
-                        alert("Erro ao salvar Chave Pix: " + err.message);
-                      }
-                    }}
-                    className="text-[10px] bg-emerald-800/90 hover:bg-emerald-700 text-emerald-200 hover:text-white font-bold px-2.5 py-1 rounded-lg border border-emerald-600 transition shadow flex items-center gap-1 active:scale-95"
-                    title="Chave Pix vinculada ao seu CPF/CNPJ"
-                  >
-                    🔑 PIX (CPF): {(currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key) ? (currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key) : 'Cadastrar'} 🔒
-                  </button>
-                </div>
-            </div>
-            <div className="text-right flex flex-col items-end">
-                <p className="text-xs text-emerald-200 font-bold">Cofre Virtual (Disponível p/ Saque)</p>
-                <p className="text-2xl font-black text-green-400">{formatMoney(vendasHoje)}</p>
-                {emProcessamento > 0 && (
-                  <p className="text-[11px] text-amber-300 font-bold mt-1 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/80">
-                    ⏳ Em Processamento: {formatMoney(emProcessamento)}
-                  </p>
-                )}
-                <p className="text-[10px] text-emerald-300 mt-1 font-bold">🗓️ Pix Automático: às {rates.payout_time || '22:00'}</p>
-                {(vendasHoje > 0 || emProcessamento > 0) && saquesHoje < 2 && (
-                  <button 
-                    onClick={handleResgatarPix}
-                    disabled={isWithdrawing}
-                    className={`mt-2 text-xs ${isWithdrawing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1`}
-                  >
-                    {isWithdrawing ? '⏳ Transferindo...' : `💸 Saque Instantâneo Pix (${saquesHoje + 1}/2)`}
-                  </button>
-                )}
-                {saquesHoje >= 2 && (vendasHoje > 0 || emProcessamento > 0) && (
-                  <p className="text-[10px] text-amber-300 mt-1.5 font-bold bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/60">
-                    ⚠️ Limite diário de 2 saques atingido (retorna amanhã)
-                  </p>
-                )}
-            </div>
-        </div>
+      <StoreShareCard 
+        storeId={currentUser.id} 
+        storeName={currentUser.name} 
+        role="fornecedor" 
+      />
 
         {activeTab === 'geral' && (
           <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
@@ -1092,8 +936,6 @@ export default function FornecedorDashboard() {
         </div>
         )}
 
-      </main>
-
       <MapModal 
         isOpen={mapModal.open} 
         onClose={() => setMapModal(prev => ({ ...prev, open: false }))} 
@@ -1304,7 +1146,6 @@ export default function FornecedorDashboard() {
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
       <AsaasPartnerBadge variant="footer" className="mt-8 mb-4" />
-    </div>
-    </PartnerActivationGuard>
+    </PartnerDashboardLayout>
   );
 }

@@ -24,6 +24,7 @@ import {
 import { useAppStore, haversineKm, getRatesForCity, generateUUID, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
+import { PartnerDashboardLayout } from "@/components/PartnerDashboardLayout";
 import { supabase } from "@/lib/supabase";
 import { PixModal, PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -918,82 +919,62 @@ export default function BatedeiraDashboard() {
 
 
   return (
-    <PartnerActivationGuard roleName="Batedeira / Loja">
-      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
-      <PartnerManualModal isOpen={partnerManualOpen} onClose={() => setPartnerManualOpen(false)} role="batedeira" />
-      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 max-w-5xl mx-auto w-full">
-          <div className="flex items-center gap-3">
-            <Store className="text-purple-600 shrink-0" />
-            <div>
-              <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Painel da Loja</h1>
-              <AsaasPartnerBadge variant="inline" />
-            </div>
+    <PartnerDashboardLayout
+      role="loja"
+      title="Painel da Loja"
+      roleIcon={<Store size={24} />}
+      themeColor="purple"
+      partnerId={currentUser.id}
+      partnerName={currentUser.name}
+      locationText={currentUser.bairro ? `Bairro: ${currentUser.bairro}` : (currentUser.cidade ? `Cidade: ${currentUser.cidade}` : undefined)}
+      pixKeyInfo={currentUser.cpfCnpj || currentUser.pixKey}
+      statusLabel={isPaused ? 'Loja Fechada' : 'Loja Aberta'}
+      isOnline={!isPaused}
+      onToggleStatus={handleToggleStatus}
+      isRefreshing={isRefreshing}
+      onRefresh={handleRefresh}
+      onUpdateGPS={handleUpdateGPS}
+      virtualVaultValue={vendasHoje}
+      manualRole="batedeira"
+      shareModal={
+        <PartnerShareModal 
+          isOpen={shareLandingModalOpen} 
+          onClose={() => setShareLandingModalOpen(false)} 
+          storeId={currentUser.id} 
+          storeName={currentUser.name} 
+          role="loja" 
+        />
+      }
+    >
+      <div className="space-y-6">
+        {/* Abas e Atalhos */}
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-2 shadow-md flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex gap-2 overflow-x-auto">
+            <button onClick={() => setActiveTab('geral')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'geral' ? 'bg-purple-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>📊 Visão Geral</button>
+            <button onClick={() => setActiveTab('abastecimento')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'abastecimento' ? 'bg-purple-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>🛒 Abastecimento B2B</button>
+            <button onClick={() => setActiveTab('pedidos')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'pedidos' ? 'bg-purple-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>📦 Histórico e Pedidos</button>
           </div>
-          <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end w-full sm:w-auto">
-            {currentUser.asaasLinked && (
-               <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-lg font-bold border border-purple-200 dark:border-purple-800">Asaas Ativo ✅</span>
-            )}
+          <div className="flex items-center gap-2">
             <button 
               onClick={() => setPrinterModalOpen(true)} 
-              className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm transition-all border border-purple-200 dark:border-purple-800 cursor-pointer active:scale-95"
+              className="text-xs bg-purple-900/40 hover:bg-purple-900/70 text-purple-300 border border-purple-800 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
               title="Configurar Impressora Térmica"
             >
-              <Printer size={13} /> Impressora
-            </button>
-            <button 
-              onClick={handleRefresh} 
-              disabled={isRefreshing}
-              className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
-              title="Atualizar dados e pedidos da loja"
-            >
-              <span className={isRefreshing ? "animate-spin inline-block" : "inline-block"}>🔄</span> {isRefreshing ? "Atualizando..." : "Atualizar"}
-            </button>
-            <button 
-              onClick={() => setPartnerManualOpen(true)} 
-              className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
-            >
-              <BookOpen size={13} /> Manual
+              <Printer size={14} /> Impressora Térmica
             </button>
             <button 
               onClick={() => setShareLandingModalOpen(true)}
-              className="text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-pink-200 dark:border-pink-800 active:scale-95 cursor-pointer"
-              title="Compartilhar apresentação e vendas do AçaíFood"
+              className="text-xs bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 border border-pink-900/50 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
             >
-              <Share2 size={13} /> Compartilhar
-            </button>
-            <ThemeToggle />
-            <button 
-              onClick={() => { store.logout(); router.push('/login'); }} 
-              className="text-xs sm:text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline cursor-pointer"
-            >
-              Sair
+              <Share2 size={14} /> Compartilhar
             </button>
           </div>
         </div>
-      </header>
-      <PartnerShareModal 
-        isOpen={shareLandingModalOpen} 
-        onClose={() => setShareLandingModalOpen(false)} 
-        storeId={currentUser.id} 
-        storeName={currentUser.name} 
-        role="loja" 
-      />
-      
-      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
-        <div className="max-w-5xl mx-auto px-4 flex gap-6 overflow-x-auto">
-          <button onClick={() => setActiveTab('geral')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'geral' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
-          <button onClick={() => setActiveTab('abastecimento')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'abastecimento' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Abastecimento B2B</button>
-          <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📦 Histórico e Pedidos</button>
-        </div>
-      </div>
-
-      <main className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
 
         {!currentUser.asaasLinked && (
-          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl p-6 text-center shadow-sm">
-            <h3 className="text-purple-700 dark:text-purple-400 font-bold text-lg mb-2">Atenção: Vendas Bloqueadas!</h3>
-            <p className="text-purple-600 dark:text-purple-300 text-sm mb-4">
+          <div className="bg-purple-950/30 border border-purple-800/60 rounded-2xl p-6 text-center shadow-sm">
+            <h3 className="text-purple-300 font-bold text-lg mb-2">Atenção: Vendas Bloqueadas!</h3>
+            <p className="text-purple-200/80 text-sm mb-4">
               Para receber os repasses automáticos dos clientes via PIX ou Cartão com Split, informe ou vincule sua Carteira Asaas / Chave Pix.
             </p>
             <button 
@@ -1002,9 +983,6 @@ export default function BatedeiraDashboard() {
             >
               🤝 Vincular Conta / Carteira Asaas
             </button>
-            <p className="text-[11px] text-purple-500 dark:text-purple-400 opacity-80 mt-3">
-              📲 <strong>Dica:</strong> Se você receber um SMS do Asaas com código de verificação, não se preocupe: a sua conta AçaíFood é ativada automaticamente via API!
-            </p>
           </div>
         )}
         
@@ -1014,102 +992,6 @@ export default function BatedeiraDashboard() {
           storeName={currentUser.name} 
           role="loja" 
         />
-
-        {/* Seção de Saldo e Solicitação de Saque do Parceiro */}
-        <PartnerWithdrawalSection partnerId={currentUser.id} role={currentUser.role} />
-
-        {/* Banner Cofre Virtual & Pix Automático (Sempre Visível) */}
-        <div className="bg-purple-900 text-white p-5 rounded-2xl shadow flex justify-between items-center border border-purple-800">
-            <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-xl font-bold">🏪 {currentUser.name}</h2>
-                  <button
-                    onClick={async () => {
-                      const newName = prompt("Digite o novo nome da sua Loja / Batedeira:", currentUser.name);
-                      if (newName === null) return;
-                      const clean = newName.trim();
-                      if (!clean) {
-                        alert("O nome da loja não pode ficar em branco.");
-                        return;
-                      }
-                      try {
-                        await store.updateUserName(currentUser.id, clean);
-                        alert(`✅ Nome da loja alterado para "${clean}" com sucesso!`);
-                      } catch (err: any) {
-                        alert("Erro ao alterar nome da loja: " + (err?.message || "Tente novamente."));
-                      }
-                    }}
-                    className="text-[11px] bg-purple-800/90 hover:bg-purple-700 text-purple-200 hover:text-white px-2 py-0.5 rounded-lg border border-purple-600 transition shadow flex items-center gap-1 active:scale-95"
-                    title="Editar nome do seu estabelecimento"
-                  >
-                    ✏️ Trocar Nome
-                  </button>
-
-                  <button
-                    onClick={handleToggleStatus}
-                    className={`text-xs font-black px-3 py-1 rounded-lg border transition shadow flex items-center gap-1 cursor-pointer active:scale-95 ${
-                      isPaused
-                        ? 'bg-red-600 hover:bg-red-700 text-white border-red-400 animate-pulse'
-                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-400'
-                    }`}
-                    title={isPaused ? "Sua loja está fechada. Clique para abrir e receber pedidos." : "Sua loja está aberta recebendo pedidos. Clique para pausar/fechar."}
-                  >
-                    {isPaused ? '🔴 Loja Fechada (Abrir)' : '🟢 Loja Aberta'}
-                  </button>
-                </div>
-                <p className="text-purple-300 text-xs mt-1">📍 Bairro: {currentUser.bairro || 'Central'}</p>
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <button 
-                    onClick={handleUpdateGPS}
-                    disabled={isUpdatingGPS}
-                    className="text-[10px] bg-purple-800/80 hover:bg-purple-700 disabled:bg-purple-800/40 text-white font-bold px-2.5 py-1 rounded-lg border border-purple-700 transition shadow flex items-center gap-1 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed"
-                  >
-                    {isUpdatingGPS ? '⏳ Buscando GPS...' : '📍 Atualizar GPS'}
-                  </button>
-                  <button 
-                    onClick={async () => {
-                      const currentPix = (currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key || '').replace(/\D/g, '').trim();
-                      const newPix = prompt("Conforme regra do Banco Central e Asaas, sua Chave Pix deve ser o CPF ou CNPJ do Titular da Conta:\n\nInforme seu CPF ou CNPJ (somente números):", currentPix);
-                      if (newPix === null) return;
-                      const cleanPix = newPix.replace(/\D/g, '').trim();
-                      if (!cleanPix || (cleanPix.length !== 11 && cleanPix.length !== 14)) {
-                        alert("A Chave Pix obrigatória deve ter 11 dígitos (CPF) ou 14 dígitos (CNPJ).");
-                        return;
-                      }
-                      try {
-                        await store.updateUserPixKey(currentUser.id, cleanPix);
-                        alert("✅ Sua Chave Pix CPF/CNPJ foi atualizada com sucesso!");
-                      } catch (err: any) {
-                        alert("Erro ao salvar Chave Pix: " + err.message);
-                      }
-                    }}
-                    className="text-[10px] bg-purple-800/90 hover:bg-purple-700 text-purple-200 hover:text-white font-bold px-2.5 py-1 rounded-lg border border-purple-600 transition shadow flex items-center gap-1 active:scale-95"
-                    title="Chave Pix vinculada ao seu CPF/CNPJ"
-                  >
-                    🔑 PIX (CPF): {(currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key) ? (currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key) : 'Cadastrar'} 🔒
-                  </button>
-                </div>
-            </div>
-            <div className="text-right flex flex-col items-end">
-                <p className="text-xs text-purple-200">Cofre Virtual (A Receber)</p>
-                <p className="text-2xl font-black text-green-400">{formatMoney(vendasHoje)}</p>
-                <p className="text-[10px] text-purple-300 mt-1 font-bold">🗓️ Pix Automático: às {rates.payout_time || '22:00'}</p>
-                {vendasHoje > 0 && saquesHoje < 2 && (
-                  <button 
-                    onClick={handleResgatarPix}
-                    disabled={isWithdrawing}
-                    className={`mt-2 text-xs ${isWithdrawing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1`}
-                  >
-                    {isWithdrawing ? '⏳ Transferindo...' : `💸 Saque Instantâneo Pix (${saquesHoje + 1}/2)`}
-                  </button>
-                )}
-                {saquesHoje >= 2 && vendasHoje > 0 && (
-                  <p className="text-[10px] text-amber-300 mt-1.5 font-bold bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/60">
-                    ⚠️ Limite diário de 2 saques atingido (retorna amanhã)
-                  </p>
-                )}
-            </div>
-        </div>
 
         {/* Alerta de Pedidos Ativos da Batedeira (Sempre Visível no Topo) */}
         {batedeiraActiveOrders.length > 0 && (
@@ -2237,7 +2119,6 @@ export default function BatedeiraDashboard() {
             </div>
           </div>
         )}
-      </main>
 
       <MapModal 
         isOpen={mapModal.open} 
@@ -2967,8 +2848,8 @@ export default function BatedeiraDashboard() {
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
       <AsaasPartnerBadge variant="footer" className="mt-8 mb-4" />
-    </div>
-    </PartnerActivationGuard>
+      </div>
+    </PartnerDashboardLayout>
   );
 }
 

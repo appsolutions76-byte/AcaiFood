@@ -15,6 +15,7 @@ import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { initAudioUnlock, playDeliveryAlertTone } from "@/lib/soundAlerts";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
+import { PartnerDashboardLayout } from "@/components/PartnerDashboardLayout";
 
 const emptySubscribe = () => () => {};
 
@@ -233,71 +234,44 @@ export default function CaminhaoDashboard() {
 
 
   return (
-    <PartnerActivationGuard roleName="Motorista de Caminhão / Caçamba">
-      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-24">
-      <PartnerManualModal isOpen={partnerManualOpen} onClose={() => setPartnerManualOpen(false)} role="caminhao" />
-      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 max-w-4xl mx-auto w-full">
-          <div className="flex items-center gap-3">
-            <Truck className="text-blue-600 shrink-0" />
-            <div>
-              <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Fretes Pesados (B2B / Coleta)</h1>
-              <AsaasPartnerBadge variant="inline" />
-            </div>
+    <PartnerDashboardLayout
+      role="caminhao"
+      title="Fretes Pesados (B2B / Coleta)"
+      roleIcon={<Truck size={24} />}
+      themeColor="amber"
+      partnerId={currentUser.id}
+      partnerName={`${currentUser.name} (${currentUser.veiculo || 'Caminhão'})`}
+      locationText={currentUser.bairro ? `Base: ${currentUser.bairro}` : undefined}
+      pixKeyInfo={currentUser.cpfCnpj || currentUser.pixKey}
+      statusLabel={isPaused ? 'Offline (Ficar Online)' : 'Online (Recebendo Fretes)'}
+      isOnline={!isPaused}
+      onToggleStatus={handleToggleStatus}
+      isRefreshing={isRefreshing}
+      onRefresh={handleRefresh}
+      virtualVaultValue={ganhosHoje}
+      manualRole="caminhao"
+      shareModal={<ShareLandingModal isOpen={shareLandingModalOpen} onClose={() => setShareLandingModalOpen(false)} />}
+    >
+      <div className="space-y-6">
+        {/* Abas do Caminhoneiro */}
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-2 shadow-md flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex gap-2 overflow-x-auto">
+            <button onClick={() => setActiveTab('geral')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'geral' ? 'bg-amber-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>📊 Visão Geral</button>
+            <button onClick={() => setActiveTab('radar')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'radar' ? 'bg-amber-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>📡 Radar de Fretes ({corridasDisponiveis.length})</button>
+            <button onClick={() => setActiveTab('historico')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'historico' ? 'bg-amber-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>🚚 Meus Fretes ({minhasCorridas.length})</button>
           </div>
-          <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end w-full sm:w-auto">
-            {currentUser?.asaasLinked && (
-               <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-lg font-bold border border-emerald-200 dark:border-emerald-800">Asaas Ativo ✅</span>
-            )}
-            <button 
-              onClick={handleRefresh} 
-              disabled={isRefreshing}
-              className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
-              title="Atualizar dados e fretes"
-            >
-              <span className={isRefreshing ? "animate-spin inline-block" : "inline-block"}>🔄</span> {isRefreshing ? "Atualizando..." : "Atualizar"}
-            </button>
-            <button 
-              onClick={() => setPartnerManualOpen(true)} 
-              className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
-            >
-              <BookOpen size={13} /> Manual
-            </button>
-            <button 
-              onClick={() => setShareLandingModalOpen(true)}
-              className="text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-pink-200 dark:border-pink-800 active:scale-95 cursor-pointer"
-              title="Compartilhar apresentação e vendas do AçaíFood"
-            >
-              <Share2 size={13} /> Compartilhar
-            </button>
-            <ThemeToggle />
-            <button 
-              onClick={() => { store.logout(); router.push('/login'); }} 
-              className="text-xs sm:text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline cursor-pointer"
-            >
-              Sair
-            </button>
-          </div>
+          <button 
+            onClick={() => setShareLandingModalOpen(true)}
+            className="text-xs bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 border border-pink-900/50 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+          >
+            <Share2 size={14} /> Compartilhar
+          </button>
         </div>
-      </header>
-      <ShareLandingModal isOpen={shareLandingModalOpen} onClose={() => setShareLandingModalOpen(false)} />
 
-      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6">
-        <div className="max-w-4xl mx-auto px-4 flex gap-6 overflow-x-auto">
-          <button onClick={() => setActiveTab('geral')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'geral' ? 'border-blue-600 text-blue-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
-          <button onClick={() => setActiveTab('radar')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'radar' ? 'border-blue-600 text-blue-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📡 Radar de Fretes</button>
-          <button onClick={() => setActiveTab('historico')} className={`py-4 px-2 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'historico' ? 'border-blue-600 text-blue-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🚚 Meus Fretes</button>
-        </div>
-      </div>
-
-      <main className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
-        {currentUser?.id && (
-          <PartnerWithdrawalSection partnerId={currentUser.id} role={currentUser.role} />
-        )}
         {!currentUser?.asaasLinked && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 text-center shadow-sm">
-            <h3 className="text-amber-700 dark:text-amber-400 font-bold text-lg mb-2">Atenção: Repasses Pendentes!</h3>
-            <p className="text-amber-600 dark:text-amber-300 text-sm mb-4">
+          <div className="bg-amber-950/30 border border-amber-800/60 rounded-2xl p-6 text-center shadow-sm">
+            <h3 className="text-amber-300 font-bold text-lg mb-2">Atenção: Repasses Pendentes!</h3>
+            <p className="text-amber-200/80 text-sm mb-4">
               Para receber os pagamentos dos seus fretes diretamente no seu PIX ou subconta Asaas, vincule sua Chave PIX / Carteira Asaas.
             </p>
             <button 
@@ -306,94 +280,7 @@ export default function CaminhaoDashboard() {
             >
               🤝 Vincular Subconta / Carteira Asaas
             </button>
-            <p className="text-[11px] text-amber-600 dark:text-amber-400 opacity-80 mt-3">
-              📲 <strong>Dica:</strong> Se você receber um SMS do Asaas com código de verificação, não se preocupe: a sua conta AçaíFood é ativada automaticamente via API!
-            </p>
           </div>
-        )}
-        {activeTab === 'geral' && (
-        <div className="bg-blue-950 text-white p-5 rounded-xl shadow flex justify-between items-center border border-blue-900 animate-in fade-in zoom-in-95 duration-300">
-            <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-xl font-bold">{currentUser.icon} {currentUser.name} ({currentUser.veiculo})</h2>
-                  <button
-                    onClick={async () => {
-                      const newName = prompt("Digite seu novo nome / identificação do caminhão:", currentUser.name);
-                      if (newName === null) return;
-                      const clean = newName.trim();
-                      if (!clean) {
-                        alert("O nome não pode ficar em branco.");
-                        return;
-                      }
-                      try {
-                        await store.updateUserName(currentUser.id, clean);
-                        alert(`✅ Nome alterado para "${clean}" com sucesso!`);
-                      } catch (err: any) {
-                        alert("Erro ao alterar nome: " + (err?.message || "Tente novamente."));
-                      }
-                    }}
-                    className="text-[11px] bg-blue-900 hover:bg-blue-800 text-blue-200 hover:text-white px-2 py-0.5 rounded-lg border border-blue-700 transition shadow flex items-center gap-1 active:scale-95"
-                    title="Editar seu nome"
-                  >
-                    ✏️ Trocar Nome
-                  </button>
-                </div>
-                <p className="text-blue-300 text-xs mt-1">📍 Base: {currentUser.bairro}</p>
-                <div className="mt-2">
-                  <button 
-                    onClick={async () => {
-                      const currentPix = (currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key || '').replace(/\D/g, '').trim();
-                      const newPix = prompt("Conforme regra do Banco Central e Asaas, sua Chave Pix deve ser o CPF ou CNPJ do Titular da Conta:\n\nInforme seu CPF ou CNPJ (somente números):", currentPix);
-                      if (newPix === null) return;
-                      const cleanPix = newPix.replace(/\D/g, '').trim();
-                      if (!cleanPix || (cleanPix.length !== 11 && cleanPix.length !== 14)) {
-                        alert("A Chave Pix obrigatória deve ter 11 dígitos (CPF) ou 14 dígitos (CNPJ).");
-                        return;
-                      }
-                      try {
-                        await store.updateUserPixKey(currentUser.id, cleanPix);
-                        alert("✅ Sua Chave Pix CPF/CNPJ foi atualizada com sucesso!");
-                      } catch (err: any) {
-                        alert("Erro ao salvar Chave Pix: " + err.message);
-                      }
-                    }}
-                    className="text-[10px] bg-blue-900 hover:bg-blue-800 text-blue-200 hover:text-white font-bold px-2.5 py-1 rounded-lg border border-blue-700 transition shadow flex items-center gap-1 active:scale-95"
-                    title="Chave Pix vinculada ao seu CPF/CNPJ"
-                  >
-                    🔑 PIX (CPF): {(currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key) ? (currentUser.cpfCnpj || (currentUser as any).cpf_cnpj || currentUser.pixKey || (currentUser as any).pix_key) : 'Cadastrar'} 🔒
-                  </button>
-                </div>
-            </div>
-            <div className="text-right flex flex-col items-end">
-                <p className="text-sm text-blue-300">Cofre Virtual (A Receber)</p>
-                <p className="text-2xl font-bold text-green-400">{formatMoney(ganhosHoje)}</p>
-                <p className="text-[10px] text-blue-300 mt-1">🗓️ Pix Automático: às {rates.payout_time || '22:00'}</p>
-                {ganhosHoje > 0 && saquesHoje < 2 && (
-                  <button 
-                    onClick={handleResgatarPix}
-                    disabled={isWithdrawing}
-                    className={`mt-2 text-xs ${isWithdrawing ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1`}
-                  >
-                    {isWithdrawing ? '⏳ Transferindo...' : `💸 Saque Instantâneo Pix (${saquesHoje + 1}/2)`}
-                  </button>
-                )}
-                {saquesHoje >= 2 && ganhosHoje > 0 && (
-                  <p className="text-[10px] text-amber-300 mt-1.5 font-bold bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/60">
-                    ⚠️ Limite diário de 2 saques atingido (retorna amanhã)
-                  </p>
-                )}
-                <button 
-                  onClick={handleToggleStatus} 
-                  className={`mt-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition border shadow-sm cursor-pointer active:scale-95 ${
-                    isPaused 
-                      ? 'bg-red-500 hover:bg-red-600 text-white border-red-400 animate-pulse' 
-                      : 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-400'
-                  }`}
-                >
-                  {isPaused ? '🔴 Offline (Ficar Online)' : '🟢 Online (Recebendo Fretes)'}
-                </button>
-            </div>
-        </div>
         )}
 
         {activeTab === 'radar' && (
@@ -666,7 +553,6 @@ export default function CaminhaoDashboard() {
             </div>
         </div>
         )}
-      </main>
 
       <MapModal 
         isOpen={mapModal.open} 
@@ -693,7 +579,7 @@ export default function CaminhaoDashboard() {
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
       <AsaasPartnerBadge variant="footer" className="mt-8 mb-4" />
-    </div>
-    </PartnerActivationGuard>
+      </div>
+    </PartnerDashboardLayout>
   );
 }
