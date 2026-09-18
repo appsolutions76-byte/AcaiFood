@@ -29,6 +29,13 @@ export interface PricingResult {
   storeDeliveryFee: number; // freteLoja (subsídio da loja)
   platformSalesFee: number;
   platformDeliveryFee: number;
+  // Asaas fee split breakdown
+  asaasFeeSplitActors: number;
+  asaasPixFeeFixed: number;
+  asaasFeeSeller: number;
+  asaasFeeDriver: number;
+  asaasFeePlatform: number;
+
   netSellerPayout: number;
   netDriverPayout: number;
   buyerTotal: number;
@@ -96,6 +103,25 @@ export async function calculateOrderPricing(
   // Buscar taxas mescladas (global + cidade)
   const rates = await getMergedRatesForCity(input.cityName, supabase);
 
+  // Configuracao de rateio do Asaas (1, 2 ou 3 atores)
+  const rawActors = Number(rates.asaas_fee_split_actors ?? rates.asaas_actors ?? 1);
+  const asaasFeeSplitActors = [1, 2, 3].includes(rawActors) ? rawActors : 1;
+  const asaasPixFeeFixed = Math.max(0, Number(rates.asaas_pix_fee_fixed ?? 0.99));
+
+  let asaasFeeSeller = 0;
+  let asaasFeeDriver = 0;
+  let asaasFeePlatform = asaasPixFeeFixed;
+
+  if (asaasFeeSplitActors === 2) {
+    asaasFeeSeller = Number((asaasPixFeeFixed / 2).toFixed(2));
+    asaasFeeDriver = 0;
+    asaasFeePlatform = Number((asaasPixFeeFixed - asaasFeeSeller).toFixed(2));
+  } else if (asaasFeeSplitActors === 3) {
+    asaasFeeSeller = Number((asaasPixFeeFixed / 3).toFixed(2));
+    asaasFeeDriver = Number((asaasPixFeeFixed / 3).toFixed(2));
+    asaasFeePlatform = Number((asaasPixFeeFixed - asaasFeeSeller - asaasFeeDriver).toFixed(2));
+  }
+
   // Buscar subsídio da loja se storefrontId fornecido e freteSubsidyPct não informado
   let subsidyPct = Number(input.freteSubsidyPct ?? 0);
   if (input.sellerStorefrontId && input.freteSubsidyPct === undefined) {
@@ -155,14 +181,15 @@ export async function calculateOrderPricing(
   const storeDeliveryFee = Number((deliveryTotal * (subsidyPct / 100)).toFixed(2));
   const clientDeliveryFee = Math.max(0, Number((deliveryTotal - storeDeliveryFee).toFixed(2)));
 
-  // Taxa de venda e repasse do vendedor
+  // Taxa de venda e repasse do vendedor (descontando fatia do Asaas se aplicável)
   const platformSalesFee = Number((productsSubtotal * (platSalesFeePct / 100)).toFixed(2));
-  const rawSellerVal = productsSubtotal * (1 - platSalesFeePct / 100) - storeDeliveryFee;
+  const rawSellerVal = productsSubtotal * (1 - platSalesFeePct / 100) - storeDeliveryFee - asaasFeeSeller;
   const netSellerPayout = Number(Math.max(0, rawSellerVal).toFixed(2));
 
-  // Taxa de entrega e repasse do motorista
+  // Taxa de entrega e repasse do motorista (descontando fatia do Asaas se aplicável)
   const platformDeliveryFee = Number((deliveryTotal * (platDeliveryFeePct / 100)).toFixed(2));
-  const netDriverPayout = Number(Math.max(0, deliveryTotal * (1 - platDeliveryFeePct / 100)).toFixed(2));
+  const rawDriverVal = deliveryTotal * (1 - platDeliveryFeePct / 100) - asaasFeeDriver;
+  const netDriverPayout = Number(Math.max(0, rawDriverVal).toFixed(2));
 
   // Total final cobrado do comprador
   const buyerTotal = Number((productsSubtotal + clientDeliveryFee).toFixed(2));
@@ -184,8 +211,16 @@ export async function calculateOrderPricing(
     storeDeliveryFee,
     platformSalesFee,
     platformDeliveryFee,
+
+    asaasFeeSplitActors,
+    asaasPixFeeFixed,
+    asaasFeeSeller,
+    asaasFeeDriver,
+    asaasFeePlatform,
+
     netSellerPayout,
     netDriverPayout,
     buyerTotal
   };
 }
+

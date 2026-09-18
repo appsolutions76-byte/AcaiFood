@@ -8,7 +8,7 @@ import {
   Clock, CheckCircle, X, Eye, ArrowUpRight, Check, FileSpreadsheet,
   FileText, Layers, Phone, Navigation, ShieldCheck, DollarSign, Share2
 } from "lucide-react";
-import { useAppStore, Order, City, getRatesForCity, calculateOrderFreight, calculateOrderTaxes } from "@/store/useAppStore";
+import { useAppStore, Order, City, CityRates, getRatesForCity, calculateOrderFreight, calculateOrderTaxes } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -32,23 +32,28 @@ class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, 
   }
 
   componentDidCatch(error: any, errorInfo: any) {
-    console.error("Admin Dashboard caught error:", error, errorInfo);
+    console.error("Admin Dashboard Crash Interceptado:", error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 rounded-2xl shadow-xl max-w-lg w-full">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Painel de Administração</h2>
-            <p className="text-xs text-red-500 font-mono bg-red-50 dark:bg-red-950/40 p-3 rounded-lg border border-red-200 mb-6 text-left overflow-auto max-h-32 break-all">
-              {this.state.error?.toString() || 'Erro na renderização dos dados'}
+        <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 text-center">
+          <div className="bg-red-950/80 border border-red-800 rounded-2xl p-8 max-w-lg shadow-2xl">
+            <h1 className="text-2xl font-bold text-red-400 mb-3 flex items-center justify-center gap-2">
+              <span>⚠️</span> Painel Administrativo Recorreu a Falha Restrita
+            </h1>
+            <p className="text-zinc-300 text-sm mb-6 leading-relaxed">
+              Ocorreu uma exceção não capturada no renderizador do painel. A integridade dos dados permaneceu intacta.
             </p>
-            <button 
-              onClick={() => { this.setState({ hasError: false }); window.location.reload(); }} 
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-3 rounded-xl transition w-full shadow-lg"
+            <div className="bg-black/50 p-4 rounded-xl text-left text-xs text-red-300 font-mono mb-6 overflow-x-auto max-h-40 border border-red-900/50">
+              {String(this.state.error?.message || this.state.error)}
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg"
             >
-              🔄 Recarregar Painel
+              🔄 Recarregar Painel Admin
             </button>
           </div>
         </div>
@@ -58,16 +63,24 @@ class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, 
   }
 }
 
+export default function AdminPageWrapper() {
+  return (
+    <AdminErrorBoundary>
+      <AdminDashboardContent />
+    </AdminErrorBoundary>
+  );
+}
+
 function AdminDashboardContent() {
-  // 1. Instanciar Store e Router
-  const store = useAppStore();
   const router = useRouter();
+  const isHydrated = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const store = useAppStore();
 
   // 2. TODOS os Hooks de Estado (useState) DEVEM ficar no topo sem retornos antecipados
   const orders = store.orders || [];
   const users = store.users || {};
   const cities = store.cities || [];
-  const rates = store.rates || {
+  const rates: CityRates = store.rates || {
     b2c_plat: 0, b2c_km: 0, b2c_mot_plat: 0,
     b2b_plat: 0, b2b_km: 0, b2b_mot_plat: 0,
     col_plat: 0, col_km: 0, col_mot_plat: 0, col_valor: 0,
@@ -77,7 +90,9 @@ function AdminDashboardContent() {
     transporter_payment_mode: 'KM',
     transporter_fixed_fee: 0,
     ecopoint_payment_mode: 'KM',
-    ecopoint_fixed_fee: 0
+    ecopoint_fixed_fee: 0,
+    asaas_fee_split_actors: 1,
+    asaas_pix_fee_fixed: 0.99
   };
 
   const [mapModal, setMapModal] = useState<{
@@ -87,7 +102,7 @@ function AdminDashboardContent() {
     motorista?: MapPoint | null;
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
-  const [localRates, setLocalRates] = useState(() => rates);
+  const [localRates, setLocalRates] = useState<CityRates>(() => rates);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques'>('dashboard');
   const [activationConfig, setActivationConfig] = useState<{
     activationFee: number;
@@ -4202,6 +4217,74 @@ function AdminDashboardContent() {
                   </div>
               </div>
               <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>💳</span> Rateio de Custos das Taxas do Asaas (1, 2 ou 3 Atores)</h4>
+                  <p className="text-xs text-zinc-500 mb-3">Escolha quantos atores dividem a taxa de intermediação do Asaas (ex: R$ 0,99 por Pix) a cada pedido.</p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setLocalRates({ ...localRates, asaas_fee_split_actors: 1 })}
+                      className={`p-3 rounded-xl border text-left flex flex-col justify-between transition ${
+                        (localRates?.asaas_fee_split_actors ?? 1) === 1
+                          ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/30 text-purple-900 dark:text-purple-100 font-bold ring-2 ring-purple-500 shadow-sm'
+                          : 'border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold uppercase">1 Ator</span>
+                        <span className="text-lg">🏛️</span>
+                      </div>
+                      <span className="text-[11px] font-normal leading-tight">100% cobrado da Plataforma AçaíFood</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setLocalRates({ ...localRates, asaas_fee_split_actors: 2 })}
+                      className={`p-3 rounded-xl border text-left flex flex-col justify-between transition ${
+                        localRates?.asaas_fee_split_actors === 2
+                          ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/30 text-purple-900 dark:text-purple-100 font-bold ring-2 ring-purple-500 shadow-sm'
+                          : 'border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold uppercase">2 Atores</span>
+                        <span className="text-lg">🏪</span>
+                      </div>
+                      <span className="text-[11px] font-normal leading-tight">50% Plataforma + 50% Loja/Vendedor</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setLocalRates({ ...localRates, asaas_fee_split_actors: 3 })}
+                      className={`p-3 rounded-xl border text-left flex flex-col justify-between transition ${
+                        localRates?.asaas_fee_split_actors === 3
+                          ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/30 text-purple-900 dark:text-purple-100 font-bold ring-2 ring-purple-500 shadow-sm'
+                          : 'border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold uppercase">3 Atores</span>
+                        <span className="text-lg">🛵</span>
+                      </div>
+                      <span className="text-[11px] font-normal leading-tight">1/3 Plataforma + 1/3 Loja + 1/3 Motoboy</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] uppercase text-zinc-500 font-bold">Taxa Pix Estimada do Asaas (R$)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={localRates?.asaas_pix_fee_fixed ?? 0.99}
+                        onChange={(e) => setLocalRates({ ...localRates, asaas_pix_fee_fixed: Number(e.target.value) })}
+                        className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+              </div>
+
+              <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>⏰</span> Horário do Pix Automático Diário (Todos os Parceiros)</h4>
                   <p className="text-xs text-zinc-500 mb-3">Define o horário de varredura diária no Asaas para enviar o saldo acumulado via Pix para as Lojas, Fornecedores e Motoristas.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
@@ -4332,10 +4415,3 @@ function AdminDashboardContent() {
   );
 }
 
-export default function AdminDashboard() {
-  return (
-    <AdminErrorBoundary>
-      <AdminDashboardContent />
-    </AdminErrorBoundary>
-  );
-}

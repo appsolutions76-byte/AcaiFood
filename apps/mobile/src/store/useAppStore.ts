@@ -196,6 +196,8 @@ export interface CityRates {
   transporter_fixed_fee?: number;
   ecopoint_payment_mode?: 'KM' | 'FIXED';
   ecopoint_fixed_fee?: number;
+  asaas_fee_split_actors?: number;
+  asaas_pix_fee_fixed?: number;
 }
 
 export interface City {
@@ -306,18 +308,7 @@ export function calculateOrderTaxes(order: Order, rates: any, storeUsers: Record
 
 interface AppState {
   cities: City[];
-  rates: {
-    b2c_plat: number; b2c_km: number; b2c_mot_plat: number;
-    b2b_plat: number; b2b_km: number; b2b_mot_plat: number;
-    col_plat: number; col_km: number; col_mot_plat: number; col_valor: number;
-    payout_time?: string;
-    courier_payment_mode?: 'KM' | 'FIXED';
-    courier_fixed_fee?: number;
-    transporter_payment_mode?: 'KM' | 'FIXED';
-    transporter_fixed_fee?: number;
-    ecopoint_payment_mode?: 'KM' | 'FIXED';
-    ecopoint_fixed_fee?: number;
-  };
+  rates: CityRates;
   users: Record<string, User>;
   orders: Order[];
   orderCounter: number;
@@ -440,8 +431,10 @@ const DB_DEFAULTS = {
     transporter_payment_mode: 'KM' as const,
     transporter_fixed_fee: 0,
     ecopoint_payment_mode: 'KM' as const,
-    ecopoint_fixed_fee: 0
-  },
+    ecopoint_fixed_fee: 0,
+    asaas_fee_split_actors: 1,
+    asaas_pix_fee_fixed: 0.99
+  } as CityRates,
   cities: [] as City[],
   users: {} // Remover usuários fixos para prevenir vazamento de credenciais
 };
@@ -1271,6 +1264,8 @@ export const useAppStore = create<AppState>()(
                    transporter_fixed_fee: data.transporter_fixed_fee ?? state.rates.transporter_fixed_fee ?? 0,
                    ecopoint_payment_mode: data.ecopoint_payment_mode || state.rates.ecopoint_payment_mode || 'KM',
                    ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? state.rates.ecopoint_fixed_fee ?? 0,
+                   asaas_fee_split_actors: Number(data.asaas_fee_split_actors ?? state.rates.asaas_fee_split_actors ?? 1),
+                   asaas_pix_fee_fixed: Number(data.asaas_pix_fee_fixed ?? state.rates.asaas_pix_fee_fixed ?? 0.99),
                    asaas_api_key: data.asaas_api_key || (state.rates as any).asaas_api_key || ''
                } }));
            }
@@ -1314,6 +1309,8 @@ export const useAppStore = create<AppState>()(
              transporter_fixed_fee: mergedRates.transporter_fixed_fee,
              ecopoint_payment_mode: mergedRates.ecopoint_payment_mode,
              ecopoint_fixed_fee: mergedRates.ecopoint_fixed_fee,
+             asaas_fee_split_actors: mergedRates.asaas_fee_split_actors,
+             asaas_pix_fee_fixed: mergedRates.asaas_pix_fee_fixed,
              asaas_api_key: (mergedRates as any).asaas_api_key
          };
          
