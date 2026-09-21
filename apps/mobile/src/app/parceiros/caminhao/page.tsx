@@ -96,19 +96,22 @@ export default function CaminhaoDashboard() {
     );
   }
 
-  const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
+  const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates || {};
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const getDriverFee = (o: any) => {
-    if (o.taxas?.entregaMotorista && o.taxas.entregaMotorista > 0) {
-      return o.taxas.entregaMotorista;
+    if (!o) return 0;
+    if (o.taxas?.entregaMotorista && Number(o.taxas.entregaMotorista) > 0) {
+      return Number(o.taxas.entregaMotorista);
     }
-    const orderCity = o.cidadeOrigem || (o.origemId && store.users[o.origemId] ? store.users[o.origemId]?.cidade : undefined) || currentUser?.cidade || 'Belém';
-    const cityRates = getRatesForCity(orderCity, store.rates, store.cities) || rates;
-    const dist = o.distancia || 1.0;
+    const storeUsers = store.users || {};
+    const orderCity = o.cidadeOrigem || (o.origemId && storeUsers[o.origemId] ? storeUsers[o.origemId]?.cidade : undefined) || currentUser?.cidade || 'Belém';
+    const cityRates = getRatesForCity(orderCity, store.rates, store.cities) || rates || {};
+    const dist = Number(o.distancia || 1.0);
     const totalFrete = calculateOrderFreight(o.type || 'B2B', dist, cityRates);
-    const platPct = ((o.type === 'COLETA' ? cityRates.col_mot_plat : cityRates.b2b_mot_plat) ?? 15) / 100;
-    return totalFrete * (1 - platPct);
+    const platPct = Number(((o.type === 'COLETA' ? cityRates?.col_mot_plat : cityRates?.b2b_mot_plat) ?? 15)) / 100;
+    const fee = totalFrete * (1 - platPct);
+    return isNaN(fee) ? 0 : fee;
   };
 
   const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';

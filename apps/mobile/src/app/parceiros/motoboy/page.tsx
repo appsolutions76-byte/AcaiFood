@@ -94,19 +94,21 @@ export default function MotoboyDashboard() {
     );
   }
 
-  const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
+  const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates || {};
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const getMotoboyFee = (o: any) => {
     if (!o) return 0;
-    if (o.taxas?.entregaMotorista && o.taxas.entregaMotorista > 0) {
-      return o.taxas.entregaMotorista;
+    if (o.taxas?.entregaMotorista && Number(o.taxas.entregaMotorista) > 0) {
+      return Number(o.taxas.entregaMotorista);
     }
-    const orderCity = o.cidadeOrigem || (o.lojaId && store.users?.[o.lojaId] ? store.users[o.lojaId]?.cidade : undefined) || currentUser?.cidade || 'Belém';
-    const cityRates = getRatesForCity(orderCity, store.rates, store.cities) || rates;
-    const dist = o.distancia || 1.0;
+    const storeUsers = store.users || {};
+    const orderCity = o.cidadeOrigem || (o.lojaId && storeUsers[o.lojaId] ? storeUsers[o.lojaId]?.cidade : undefined) || currentUser?.cidade || 'Belém';
+    const cityRates = getRatesForCity(orderCity, store.rates, store.cities) || rates || {};
+    const dist = Number(o.distancia || 1.0);
     const totalFrete = calculateOrderFreight('B2C', dist, cityRates);
-    const platPct = (cityRates.b2c_mot_plat ?? 15) / 100;
-    return totalFrete * (1 - platPct);
+    const platPct = Number((cityRates?.b2c_mot_plat ?? 15)) / 100;
+    const fee = totalFrete * (1 - platPct);
+    return isNaN(fee) ? 0 : fee;
   };
 
   const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
@@ -149,8 +151,9 @@ export default function MotoboyDashboard() {
     }
   };
 
-  const isPaused = currentUser.status === 'paused';
+  const isPaused = currentUser?.status === 'paused';
   const handleToggleStatus = () => {
+    if (!currentUser?.id) return;
     store.updateUserStatus(currentUser.id, isPaused ? 'active' : 'paused');
   };
 
@@ -417,9 +420,9 @@ export default function MotoboyDashboard() {
                                 type="button"
                                 onClick={() => {
                                   const clienteId = o.clienteId || (o as any).buyerId || o.destinoId;
-                                  const clienteUser = clienteId ? store.users[clienteId] : null;
+                                  const clienteUser = clienteId && store.users ? store.users[clienteId] : null;
                                   const lojaId = o.lojaId || (o as any).sellerStorefrontId || o.origemId;
-                                  const lojaUser = lojaId ? store.users[lojaId] : null;
+                                  const lojaUser = lojaId && store.users ? store.users[lojaId] : null;
                                   setChatModalData({
                                     open: true,
                                     orderId: o.id,
