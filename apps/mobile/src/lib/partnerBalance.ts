@@ -22,18 +22,16 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     if (isDriver) {
       const { data: driverOrders, error: dErr } = await adminSupabase
         .from('orders')
-        .select('id, order_type, products_subtotal, delivery_distance_km, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent, delivery_city, city, cidade, seller_storefront_id, status')
+        .select('id, order_type, products_subtotal, delivery_distance_km, seller_storefront_id, status')
         .eq('driver_id', partnerId)
         .eq('payout_driver_done', false)
         .in('status', ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue']);
 
       if (!dErr && driverOrders) {
         for (const o of driverOrders) {
-          const cityName = o.delivery_city || o.city || o.cidade || null;
           const pricing = await calculateOrderPricing({
             orderType: o.order_type,
             distanceKm: o.delivery_distance_km,
-            cityName,
             productsSubtotal: o.products_subtotal,
             sellerStorefrontId: o.seller_storefront_id
           }, adminSupabase);
@@ -44,6 +42,8 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
             orderIds.push(o.id);
           }
         }
+      } else if (dErr) {
+        console.warn('[partnerBalance] Erro ao consultar pedidos do motorista:', dErr);
       }
     } else {
       // 2. Se for loja ou fornecedor, busca pelo storefront_id vinculado ao partner_id
@@ -57,7 +57,7 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
       if (sfIds.length > 0 || isStore || isSupplier) {
         let query = adminSupabase
           .from('orders')
-          .select('id, seller_storefront_id, buyer_id, order_type, products_subtotal, delivery_distance_km, applied_platform_fee_percent, applied_delivery_fee_per_km, delivery_city, city, cidade, status')
+          .select('id, seller_storefront_id, buyer_id, order_type, products_subtotal, delivery_distance_km, status')
           .eq('payout_seller_done', false)
           .in('status', ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue']);
 
@@ -71,11 +71,9 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
 
         if (!sErr && sellerOrders) {
           for (const o of sellerOrders) {
-            const cityName = o.delivery_city || o.city || o.cidade || null;
             const pricing = await calculateOrderPricing({
               orderType: o.order_type,
               distanceKm: o.delivery_distance_km,
-              cityName,
               productsSubtotal: o.products_subtotal,
               sellerStorefrontId: o.seller_storefront_id
             }, adminSupabase);
@@ -86,6 +84,8 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
               orderIds.push(o.id);
             }
           }
+        } else if (sErr) {
+          console.warn('[partnerBalance] Erro ao consultar pedidos do vendedor:', sErr);
         }
       }
     }
