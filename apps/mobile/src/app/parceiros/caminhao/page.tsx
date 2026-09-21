@@ -206,30 +206,18 @@ export default function CaminhaoDashboard() {
         const pendingOrderIds = pendingOrders.map((o: any) => o.id);
 
         const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch('/api/asaas/transfer', {
+        const res = await fetch('/api/asaas/withdrawals', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) },
-          body: JSON.stringify({
-            pixKey: targetKey,
-            value: ganhosHoje,
-            description: `Saque Instantâneo AçaíFood (${currentUser.name})`
-          })
+          headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) }
         });
         const data = await res.json();
-        if (res.ok && (data.success || data.transferId)) {
+        if (res.ok && data.success) {
           incrementDailyWithdrawalCount(currentUser.id);
-          if (pendingOrderIds.length > 0) {
-            await store.markPayoutDone(pendingOrderIds, 'driver');
-          }
-          alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${ganhosHoje.toFixed(2)} já está a caminho do seu banco (${targetKey}).`);
+          alert(`✅ Solicitação de Saque no valor de R$ ${ganhosHoje.toFixed(2)} enviada com sucesso!\nO valor será repassado via Pix Asaas para sua chave/subconta.`);
           store.fetchOrders(currentUser.id, true);
         } else {
           const msg = data.error || '';
-          if (msg.includes('Saldo insuficiente')) {
-            alert(`ℹ️ Saldo já creditado na Subconta Asaas:\nO valor de R$ ${ganhosHoje.toFixed(2)} já consta na sua subconta Asaas oficial (${currentUser.asaasWalletId || 'Ativa'}).\nA varredura automática de repasse para o seu banco externo ocorrerá às ${rates.payout_time || '22:00'}.`);
-          } else {
-            alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
-          }
+          alert(`Solicitação de Saque: ${msg || 'Não foi possível registrar o saque no momento.'}`);
         }
       } catch (_err) {
         alert("Erro de conexão ao solicitar transferência PIX.");

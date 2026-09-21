@@ -387,30 +387,18 @@ export default function BatedeiraDashboard() {
         const pendingOrders = meusPedidosAll.filter((o: any) => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone);
         const pendingOrderIds = pendingOrders.map((o: any) => o.id);
 
-        const res = await fetch('/api/asaas/transfer', {
+        const res = await fetch('/api/asaas/withdrawals', {
           method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            pixKey: targetKey,
-            value: vendasHoje,
-            description: `Saque Instantâneo AçaíFood (${currentUser.name})`
-          })
+          headers: authHeaders
         });
         const data = await res.json();
-        if (res.ok && (data.success || data.transferId)) {
+        if (res.ok && data.success) {
           incrementDailyWithdrawalCount(currentUser.id);
-          if (pendingOrderIds.length > 0) {
-            await store.markPayoutDone(pendingOrderIds, 'seller');
-          }
-          alert(`✅ PIX enviado com sucesso!\nID da Transferência: ${data.transferId || 'concluída'}\nO valor de R$ ${vendasHoje.toFixed(2)} já está a caminho do seu banco (${targetKey}).`);
+          alert(`✅ Solicitação de Saque no valor de R$ ${vendasHoje.toFixed(2)} enviada com sucesso!\nO valor será repassado via Pix Asaas para sua chave/subconta.`);
           store.fetchOrders(currentUser.id, true);
         } else {
           const msg = data.error || '';
-          if (msg.includes('Saldo insuficiente')) {
-            alert(`ℹ️ Saldo já creditado na Subconta Asaas:\nO valor de R$ ${vendasHoje.toFixed(2)} já consta na sua subconta Asaas oficial (${currentUser.asaasWalletId || 'Ativa'}).\nA varredura automática de repasse para o seu banco externo ocorrerá às ${rates.payout_time || '22:00'}.`);
-          } else {
-            alert(`Status do PIX Asaas: ${msg || 'Não foi possível processar a transferência no momento.'}`);
-          }
+          alert(`Solicitação de Saque: ${msg || 'Não foi possível registrar o saque no momento.'}`);
         }
       } catch (_err) {
         alert("Erro de conexão ao solicitar transferência PIX.");
@@ -435,14 +423,10 @@ export default function BatedeiraDashboard() {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
 
-      const { error } = await supabase.from('users').update({ latitude: lat, longitude: lng }).eq('id', currentUser.id);
-      if (error) {
-        alert("Erro ao atualizar no banco de dados: " + error.message);
-      } else {
-        alert("✅ GPS do estabelecimento atualizado com sucesso para as novas coordenadas!");
-        const s = useAppStore.getState();
-        s.fetchAllUsers(true);
-      }
+      await store.updateUserLocation(currentUser.id, lat, lng);
+      alert("✅ GPS do estabelecimento atualizado com sucesso para as novas coordenadas!");
+      const s = useAppStore.getState();
+      s.fetchAllUsers(true);
     } catch (err) {
       alert("Não foi possível capturar sua geolocalização. Certifique-se de que o GPS do aparelho está ativado e as permissões foram concedidas.");
     } finally {

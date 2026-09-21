@@ -1536,7 +1536,20 @@ export const useAppStore = create<AppState>()(
         });
 
         try {
-          await supabase.from('users').update({ latitude: lat, longitude: lng }).eq('id', userId);
+          const sessionRes = await supabase.auth.getSession();
+          const token = sessionRes.data?.session?.access_token;
+          if (token) {
+            await fetch('/api/user/location', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ latitude: lat, longitude: lng })
+            });
+          } else {
+            await supabase.from('users').update({ latitude: lat, longitude: lng }).eq('id', userId);
+          }
         } catch (err) {
           console.warn("Erro ao atualizar coordenadas no Supabase:", err);
         }
