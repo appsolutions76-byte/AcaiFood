@@ -27,10 +27,11 @@ export function isValidAsaasWalletId(id?: string): boolean {
   if (!id || typeof id !== 'string') return false;
   const clean = id.trim();
   if (clean.length < 10) return false;
-  if (clean.includes('@') || clean.includes('loja_parceira') || clean.includes('asaas_wallet_') || clean.includes('wallet_master')) return false;
+  if (clean.includes('@') || clean === 'loja_parceira' || clean === 'asaas_wallet_' || clean === 'wallet_master') return false;
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
-  const isAsaasId = clean.length >= 20 && !clean.match(/^\d+$/);
-  return isUuid || isAsaasId;
+  const isAsaasAcc = /^acc_[a-zA-Z0-9_-]{8,}$/i.test(clean);
+  const isAsaasId = clean.length >= 12 && !clean.match(/^\d+$/) && !clean.endsWith('_');
+  return isUuid || isAsaasAcc || isAsaasId;
 }
 
 export function extractStorefront(sfData: any): any {

@@ -61,7 +61,9 @@ export async function processWithdrawalApproval(
   }
 
   // 3. Revalidar subconta/status Asaas do parceiro (P2)
-  const isAccountActive = partnerUser.split_enabled === true || partnerUser.asaas_account_status === 'APPROVED';
+  const isAccountActive = partnerUser.split_enabled === true || 
+                          partnerUser.asaas_account_status === 'APPROVED' || 
+                          Boolean(partnerUser.asaas_wallet_id || partnerUser.pix_key || partnerUser.cpf_cnpj);
   if (partnerUser.asaas_account_status === 'REJECTED' || !isAccountActive) {
     const failMsg = partnerUser.asaas_account_status === 'REJECTED'
       ? 'A subconta do parceiro no Asaas foi rejeitada pela instituição financeira.'

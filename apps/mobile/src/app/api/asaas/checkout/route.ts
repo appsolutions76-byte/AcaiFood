@@ -63,10 +63,11 @@ export async function POST(request: Request) {
       if (!id || typeof id !== 'string') return false;
       const clean = id.trim();
       if (clean.length < 10) return false;
-      if (clean.includes('@') || clean.includes('loja_parceira') || clean.includes('asaas_wallet_') || clean.includes('wallet_master')) return false;
+      if (clean.includes('@') || clean === 'loja_parceira' || clean === 'asaas_wallet_' || clean === 'wallet_master') return false;
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
-      const isAsaasId = clean.length >= 20 && !clean.match(/^\d+$/);
-      return isUuid || isAsaasId;
+      const isAsaasAcc = /^acc_[a-zA-Z0-9_-]{8,}$/i.test(clean);
+      const isAsaasId = clean.length >= 12 && !clean.match(/^\d+$/) && !clean.endsWith('_');
+      return isUuid || isAsaasAcc || isAsaasId;
     };
 
     const calculatedSplits: { walletId: string; fixedValue: number }[] = [];
@@ -86,7 +87,10 @@ export async function POST(request: Request) {
           .eq('id', sf.partner_id)
           .maybeSingle();
 
-        const isSellerSplitActive = uSeller?.split_enabled === true || (uSeller?.split_enabled !== false && uSeller?.asaas_account_status === 'APPROVED');
+        const isSellerSplitActive = uSeller?.split_enabled === true || 
+                                    (uSeller?.split_enabled !== false && uSeller?.asaas_account_status === 'APPROVED') ||
+                                    Boolean(uSeller?.asaas_wallet_id && uSeller?.asaas_account_status !== 'REJECTED');
+
         if (uSeller?.asaas_wallet_id && isSellerSplitActive && isValidAsaasWalletId(uSeller.asaas_wallet_id)) {
           const sellerVal = pricing.netSellerPayout;
 
@@ -100,7 +104,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Split Motorista / Entregador
+    // Split Motorista / Entregador (Motoboy / Caminhão)
     if (order.driver_id) {
       const { data: uDriver } = await supabase
         .from('users')
@@ -108,7 +112,10 @@ export async function POST(request: Request) {
         .eq('id', order.driver_id)
         .maybeSingle();
 
-      const isDriverSplitActive = uDriver?.split_enabled === true || (uDriver?.split_enabled !== false && uDriver?.asaas_account_status === 'APPROVED');
+      const isDriverSplitActive = uDriver?.split_enabled === true || 
+                                   (uDriver?.split_enabled !== false && uDriver?.asaas_account_status === 'APPROVED') ||
+                                   Boolean(uDriver?.asaas_wallet_id && uDriver?.asaas_account_status !== 'REJECTED');
+
       if (uDriver?.asaas_wallet_id && isDriverSplitActive && isValidAsaasWalletId(uDriver.asaas_wallet_id)) {
         const driverVal = pricing.netDriverPayout;
 

@@ -169,7 +169,7 @@ export async function POST(request: Request) {
         asaas_wallet_id: walletId,
         asaas_account_id: accountId,
         asaas_account_status: 'PENDING_DOCUMENTS',
-        split_enabled: false
+        split_enabled: Boolean(walletId)
       };
 
       if (accountApiKey) {
