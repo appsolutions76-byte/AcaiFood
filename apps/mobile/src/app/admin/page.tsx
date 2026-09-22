@@ -1083,7 +1083,7 @@ function AdminDashboardContent() {
 
   // 6. Cálculos de Dashboard
   // 6. Cálculos de Dashboard
-  const concluidos = orders.filter((o: Order) => o && (o.status === 'entregue' || o.status === 'arquivado'));
+  const concluidos = orders.filter((o: Order) => o && ['entregue', 'arquivado', 'received', 'delivered', 'completed', 'concluido'].includes(String(o.status || '').toLowerCase().trim()));
   
   const getDynamicTaxes = (o: Order) => {
     if (!o) return { repasseLoja: 0, repasseForn: 0, repasseMoto: 0, platVenda: 0, platEntrega: 0, entregaTotal: 0 };
@@ -1129,8 +1129,8 @@ function AdminDashboardContent() {
       return true;
     });
 
-    const concluidosList = periodOrders.filter((o: Order) => o.status === 'entregue' || o.status === 'arquivado');
-    const aceitosList = periodOrders.filter((o: Order) => ['preparo', 'pronto', 'em_rota', 'aguardando_cliente', 'entregue', 'arquivado'].includes(o.status));
+    const concluidosList = periodOrders.filter((o: Order) => ['entregue', 'arquivado', 'received', 'delivered', 'completed', 'concluido'].includes(String(o.status || '').toLowerCase().trim()));
+    const aceitosList = periodOrders.filter((o: Order) => ['preparo', 'pronto', 'em_rota', 'aguardando_cliente', 'entregue', 'arquivado', 'received', 'delivered', 'completed', 'concluido'].includes(String(o.status || '').toLowerCase().trim()));
     const canceladosList = periodOrders.filter((o: Order) => o.status === 'cancelado');
     const emRotaList = periodOrders.filter((o: Order) => o.status === 'em_rota' || o.status === 'aguardando_cliente');
 
