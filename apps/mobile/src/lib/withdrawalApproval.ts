@@ -84,31 +84,28 @@ export async function processWithdrawalApproval(
     return { success: false, status: 'FALHOU', error: failMsg };
   }
 
-  // 4. Recalcular o saldo disponível no exato momento da aprovação
+  // 4. Determinar o valor do saque e ordens vinculadas
+  const requestedAmount = Number(requestRow.requested_amount || 0);
   const balanceResult = await getPartnerAvailableBalance(requestRow.partner_id, requestRow.role || partnerUser.role);
   
-  // Se o saldo elegível é 0 (significa que os pedidos já foram repassados/marcados pagos anteriormente), conclui o saque como PAGO
-  if (balanceResult.totalDisponivel <= 0) {
+  const finalAmount = requestedAmount > 0 ? requestedAmount : balanceResult.totalDisponivel;
+  const finalOrderIds = (Array.isArray(requestRow.order_ids) && requestRow.order_ids.length > 0)
+    ? requestRow.order_ids 
+    : balanceResult.orderIds;
+
+  if (finalAmount <= 0) {
+    const failMsg = 'O valor do saque é R$ 0,00 ou os pedidos referentes a esta solicitação já foram liquidados.';
     await adminSupabase
       .from('withdrawal_requests')
       .update({
-        status: 'PAGO',
-        failure_reason: null,
+        status: 'FALHOU',
+        failure_reason: failMsg,
         reviewed_by: actorId,
         reviewed_at: new Date().toISOString()
       })
       .eq('id', requestId);
-
-    return {
-      success: true,
-      status: 'PAGO',
-      amount: Number(requestRow.requested_amount || 0),
-      message: 'Solicitação concluída com sucesso: os valores referentes a esta solicitação já haviam sido liquidados nos pedidos anteriormente.'
-    };
+    return { success: false, status: 'FALHOU', error: failMsg };
   }
-
-  const finalAmount = balanceResult.totalDisponivel;
-  const finalOrderIds = balanceResult.orderIds;
 
   // 5. Resolver payload de transferência Asaas (exclusivamente do cadastro do banco)
   const transferPayload = buildAsaasTransferPayload(

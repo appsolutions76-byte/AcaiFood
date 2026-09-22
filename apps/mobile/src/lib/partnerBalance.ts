@@ -25,7 +25,7 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
         .select('id, order_type, products_subtotal, delivery_distance_km, seller_storefront_id, status')
         .eq('driver_id', partnerId)
         .eq('payout_driver_done', false)
-        .in('status', ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue']);
+        .in('status', ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO']);
 
       if (!dErr && driverOrders) {
         for (const o of driverOrders) {
@@ -59,7 +59,7 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
           .from('orders')
           .select('id, seller_storefront_id, buyer_id, order_type, products_subtotal, delivery_distance_km, status')
           .eq('payout_seller_done', false)
-          .in('status', ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue']);
+          .in('status', ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO']);
 
         if (sfIds.length > 0) {
           query = query.in('seller_storefront_id', sfIds);

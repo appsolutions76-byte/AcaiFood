@@ -26,6 +26,7 @@ interface AdminWithdrawalsSectionProps {
   payAllProgress?: { current: number; total: number; name: string } | null;
   totalVolume?: number;
   appRevenue?: number;
+  onRefreshAll?: () => void;
 }
 
 export function AdminWithdrawalsSection({ 
@@ -37,7 +38,8 @@ export function AdminWithdrawalsSection({
   isPayingAll = false,
   payAllProgress = null,
   totalVolume = 0,
-  appRevenue = 0
+  appRevenue = 0,
+  onRefreshAll
 }: AdminWithdrawalsSectionProps) {
   const [activeTab, setActiveTab] = useState<'PENDENTE' | 'PAGO' | 'REJEITADO' | 'FALHOU' | 'all'>('PENDENTE');
   const [loading, setLoading] = useState(true);
@@ -94,6 +96,14 @@ export function AdminWithdrawalsSection({
     }
   };
 
+  const refreshAllData = async (statusStr = activeTab) => {
+    await fetchRequests(statusStr);
+    await fetchSettings();
+    if (onRefreshAll) {
+      onRefreshAll();
+    }
+  };
+
   useEffect(() => {
     fetchRequests(activeTab);
     fetchSettings();
@@ -139,11 +149,11 @@ export function AdminWithdrawalsSection({
       if (res.ok && data.success) {
         if (showToast) showToast("✅ " + (data.message || `Saque de R$ ${Number(req.requested_amount).toFixed(2)} aprovado!`));
         else alert(data.message || "Saque aprovado!");
-        fetchRequests();
+        refreshAllData();
       } else {
         const errorMsg = data.error || 'Falha ao aprovar a solicitação de saque.';
         alert("❌ " + errorMsg);
-        fetchRequests();
+        refreshAllData();
       }
     } catch (err: any) {
       alert("Erro ao aprovar solicitação: " + err.message);
@@ -174,7 +184,7 @@ export function AdminWithdrawalsSection({
       if (res.ok && data.success) {
         if (showToast) showToast("🚫 Solicitação de saque rejeitada.");
         else alert("Solicitação de saque rejeitada.");
-        fetchRequests();
+        refreshAllData();
       } else {
         alert("Erro ao rejeitar: " + (data.error || 'Falha de comunicação'));
       }
@@ -235,7 +245,7 @@ export function AdminWithdrawalsSection({
             </p>
           </div>
           <button
-            onClick={() => { fetchRequests(activeTab); fetchSettings(); }}
+            onClick={() => refreshAllData()}
             disabled={loading}
             className="px-3 py-1.5 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
           >

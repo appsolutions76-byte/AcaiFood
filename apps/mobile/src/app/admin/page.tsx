@@ -387,6 +387,7 @@ function AdminDashboardContent() {
 
         showToast(`✅ Pix de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} enviado para ${u.name}! (ID Asaas: ${data.transferId})`);
         if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
+        if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers(true);
         fetchAdminBalances();
       } else {
         const errorMsg = data.error || 'Erro desconhecido retornado pelo gateway';
@@ -484,6 +485,7 @@ function AdminDashboardContent() {
 
     showToast(`✅ Liquidação concluída (${cidadeNome || 'Geral'}): ${successCount} parceiro(s) pago(s) com sucesso! ${failCount > 0 ? `(${failCount} falha/sem pix)` : ''}`);
     if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
+    if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers(true);
     fetchAdminBalances();
   };
 
@@ -3591,6 +3593,15 @@ function AdminDashboardContent() {
               payAllProgress={payAllProgress}
               totalVolume={currentVolumeTotal}
               appRevenue={currentAppRevenue}
+              onRefreshAll={async () => {
+                fetchAdminBalances();
+                if (store.currentUser?.id && typeof store.fetchOrders === 'function') {
+                  await store.fetchOrders(store.currentUser.id, true);
+                }
+                if (typeof store.fetchAllUsers === 'function') {
+                  await store.fetchAllUsers(true);
+                }
+              }}
             />
           </div>
         )}

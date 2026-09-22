@@ -26,24 +26,14 @@ export function buildAsaasTransferPayload(
 ): AsaasTransferPayload | null {
   if (!partnerUser || amount <= 0) return null;
 
-  const rawCpfCnpj = String(partnerUser.cpf_cnpj || partnerUser.cpfCnpj || '').replace(/\D/g, '');
   const rawPixKey = String(partnerUser.pix_key || partnerUser.pixKey || '').trim();
+  const rawCpfCnpj = String(partnerUser.cpf_cnpj || partnerUser.cpfCnpj || '').replace(/\D/g, '');
   const rawEmail = String(partnerUser.email || '').trim();
   const rawWalletId = String(partnerUser.asaas_wallet_id || partnerUser.asaasWalletId || '').trim();
 
   const desc = descriptionStr || `Repasse AçaíFood - ${partnerUser.name || 'Parceiro'}`;
 
-  // 1. Se houver CPF/CNPJ válido cadastrado
-  if (rawCpfCnpj.length === 11 || rawCpfCnpj.length === 14) {
-    return {
-      value: amount,
-      pixAddressKey: rawCpfCnpj,
-      pixAddressKeyType: rawCpfCnpj.length === 11 ? 'CPF' : 'CNPJ',
-      description: desc
-    };
-  }
-
-  // 2. Se houver chave Pix explícita
+  // 1. Se houver chave Pix explícita
   if (rawPixKey && rawPixKey.length >= 5) {
     const keyType = detectPixKeyType(rawPixKey);
     const pixVal = (keyType === 'CPF' || keyType === 'CNPJ') ? rawPixKey.replace(/\D/g, '') : rawPixKey;
@@ -51,6 +41,16 @@ export function buildAsaasTransferPayload(
       value: amount,
       pixAddressKey: pixVal,
       pixAddressKeyType: keyType,
+      description: desc
+    };
+  }
+
+  // 2. Se houver CPF/CNPJ válido cadastrado
+  if (rawCpfCnpj.length === 11 || rawCpfCnpj.length === 14) {
+    return {
+      value: amount,
+      pixAddressKey: rawCpfCnpj,
+      pixAddressKeyType: rawCpfCnpj.length === 11 ? 'CPF' : 'CNPJ',
       description: desc
     };
   }
