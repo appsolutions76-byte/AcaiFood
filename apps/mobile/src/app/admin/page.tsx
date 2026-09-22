@@ -299,8 +299,16 @@ function AdminDashboardContent() {
 
     const pendingOrders = orders.filter((o: Order) => {
       if (!o) return false;
-      const isConcluido = ['entregue', 'arquivado', 'received', 'delivered', 'completed', 'concluido'].includes(String(o.status || '').toLowerCase().trim());
-      if (!isConcluido) return false;
+      const invalidStatuses = ['cancelled', 'cancelado', 'refunded', 'recusado', 'pin_locked', 'aguardando_pagamento'];
+      const validStatuses = [
+        'delivered', 'completed', 'received', 'entregue', 'arquivado', 'concluido', 'concluído',
+        'aguardando_cliente', 'paid', 'confirmed', 'preparing', 'preparo', 'pronto',
+        'em_transito', 'em_trânsito', 'aguardando_retirada', 'aguardando_loja',
+        'aguardando_motorista', 'aguardando_coleta', 'pending', 'pendente'
+      ];
+      const st = String(o.status || '').toLowerCase().trim();
+      const isValidOrder = validStatuses.includes(st) || (!invalidStatuses.includes(st) && st.length > 0);
+      if (!isValidOrder) return false;
 
       if (u.role === 'motorista') {
         const isThisDriver = o.motoristaId === u.id || (o as any).driver_id === u.id;
