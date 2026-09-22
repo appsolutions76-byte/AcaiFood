@@ -63,6 +63,7 @@ export function AdminWithdrawalsSection({
   });
 
   const [savingSettings, setSavingSettings] = useState(false);
+  const [tempMinWithdrawal, setTempMinWithdrawal] = useState<number>(20);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   const fetchRequests = async (statusStr = activeTab) => {
@@ -90,6 +91,7 @@ export function AdminWithdrawalsSection({
       const data = await res.json();
       if (res.ok && data.success && data.settings) {
         setPayoutSettings(data.settings);
+        setTempMinWithdrawal(Number(data.settings.min_withdrawal_value ?? 20));
       }
     } catch (err) {
       console.error("Erro ao carregar configurações de pagamento:", err);
@@ -295,17 +297,42 @@ export function AdminWithdrawalsSection({
           </div>
         </div>
 
-        {/* Informação Read-Only do Pix Automático Diário */}
-        <div className="mt-4 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 p-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-purple-900 dark:text-purple-200 font-medium">
-            <span className="text-base">⏰</span>
-            <span>
-              <strong>Pix Automático Diário (Robô Asaas):</strong> Gerenciado individualmente por praça na aba <strong>Cidades / Expansão</strong> (Horário Padrão: <strong>{payoutSettings?.auto_payout_time || '22:00'}</strong>).
-            </span>
+        {/* Ajuste Exclusivo de Valor Mínimo de Saque (R$) */}
+        <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 rounded-xl text-base font-bold shrink-0">
+              💸
+            </div>
+            <div>
+              <h4 className="font-bold text-xs text-zinc-900 dark:text-white uppercase tracking-wider">
+                Valor Mínimo para Solicitação de Saque
+              </h4>
+              <p className="text-[11px] text-zinc-500">
+                Define o valor mínimo de saldo acumulado na carteira exigido para Lojas, Fornecedores e Motoristas solicitarem saque Pix.
+              </p>
+            </div>
           </div>
-          <span className="bg-purple-200/80 dark:bg-purple-900/60 text-purple-900 dark:text-purple-100 text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
-            ⚡ Configuração Ativa na Aba Cidades
-          </span>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+            <div className="relative flex-1 sm:w-36">
+              <span className="absolute left-3 top-2.5 text-xs font-bold text-zinc-400">R$</span>
+              <input
+                type="number"
+                step="1"
+                min="1"
+                value={tempMinWithdrawal}
+                onChange={(e) => setTempMinWithdrawal(Number(e.target.value))}
+                className="w-full pl-9 pr-3 py-2 text-xs font-bold bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <button
+              disabled={savingSettings}
+              onClick={() => handleSaveSettings({ min_withdrawal_value: tempMinWithdrawal })}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-400 text-white text-xs font-bold rounded-xl transition shadow active:scale-95 whitespace-nowrap cursor-pointer flex items-center gap-1"
+            >
+              {savingSettings ? 'Salvando...' : '💾 Salvar Saque Mínimo'}
+            </button>
+          </div>
         </div>
       </div>
 
