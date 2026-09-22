@@ -18,25 +18,31 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
   let totalDisponivel = 0;
 
   try {
+    const validStatuses = ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO', 'received', 'delivered', 'completed'];
+
     // 1. Se for motorista, busca em orders onde driver_id = partnerId e payout_driver_done = false
     if (isDriver) {
       const { data: driverOrders, error: dErr } = await adminSupabase
         .from('orders')
-        .select('id, order_type, products_subtotal, delivery_distance_km, seller_storefront_id, status')
+        .select('id, order_type, products_subtotal, delivery_distance_km, seller_storefront_id, status, driver_amount, cidade_origem')
         .eq('driver_id', partnerId)
         .eq('payout_driver_done', false)
-        .in('status', ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO']);
+        .in('status', validStatuses);
 
       if (!dErr && driverOrders) {
         for (const o of driverOrders) {
-          const pricing = await calculateOrderPricing({
-            orderType: o.order_type,
-            distanceKm: o.delivery_distance_km,
-            productsSubtotal: o.products_subtotal,
-            sellerStorefrontId: o.seller_storefront_id
-          }, adminSupabase);
+          let netDriver = Number((o as any).driver_amount || 0);
+          if (netDriver <= 0) {
+            const pricing = await calculateOrderPricing({
+              orderType: o.order_type,
+              distanceKm: o.delivery_distance_km,
+              cityName: (o as any).cidade_origem,
+              productsSubtotal: o.products_subtotal,
+              sellerStorefrontId: o.seller_storefront_id
+            }, adminSupabase);
+            netDriver = pricing.netDriverPayout;
+          }
 
-          const netDriver = pricing.netDriverPayout;
           if (netDriver > 0) {
             totalDisponivel += netDriver;
             orderIds.push(o.id);
@@ -57,9 +63,9 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
       if (sfIds.length > 0 || isStore || isSupplier) {
         let query = adminSupabase
           .from('orders')
-          .select('id, seller_storefront_id, buyer_id, order_type, products_subtotal, delivery_distance_km, status')
+          .select('id, seller_storefront_id, buyer_id, order_type, products_subtotal, delivery_distance_km, status, seller_amount, cidade_origem')
           .eq('payout_seller_done', false)
-          .in('status', ['DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO']);
+          .in('status', validStatuses);
 
         if (sfIds.length > 0) {
           query = query.in('seller_storefront_id', sfIds);
@@ -71,14 +77,18 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
 
         if (!sErr && sellerOrders) {
           for (const o of sellerOrders) {
-            const pricing = await calculateOrderPricing({
-              orderType: o.order_type,
-              distanceKm: o.delivery_distance_km,
-              productsSubtotal: o.products_subtotal,
-              sellerStorefrontId: o.seller_storefront_id
-            }, adminSupabase);
+            let netSeller = Number((o as any).seller_amount || 0);
+            if (netSeller <= 0) {
+              const pricing = await calculateOrderPricing({
+                orderType: o.order_type,
+                distanceKm: o.delivery_distance_km,
+                cityName: (o as any).cidade_origem,
+                productsSubtotal: o.products_subtotal,
+                sellerStorefrontId: o.seller_storefront_id
+              }, adminSupabase);
+              netSeller = pricing.netSellerPayout;
+            }
 
-            const netSeller = pricing.netSellerPayout;
             if (netSeller > 0) {
               totalDisponivel += netSeller;
               orderIds.push(o.id);

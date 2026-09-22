@@ -111,7 +111,10 @@ export default function MotoboyDashboard() {
     return isNaN(fee) ? 0 : fee;
   };
 
-  const isDelivered = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
+  const isDelivered = (st?: string) => {
+    const norm = String(st || '').toLowerCase().trim();
+    return ['entregue', 'received', 'delivered', 'completed', 'concluido', 'arquivado'].includes(norm);
+  };
 
   const corridasDisponiveis = (store.orders || []).filter((o: any) => {
     if (!o) return false;

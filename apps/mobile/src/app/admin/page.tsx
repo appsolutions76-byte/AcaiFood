@@ -298,7 +298,7 @@ function AdminDashboardContent() {
 
     const pendingOrders = orders.filter((o: Order) => {
       if (!o) return false;
-      const isConcluido = o.status === 'entregue' || o.status === 'arquivado';
+      const isConcluido = ['entregue', 'arquivado', 'received', 'delivered', 'completed', 'concluido'].includes(String(o.status || '').toLowerCase().trim());
       if (!isConcluido) return false;
 
       if (u.role === 'motorista') {

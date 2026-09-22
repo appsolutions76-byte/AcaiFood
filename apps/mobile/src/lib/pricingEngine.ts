@@ -148,23 +148,23 @@ export async function calculateOrderPricing(
 
   if (orderType === 'COLETA') {
     paymentMode = rates.ecopoint_payment_mode || rates.col_payment_mode || 'KM';
-    fixedFee = Number(rates.ecopoint_fixed_fee ?? rates.col_fixed_price ?? rates.col_valor ?? 50.00);
-    feePerKm = Number(rates.col_fee_per_km ?? rates.col_km ?? 8.00);
-    platSalesFeePct = Number(rates.col_fee_percentage ?? rates.col_plat ?? 10);
-    platDeliveryFeePct = Number(rates.col_platform_fee_percentage ?? rates.col_mot_plat ?? 10);
+    fixedFee = Number(rates.ecopoint_fixed_fee ?? rates.col_fixed_price ?? rates.col_valor ?? rates.col_km ?? 50.00);
+    feePerKm = Number(rates.col_km ?? rates.col_fee_per_km ?? 8.00);
+    platSalesFeePct = Number(rates.col_plat ?? rates.col_fee_percentage ?? 10);
+    platDeliveryFeePct = Number(rates.col_mot_plat ?? rates.col_platform_fee_percentage ?? 10);
   } else if (orderType === 'B2B') {
     paymentMode = rates.transporter_payment_mode || rates.b2b_payment_mode || 'KM';
     fixedFee = Number(rates.transporter_fixed_fee ?? rates.b2b_km ?? 150.00);
-    feePerKm = Number(rates.truck_fee_per_km ?? rates.b2b_km ?? 4.00);
-    platSalesFeePct = Number(rates.b2b_fee_percentage ?? rates.b2b_plat ?? 10);
-    platDeliveryFeePct = Number(rates.truck_platform_fee_percentage ?? rates.b2b_mot_plat ?? 10);
+    feePerKm = Number(rates.b2b_km ?? rates.truck_fee_per_km ?? 4.00);
+    platSalesFeePct = Number(rates.b2b_plat ?? rates.b2b_fee_percentage ?? 10);
+    platDeliveryFeePct = Number(rates.b2b_mot_plat ?? rates.truck_platform_fee_percentage ?? 10);
   } else {
     // B2C
     paymentMode = rates.courier_payment_mode || rates.b2c_payment_mode || 'KM';
     fixedFee = Number(rates.courier_fixed_fee ?? rates.b2c_km ?? 8.00);
-    feePerKm = Number(rates.motoboy_fee_per_km ?? rates.b2c_km ?? 2.00);
-    platSalesFeePct = Number(rates.b2c_fee_percentage ?? rates.b2c_plat ?? 10);
-    platDeliveryFeePct = Number(rates.motoboy_platform_fee_percentage ?? rates.b2c_mot_plat ?? 10);
+    feePerKm = Number(rates.b2c_km ?? rates.motoboy_fee_per_km ?? 2.00);
+    platSalesFeePct = Number(rates.b2c_plat ?? rates.b2c_fee_percentage ?? 10);
+    platDeliveryFeePct = Number(rates.b2c_mot_plat ?? rates.motoboy_platform_fee_percentage ?? 10);
   }
 
   // Total de entrega
