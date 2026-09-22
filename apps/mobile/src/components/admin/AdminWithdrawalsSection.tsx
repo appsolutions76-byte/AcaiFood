@@ -363,74 +363,7 @@ export function AdminWithdrawalsSection({
         </div>
       )}
 
-      {/* 3. Bloco de Configuração do Modo de Pagamento Automático */}
-      <div className="bg-gradient-to-r from-purple-900 via-zinc-900 to-zinc-900 text-white rounded-3xl p-6 border border-purple-800/80 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-purple-800/60 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-800/60 text-purple-200 rounded-2xl border border-purple-600/40">
-              <Zap size={22} />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-lg">Modo de Pagamento Automático (Robô Asaas)</h3>
-              <p className="text-xs text-purple-200/80">
-                Aprova e executa autonomamente as transferências Pix no horário diário programado
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3 bg-purple-950/60 px-4 py-2 rounded-2xl border border-purple-700/50">
-            <span className="text-xs font-bold text-zinc-300">Automação Diária</span>
-            <button
-              disabled={savingSettings}
-              onClick={() => handleSaveSettings({ auto_payout_enabled: !payoutSettings.auto_payout_enabled })}
-              className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                payoutSettings.auto_payout_enabled ? 'bg-emerald-500 justify-end' : 'bg-zinc-700 justify-start'
-              }`}
-            >
-              <div className="bg-white w-4 h-4 rounded-full shadow-md"></div>
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div className="bg-zinc-950/50 p-3.5 rounded-2xl border border-zinc-800 space-y-1">
-            <span className="text-zinc-400 font-bold">⏰ Horário da Execução Diária</span>
-            <div className="flex items-center gap-2 mt-1">
-              <input
-                type="time"
-                value={payoutSettings.auto_payout_time}
-                onChange={e => handleSaveSettings({ auto_payout_time: e.target.value })}
-                disabled={!payoutSettings.auto_payout_enabled || savingSettings}
-                className="bg-zinc-900 border border-purple-700/50 text-white font-black text-base px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-40"
-              />
-              <span className="text-[10px] text-zinc-400">({payoutSettings.auto_payout_timezone})</span>
-            </div>
-          </div>
-
-          <div className="bg-zinc-950/50 p-3.5 rounded-2xl border border-zinc-800 space-y-1">
-            <span className="text-zinc-400 font-bold">💵 Valor Mínimo de Saque (R$)</span>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="font-bold text-zinc-300">R$</span>
-              <input
-                type="number"
-                step="5"
-                min="5"
-                value={payoutSettings.min_withdrawal_value}
-                onChange={e => handleSaveSettings({ min_withdrawal_value: Number(e.target.value) })}
-                disabled={savingSettings}
-                className="bg-zinc-900 border border-purple-700/50 text-white font-black text-base px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 w-28"
-              />
-            </div>
-          </div>
-
-          <div className="bg-zinc-950/50 p-3.5 rounded-2xl border border-zinc-800 space-y-1">
-            <span className="text-zinc-400 font-bold">📅 Última Varredura Automática</span>
-            <div className="text-xs font-bold text-purple-200 mt-2">
-              {formatDate(payoutSettings.last_auto_payout_run_at || undefined)}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* 4. Tabela e Filtros de Solicitações de Saque Individuais */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-sm space-y-5">

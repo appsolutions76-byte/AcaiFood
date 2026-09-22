@@ -191,6 +191,7 @@ export interface CityRates {
   b2b_plat?: number; b2b_km?: number; b2b_mot_plat?: number;
   col_plat?: number; col_km?: number; col_mot_plat?: number; col_valor?: number;
   payout_time?: string;
+  auto_payout_enabled?: boolean;
   courier_payment_mode?: 'KM' | 'FIXED';
   courier_fixed_fee?: number;
   transporter_payment_mode?: 'KM' | 'FIXED';
@@ -1305,6 +1306,8 @@ export const useAppStore = create<AppState>()(
              col_platform_fee_percentage: mergedRates.col_mot_plat,
              col_fixed_price: mergedRates.col_valor,
              payout_time: mergedRates.payout_time,
+             auto_payout_time: mergedRates.payout_time,
+             auto_payout_enabled: mergedRates.auto_payout_enabled,
              courier_payment_mode: mergedRates.courier_payment_mode,
              courier_fixed_fee: mergedRates.courier_fixed_fee,
              transporter_payment_mode: mergedRates.transporter_payment_mode,

@@ -2818,7 +2818,15 @@ function AdminDashboardContent() {
                             const cityPending = pendingPayoutsByCity[c.name];
                             return (
                             <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                                <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">{c.name}</td>
+                                <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">
+                                    <div>{c.name}</div>
+                                    <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-0.5 flex items-center gap-1">
+                                        <span>⏰ Pix Automático:</span>
+                                        <span className="bg-purple-50 dark:bg-purple-950/80 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+                                            {c.rates?.payout_time || rates?.payout_time || '22:00'} ({(c.rates?.auto_payout_enabled !== false && (localRates as any)?.auto_payout_enabled !== false) ? '⚡ Ativo' : '⏸️ Pausado'})
+                                        </span>
+                                    </div>
+                                </td>
                                 <td className="p-4">
                                     {c.status === 'active' ? <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Ativa</span> : <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pausada</span>}
                                 </td>
@@ -4297,15 +4305,34 @@ function AdminDashboardContent() {
               </div>
 
               <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>⏰</span> Horário do Pix Automático Diário (Todos os Parceiros)</h4>
-                  <p className="text-xs text-zinc-500 mb-3">Define o horário de varredura diária no Asaas para enviar o saldo acumulado via Pix para as Lojas, Fornecedores e Motoristas.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-                      <div><label className="text-[10px] uppercase text-zinc-500 font-bold">Horário Programado para Pix</label><input type="time" value={localRates?.payout_time || '22:00'} onChange={e => setLocalRates({...localRates, payout_time: e.target.value})} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
+                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>⏰</span> Pagamento Automático via Pix (Asaas) nesta Cidade</h4>
+                  <p className="text-xs text-zinc-500 mb-3">Configure o status e o horário de varredura diária no Asaas para transferir os saldos pendentes de Lojas, Fornecedores e Motoristas desta região.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-500 font-bold">Status do Pix Automático</label>
+                        <select 
+                          value={localRates?.auto_payout_enabled !== false ? 'true' : 'false'} 
+                          onChange={e => setLocalRates({...localRates, auto_payout_enabled: e.target.value === 'true'})} 
+                          className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 font-bold text-zinc-800 dark:text-zinc-200"
+                        >
+                          <option value="true">⚡ Ativado (Envio Diário)</option>
+                          <option value="false">⏸️ Pausado (Somente Manual)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-500 font-bold">Horário de Envio (HH:MM)</label>
+                        <input 
+                          type="time" 
+                          value={localRates?.payout_time || '22:00'} 
+                          onChange={e => setLocalRates({...localRates, payout_time: e.target.value})} 
+                          className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                        />
+                      </div>
                       <div>
                         <button 
                           type="button" 
                           onClick={async () => {
-                            if (confirm("Deseja executar a varredura e envio de Pix pendentes do dia agora mesmo?")) {
+                            if (confirm(`Deseja executar a varredura e envio de Pix pendentes de ${selectedCityForRates?.name || 'todas as cidades'} agora mesmo?`)) {
                               try {
                                 const headers = await getAuthHeaders();
                                 const res = await fetch('/api/asaas/sweep?force=true', {
@@ -4314,7 +4341,7 @@ function AdminDashboardContent() {
                                 });
                                 const data = await res.json();
                                 if (!res.ok || data.error) throw new Error(data.error || 'Falha ao executar varredura');
-                                alert(`✅ Varredura concluída com sucesso!\n\nSolicitações Processadas: ${data?.totalPending || 0}\nSucessos (Pix Enviados): ${data?.successCount || 0}\nFalhas: ${data?.failCount || 0}`);
+                                alert(`✅ Varredura de Pix concluída com sucesso!\n\nSolicitações Processadas: ${data?.totalPending || 0}\nSucessos (Pix Enviados): ${data?.successCount || 0}\nFalhas: ${data?.failCount || 0}`);
                               } catch (err: any) {
                                 alert("Erro ao disparar varredura: " + (err.message || JSON.stringify(err)));
                               }
@@ -4322,7 +4349,7 @@ function AdminDashboardContent() {
                           }}
                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2"
                         >
-                          🚀 Executar Varredura de Pix Agora
+                          🚀 Varredura de Pix Agora
                         </button>
                       </div>
                   </div>
