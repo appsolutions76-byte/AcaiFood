@@ -2768,7 +2768,8 @@ export const useAppStore = create<AppState>()(
              applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
              buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
              delivery_pin, accepted_at, ready_at, received_at, asaas_payment_id,
-             payout_seller_done, payout_driver_done, seller_amount, driver_amount, total_delivery_fee
+             payout_seller_done, payout_driver_done, seller_amount, driver_amount, total_delivery_fee,
+             order_items ( id, product_name, quantity, unit_price_cents, total_price_cents )
           `);
 
           if (roleLower === 'loja' || roleLower === 'partner' || roleLower === 'batedeira' || roleLower === 'partner_admin') {
@@ -2804,7 +2805,7 @@ export const useAppStore = create<AppState>()(
 
           if (error || !dbOrders) {
              console.warn("Primary fetchOrders query notice (executing safe fallback):", error);
-             let fallbackQuery = supabase.from('orders').select('*');
+             let fallbackQuery = supabase.from('orders').select('*, order_items ( id, product_name, quantity, unit_price_cents, total_price_cents )');
              if (roleLower === 'loja' || roleLower === 'partner' || roleLower === 'batedeira' || roleLower === 'partner_admin') {
                 const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
                 const sfIds = (sfList || []).map((s: any) => s.id);
@@ -2984,12 +2985,26 @@ export const useAppStore = create<AppState>()(
                   : (dbOrder.order_type === 'B2C'
                       ? Number((itemsTotal + calculatedEntregaCliente).toFixed(2))
                       : Number((itemsTotal + calculatedEntregaLoja).toFixed(2)));
+
+                const dbItems = dbOrder.order_items && dbOrder.order_items.length > 0
+                  ? dbOrder.order_items.map((it: any) => ({
+                      id: it.id || '1',
+                      name: it.product_name || 'Produto',
+                      quantity: Number(it.quantity || 1),
+                      price: Number((it.unit_price_cents || 0) / 100)
+                    }))
+                  : localOrder?.items;
+
+                const resolvedItemsTitle = (dbItems && dbItems.length > 0)
+                  ? dbItems.map((i: any) => `${i.quantity}x ${i.name}`).join(', ')
+                  : (localOrder?.title || `Pedido de ${resolvedStoreName}`);
                     
                     return {
                        ...(localOrder || {}),
                        id: dbOrder.id,
                        type: dbOrder.order_type as 'B2C'|'B2B'|'COLETA',
-                       title: localOrder?.title || `Pedido de ${resolvedStoreName}`,
+                       title: resolvedItemsTitle,
+                       items: dbItems || localOrder?.items,
                        status: finalStatus as any,
                        createdAt: dbOrder.created_at,
                        pickedUpAt: dbOrder.picked_up_at || localOrder?.pickedUpAt,

@@ -93,7 +93,7 @@ export function generateSingleTicketHTML(
   const itemsList = order.items && order.items.length > 0
     ? order.items
     : order.title
-    ? [{ id: '1', name: `${order.title} (x${order.quantity || 1})`, quantity: order.quantity || 1, price: (order as any).products_subtotal ? (Number((order as any).products_subtotal) / (order.quantity || 1)) : (order.valor || 0) }]
+    ? [{ id: '1', name: order.title, quantity: order.quantity || 1, price: (order as any).products_subtotal ? (Number((order as any).products_subtotal) / (order.quantity || 1)) : (order.valor || 0) }]
     : [{ id: '1', name: 'Pedido Açaí', quantity: 1, price: (order as any).products_subtotal || order.valor || 0 }];
 
   // 1. Subtotal exato dos itens
