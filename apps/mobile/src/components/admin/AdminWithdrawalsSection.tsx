@@ -294,6 +294,19 @@ export function AdminWithdrawalsSection({
             <p className="text-[10px] text-zinc-500 mt-1">{pendingWithdrawalsCount} solicitação(ões) pendente(s)</p>
           </div>
         </div>
+
+        {/* Informação Read-Only do Pix Automático Diário */}
+        <div className="mt-4 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 p-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-purple-900 dark:text-purple-200 font-medium">
+            <span className="text-base">⏰</span>
+            <span>
+              <strong>Pix Automático Diário (Robô Asaas):</strong> Gerenciado individualmente por praça na aba <strong>Cidades / Expansão</strong> (Horário Padrão: <strong>{payoutSettings?.auto_payout_time || '22:00'}</strong>).
+            </span>
+          </div>
+          <span className="bg-purple-200/80 dark:bg-purple-900/60 text-purple-900 dark:text-purple-100 text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
+            ⚡ Configuração Ativa na Aba Cidades
+          </span>
+        </div>
       </div>
 
       {/* 2. Painel Unificado de Liquidação Rápida em Lote (Geral / Por Cidade) */}
