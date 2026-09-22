@@ -98,10 +98,17 @@ export async function POST(request: Request) {
       });
     }
 
-    // 3. Buscar solicitações de saque PENDENTES
+    // 3. Buscar cidades e solicitações de saque PENDENTES
+    const { data: citiesData } = await adminSupabase.from('cities').select('id, name, rates');
+    const cityRatesMap: Record<string, { auto_payout_enabled?: boolean; payout_time?: string }> = {};
+    (citiesData || []).forEach(c => {
+      const normName = (c.name || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      cityRatesMap[normName] = c.rates || {};
+    });
+
     const { data: pendingRequests } = await adminSupabase
       .from('withdrawal_requests')
-      .select('id, requested_amount, partner_id')
+      .select('id, requested_amount, partner_id, partner:partner_id(city)')
       .eq('status', 'PENDENTE')
       .order('created_at', { ascending: true });
 
@@ -114,13 +121,35 @@ export async function POST(request: Request) {
       });
     }
 
-    console.log(`⏰ [Sweep Payout] Iniciando pagamento automático de ${pendingRequests.length} solicitações pendentes...`);
+    console.log(`⏰ [Sweep Payout] Avaliando pagamento automático de ${pendingRequests.length} solicitações pendentes...`);
 
     const results: any[] = [];
     let successCount = 0;
     let failCount = 0;
+    let skippedCount = 0;
 
     for (const req of pendingRequests) {
+      const partnerCityRaw = (req as any)?.partner?.city || '';
+      const normCity = partnerCityRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const cityRates = cityRatesMap[normCity] || {};
+
+      const cityAutoEnabled = cityRates.auto_payout_enabled !== false;
+      const cityPayoutTime = cityRates.payout_time || targetTime || '22:00';
+      const cityTargetMinutes = timeToMinutes(cityPayoutTime);
+
+      if (!isForce) {
+        if (!cityAutoEnabled) {
+          console.log(`[Sweep Payout] Ignorando saque #${req.id}: Pix Automático desativado para a cidade (${partnerCityRaw || 'Geral'}).`);
+          skippedCount++;
+          continue;
+        }
+        if (currentMinutes < cityTargetMinutes) {
+          console.log(`[Sweep Payout] Ignorando saque #${req.id}: Horário de ${partnerCityRaw || 'Geral'} (${cityPayoutTime}) ainda não foi atingido.`);
+          skippedCount++;
+          continue;
+        }
+      }
+
       try {
         const res = await processWithdrawalApproval(req.id, null); // actorId = null -> processed_automatically
         results.push({ requestId: req.id, ...res });

@@ -2816,14 +2816,22 @@ function AdminDashboardContent() {
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                         {filteredCities.map((c: City) => {
                             const cityPending = pendingPayoutsByCity[c.name];
+                            const cityRatesObj = c.rates || {};
+                            const cityPayoutTime = cityRatesObj.payout_time || '22:00';
+                            const isAutoPayoutEnabled = cityRatesObj.auto_payout_enabled !== false;
+
                             return (
                             <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                                 <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">
                                     <div>{c.name}</div>
-                                    <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-0.5 flex items-center gap-1">
-                                        <span>⏰ Pix Automático:</span>
-                                        <span className="bg-purple-50 dark:bg-purple-950/80 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800">
-                                            {c.rates?.payout_time || rates?.payout_time || '22:00'} ({(c.rates?.auto_payout_enabled !== false && (localRates as any)?.auto_payout_enabled !== false) ? '⚡ Ativo' : '⏸️ Pausado'})
+                                    <div className="text-[10px] font-bold mt-0.5 flex items-center gap-1">
+                                        <span className="text-purple-600 dark:text-purple-400">⏰ Pix Automático:</span>
+                                        <span className={`px-1.5 py-0.5 rounded border text-[9px] font-bold ${
+                                          isAutoPayoutEnabled 
+                                            ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                                            : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
+                                        }`}>
+                                            {cityPayoutTime} ({isAutoPayoutEnabled ? '⚡ Ativo' : '⏸️ Pausado'})
                                         </span>
                                     </div>
                                 </td>

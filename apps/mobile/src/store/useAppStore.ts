@@ -3188,24 +3188,14 @@ export const useAppStore = create<AppState>()(
          }
       },
       saveCityRates: async (cityId, cityRates) => {
-         set((state) => {
-            const currentRates = state.rates;
-            const mergedRates = { ...currentRates, ...cityRates };
-            return {
-               rates: mergedRates,
-               cities: state.cities.map(c => c.id === cityId ? { ...c, rates: { ...c.rates, ...cityRates } } : c)
-            };
-         });
+         set((state) => ({
+            cities: state.cities.map(c => c.id === cityId ? { ...c, rates: { ...c.rates, ...cityRates } } : c)
+         }));
          try {
             const { error } = await supabase.from('cities').update({ rates: cityRates }).eq('id', cityId);
             if (error) console.warn("Aviso ao salvar taxas da cidade no Supabase (coluna rates):", error);
          } catch (e) {
             console.warn("Exceção ao atualizar taxas da cidade no banco:", e);
-         }
-         try {
-            await get().saveRates(cityRates);
-         } catch (e) {
-            console.warn("Exceção ao sincronizar com platform_settings:", e);
          }
       },
       deleteCity: async (id) => {
