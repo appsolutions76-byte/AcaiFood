@@ -2562,33 +2562,52 @@ export const useAppStore = create<AppState>()(
           const newOrders = state.orders.map(o => {
             if (o.id !== orderId) return o;
             const newOrder = { ...o };
+            const nowIso = new Date().toISOString();
             if (action === 'cancelar_pedido' || action === 'cancelar_cliente' || action === 'recusar_loja' || action === 'recusar_forn' || action === 'recusar_fornecedor' || action === 'cancelar_loja' || action === 'cancelar_fornecedor') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
             if (action === 'confirmar_pagamento' || action === 'pagar') { 
               newOrder.status = o.type === 'COLETA' ? 'pronto' : 'pendente'; 
               newDbStatus = o.type === 'COLETA' ? 'READY' : 'PAID'; 
             }
-            if (action === 'aceitar_loja' || action === 'aceitar_forn') { newOrder.status = 'preparo'; newDbStatus = 'PREPARING'; }
-            if (action === 'chamar_moto' || action === 'chamar_caminhao') { newOrder.status = 'pronto'; newDbStatus = 'READY'; }
-            if (action === 'aceitar_motorista') { newOrder.status = 'em_rota'; newOrder.motoristaId = state.currentUser?.id || null; newOrder.pickedUpAt = undefined; newDbStatus = 'DELIVERING'; driverId = newOrder.motoristaId; }
+            if (action === 'aceitar_loja' || action === 'aceitar_forn') { 
+              newOrder.status = 'preparo'; 
+              newDbStatus = 'PREPARING';
+              newOrder.acceptedAt = newOrder.readyAt && new Date(newOrder.readyAt).getTime() < new Date(nowIso).getTime() ? newOrder.readyAt : nowIso;
+            }
+            if (action === 'chamar_moto' || action === 'chamar_caminhao') { 
+              newOrder.status = 'pronto'; 
+              newDbStatus = 'READY';
+              if (!newOrder.acceptedAt) newOrder.acceptedAt = nowIso;
+              newOrder.readyAt = newOrder.pickedUpAt && new Date(newOrder.pickedUpAt).getTime() < new Date(nowIso).getTime() ? newOrder.pickedUpAt : nowIso;
+            }
+            if (action === 'aceitar_motorista') { 
+              newOrder.status = 'em_rota'; 
+              newOrder.motoristaId = state.currentUser?.id || null; 
+              newDbStatus = 'DELIVERING'; 
+              driverId = newOrder.motoristaId; 
+            }
             if (action === 'retirar_pedido') {
-              newOrder.pickedUpAt = new Date().toISOString();
+              if (!newOrder.acceptedAt) newOrder.acceptedAt = nowIso;
+              if (!newOrder.readyAt) newOrder.readyAt = nowIso;
+              newOrder.pickedUpAt = nowIso;
               newDbStatus = 'DELIVERING';
             }
             if (action === 'conf_motorista') {
+              if (!newOrder.acceptedAt) newOrder.acceptedAt = nowIso;
+              if (!newOrder.readyAt) newOrder.readyAt = nowIso;
+              if (!newOrder.pickedUpAt) newOrder.pickedUpAt = nowIso;
+              newOrder.deliveredAt = nowIso;
               newOrder.status = 'aguardando_cliente';
               newDbStatus = 'DELIVERED';
             }
-            if (action === 'conf_recebedor' || action === 'validar_pin') {
-              newOrder.status = 'entregue';
-              newDbStatus = 'RECEIVED';
-            }
-            // forcar_baixa restricted to admin only
-            if (action === 'forcar_baixa') {
-              const isAdminUser = state.currentUser?.role === 'admin';
-              if (!isAdminUser) {
-                console.warn('Security: forcar_baixa rejected — not an admin');
-                return o; // Reject non-admin force close
+            if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
+              if (action === 'forcar_baixa' && state.currentUser?.role !== 'admin') {
+                return o;
               }
+              if (!newOrder.acceptedAt) newOrder.acceptedAt = nowIso;
+              if (!newOrder.readyAt) newOrder.readyAt = nowIso;
+              if (!newOrder.pickedUpAt) newOrder.pickedUpAt = nowIso;
+              if (!newOrder.deliveredAt) newOrder.deliveredAt = nowIso;
+              newOrder.receivedAt = nowIso;
               newOrder.status = 'entregue';
               newDbStatus = 'RECEIVED';
             }
@@ -2597,16 +2616,62 @@ export const useAppStore = create<AppState>()(
           return { orders: newOrders };
         });
 
-
-
         const updates: any = {};
         if (newDbStatus) updates.status = newDbStatus;
         if (driverId) updates.driver_id = driverId;
-        if (action === 'aceitar_loja' || action === 'aceitar_forn') updates.accepted_at = new Date().toISOString();
-        if (action === 'chamar_moto' || action === 'chamar_caminhao') updates.ready_at = new Date().toISOString();
-        if (action === 'retirar_pedido') updates.picked_up_at = new Date().toISOString();
-        if (action === 'conf_motorista') updates.delivered_at = new Date().toISOString();
-        if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') updates.received_at = new Date().toISOString();
+
+        const nowIsoUpdate = new Date().toISOString();
+        const nowTimeUpdate = new Date(nowIsoUpdate).getTime();
+        const targetCurrentOrder = state.orders.find(o => o.id === orderId);
+
+        if (action === 'aceitar_loja' || action === 'aceitar_forn') {
+          let tAccepted = nowIsoUpdate;
+          if (targetCurrentOrder?.readyAt && new Date(targetCurrentOrder.readyAt).getTime() < nowTimeUpdate) {
+            tAccepted = targetCurrentOrder.readyAt;
+          }
+          updates.accepted_at = tAccepted;
+        }
+
+        if (action === 'chamar_moto' || action === 'chamar_caminhao') {
+          let tReady = nowIsoUpdate;
+          if (!targetCurrentOrder?.acceptedAt) {
+            updates.accepted_at = tReady;
+          }
+          if (targetCurrentOrder?.pickedUpAt && new Date(targetCurrentOrder.pickedUpAt).getTime() < nowTimeUpdate) {
+            tReady = targetCurrentOrder.pickedUpAt;
+          }
+          updates.ready_at = tReady;
+        }
+
+        if (action === 'retirar_pedido') {
+          let tPicked = nowIsoUpdate;
+          if (!targetCurrentOrder?.acceptedAt) updates.accepted_at = tPicked;
+          if (!targetCurrentOrder?.readyAt) updates.ready_at = tPicked;
+          if (targetCurrentOrder?.deliveredAt && new Date(targetCurrentOrder.deliveredAt).getTime() < nowTimeUpdate) {
+            tPicked = targetCurrentOrder.deliveredAt;
+          }
+          updates.picked_up_at = tPicked;
+        }
+
+        if (action === 'conf_motorista') {
+          let tDelivered = nowIsoUpdate;
+          if (!targetCurrentOrder?.acceptedAt) updates.accepted_at = tDelivered;
+          if (!targetCurrentOrder?.readyAt) updates.ready_at = tDelivered;
+          if (!targetCurrentOrder?.pickedUpAt) updates.picked_up_at = tDelivered;
+          if (targetCurrentOrder?.receivedAt && new Date(targetCurrentOrder.receivedAt).getTime() < nowTimeUpdate) {
+            tDelivered = targetCurrentOrder.receivedAt;
+          }
+          updates.delivered_at = tDelivered;
+        }
+
+        if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
+          let tReceived = nowIsoUpdate;
+          if (!targetCurrentOrder?.acceptedAt) updates.accepted_at = tReceived;
+          if (!targetCurrentOrder?.readyAt) updates.ready_at = tReceived;
+          if (!targetCurrentOrder?.pickedUpAt) updates.picked_up_at = tReceived;
+          if (!targetCurrentOrder?.deliveredAt) updates.delivered_at = tReceived;
+          updates.received_at = tReceived;
+        }
 
         if (newDbStatus === 'CANCELLED') {
           updates.cancellation_reason = reasonStr || 'Cancelamento solicitado pelo usuário antes da validação por PIN';

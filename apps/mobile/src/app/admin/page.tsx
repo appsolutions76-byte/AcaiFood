@@ -9,6 +9,7 @@ import {
   FileText, Layers, Phone, Navigation, ShieldCheck, DollarSign, Share2
 } from "lucide-react";
 import { useAppStore, Order, City, CityRates, getRatesForCity, calculateOrderFreight, calculateOrderTaxes, getAuthHeaders } from "@/store/useAppStore";
+import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { supabase } from "@/lib/supabase";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -2241,14 +2242,7 @@ function AdminDashboardContent() {
                             </button>
 
                             {/* Linha do Tempo Compacta */}
-                            <div className="mt-2 flex flex-col gap-0.5 text-[9px] text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-950 p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
-                              {safeTime(o.createdAt) && <span>🕒 Criado: <strong>{safeTime(o.createdAt)}</strong></span>}
-                              {safeTime(o.acceptedAt) && <span className="text-purple-600 dark:text-purple-400">👨‍🍳 Aceito: <strong>{safeTime(o.acceptedAt)}</strong></span>}
-                              {safeTime(o.readyAt) && <span className="text-orange-600 dark:text-orange-400">🛎️ Pronto: <strong>{safeTime(o.readyAt)}</strong></span>}
-                              {safeTime(o.pickedUpAt) && <span className="text-blue-600 dark:text-blue-400">📦 Coletado: <strong>{safeTime(o.pickedUpAt)}</strong></span>}
-                              {safeTime(o.deliveredAt) && <span className="text-teal-600 dark:text-teal-400">📍 Chegou: <strong>{safeTime(o.deliveredAt)}</strong></span>}
-                              {safeTime(o.receivedAt) && <span className="text-emerald-600 dark:text-emerald-400">✅ Entregue: <strong>{safeTime(o.receivedAt)}</strong></span>}
-                            </div>
+                            <OrderTimelineBadges order={o} className="mt-2 flex flex-wrap gap-1 text-[9px]" />
                           </td>
 
                           {/* Coluna 2: Quem Pediu (Cliente) */}
