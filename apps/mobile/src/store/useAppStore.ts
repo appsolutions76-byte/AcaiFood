@@ -354,7 +354,7 @@ interface AppState {
   clearData: () => Promise<void>;
   updateUserPixKey: (userId: string, pixKey: string) => Promise<void>;
   updateUserName: (userId: string, name: string) => Promise<void>;
-  markPayoutDone: (orderIds: string[], role: 'seller' | 'driver') => Promise<void>;
+  markPayoutDone: (orderIds: string[], role: 'seller' | 'driver', partnerId?: string) => Promise<void>;
 
   // Cidades
   fetchCities: () => Promise<void>;
@@ -3134,7 +3134,7 @@ export const useAppStore = create<AppState>()(
          }
       },
 
-      markPayoutDone: async (orderIds: string[], role: 'seller' | 'driver') => {
+      markPayoutDone: async (orderIds: string[], role: 'seller' | 'driver', partnerId?: string) => {
          if (!orderIds || orderIds.length === 0) return;
          set((state) => ({
             orders: state.orders.map((o) => {
@@ -3152,6 +3152,13 @@ export const useAppStore = create<AppState>()(
          try {
             const updatePayload: any = role === 'seller' ? { payout_seller_done: true } : { payout_driver_done: true };
             await supabase.from('orders').update(updatePayload).in('id', orderIds);
+            if (partnerId) {
+               await supabase
+                 .from('withdrawal_requests')
+                 .update({ status: 'PAGO', paid_at: new Date().toISOString() })
+                 .in('status', ['PENDENTE', 'APROVADO'])
+                 .eq('partner_id', partnerId);
+            }
          } catch (e) {
             console.warn("Aviso ao atualizar payout_done no Supabase:", e);
          }

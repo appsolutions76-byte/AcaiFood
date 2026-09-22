@@ -383,7 +383,7 @@ function AdminDashboardContent() {
         const roleType = isDriver ? 'driver' : 'seller';
         const orderIds = pendingOrders.map(o => o.id);
 
-        await store.markPayoutDone(orderIds, roleType);
+        await store.markPayoutDone(orderIds, roleType, u.id);
 
         showToast(`✅ Pix de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} enviado para ${u.name}! (ID Asaas: ${data.transferId})`);
         if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
@@ -464,7 +464,7 @@ function AdminDashboardContent() {
           const roleType = isDriver ? 'driver' : 'seller';
           const orderIds = p.pendingOrders.map(o => o.id);
 
-          await store.markPayoutDone(orderIds, roleType);
+          await store.markPayoutDone(orderIds, roleType, u.id);
           successCount++;
         } else {
           failCount++;
