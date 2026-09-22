@@ -90,11 +90,51 @@ export function generateSingleTicketHTML(
   const isColeta = order.type === 'COLETA';
 
   // Itens e Cálculo do Subtotal dos Produtos
-  const itemsList = order.items && order.items.length > 0
-    ? order.items
-    : order.title
-    ? [{ id: '1', name: order.title, quantity: order.quantity || 1, price: (order as any).products_subtotal ? (Number((order as any).products_subtotal) / (order.quantity || 1)) : (order.valor || 0) }]
-    : [{ id: '1', name: 'Pedido Açaí', quantity: 1, price: (order as any).products_subtotal || order.valor || 0 }];
+  let rawItems: { id: string; name: string; quantity: number; price: number }[] = [];
+
+  if (order.items && order.items.length > 0) {
+    rawItems = order.items.map((it, idx) => ({
+      id: it.id || String(idx + 1),
+      name: (it.name || 'Produto').replace(/^\d+x\s*/i, '').trim(),
+      quantity: Number(it.quantity || 1),
+      price: Number(it.price || 0)
+    }));
+  } else if (order.title) {
+    const rawTitle = order.title.trim();
+    const parts = rawTitle.split(',').map(p => p.trim()).filter(Boolean);
+    const subtotal = (order as any).products_subtotal ? Number((order as any).products_subtotal) : Number(order.valor || 0);
+    const partPrice = parts.length > 0 ? (subtotal / parts.length) : subtotal;
+
+    rawItems = parts.map((part, idx) => {
+      const match = part.match(/^(\d+)x\s*(.+)$/i);
+      if (match) {
+        const qty = parseInt(match[1], 10) || 1;
+        return {
+          id: String(idx + 1),
+          name: match[2].replace(/^\d+x\s*/i, '').trim(),
+          quantity: qty,
+          price: partPrice / qty
+        };
+      }
+      return {
+        id: String(idx + 1),
+        name: part.replace(/^\d+x\s*/i, '').trim(),
+        quantity: order.quantity || 1,
+        price: partPrice / (order.quantity || 1)
+      };
+    });
+  }
+
+  if (rawItems.length === 0) {
+    rawItems = [{
+      id: '1',
+      name: (order.title || 'Produto').replace(/^\d+x\s*/i, '').trim(),
+      quantity: order.quantity || 1,
+      price: (order as any).products_subtotal || order.valor || 0
+    }];
+  }
+
+  const itemsList = rawItems;
 
   // 1. Subtotal exato dos itens
   let itemsSubtotal = itemsList.reduce((acc, i) => acc + (Number(i.price || 0) * Number(i.quantity || 1)), 0);
@@ -255,7 +295,7 @@ export function generateSingleTicketHTML(
             ${itemsList.map(item => `
               <tr style="vertical-align: top;">
                 <td style="padding: 3px 0; font-weight: bold; width: 15%;">${item.quantity}x</td>
-                <td style="padding: 3px 0; font-weight: bold; width: 60%;">${item.name}</td>
+                <td style="padding: 3px 0; font-weight: bold; width: 60%;">${(item.name || 'Produto').replace(/^\d+x\s*/i, '').trim()}</td>
                 <td style="padding: 3px 0; text-align: right; width: 25%;">R$ ${(item.price * item.quantity).toFixed(2)}</td>
               </tr>
             `).join('')}
