@@ -73,18 +73,26 @@ export async function POST(request: Request) {
     const calculatedSplits: { walletId: string; fixedValue: number }[] = [];
 
     // Split Vendedor (Loja / Batedeira / Fornecedor)
-    if (order.seller_storefront_id) {
+    const sellerSfOrUserId = order.seller_storefront_id || (order as any).loja_id || (order as any).fornecedor_id || (order as any).origem_id || null;
+    if (sellerSfOrUserId) {
+      let partnerUserId: string | null = null;
       const { data: sf } = await supabase
         .from('storefronts')
         .select('partner_id')
-        .eq('id', order.seller_storefront_id)
+        .eq('id', sellerSfOrUserId)
         .maybeSingle();
 
       if (sf?.partner_id) {
+        partnerUserId = sf.partner_id;
+      } else {
+        partnerUserId = sellerSfOrUserId;
+      }
+
+      if (partnerUserId) {
         const { data: uSeller } = await supabase
           .from('users')
           .select('asaas_wallet_id, split_enabled, asaas_account_status')
-          .eq('id', sf.partner_id)
+          .eq('id', partnerUserId)
           .maybeSingle();
 
         const isSellerSplitActive = uSeller?.split_enabled === true || 
@@ -105,11 +113,12 @@ export async function POST(request: Request) {
     }
 
     // Split Motorista / Entregador (Motoboy / Caminhão)
-    if (order.driver_id) {
+    const driverUserId = order.driver_id || (order as any).motorista_id || (order as any).motoristaId || null;
+    if (driverUserId) {
       const { data: uDriver } = await supabase
         .from('users')
         .select('asaas_wallet_id, split_enabled, asaas_account_status')
-        .eq('id', order.driver_id)
+        .eq('id', driverUserId)
         .maybeSingle();
 
       const isDriverSplitActive = uDriver?.split_enabled === true || 
