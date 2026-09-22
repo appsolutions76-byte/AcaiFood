@@ -8,7 +8,7 @@ import {
   Clock, CheckCircle, X, Eye, ArrowUpRight, Check, FileSpreadsheet,
   FileText, Layers, Phone, Navigation, ShieldCheck, DollarSign, Share2
 } from "lucide-react";
-import { useAppStore, Order, City, CityRates, getRatesForCity, calculateOrderFreight, calculateOrderTaxes } from "@/store/useAppStore";
+import { useAppStore, Order, City, CityRates, getRatesForCity, calculateOrderFreight, calculateOrderTaxes, getAuthHeaders } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -4296,9 +4296,14 @@ function AdminDashboardContent() {
                           onClick={async () => {
                             if (confirm("Deseja executar a varredura e envio de Pix pendentes do dia agora mesmo?")) {
                               try {
-                                const { data, error } = await supabase.functions.invoke('payout-sweep');
-                                if (error) throw error;
-                                alert(`✅ Varredura concluída com sucesso!\n\nPedidos Processados: ${data?.processedOrders || 0}\nRepasses Lojas: ${data?.sellerPayoutsCount || 0}\nRepasses Motoristas: ${data?.driverPayoutsCount || 0}\nTotal Transferido: R$ ${(data?.totalAmountTransferred || 0).toFixed(2)}`);
+                                const headers = await getAuthHeaders();
+                                const res = await fetch('/api/asaas/sweep?force=true', {
+                                  method: 'POST',
+                                  headers
+                                });
+                                const data = await res.json();
+                                if (!res.ok || data.error) throw new Error(data.error || 'Falha ao executar varredura');
+                                alert(`✅ Varredura concluída com sucesso!\n\nSolicitações Processadas: ${data?.totalPending || 0}\nSucessos (Pix Enviados): ${data?.successCount || 0}\nFalhas: ${data?.failCount || 0}`);
                               } catch (err: any) {
                                 alert("Erro ao disparar varredura: " + (err.message || JSON.stringify(err)));
                               }

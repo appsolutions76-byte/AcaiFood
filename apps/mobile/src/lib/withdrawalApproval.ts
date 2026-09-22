@@ -17,11 +17,11 @@ export async function processWithdrawalApproval(
 ): Promise<ProcessApprovalResult> {
   const adminSupabase = getSupabaseAdmin();
 
-  // 1. Trava atômica (P5): Tentar atualizar status para 'PROCESSING' atipicamente
+  // 1. Trava atômica (P5): Tentar atualizar status para 'APROVADO' de forma atômica
   const { data: lockRow, error: lockErr } = await adminSupabase
     .from('withdrawal_requests')
     .update({
-      status: 'PROCESSING',
+      status: 'APROVADO',
       reviewed_by: actorId,
       reviewed_at: new Date().toISOString()
     })
@@ -31,10 +31,13 @@ export async function processWithdrawalApproval(
     .maybeSingle();
 
   if (lockErr || !lockRow) {
+    if (lockErr) {
+      console.error('[processWithdrawalApproval] Erro na trava atômica:', lockErr);
+    }
     return {
       success: false,
       status: 'FALHOU',
-      error: 'Solicitação não encontrada, já finalizada ou em processamento concorrente.'
+      error: lockErr ? `Erro no banco de dados: ${lockErr.message}` : 'Solicitação não encontrada, já finalizada ou em processamento concorrente.'
     };
   }
 

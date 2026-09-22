@@ -18,6 +18,8 @@ export async function POST(request: Request) {
 
   try {
     const adminSupabase = getSupabaseAdmin();
+    const { searchParams } = new URL(request.url);
+    const isForce = searchParams.get('force') === 'true' || request.headers.get('x-force-sweep') === 'true';
 
     // 1. Obter configurações de auto payout em platform_settings
     const { data: settings } = await adminSupabase
@@ -31,7 +33,7 @@ export async function POST(request: Request) {
     const timeZone = settings?.auto_payout_timezone || 'America/Belem';
     const lastRunAt = settings?.last_auto_payout_run_at ? new Date(settings.last_auto_payout_run_at) : null;
 
-    if (!isEnabled) {
+    if (!isEnabled && !isForce) {
       console.log("[Sweep Payout] Pagamento automático está DESLIGADO no painel admin.");
       return NextResponse.json({
         success: true,
@@ -60,7 +62,7 @@ export async function POST(request: Request) {
     const currentHHMM = `${dateMap.hour}:${dateMap.minute}`;
 
     // Verificar se já rodou hoje no mesmo fuso
-    if (lastRunAt) {
+    if (lastRunAt && !isForce) {
       const lastParts = formatter.formatToParts(lastRunAt);
       const lastDateMap: Record<string, string> = {};
       lastParts.forEach(p => { lastDateMap[p.type] = p.value; });
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
     const currentMinutes = timeToMinutes(currentHHMM);
     const targetMinutes = timeToMinutes(targetTime);
 
-    if (currentMinutes < targetMinutes) {
+    if (currentMinutes < targetMinutes && !isForce) {
       console.log(`[Sweep Payout] Horário atual (${currentHHMM}) é anterior ao horário agendado (${targetTime}). Varredura ignorada.`);
       return NextResponse.json({
         success: true,

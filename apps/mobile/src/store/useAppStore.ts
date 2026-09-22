@@ -3248,10 +3248,12 @@ export const useAppStore = create<AppState>()(
                      if (lastSweepDate !== todayStr) {
                        lastSweepDate = todayStr;
                        console.log(`⏰ Horário de varredura programada atingido (${targetPayoutTime})! Executando payout-sweep...`);
-                       supabase.functions.invoke('payout-sweep').then(({ data, error }) => {
-                         if (error) console.warn("Aviso auto-sweep por horário:", error);
-                         else console.log("✅ Varredura automática das", targetPayoutTime, "executada:", data);
-                       }).catch(err => console.warn("Exceção no auto-sweep:", err));
+                       getAuthHeaders().then(headers => {
+                         fetch('/api/asaas/sweep', { method: 'POST', headers })
+                           .then(r => r.json())
+                           .then(data => console.log("✅ Varredura automática executada:", data))
+                           .catch(err => console.warn("Aviso auto-sweep por horário:", err));
+                       }).catch(err => console.warn("Exceção de auth no auto-sweep:", err));
                      }
                    }
                  } catch(eSweep) {
