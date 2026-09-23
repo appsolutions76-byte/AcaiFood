@@ -1,4 +1,4 @@
-﻿# 📘 Manual Mestre e Relatório Completo do Ecossistema AçaíFood
+# 📘 Manual Mestre e Relatório Completo do Ecossistema AçaíFood
 **Versão:** 2.0 • **Ano:** 2026  
 **Plataforma Oficial:** [https://www.acaifood.app.br/](https://www.acaifood.app.br/)  
 **Espelho de Produção:** [https://acai-food-mobile.vercel.app/](https://acai-food-mobile.vercel.app/)
@@ -175,25 +175,29 @@ O protocolo de PIN é o núcleo anti-fraude do AçaíFood em todas as operaçõe
 ---
 
 ## 9. Sistema Financeiro: Checkout Asaas, Split Automático e Saques PIX
-
-### 💳 Fluxo de Liquidação e Split
-1. **Idempotência de Pagamento:** Cada pedido gera uma cobrança com chave única (`externalReference = orderId`), impedindo duplicidade.
-2. **Split Nativo Asaas:** A divisão dos percentuais entre Plataforma, Vendedor e Entregador é configurada diretamente na criação da cobrança.
-3. **Controle de Saques Diários:** Cada parceiro (batedeira, fornecedor, motoboy e caminhoneiro) pode solicitar até **2 saques instantâneos via PIX por dia** diretamente para seu banco externo.
-4. **Varredura Diária Automática (Sweep):** Valores remanescentes são liquidados automaticamente no horário configurado no município (padrão: 22:00).
-
----
-
-## 10. Governança, Painel Administrativo e Auditoria de Segurança
-
-### 🛡️ Blindagem de Segurança Aplicada
-- **Autenticação Criptográfica de APIs:** Todos os endpoints exigem validação rigorosa de **JWT Supabase** (`Bearer <token>`) ou segredo interno de servidor (`x-internal-secret`), eliminando qualquer possibilidade de spoofing de headers.
-- **Row Level Security (RLS):** As tabelas `orders`, `users`, `admin_balances` e `platform_settings` possuem regras estritas no PostgreSQL, garantindo que nenhum usuário acerte dados de terceiros.
-- **Auditoria em Tempo Real:** Painel Master com monitoramento de GMV, volume de vendas diário/mensal/histórico e gestão de usuários ativos ou bloqueados.
-
----
-
-### 🌐 Endereços Oficiais
-- **Produção Web:** [https://www.acaifood.app.br/](https://www.acaifood.app.br/)
-- **Deploy Vercel:** [https://acai-food-mobile.vercel.app/](https://acai-food-mobile.vercel.app/)
+ 
+ ### 💳 Fluxo de Liquidação e Split
+ 1. **Idempotência de Pagamento:** Cada pedido gera uma cobrança com chave única (`externalReference = orderId`), impedindo duplicidade.
+ 2. **Split Nativo Asaas:** A divisão dos percentuais entre Plataforma, Vendedor e Entregador é calculada em centavos no checkout e gravada na tabela `splits`.
+ 3. **Saldo Estrito Pós-PIN:** O saldo para saque só é creditado ao parceiro após a validação presencial do PIN de 4 dígitos na entrega (`RECEIVED` / `DELIVERED`).
+ 4. **Controle de Saques Diários:** Cada parceiro (batedeira, fornecedor, motoboy e caminhoneiro) pode solicitar saques instantâneos via PIX diretamente pelo seu painel para qualquer banco.
+ 5. **Varredura Diária Automática (Sweep):** Valores remanescentes são liquidados automaticamente no horário configurado no município (padrão: 22:00).
+ 
+ ---
+ 
+ ## 10. Governança, Painel Administrativo e Auditoria de Segurança
+ 
+ ### 🛡️ Blindagem de Segurança e Fonte Única da Verdade (PostgreSQL)
+ - **Banco de Dados como Fonte Única:** As tabelas `orders` (`payout_seller_done`, `payout_driver_done`), `withdrawal_requests` (`PENDENTE`, `PAGO`), `splits` e `partner_ledger` garantem a consistência matemática absoluta entre todas as telas.
+ - **Sincronização 3-Telas em Tempo Real:** 
+   - Ao liquidar repasses na **Aba Usuários** (`pagarParceiro`/`pagarTodosParceiros`), na **Aba Cidades** (`Liquidar`) ou na **Central de Saques** (`handleApprove`), o sistema atualiza atomicamente o banco e zera os valores pendentes em todas as visões simultaneamente.
+ - **Trava Atômica de Saque:** O endpoint de aprovação (`/api/admin/withdrawals/[id]/approve`) altera o status para `APROVADO` de forma transacional, impossibilitando saques duplicados ou concorrentes.
+ - **Autenticação Criptográfica de APIs:** Todos os endpoints exigem validação rigorosa de **JWT Supabase** (`Bearer <token>`) ou autorização administrativa (`authorizeRequest`), eliminando vulnerabilidades de escalada de privilégios.
+ - **Row Level Security (RLS):** As tabelas `orders`, `users`, `withdrawal_requests`, `admin_balances` e `platform_settings` possuem políticas ativas no PostgreSQL, garantindo isolamento total entre usuários.
+ 
+ ---
+ 
+ ### 🌐 Endereços Oficiais
+ - **Produção Web:** [https://www.acaifood.app.br/](https://www.acaifood.app.br/)
+ - **Deploy Vercel:** [https://acai-food-mobile.vercel.app/](https://acai-food-mobile.vercel.app/)
 

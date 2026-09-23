@@ -1,4 +1,4 @@
-﻿# 🥑 AçaíFood — Manuais de Uso Completos para Todos os Usuários
+# 🥑 AçaíFood — Manuais de Uso Completos para Todos os Usuários
 
 **Ambiente Oficial de Produção:** [https://www.acaifood.app.br/](https://www.acaifood.app.br/)  
 *Versão Atualizada: 2026 (Com Radar sob Demanda, Validação de PIN de 4 dígitos, Chat Integrado, Estornos Pix e Divisão Asaas)*
@@ -130,27 +130,66 @@
 
 ---
 
-## 6. 👑 Manual do Administrador Geral (Painel Master)
+## 6. 👑 Manual do Administrador Geral (Painel Master `/admin`)
 
-### 6.1. Visão Geral, Métricas & Balanços
-- Acompanhe em tempo real o volume total transacionado, receita líquida da plataforma (comissões de vendas + comissões de frete) e gráficos de pedidos por status.
-- Fechamento e zeramento seguro de balanços diários, mensais e históricos.
+O painel administrativo do AçaíFood é o centro nervoso da governança, auditoria e liquidações financeiras da plataforma, estruturado em **9 abas operacionais** com sincronização em tempo real e o **Banco de Dados PostgreSQL (Supabase)** como **Fonte Única da Verdade**.
 
-### 6.2. Liquidação em Lote ("💸 Pagar e Zerar")
-- Na aba **👥 Usuários**, o sistema agrupa os saldos líquidos acumulados *A Pagar* para cada loja, fornecedor ou entregador.
-- Ao clicar em **"💸 Pagar e Zerar"**, o sistema dispara a API `POST /api/asaas/transfer`, enviando o Pix instantâneo e marcando os pedidos como quitados (`payout_seller_done` / `payout_driver_done`).
-- **Varredura Automática (Payout Sweep):** Executa no horário configurado (padrão: 22:00) para processar repasses pendentes.
+### 6.1. As 9 Abas do Painel Administrativo
 
-### 6.3. Expansão Municipal & Gestão Tarifária
-- Cadastre novas cidades na aba **🌍 Cidades / Expansão**.
-- Configure comissões da plataforma (%) e modalidades de frete independentes por cidade:
-  - **KM:** Cobrança por km rodado via ruas reais.
-  - **FIXED:** Valor fixo de frete para entregas municipais.
-- As tarifas por cidade sobrepõem automaticamente as tarifas globais.
+| Aba | Finalidade Operacional |
+| :--- | :--- |
+| **📊 1. Dashboard** | Monitoramento de GMV, Volume Transacionado Bruto, Receita Retida do AçaíFood, Faturamento por Personagem e totalizadores Histórico, Mensal e Diário com reset de fechamento. |
+| **👥 2. Usuários & Parceiros** | Gestão de clientes, batedeiras, fornecedores, motoboys, caminhões e admins. Controle de bloqueio/desbloqueio, exclusão definitiva e botão individual de **`💸 Pagar e Zerar`**. |
+| **📦 3. Pedidos & Auditoria** | Filtros avançados por status, tipo de transação (B2C/B2B/Coleta), período e busca por PIN/Asaas. Acesso ao Mapa de Rotas e à **Ficha Completa de Auditoria** com divisão de taxas em centavos. |
+| **🌍 4. Cidades & Expansão** | Cadastro de novas cidades, pausa/ativação de praças, configuração de horário do Pix Automático (`payout_time`), ajuste de taxas por KM/Fixas e botão **`⚡ Liquidar`** por praça. |
+| **💸 5. Saques & Central Financeira** | Gestão de solicitações de saque de parceiros, ajuste do valor mínimo para saque Pix (R$), liquidação em lote geral/por cidade e aprovação/rejeição com 1-clique. |
+| **🎁 6. Ativações & Vagas Fundador** | Gestão da cota gratuita de 50 vagas de Membros Fundadores, cobrança da taxa de ativação Pix (R$ 12,90), proteção anti-curiosos e concessão manual de isenção. |
+| **📢 7. Comerciais & Propaganda** | Gestão de banners e stories publicitários no app, upload direto de mídias para CDN/Storage, segmentação por cidade e controle de vigência. |
+| **🚨 8. Ocorrências** | Registro, mediação e auditoria de disputas, cancelamentos de pedidos, problemas de endereço e contestações entre clientes, lojas e entregadores. |
+| **🎧 9. Suporte ao Vivo** | Chat integrado em tempo real para atendimento e suporte a usuários e parceiros da plataforma. |
 
-### 6.4. Gestão de Usuários e Contingência
-- **Controle de Contas:** Ativar, pausar, bloquear ou excluir contas com encerramento de subcontas Asaas.
-- **Forçar Baixa de Contingência:** No histórico de pedidos, o botão *"Forçar Baixa"* permite homologar a entrega manualmente em casos excepcionais (ex: o celular do cliente descarregou e a loja confirmou a entrega física), com auditoria administrativa registrada.
+---
+
+### 6.2. Sincronização em Tempo Real das 3 Telas de Pagamento e Carteiras Asaas
+
+Existem 3 áreas no painel que visualizam e autorizam repasses financeiros. **Todas as 3 telas e a carteira dos parceiros utilizam exatamente a mesma base matemática e o mesmo banco de dados (estritamente pedidos concluídos com PIN validado):**
+
+1. **Aba Usuários (`activeTab === 'usuarios'`):** 
+   - Banner superior com totalizador geral/por praça e botão **`⚡ Pagar Todos`**.
+   - Na tabela de cada parceiro, exibe a Chave Pix cadastrada e o botão individual **`💸 Pagar e Zerar`**.
+2. **Aba Cidades (`activeTab === 'cidades'`):** 
+   - Tabela de praças com a coluna *Repasses Pendentes* e o botão **`⚡ Liquidar`** para pagar todos os parceiros daquela cidade de uma só vez.
+3. **Aba Saques (`activeTab === 'saques'` / Central Financeira):** 
+   - Resumo do Volume, Receita, Pendente de Repasse e Saques Solicitados, além da tabela de solicitações com botão **`✅ Aprovar Saque`**.
+
+---
+
+### 6.3. Fluxo de Saque Pix e Interligação entre as Telas
+
+#### 🔄 Cenário 1: O Parceiro solicita o saque em seu painel
+1. O parceiro (Loja, Fornecedor, Motoboy ou Caminhão) acumula saldo disponível proveniente **exclusivamente de pedidos entregues pós-PIN**.
+2. Ao atingir o valor mínimo configurado (ex: $\ge$ R$ 20,00), clica em *"Solicitar Saque Pix"*.
+3. O sistema grava o pedido na tabela `withdrawal_requests` com status **`PENDENTE`**.
+4. No Admin, na **Aba Saques**, a solicitação surge na fila.
+5. O Admin clica em **`✅ Aprovar Saque`**. O sistema aciona uma **trava atômica no banco** e dispara o Pix pelo Asaas (`POST /transfers`).
+6. Com a confirmação do Asaas, o sistema:
+   - Marca a solicitação como **`PAGO`** (`withdrawal_requests`).
+   - Marca todos os pedidos do parceiro como **`payout_seller_done = true`** / **`payout_driver_done = true`** (`orders`).
+   - Registra o débito no extrato (`partner_ledger`).
+   - Atualiza e zera o saldo instantaneamente em todas as 3 telas e na carteira do parceiro.
+
+#### ⚡ Cenário 2: O Admin paga pela Aba Usuários ou Aba Cidades
+* Se o Admin clicar em **`💸 Pagar e Zerar`** na Aba Usuários ou em **`⚡ Liquidar`** na Aba Cidades:
+* O sistema envia o Pix via Asaas e aciona a sincronização automática (`markPayoutDone`):
+  * Quita os pedidos no banco de dados.
+  * **Atualiza imediatamente a solicitação de saque pendente na Central de Saques para `PAGO`**.
+  * A solicitação **some da lista de pendências da Aba Saques**, migra para o histórico de "Pagos" e o saldo zera na hora em todas as visões.
+
+---
+
+### 6.4. Gestão Tarifária, Expansão e Contingência
+- **Tarifas Dinâmicas por Praça:** As taxas municipais (comissão % de venda, comissão % de frete e valor por KM) configuradas na aba *Cidades* sobrepõem as regras globais e são calculadas em centavos no momento do checkout e do repasse.
+- **Forçar Baixa de Contingência:** Em casos excepcionais (ex: o celular do cliente descarregou e a loja confirmou a entrega física), o botão *"Forçar Baixa"* no relatório de pedidos homologa o pedido mediante auditoria administrativa registrada.
 
 ---
 
