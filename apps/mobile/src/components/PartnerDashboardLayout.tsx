@@ -166,25 +166,25 @@ export function PartnerDashboardLayout({
                     </div>
 
                     {/* Informações de Localização, Chave PIX, GPS e Parceira Financeira */}
-                    <div className="flex items-center gap-3 text-xs text-zinc-400 flex-wrap pt-0.5">
+                    <div className="flex items-center gap-3 text-xs text-white flex-wrap pt-0.5">
                       {locationText && (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 text-white">
                           <MapPin size={12} className="text-purple-400 shrink-0" />
-                          <span>{locationText}</span>
+                          <span className="text-white">{locationText}</span>
                         </span>
                       )}
 
                       {rawPix && (
-                        <span className="flex items-center gap-1 bg-zinc-800/90 px-2 py-0.5 rounded-lg border border-zinc-700/60 text-zinc-300 font-mono text-[11px]">
+                        <span className="flex items-center gap-1 bg-zinc-800/90 px-2 py-0.5 rounded-lg border border-zinc-700/60 text-white font-mono text-[11px]">
                           <Key size={11} className="text-amber-400 shrink-0" />
-                          <span>PIX (CPF/CNPJ): {rawPix}</span>
+                          <span className="text-white">PIX (CPF/CNPJ): {rawPix}</span>
                         </span>
                       )}
 
                       {onUpdateGPS && (
                         <button
                           onClick={onUpdateGPS}
-                          className="text-[11px] text-purple-400 hover:text-purple-300 font-bold underline flex items-center gap-1 cursor-pointer"
+                          className="text-[11px] text-white hover:text-purple-300 font-bold underline flex items-center gap-1 cursor-pointer"
                         >
                           <MapPin size={11} /> Atualizar GPS
                         </button>
