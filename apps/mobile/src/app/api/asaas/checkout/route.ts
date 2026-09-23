@@ -5,9 +5,8 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-  // Permitir compradores (clientes, parceiros, admins)
+  // Identificação do chamador (se logado)
   const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
-  if (!auth.authorized) return unauthorizedResponse(auth.error);
 
   try {
     const body = await request.json();
@@ -397,7 +396,7 @@ export async function POST(request: Request) {
       paymentBody.split = validSplit;
     }
 
-    const payRes = await fetch(`${ASAAS_URL}/payments`, {
+    let payRes = await fetch(`${ASAAS_URL}/payments`, {
       method: 'POST',
       headers: {
         'access_token': ASAAS_API_KEY,
@@ -406,7 +405,23 @@ export async function POST(request: Request) {
       body: JSON.stringify(paymentBody)
     });
 
-    const paymentData = await payRes.json();
+    let paymentData = await payRes.json();
+
+    // Se falhar devido ao split da loja/carteira, tenta criar direto para a plataforma sem split
+    if (!paymentData.id && paymentBody.split) {
+      console.warn("Falha ao criar cobrança Asaas com split, tentando sem split...", paymentData);
+      delete paymentBody.split;
+      payRes = await fetch(`${ASAAS_URL}/payments`, {
+        method: 'POST',
+        headers: {
+          'access_token': ASAAS_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(paymentBody)
+      });
+      paymentData = await payRes.json();
+    }
+
     if (!paymentData.id) {
       const msg = paymentData.errors
         ? paymentData.errors.map((e: any) => e.description).join(', ')
@@ -423,7 +438,7 @@ export async function POST(request: Request) {
       })
       .eq('id', order.id);
 
-    // Buscar QR Code Pix
+    // Buscar QR Code Pix oficial no Asaas
     let pixData: any = {};
     try {
       const pixRes = await fetch(`${ASAAS_URL}/payments/${paymentData.id}/pixQrCode`, {
@@ -434,13 +449,23 @@ export async function POST(request: Request) {
       console.warn("Erro ao buscar QR Code Pix do Asaas:", e);
     }
 
+    // Se o Asaas não retornou payload, gerar payload compatível BACEN
+    const { generateValidPixPayload } = await import('@/lib/pix');
+    const finalPixCopiaECola = pixData.payload || generateValidPixPayload({
+      pixKey: 'appsolutions76@gmail.com',
+      merchantName: 'ELETROMECANICA BAIA LTDA',
+      merchantCity: 'PORTEL',
+      amount: calculatedValue,
+      txId: '***'
+    });
+
     return NextResponse.json({
       success: true,
       orderId: order.id,
       paymentId: paymentData.id,
       invoiceUrl: paymentData.invoiceUrl || paymentData.bankSlipUrl,
       pixQrCode: pixData.encodedImage || null,
-      pixCopiaECola: pixData.payload || null,
+      pixCopiaECola: finalPixCopiaECola,
       status: paymentData.status,
       totalValue: calculatedValue,
       deliveryPin: order.delivery_pin,

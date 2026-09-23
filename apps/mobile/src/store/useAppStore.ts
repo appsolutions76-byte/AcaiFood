@@ -2190,10 +2190,10 @@ export const useAppStore = create<AppState>()(
           const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
           const validPlatformPayload = generateValidPixPayload({
             pixKey: platformPixKey,
-            merchantName: 'FREDSON FERNANDO SOARES B',
-            merchantCity: 'BELEM',
+            merchantName: 'ELETROMECANICA BAIA LTDA',
+            merchantCity: 'PORTEL',
             amount: totalValue,
-            txId: orderIdToUse.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25) || 'ACAIFOOD'
+            txId: '***'
           });
 
           // Salva pedido no estado local com dados do Pix anexados

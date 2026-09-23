@@ -42,29 +42,24 @@ export function generateValidPixPayload(params: {
     cleanKey = cleanKey.toLowerCase();
   }
 
-  const name = (params.merchantName || 'ACAIFOOD TECNOLOGIA')
+  const name = (params.merchantName || 'ELETROMECANICA BAIA LTDA')
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9 ]/g, "")
     .substring(0, 25)
     .trim()
-    .toUpperCase() || 'ACAIFOOD TECNOLOGIA';
+    .toUpperCase() || 'ELETROMECANICA BAIA LTDA';
 
-  const city = (params.merchantCity || 'BELEM')
+  const city = (params.merchantCity || 'PORTEL')
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9 ]/g, "")
     .substring(0, 15)
     .trim()
-    .toUpperCase() || 'BELEM';
+    .toUpperCase() || 'PORTEL';
 
-  // No padrão Pix Estático BACEN, para transferências diretas sem cobrança pré-registrada na API do PSP, o txId deve ser '***'
-  let cleanTxId = (params.txId && params.txId !== '***' && params.txId !== 'ACAIFOOD')
-    ? params.txId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25)
-    : '***';
-  if (!cleanTxId) {
-    cleanTxId = '***';
-  }
+  // No padrão Pix Estático BACEN, para transferências diretas sem cobrança pré-registrada na API do PSP, o txId deve ser SEMPRE '***'
+  const cleanTxId = '***';
 
   // 26 = Merchant Account Info (GUI + Key)
   const gui = formatField('00', 'BR.GOV.BCB.PIX');
