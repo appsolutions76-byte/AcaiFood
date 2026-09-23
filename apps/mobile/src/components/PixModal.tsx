@@ -106,12 +106,12 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
   const formatMoney = (val?: number) =>
     (val ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const qrSrc = data.copiaECola
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data.copiaECola)}`
-    : (data.qrCode
-        ? (data.qrCode.startsWith('data:') || data.qrCode.startsWith('http')
-            ? data.qrCode
-            : `data:image/png;base64,${data.qrCode}`)
+  const qrSrc = data.qrCode
+    ? (data.qrCode.startsWith('data:') || data.qrCode.startsWith('http')
+        ? data.qrCode
+        : `data:image/png;base64,${data.qrCode}`)
+    : (data.copiaECola
+        ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data.copiaECola)}`
         : null);
 
   const handleCopy = () => {
