@@ -16,12 +16,11 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
   let totalDisponivel = 0;
 
   try {
-    const invalidStatuses = ['CANCELLED', 'CANCELADO', 'REFUNDED', 'RECUSADO', 'PIN_LOCKED', 'aguardando_pagamento'];
+    const invalidStatuses = ['CANCELLED', 'CANCELADO', 'REFUNDED', 'RECUSADO', 'PIN_LOCKED', 'aguardando_pagamento', 'PENDING', 'pendente', 'PAID', 'paid', 'CONFIRMED', 'confirmed', 'PREPARING', 'preparing', 'preparo', 'pronto', 'PRONTO'];
+    // Saldo para saque é liberado ESTRITAMENTE após a entrega concluída via validação de PIN
     const validStatuses = [
       'DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO',
-      'received', 'delivered', 'completed', 'aguardando_cliente', 'PAID', 'CONFIRMED', 'PREPARING', 'PREPARANDO',
-      'preparo', 'pronto', 'PRONTO', 'em_transito', 'em_trânsito', 'aguardando_retirada', 'aguardando_loja',
-      'aguardando_motorista', 'aguardando_coleta', 'PENDING', 'pendente', 'paid', 'confirmed', 'preparing'
+      'received', 'delivered', 'completed'
     ];
 
     const matchedOrdersMap = new Map<string, any>();
@@ -38,7 +37,7 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
         if (res.status === 'fulfilled' && res.value.data) {
           for (const order of res.value.data) {
             const st = String(order.status || '').trim();
-            if (!invalidStatuses.includes(st) && !order.payout_driver_done) {
+            if (validStatuses.includes(st) && !order.payout_driver_done) {
               matchedOrdersMap.set(order.id, order);
             }
           }
@@ -90,7 +89,7 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
         if (res.status === 'fulfilled' && res.value.data) {
           for (const order of res.value.data) {
             const st = String(order.status || '').trim();
-            if (!invalidStatuses.includes(st) && !order.payout_seller_done) {
+            if (validStatuses.includes(st) && !order.payout_seller_done) {
               matchedOrdersMap.set(order.id, order);
             }
           }

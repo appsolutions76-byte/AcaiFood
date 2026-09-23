@@ -5,7 +5,15 @@ import { processWithdrawalApproval } from '@/lib/withdrawalApproval';
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: Request) {
+  return handleSweep(request);
+}
+
 export async function POST(request: Request) {
+  return handleSweep(request);
+}
+
+async function handleSweep(request: Request) {
   // Verificar autenticação: aceita admin JWT, internal-secret ou cron da Vercel
   const isInternalOrCron = isAuthorizedRequest(request);
   if (!isInternalOrCron) {

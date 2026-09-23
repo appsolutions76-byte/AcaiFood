@@ -40,9 +40,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Este pedido já foi pago' }, { status: 409 });
     }
 
-    // 2. Recalcular o valor total e o split no SERVIDOR usando o módulo único de precificação (com cidade)
+    // 2. Recalcular o valor total e o split no SERVIDOR usando o módulo único de precificação (com cidade real)
     const { calculateOrderPricing } = await import('@/lib/pricingEngine');
-    const cityName = order.delivery_city || order.city || order.cidade || null;
+    let cityName = (order as any).cidade_origem || (order as any).cidade || (order as any).delivery_city || (order as any).city || null;
+    if (!cityName && order.buyer_id) {
+      const { data: uBuyer } = await supabase.from('users').select('cidade').eq('id', order.buyer_id).maybeSingle();
+      if (uBuyer?.cidade) cityName = uBuyer.cidade;
+    }
+    if (!cityName && order.seller_storefront_id) {
+      const { data: sf } = await supabase.from('storefronts').select('partner_id').eq('id', order.seller_storefront_id).maybeSingle();
+      if (sf?.partner_id) {
+        const { data: uPartner } = await supabase.from('users').select('cidade').eq('id', sf.partner_id).maybeSingle();
+        if (uPartner?.cidade) cityName = uPartner.cidade;
+      }
+    }
 
     const pricing = await calculateOrderPricing({
       orderType: order.order_type,
@@ -134,40 +145,6 @@ export async function POST(request: Request) {
             fixedValue: driverVal
           });
         }
-      }
-    }
-
-    // Tentar proxy para Supabase Edge Function se disponível, passando o valor e split recalculados no servidor
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-    if (supabaseUrl && supabaseAnonKey) {
-      try {
-        const sfRes = await fetch(`${supabaseUrl}/functions/v1/asaas-checkout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseAnonKey,
-            'Authorization': `Bearer ${supabaseAnonKey}`
-          },
-          body: JSON.stringify({
-            orderId,
-            value: calculatedValue,
-            split: calculatedSplits.length > 0 ? calculatedSplits : undefined,
-            customerEmail,
-            customerName,
-            customerCpfCnpj
-          })
-        });
-
-        if (sfRes.ok) {
-          const sfData = await sfRes.json();
-          if (sfData && (sfData.pixQrCode || sfData.pixCopiaECola || sfData.invoiceUrl)) {
-            return NextResponse.json(sfData);
-          }
-        }
-      } catch (sfErr) {
-        console.warn("Proxy para Supabase Edge Function falhou, tentando Asaas direto:", sfErr);
       }
     }
 

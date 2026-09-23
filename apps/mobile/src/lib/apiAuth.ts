@@ -3,31 +3,21 @@ import { createClient } from '@supabase/supabase-js';
 export function isAuthorizedRequest(request: Request): boolean {
   // Segredo interno — lido APENAS de env do servidor (nunca exposto no client)
   const internalSecret = process.env.INTERNAL_API_SECRET || '';
-  const webhookSecret = process.env.ASAAS_WEBHOOK_TOKEN || 'acaifood_webhook_2026';
 
   const headerToken = request.headers.get('x-internal-secret');
   if (headerToken && internalSecret && headerToken === internalSecret) return true;
-
-  const asaasHeaderToken = request.headers.get('asaas-access-token') || request.headers.get('access_token');
-  if (webhookSecret && asaasHeaderToken && asaasHeaderToken === webhookSecret) return true;
 
   // Verificar cron jobs da Vercel
   const cronSecret = process.env.CRON_SECRET || '';
   const cronHeader = request.headers.get('x-vercel-cron');
   if (cronHeader === '1' && cronSecret && request.headers.get('authorization') === `Bearer ${cronSecret}`) return true;
 
-  try {
-    const url = new URL(request.url);
-    const whToken = url.searchParams.get('wh_token');
-    if (webhookSecret && whToken && whToken === webhookSecret) return true;
-  } catch (_e) {}
-
   return false;
 }
 
 export interface AuthResult {
   authorized: boolean;
-  source?: 'internal_secret' | 'webhook_secret' | 'user_jwt';
+  source?: 'internal_secret' | 'cron_secret' | 'user_jwt';
   user?: any;
   profile?: any;
   error?: string;
@@ -35,20 +25,24 @@ export interface AuthResult {
 
 /**
  * Autoriza requisições aceitando:
- * 1. Tokens de segurança estáticos de servidor (internal_secret ou webhook_secret).
+ * 1. Tokens de segurança estáticos de servidor (internal_secret ou cron_secret).
  * 2. Tokens JWT do Supabase passados pelo Header Authorization: Bearer <token>.
  */
 export async function authorizeRequest(
   request: Request,
   allowedRoles?: ('admin' | 'loja' | 'fornecedor' | 'motorista' | 'cliente')[]
 ): Promise<AuthResult> {
-  // 1. Validar tokens secretos de servidor (cron jobs e Asaas webhook)
-  if (isAuthorizedRequest(request)) {
-    const headerToken = request.headers.get('x-internal-secret');
-    if (headerToken) {
-      return { authorized: true, source: 'internal_secret' };
-    }
-    return { authorized: true, source: 'webhook_secret' };
+  // 1. Validar tokens secretos de servidor (cron jobs e chamadas internas)
+  const internalSecret = process.env.INTERNAL_API_SECRET || '';
+  const headerToken = request.headers.get('x-internal-secret');
+  if (headerToken && internalSecret && headerToken === internalSecret) {
+    return { authorized: true, source: 'internal_secret' };
+  }
+
+  const cronSecret = process.env.CRON_SECRET || '';
+  const cronHeader = request.headers.get('x-vercel-cron');
+  if (cronHeader === '1' && cronSecret && request.headers.get('authorization') === `Bearer ${cronSecret}`) {
+    return { authorized: true, source: 'cron_secret' };
   }
 
   // 2. Validar JWT do Supabase (ações iniciadas do frontend no browser)
@@ -124,20 +118,24 @@ export function unauthorizedResponse(message?: string) {
 
 /**
  * Valida se a requisição é um webhook legítimo do Asaas.
- * SEMPRE verifica o token, independente do conteúdo do body.
+ * Verifica o token configurado no ambiente de produção.
  */
 export function isValidAsaasWebhook(request: Request): boolean {
-  const webhookSecret = process.env.ASAAS_WEBHOOK_TOKEN || 'acaifood_webhook_2026';
+  const webhookSecret = process.env.ASAAS_WEBHOOK_TOKEN;
+  if (!webhookSecret) {
+    console.error("ASAAS_WEBHOOK_TOKEN não está configurado nas variáveis de ambiente!");
+    return false;
+  }
 
   // Verificar header asaas-access-token ou access_token (método oficial do Asaas)
   const asaasToken = request.headers.get('asaas-access-token') || request.headers.get('access_token');
-  if (asaasToken && (asaasToken === webhookSecret || asaasToken === 'acaifood_webhook_2026')) return true;
+  if (asaasToken && asaasToken === webhookSecret) return true;
 
-  // Verificar query param wh_token
+  // Verificar query param wh_token se enviado
   try {
     const url = new URL(request.url);
     const whToken = url.searchParams.get('wh_token');
-    if (whToken && (whToken === webhookSecret || whToken === 'acaifood_webhook_2026')) return true;
+    if (whToken && whToken === webhookSecret) return true;
   } catch (_e) {}
 
   return false;

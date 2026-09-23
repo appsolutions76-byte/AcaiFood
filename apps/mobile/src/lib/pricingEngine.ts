@@ -164,7 +164,7 @@ export async function calculateOrderPricing(
     fixedFee = Number(rates.courier_fixed_fee ?? rates.b2c_km ?? 8.00);
     feePerKm = Number(rates.b2c_km ?? rates.motoboy_fee_per_km ?? 2.00);
     platSalesFeePct = Number(rates.b2c_plat ?? rates.b2c_fee_percentage ?? 10);
-    platDeliveryFeePct = Number(rates.b2c_mot_plat ?? rates.motoboy_platform_fee_percentage ?? 10);
+    platDeliveryFeePct = Number(rates.b2c_mot_plat ?? rates.motoboy_platform_fee_percentage ?? 15);
   }
 
   // Total de entrega

@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
+  if (!auth.authorized) return unauthorizedResponse(auth.error);
+
   try {
     const body = await request.json();
     const { userId, status } = body;
@@ -13,10 +16,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Parâmetros inválidos: userId e status são obrigatórios.' }, { status: 400 });
     }
 
+    const callerId = auth.user?.id || auth.profile?.id;
+    const isAdmin = auth.source === 'internal_secret' || auth.source === 'cron_secret' || String(auth.profile?.role || '').toLowerCase() === 'admin' || auth.profile?.is_admin === true;
+
+    // Usuário comum só pode alterar o próprio status de disponibilidade
+    if (!isAdmin && callerId !== userId) {
+      return NextResponse.json({ error: 'Você só pode alterar o status do seu próprio perfil.' }, { status: 403 });
+    }
+
+    // Apenas administrador pode definir status 'blocked'
+    if (status === 'blocked' && !isAdmin) {
+      return NextResponse.json({ error: 'Apenas administradores podem bloquear usuários.' }, { status: 403 });
+    }
+
     const cleanStatus = status === 'blocked' ? 'blocked' : (status === 'paused' ? 'paused' : 'active');
     const isOnline = cleanStatus === 'active';
 
-    // 1. Tentar com Supabase Admin (Service Role)
+    // 1. Atualizar com Supabase Admin (Service Role)
     let updated = false;
     const adminSupabase = getSupabaseAdmin();
     try {
@@ -34,35 +50,7 @@ export async function POST(request: Request) {
       }
     } catch (_admErr) {}
 
-    // 2. Se não atualizou ou se o admin usou anon key com RLS, tentar com o Bearer JWT do usuário autenticado
-    const authHeader = request.headers.get('Authorization');
-    if (!updated && authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-      if (supabaseUrl && supabaseAnonKey && token) {
-        try {
-          const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: `Bearer ${token}` } },
-            auth: { persistSession: false }
-          });
-          const { data: uData } = await userSupabase
-            .from('users')
-            .update({ 
-              status: cleanStatus,
-              is_online: isOnline
-            })
-            .eq('id', userId)
-            .select();
-
-          if (uData && uData.length > 0) {
-            updated = true;
-          }
-        } catch (_uErr) {}
-      }
-    }
-
-    // 3. Atualizar storefronts (is_active e metadados logo_url)
+    // 2. Atualizar storefronts (is_active e metadados logo_url)
     try {
       const { data: sfData } = await adminSupabase
         .from('storefronts')

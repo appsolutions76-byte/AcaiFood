@@ -32,16 +32,42 @@ export async function POST(request: Request) {
     }
 
     const supabase = getSupabaseAdmin();
+
+    // 1. Obter usuário e dados do Asaas
+    const { data: userProfile } = await supabase.from('users').select('cpf_cnpj, email, name').eq('id', userId).maybeSingle();
+
+    let isApproved = true;
+    try {
+      const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
+      const apiKey = await getAsaasApiKey();
+      if (apiKey) {
+        const baseUrl = getAsaasBaseUrl(apiKey);
+        const subRes = await fetch(`${baseUrl}/accounts/${cleanWalletId}`, {
+          headers: { 'access_token': apiKey, 'Content-Type': 'application/json' }
+        });
+        if (subRes.ok) {
+          const subData = await subRes.json();
+          if (subData?.status && subData.status !== 'APPROVED') {
+            isApproved = false;
+          }
+        }
+      }
+    } catch (_vErr) {}
+
     const { error } = await supabase
       .from('users')
-      .update({ asaas_wallet_id: cleanWalletId, split_enabled: true })
+      .update({ 
+        asaas_wallet_id: cleanWalletId, 
+        split_enabled: isApproved,
+        asaas_account_status: isApproved ? 'APPROVED' : 'PENDING'
+      })
       .eq('id', userId);
 
     if (error) {
       return NextResponse.json({ error: error.message || 'Erro ao vincular carteira Asaas' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, walletId: cleanWalletId });
+    return NextResponse.json({ success: true, walletId: cleanWalletId, splitEnabled: isApproved });
 
   } catch (error: any) {
     console.error('Erro na API /api/asaas/link-wallet:', error);
