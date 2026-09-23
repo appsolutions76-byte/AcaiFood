@@ -8,6 +8,7 @@ import {
   RefreshCw, 
   BookOpen, 
   Share2, 
+  Printer,
   MapPin, 
   Key, 
   Power,
@@ -35,6 +36,8 @@ export interface PartnerDashboardLayoutProps {
   isRefreshing: boolean;
   onRefresh: () => void;
   onUpdateGPS?: () => void;
+  onOpenPrinter?: () => void;
+  onOpenShare?: () => void;
   virtualVaultValue?: number;
   manualRole: PartnerRole;
   shareModal?: React.ReactNode;
@@ -57,6 +60,8 @@ export function PartnerDashboardLayout({
   isRefreshing,
   onRefresh,
   onUpdateGPS,
+  onOpenPrinter,
+  onOpenShare,
   virtualVaultValue = 0,
   manualRole,
   shareModal,
@@ -195,12 +200,34 @@ export function PartnerDashboardLayout({
                   </div>
                 </div>
 
-                {/* Botões de Ação do Cabeçalho (Atualizar, Manual, Tema, Sair) */}
-                <div className="flex items-center gap-2 flex-wrap self-end lg:self-auto shrink-0">
+                {/* Botões de Ação do Cabeçalho: Impressora, Compartilhar, Atualizar, Manual, Tema, Sair */}
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap self-end lg:self-auto shrink-0">
+                  {onOpenPrinter && (
+                    <button 
+                      onClick={onOpenPrinter} 
+                      className="bg-purple-900/50 hover:bg-purple-900/80 text-white border border-purple-700/60 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm shrink-0"
+                      title="Configurar Impressora Térmica"
+                    >
+                      <Printer size={13} className="text-purple-300" />
+                      <span className="text-white font-bold">Impressora</span>
+                    </button>
+                  )}
+
+                  {onOpenShare && (
+                    <button 
+                      onClick={onOpenShare}
+                      className="bg-pink-950/50 hover:bg-pink-900/70 text-white border border-pink-800/60 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm shrink-0"
+                      title="Compartilhar link da loja / parceiro"
+                    >
+                      <Share2 size={13} className="text-pink-300" />
+                      <span className="text-white font-bold">Compartilhar</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={handleHeaderRefresh}
                     disabled={isRefreshing}
-                    className="bg-zinc-900 hover:bg-zinc-800 text-zinc-200 font-bold px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-zinc-700/80 active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm shrink-0"
+                    className="bg-zinc-900 hover:bg-zinc-800 text-zinc-200 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-zinc-700/80 active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm shrink-0"
                     title="Atualizar dados do painel em tempo real"
                   >
                     <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
@@ -209,7 +236,7 @@ export function PartnerDashboardLayout({
 
                   <button
                     onClick={() => setManualOpen(true)}
-                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-500/30 active:scale-95 cursor-pointer shadow-sm shrink-0"
+                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-500/30 active:scale-95 cursor-pointer shadow-sm shrink-0"
                   >
                     <BookOpen size={13} />
                     <span>Manual</span>
@@ -219,7 +246,7 @@ export function PartnerDashboardLayout({
 
                   <button
                     onClick={handleLogout}
-                    className="bg-red-950/40 hover:bg-red-900/60 text-red-400 font-bold px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-red-900/50 active:scale-95 ml-1 cursor-pointer shadow-sm shrink-0"
+                    className="bg-red-950/40 hover:bg-red-900/60 text-red-400 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-red-900/50 active:scale-95 ml-1 cursor-pointer shadow-sm shrink-0"
                   >
                     <LogOut size={13} />
                     <span>Sair</span>
@@ -228,7 +255,7 @@ export function PartnerDashboardLayout({
               </div>
             </div>
 
-            {/* 2. Todos os Botões e Abas de Navegação Fixos sem Cortes */}
+            {/* 2. Todos os Botões e Abas de Navegação Fixos com Largura Total para Rolagem */}
             {navigationBar && (
               <div className="w-full">
                 {navigationBar}

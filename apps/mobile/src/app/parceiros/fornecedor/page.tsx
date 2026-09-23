@@ -608,6 +608,8 @@ export default function FornecedorDashboard() {
       onUpdateGPS={handleUpdateGPS}
       virtualVaultValue={(vendasHoje && vendasHoje > 0) ? vendasHoje : (emProcessamento || 0)}
       manualRole="fornecedor"
+      onOpenPrinter={() => setPrinterModalOpen(true)}
+      onOpenShare={() => setShareLandingModalOpen(true)}
       shareModal={
         <PartnerShareModal 
           isOpen={shareLandingModalOpen} 
@@ -618,8 +620,8 @@ export default function FornecedorDashboard() {
         />
       }
       navigationBar={
-        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1.5 shadow-md flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex gap-1.5 overflow-x-auto py-0.5 no-scrollbar flex-1">
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1.5 shadow-md flex items-center w-full">
+          <div className="flex gap-1.5 overflow-x-auto py-0.5 no-scrollbar w-full">
             <button 
               onClick={() => setActiveTab('geral')} 
               className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
@@ -673,22 +675,6 @@ export default function FornecedorDashboard() {
               <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
                 {formatMoney((vendasHoje && vendasHoje > 0) ? vendasHoje : (emProcessamento || 0))}
               </span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button 
-              onClick={() => setPrinterModalOpen(true)} 
-              className="text-xs bg-emerald-900/40 hover:bg-emerald-900/70 text-emerald-300 border border-emerald-800 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shrink-0"
-              title="Configurar Impressora Térmica"
-            >
-              <Printer size={14} /> Impressora Térmica
-            </button>
-            <button 
-              onClick={() => setShareLandingModalOpen(true)}
-              className="text-xs bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 border border-pink-900/50 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shrink-0"
-            >
-              <Share2 size={14} /> Compartilhar
             </button>
           </div>
         </div>
