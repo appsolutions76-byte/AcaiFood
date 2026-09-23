@@ -291,7 +291,7 @@ function AdminDashboardContent() {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  // Função auxiliar centralizada para calcular pedidos pendentes e saldo devido de qualquer usuário parceiro
+  // Função auxiliar centralizada para calcular pedidos pendentes e saldo devido de qualquer usuário parceiro (estritamente pós-PIN)
   const getPendingOrdersAndOwedForUser = (u: any) => {
     if (!u || !['motorista', 'loja', 'fornecedor'].includes(u.role)) {
       return { pendingOrders: [] as Order[], amountOwed: 0 };
@@ -299,15 +299,12 @@ function AdminDashboardContent() {
 
     const pendingOrders = orders.filter((o: Order) => {
       if (!o) return false;
-      const invalidStatuses = ['cancelled', 'cancelado', 'refunded', 'recusado', 'pin_locked', 'aguardando_pagamento'];
+      // Saldo de repasse liberado ESTRITAMENTE após entrega concluída validada por PIN
       const validStatuses = [
-        'delivered', 'completed', 'received', 'entregue', 'arquivado', 'concluido', 'concluído',
-        'aguardando_cliente', 'paid', 'confirmed', 'preparing', 'preparo', 'pronto',
-        'em_transito', 'em_trânsito', 'aguardando_retirada', 'aguardando_loja',
-        'aguardando_motorista', 'aguardando_coleta', 'pending', 'pendente'
+        'delivered', 'completed', 'received', 'entregue', 'arquivado', 'concluido', 'concluído'
       ];
       const st = String(o.status || '').toLowerCase().trim();
-      const isValidOrder = validStatuses.includes(st) || (!invalidStatuses.includes(st) && st.length > 0);
+      const isValidOrder = validStatuses.includes(st);
       if (!isValidOrder) return false;
 
       if (u.role === 'motorista') {
@@ -395,9 +392,9 @@ function AdminDashboardContent() {
         await store.markPayoutDone(orderIds, roleType, u.id);
 
         showToast(`✅ Pix de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} enviado para ${u.name}! (ID Asaas: ${data.transferId})`);
-        if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
-        if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers(true);
-        fetchAdminBalances();
+        if (store.currentUser?.id && typeof store.fetchOrders === 'function') await store.fetchOrders(store.currentUser.id, true);
+        if (typeof store.fetchAllUsers === 'function') await store.fetchAllUsers(true);
+        await fetchAdminBalances();
       } else {
         const errorMsg = data.error || 'Erro desconhecido retornado pelo gateway';
         alert(`❌ Falha no pagamento Asaas para ${u.name}:\n\n${errorMsg}`);
@@ -493,9 +490,9 @@ function AdminDashboardContent() {
     }
 
     showToast(`✅ Liquidação concluída (${cidadeNome || 'Geral'}): ${successCount} parceiro(s) pago(s) com sucesso! ${failCount > 0 ? `(${failCount} falha/sem pix)` : ''}`);
-    if (store.currentUser?.id && typeof store.fetchOrders === 'function') store.fetchOrders(store.currentUser.id, true);
-    if (typeof store.fetchAllUsers === 'function') store.fetchAllUsers(true);
-    fetchAdminBalances();
+    if (store.currentUser?.id && typeof store.fetchOrders === 'function') await store.fetchOrders(store.currentUser.id, true);
+    if (typeof store.fetchAllUsers === 'function') await store.fetchAllUsers(true);
+    await fetchAdminBalances();
   };
 
   const mounted = useSyncExternalStore(
