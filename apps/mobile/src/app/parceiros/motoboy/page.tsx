@@ -14,6 +14,7 @@ import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { supabase } from "@/lib/supabase";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
+import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 import { PartnerDashboardLayout } from "@/components/PartnerDashboardLayout";
 
@@ -700,7 +701,11 @@ export default function MotoboyDashboard() {
 
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
-      <AsaasPartnerBadge variant="footer" className="mt-8 mb-4" />
+      
+      <div className="mt-12 mb-6 flex flex-col items-center justify-center">
+        <AppSolutionsBrandCard />
+      </div>
+      <AsaasPartnerBadge variant="footer" className="mt-4 mb-4" />
     </PartnerDashboardLayout>
   );
 }

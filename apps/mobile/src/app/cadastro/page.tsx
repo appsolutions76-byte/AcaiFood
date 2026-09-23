@@ -9,6 +9,8 @@ import { ShieldCheck, BookOpen, Sparkles, CheckCircle2, QrCode, Copy, ArrowRight
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
 import { SeloAsaas } from "@/components/SeloAsaas";
+import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
+import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
 function CadastroForm() {
   const router = useRouter();
@@ -925,7 +927,12 @@ export default function CadastroPage() {
       <Suspense fallback={<div className="text-center">Carregando...</div>}>
         <CadastroForm />
       </Suspense>
-      <p className="text-center text-xs text-zinc-500 dark:text-zinc-400 mt-8">
+      <div className="mt-8 flex flex-col items-center justify-center space-y-4 px-4">
+        <AppSolutionsBrandCard />
+        <AsaasPartnerBadge variant="footer" className="mt-2" />
+      </div>
+
+      <p className="text-center text-xs text-zinc-500 dark:text-zinc-400 mt-6">
         AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.
       </p>
     </div>

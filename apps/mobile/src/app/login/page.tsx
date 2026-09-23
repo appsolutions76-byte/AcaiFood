@@ -7,6 +7,8 @@ import { useAppStore } from "@/store/useAppStore";
 import { KeyRound, Mail, BookOpen, ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
+import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
+import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
 function LoginForm() {
   const router = useRouter();
@@ -155,6 +157,11 @@ function LoginForm() {
               Manual de Uso &amp; Cadastro
             </button>
           </div>
+        </div>
+
+        <div className="mt-8 flex flex-col items-center justify-center space-y-4">
+          <AppSolutionsBrandCard />
+          <AsaasPartnerBadge variant="footer" className="mt-2" />
         </div>
 
         <p className="text-center text-xs text-zinc-500 dark:text-zinc-400 mt-6">

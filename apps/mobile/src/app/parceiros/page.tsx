@@ -6,9 +6,10 @@ import { Store, Truck, Bike, PackageOpen, User, Recycle } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 
+import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
+import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
+
 export default function ParceirosOnboarding() {
-
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col relative">
       <header className="p-4 flex justify-between items-center max-w-5xl mx-auto w-full">
@@ -134,7 +135,10 @@ export default function ParceirosOnboarding() {
         </div>
       </main>
 
-
+      <footer className="mt-8 mb-8 text-center flex flex-col items-center justify-center px-4 space-y-4">
+        <AppSolutionsBrandCard />
+        <AsaasPartnerBadge variant="footer" className="mt-2" />
+      </footer>
     </div>
   );
 }

@@ -44,6 +44,7 @@ import {
 } from "@/lib/thermalPrinter";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
+import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 
 const emptySubscribe = () => () => {};
 
@@ -2923,7 +2924,11 @@ export default function BatedeiraDashboard() {
 
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
-      <AsaasPartnerBadge variant="footer" className="mt-8 mb-4" />
+      
+      <div className="mt-12 mb-6 flex flex-col items-center justify-center">
+        <AppSolutionsBrandCard />
+      </div>
+      <AsaasPartnerBadge variant="footer" className="mt-4 mb-4" />
       </div>
     </PartnerDashboardLayout>
   );
