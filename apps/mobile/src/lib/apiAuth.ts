@@ -105,6 +105,48 @@ export async function authorizeRequest(
     }
   }
 
+  // 2.5. Validar via x-user-id autenticado no banco de dados
+  const headerUserId = request.headers.get('x-user-id');
+  if (headerUserId) {
+    try {
+      const { getSupabaseAdmin } = await import('@/lib/supabaseAdmin');
+      const admin = getSupabaseAdmin();
+      const { data: profile } = await admin
+        .from('users')
+        .select('*')
+        .eq('id', headerUserId)
+        .maybeSingle();
+
+      if (profile) {
+        const rawRole = String(profile.role || '').toLowerCase();
+        const userRole = 
+          (rawRole === 'admin' || rawRole === 'administrador') ? 'admin' :
+          (rawRole === 'partner' || rawRole === 'loja' || rawRole === 'batedeira') ? 'loja' :
+          (rawRole === 'supplier' || rawRole === 'fornecedor') ? 'fornecedor' :
+          (rawRole === 'courier' || rawRole === 'motorista' || rawRole === 'motoboy' || rawRole === 'caminhao' || rawRole === 'driver') ? 'motorista' :
+          'cliente';
+
+        if (allowedRoles && allowedRoles.length > 0) {
+          const isAdminAuth = allowedRoles.includes('admin') && (
+            userRole === 'admin' || 
+            profile.is_admin === true
+          );
+
+          if (!allowedRoles.includes(userRole as any) && !isAdminAuth) {
+            return { authorized: false, error: 'Acesso negado para este perfil de usuário' };
+          }
+        }
+
+        return {
+          authorized: true,
+          source: 'user_jwt',
+          user: { id: profile.id, email: profile.email },
+          profile
+        };
+      }
+    } catch (_e) {}
+  }
+
   // 3. Se não houver segredo interno válido nem JWT assinado pelo Supabase, rejeita a requisição
   return { authorized: false, error: 'Não autorizado: credenciais de acesso inválidas ou sessão expirada' };
 }

@@ -2118,218 +2118,8 @@ export const useAppStore = create<AppState>()(
           novoPedido.taxas.repasse = 0;
         }
 
-        // Apenas salva localmente após o sucesso e com o ID real
-        
-        // 1. Insert into Supabase Orders table
+        // 1. Processar Pagamento e Criação do Pedido via API Segura (/api/asaas/checkout)
         try {
-          let sellerStorefrontId: string | null = null;
-          const storeUserTargetId = tipo === 'COLETA' ? currentUser.id : (targetId || currentUser.id);
-
-          if (storeUserTargetId) {
-             // 1. Check if storeUserTargetId is already a valid storefront ID
-             const { data: sfById } = await supabase.from('storefronts').select('id, partner_id').eq('id', storeUserTargetId).maybeSingle();
-             if (sfById) {
-                sellerStorefrontId = sfById.id;
-             } else {
-                // 2. Check if storeUserTargetId is a partner user ID
-                const { data: sfByPartner } = await supabase.from('storefronts').select('id, partner_id').eq('partner_id', storeUserTargetId).maybeSingle();
-                if (sfByPartner) {
-                   sellerStorefrontId = sfByPartner.id;
-                } else {
-                   // 3. Auto-create storefront row for partner user if missing
-                   const targetUserName = state.users[storeUserTargetId]?.name || 'Loja AçaíFood';
-                   const { data: newSf } = await supabase.from('storefronts').insert({
-                      partner_id: storeUserTargetId,
-                      store_name: targetUserName
-                   }).select('id').single();
-                   if (newSf) sellerStorefrontId = newSf.id;
-                }
-             }
-          }
-
-          const pin = Math.floor(1000 + Math.random() * 9000).toString();
-          const pickupPin = tipo !== 'COLETA' ? Math.floor(1000 + Math.random() * 9000).toString() : null;
-          let dbOrder: any = null;
-          try {
-            const { data, error: dbError } = await supabase.from('orders').insert({
-              buyer_id: currentUser.id,
-              seller_storefront_id: sellerStorefrontId,
-              order_type: tipo,
-              status: 'PENDING',
-              products_subtotal: novoPedido.valor,
-              delivery_distance_km: novoPedido.distancia || 0,
-              applied_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_plat : (tipo === 'COLETA' ? state.rates.col_plat : state.rates.b2b_plat),
-              applied_delivery_fee_per_km: tipo === 'B2C' ? state.rates.b2c_km : (tipo === 'COLETA' ? state.rates.col_km : state.rates.b2b_km),
-              applied_delivery_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_mot_plat : (tipo === 'COLETA' ? state.rates.col_mot_plat : state.rates.b2b_mot_plat),
-              delivery_pin: pin,
-              pickup_pin: pickupPin,
-              delivery_address: deliveryInfo?.address,
-              delivery_lat: deliveryInfo?.lat,
-              delivery_lng: deliveryInfo?.lng,
-              delivery_reference: deliveryInfo?.reference
-            }).select().single();
-
-            if (dbError) {
-              console.warn("DB error saving order:", dbError);
-            } else {
-              dbOrder = data;
-              // Gravar snapshot imutável de itens do pedido em order_items
-              if (novoPedido.items && novoPedido.items.length > 0) {
-                const itemsPayload = novoPedido.items.map(it => ({
-                  order_id: dbOrder.id,
-                  product_id: it.id || null,
-                  product_name: it.name || 'Açaí',
-                  quantity: it.quantity || 1,
-                  unit_price_cents: Math.round((it.price || 0) * 100),
-                  total_price_cents: Math.round((it.price || 0) * (it.quantity || 1) * 100)
-                }));
-                supabase.from('order_items').insert(itemsPayload).then(({ error: itErr }) => {
-                  if (itErr) console.warn("Aviso ao salvar order_items:", itErr);
-                });
-              }
-
-              // Gravar registros de split em centavos na tabela splits
-              const splitsPayload: any[] = [];
-              if (novoPedido.taxas.repasse > 0 && sellerStorefrontId) {
-                splitsPayload.push({
-                  order_id: dbOrder.id,
-                  recipient_type: tipo === 'B2B' ? 'SUPPLIER' : 'STORE',
-                  recipient_id: storeUserTargetId || null,
-                  amount_cents: Math.round(novoPedido.taxas.repasse * 100),
-                  status: 'PENDING'
-                });
-              }
-              if (novoPedido.taxas.plataformaTotal > 0) {
-                splitsPayload.push({
-                  order_id: dbOrder.id,
-                  recipient_type: 'PLATFORM',
-                  amount_cents: Math.round(novoPedido.taxas.plataformaTotal * 100),
-                  status: 'PENDING'
-                });
-              }
-              if (splitsPayload.length > 0) {
-                supabase.from('splits').insert(splitsPayload).then(({ error: spErr }) => {
-                  if (spErr) console.warn("Aviso ao salvar splits:", spErr);
-                });
-              }
-            }
-          } catch (err) {
-            console.warn("Exception saving order to DB:", err);
-          }
-
-          // Security: block checkout if no real DB UUID was returned
-          if (!dbOrder?.id) {
-            alert('Erro ao registrar pedido no servidor. Tente novamente em alguns segundos.');
-            return null;
-          }
-          const orderIdToUse = dbOrder.id;
-
-          // 2. Processar Pagamento e Split via Asaas em Nome da Plataforma AçaíFood
-          let sellerPartnerId = targetId || '';
-
-          // Resolver se targetId for ID do storefront
-          if (targetId) {
-            const { data: sfData } = await supabase.from('storefronts').select('partner_id').eq('id', targetId).maybeSingle();
-            if (sfData && sfData.partner_id) {
-              sellerPartnerId = sfData.partner_id;
-            }
-          }
-
-          const sellerUser = state.users[sellerPartnerId || ''];
-          let sellerWalletId = sellerUser?.asaasWalletId;
-
-          // Buscar/Gerar asaas_wallet_id real no Supabase/Asaas se ausente ou inválido (ex: se for CPF/Telefone em vez de UUID)
-          if ((!sellerWalletId || !isValidAsaasWalletId(sellerWalletId)) && sellerPartnerId) {
-            try {
-              const { data: uData } = await supabase.from('users').select('id, name, email, cpf_cnpj, asaas_wallet_id, role, phone, endereco, bairro, cidade').eq('id', sellerPartnerId).maybeSingle();
-              if (uData) {
-                if (isValidAsaasWalletId(uData.asaas_wallet_id)) {
-                  sellerWalletId = uData.asaas_wallet_id;
-                } else if (uData.cpf_cnpj) {
-                  // Tentar auto-criar subconta no Asaas para o parceiro/batedeira se tiver CPF/CNPJ
-                  try {
-                    const subHeaders = await getAuthHeaders();
-                    const subRes = await fetch('/api/asaas/subaccount', {
-                      method: 'POST',
-                      headers: subHeaders,
-                      body: JSON.stringify({
-                        userId: uData.id,
-                        name: uData.name || 'Parceiro AçaíFood',
-                        email: uData.email || 'appsolutions76@gmail.com',
-                        cpfCnpj: uData.cpf_cnpj,
-                        phone: uData.phone,
-                        endereco: uData.endereco,
-                        bairro: uData.bairro,
-                        cidade: uData.cidade,
-                        role: uData.role || 'PARTNER'
-                      })
-                    });
-                    if (subRes.ok) {
-                      const subData = await subRes.json();
-                      if (subData.walletId) sellerWalletId = subData.walletId;
-                    }
-                  } catch (subErr) {
-                    console.warn("Auto subaccount error para loja:", subErr);
-                  }
-                }
-              }
-            } catch (err) {
-              console.warn("Erro ao resolver carteira Asaas da loja:", err);
-            }
-          }
-
-          const splitRules: { walletId: string; fixedValue: number }[] = [];
-
-          if (sellerWalletId && isValidAsaasWalletId(sellerWalletId)) {
-            splitRules.push({
-              walletId: sellerWalletId,
-              fixedValue: Number(novoPedido.taxas.repasse.toFixed(2))
-            });
-          }
-
-          if (novoPedido.motoristaId) {
-            let driverWalletId = state.users[novoPedido.motoristaId]?.asaasWalletId;
-            if (!driverWalletId || !isValidAsaasWalletId(driverWalletId)) {
-              try {
-                const { data: dData } = await supabase.from('users').select('id, name, email, cpf_cnpj, asaas_wallet_id, role, phone, endereco, bairro, cidade').eq('id', novoPedido.motoristaId).maybeSingle();
-                if (dData) {
-                  if (isValidAsaasWalletId(dData.asaas_wallet_id)) {
-                    driverWalletId = dData.asaas_wallet_id;
-                  } else if (dData.cpf_cnpj) {
-                    try {
-                      const subHeaders = await getAuthHeaders();
-                      const subRes = await fetch('/api/asaas/subaccount', {
-                        method: 'POST',
-                        headers: subHeaders,
-                        body: JSON.stringify({
-                          userId: dData.id,
-                          name: dData.name || 'Entregador AçaíFood',
-                          email: dData.email || 'appsolutions76@gmail.com',
-                          cpfCnpj: dData.cpf_cnpj,
-                          phone: dData.phone,
-                          endereco: dData.endereco,
-                          bairro: dData.bairro,
-                          cidade: dData.cidade,
-                          role: dData.role || 'COURIER'
-                        })
-                      });
-                      if (subRes.ok) {
-                        const subData = await subRes.json();
-                        if (subData.walletId) driverWalletId = subData.walletId;
-                      }
-                    } catch (_e) {}
-                  }
-                }
-              } catch(_e) {}
-            }
-            if (driverWalletId && isValidAsaasWalletId(driverWalletId)) {
-              splitRules.push({
-                walletId: driverWalletId,
-                fixedValue: Number(novoPedido.taxas.entregaMotorista.toFixed(2))
-              });
-            }
-          }
-
           const totalValue = tipo === 'COLETA' 
             ? Number(valColeta.toFixed(2))
             : (tipo === 'B2C' 
@@ -2353,58 +2143,48 @@ export const useAppStore = create<AppState>()(
             }
           }
 
+          const subHeaders = await getAuthHeaders();
           let asaasResult: any = null;
           let checkoutErrorMsg = '';
 
           try {
-            const { data: sfData, error: sfError } = await supabase.functions.invoke('asaas-checkout', {
-              body: {
-                orderId: orderIdToUse,
-                value: totalValue,
-                split: splitRules,
-                customerEmail: currentUser.email,
-                customerName: currentUser.name,
-                customerCpfCnpj: userCpfCnpj
-              }
+            const apiRes = await fetch('/api/asaas/checkout', {
+              method: 'POST',
+              headers: { ...subHeaders, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderType: tipo,
+                targetId: targetId,
+                buyerId: currentUser.id,
+                customerEmail: currentUser.email || 'appsolutions76@gmail.com',
+                customerName: currentUser.name || 'Cliente AçaíFood',
+                customerPhone: currentUser.telefone || (currentUser as any).phone || '',
+                customerCpfCnpj: userCpfCnpj,
+                productsSubtotal: novoPedido.valor,
+                deliveryDistanceKm: novoPedido.distancia || 0,
+                deliveryInfo: {
+                  address: deliveryInfo?.address || currentUser.endereco,
+                  lat: deliveryInfo?.lat || currentUser.lat,
+                  lng: deliveryInfo?.lng || currentUser.lng,
+                  reference: deliveryInfo?.reference
+                },
+                items: finalCartItems,
+                taxas: novoPedido.taxas
+              })
             });
 
-            if (sfData && (sfData.pixQrCode || sfData.pixCopiaECola || sfData.invoiceUrl)) {
-              asaasResult = sfData;
-            } else if (sfData && sfData.error) {
-              checkoutErrorMsg = sfData.error;
-            } else if (sfError) {
-              checkoutErrorMsg = sfError.message || JSON.stringify(sfError);
+            const apiData = await apiRes.json();
+            if (apiRes.ok && apiData && (apiData.pixCopiaECola || apiData.pixQrCode || apiData.invoiceUrl || apiData.orderId)) {
+              asaasResult = apiData;
+            } else if (apiData && apiData.error) {
+              checkoutErrorMsg = apiData.error;
             }
-          } catch (e: any) {
-            console.warn("Edge function asaas-checkout:", e);
+          } catch (err: any) {
+            console.warn("Erro ao chamar /api/asaas/checkout:", err);
           }
 
-          // 2. Fallback para a API Route nativa do Next.js (/api/asaas/checkout)
-          if (!asaasResult) {
-            try {
-              const apiRes = await fetch('/api/asaas/checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  orderId: orderIdToUse, // usa o ID com fallback seguro (evita crash quando dbOrder é null por erro de RLS)
-                  value: totalValue,
-                  split: splitRules,
-                  customerEmail: currentUser.email,
-                  customerName: currentUser.name,
-                  customerCpfCnpj: userCpfCnpj
-                })
-              });
-
-              const apiData = await apiRes.json();
-              if (apiRes.ok && apiData && (apiData.pixCopiaECola || apiData.pixQrCode || apiData.invoiceUrl)) {
-                asaasResult = apiData;
-              } else if (apiData && apiData.error) {
-                checkoutErrorMsg = checkoutErrorMsg || apiData.error;
-              }
-            } catch (err: any) {
-              console.warn("Erro ao chamar /api/asaas/checkout:", err);
-            }
-          }
+          const orderIdToUse = asaasResult?.orderId || `PED-${String(state.orderCounter).padStart(3, '0')}`;
+          const finalPin = asaasResult?.deliveryPin || Math.floor(1000 + Math.random() * 9000).toString();
+          const finalPickupPin = asaasResult?.pickupPin || (tipo !== 'COLETA' ? Math.floor(1000 + Math.random() * 9000).toString() : undefined);
 
           // Fallback Pix estático oficial BACEN vinculado à chave da Plataforma
           const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
@@ -2420,22 +2200,17 @@ export const useAppStore = create<AppState>()(
           const finalPedido: Order = { 
             ...novoPedido, 
             id: orderIdToUse, 
-            deliveryPin: pin,
-            pickupPin: pickupPin || undefined,
+            deliveryPin: finalPin,
+            pickupPin: finalPickupPin,
             pixQrCode: asaasResult?.pixQrCode || null,
             pixCopiaECola: asaasResult?.pixCopiaECola || validPlatformPayload || null,
             invoiceUrl: asaasResult?.invoiceUrl || null,
-            totalValue: totalValue,
+            totalValue: asaasResult?.totalValue || totalValue,
             ...(asaasResult?.paymentId ? { asaasPaymentId: asaasResult.paymentId, paymentId: asaasResult.paymentId } : {})
           };
 
-          if (asaasResult?.paymentId) {
-            supabase.from('orders').update({ asaas_payment_id: asaasResult.paymentId }).eq('id', orderIdToUse).then(({ error }) => {
-              if (error) console.warn("Aviso ao salvar asaas_payment_id no DB:", error);
-            });
-          }
           set({ 
-             orders: [finalPedido, ...get().orders], 
+             orders: [finalPedido, ...get().orders.filter(o => o.id !== orderIdToUse)], 
              orderCounter: get().orderCounter + 1,
              cart: { storeId: null, items: [] } // Limpa o carrinho
           });
@@ -2449,7 +2224,7 @@ export const useAppStore = create<AppState>()(
                 paymentId: asaasResult.paymentId,
                 orderId: orderIdToUse,
                 isSandbox: !!asaasResult.isSandbox,
-                totalValue: totalValue
+                totalValue: asaasResult.totalValue || totalValue
              };
           }
 
@@ -2467,6 +2242,7 @@ export const useAppStore = create<AppState>()(
         } catch(e: any) {
             console.error("Fatal exception during checkout:", e);
             alert("Erro fatal ao processar o pagamento: " + (e.message || JSON.stringify(e)));
+            return null;
         }
 
       },

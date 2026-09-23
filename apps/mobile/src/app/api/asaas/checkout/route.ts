@@ -2,30 +2,144 @@ import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
-  // All roles can initiate checkout (authenticated users only)
+  // Permitir compradores (clientes, parceiros, admins)
   const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
   if (!auth.authorized) return unauthorizedResponse(auth.error);
 
   try {
     const body = await request.json();
-    const { orderId, customerEmail, customerName, customerCpfCnpj } = body;
-
-    if (!orderId) {
-      return NextResponse.json({ error: 'orderId é obrigatório' }, { status: 400 });
-    }
+    const { 
+      orderId, 
+      orderType = 'B2C',
+      targetId,
+      buyerId,
+      customerEmail, 
+      customerName, 
+      customerPhone,
+      customerCpfCnpj,
+      productsSubtotal,
+      deliveryDistanceKm,
+      deliveryInfo,
+      items = [],
+      taxas
+    } = body;
 
     const supabase = getSupabaseAdmin();
+    let order: any = null;
 
-    // 1. Buscar o pedido no banco usando Service Role (bypass RLS)
-    const { data: order, error: orderErr } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', orderId)
-      .maybeSingle();
+    // 1. Se orderId foi passado e é válido, tentar buscar pedido existente
+    if (orderId && typeof orderId === 'string' && orderId.length >= 10 && !orderId.startsWith('PED-')) {
+      const { data: existingOrder } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
 
-    if (orderErr || !order) {
-      return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 });
+      if (existingOrder) {
+        order = existingOrder;
+      }
+    }
+
+    // 2. Se o pedido não existe no banco, criar com Service Role no servidor (100% à prova de falhas de RLS)
+    if (!order) {
+      const callerId = auth.user?.id || auth.profile?.id || buyerId;
+      
+      // Garantir que o comprador existe na tabela users
+      let validBuyerId: string | null = null;
+      if (callerId) {
+        const { data: uBuyer } = await supabase.from('users').select('id, name, email, phone').eq('id', callerId).maybeSingle();
+        if (uBuyer) {
+          validBuyerId = uBuyer.id;
+        } else {
+          // Inserir registro do cliente no banco
+          const { data: newBuyer } = await supabase.from('users').insert({
+            id: callerId,
+            name: customerName || 'Cliente AçaíFood',
+            email: customerEmail || 'appsolutions76@gmail.com',
+            phone: customerPhone || null,
+            role: 'cliente',
+            cpf_cnpj: customerCpfCnpj || null
+          }).select('id').maybeSingle();
+
+          if (newBuyer) validBuyerId = newBuyer.id;
+        }
+      }
+
+      // Resolver seller_storefront_id
+      let sellerStorefrontId: string | null = null;
+      const storeTargetId = orderType === 'COLETA' ? validBuyerId : (targetId || validBuyerId);
+
+      if (storeTargetId) {
+        // Verificar se é ID de storefront
+        const { data: sfById } = await supabase.from('storefronts').select('id, partner_id').eq('id', storeTargetId).maybeSingle();
+        if (sfById) {
+          sellerStorefrontId = sfById.id;
+        } else {
+          // Verificar se é partner_id
+          const { data: sfByPartner } = await supabase.from('storefronts').select('id, partner_id').eq('partner_id', storeTargetId).maybeSingle();
+          if (sfByPartner) {
+            sellerStorefrontId = sfByPartner.id;
+          } else {
+            // Auto-criar storefront para a loja/parceiro
+            try {
+              const { data: targetUser } = await supabase.from('users').select('name').eq('id', storeTargetId).maybeSingle();
+              const { data: newSf } = await supabase.from('storefronts').insert({
+                partner_id: storeTargetId,
+                store_name: targetUser?.name || 'Loja AçaíFood'
+              }).select('id').maybeSingle();
+              if (newSf) sellerStorefrontId = newSf.id;
+            } catch (_sfErr) {
+              console.warn("Aviso ao criar storefront:", _sfErr);
+            }
+          }
+        }
+      }
+
+      const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
+      const pickupPin = orderType !== 'COLETA' ? Math.floor(1000 + Math.random() * 9000).toString() : null;
+
+      const { data: newOrder, error: createOrderErr } = await supabase.from('orders').insert({
+        buyer_id: validBuyerId,
+        seller_storefront_id: sellerStorefrontId,
+        order_type: orderType,
+        status: 'PENDING',
+        products_subtotal: Number(productsSubtotal || 0),
+        delivery_distance_km: Number(deliveryDistanceKm || 0),
+        delivery_pin: deliveryPin,
+        pickup_pin: pickupPin,
+        delivery_address: deliveryInfo?.address || null,
+        delivery_lat: deliveryInfo?.lat || null,
+        delivery_lng: deliveryInfo?.lng || null,
+        delivery_reference: deliveryInfo?.reference || null
+      }).select().single();
+
+      if (createOrderErr || !newOrder) {
+        console.error("Erro fatal ao criar pedido no banco:", createOrderErr);
+        return NextResponse.json({ error: 'Erro ao registrar pedido no banco de dados' }, { status: 500 });
+      }
+
+      order = newOrder;
+
+      // Inserir itens do pedido
+      if (items && Array.isArray(items) && items.length > 0) {
+        const itemsPayload = items.map((it: any) => ({
+          order_id: order.id,
+          product_id: it.id || null,
+          product_name: it.name || 'Açaí',
+          quantity: it.quantity || 1,
+          unit_price_cents: Math.round((it.price || 0) * 100),
+          total_price_cents: Math.round((it.price || 0) * (it.quantity || 1) * 100)
+        }));
+
+        try {
+          await supabase.from('order_items').insert(itemsPayload);
+        } catch (_itErr) {
+          console.warn("Aviso ao salvar order_items:", _itErr);
+        }
+      }
     }
 
     // Validação de segurança: garantir que o comprador é quem está fechando o pedido (ou admin/segredo interno)
@@ -40,7 +154,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Este pedido já foi pago' }, { status: 409 });
     }
 
-    // 2. Recalcular o valor total e o split no SERVIDOR usando o módulo único de precificação (com cidade real)
+    // 3. Recalcular o valor total e o split no SERVIDOR usando o módulo de precificação
     const { calculateOrderPricing } = await import('@/lib/pricingEngine');
     let cityName = (order as any).cidade_origem || (order as any).cidade || (order as any).delivery_city || (order as any).city || null;
     if (!cityName && order.buyer_id) {
@@ -63,7 +177,7 @@ export async function POST(request: Request) {
       sellerStorefrontId: order.seller_storefront_id
     }, supabase);
 
-    const calculatedValue = pricing.buyerTotal;
+    const calculatedValue = pricing.buyerTotal > 0 ? pricing.buyerTotal : (Number(productsSubtotal || 0) + 2.00);
 
     if (calculatedValue <= 0) {
       return NextResponse.json({ error: 'Valor total do pedido inválido para cobrança' }, { status: 400 });
@@ -84,7 +198,7 @@ export async function POST(request: Request) {
     const calculatedSplits: { walletId: string; fixedValue: number }[] = [];
 
     // Split Vendedor (Loja / Batedeira / Fornecedor)
-    const sellerSfOrUserId = order.seller_storefront_id || (order as any).loja_id || (order as any).fornecedor_id || (order as any).origem_id || null;
+    const sellerSfOrUserId = order.seller_storefront_id || (order as any).loja_id || (order as any).fornecedor_id || (order as any).origem_id || targetId || null;
     if (sellerSfOrUserId) {
       let partnerUserId: string | null = null;
       const { data: sf } = await supabase
@@ -123,45 +237,20 @@ export async function POST(request: Request) {
       }
     }
 
-    // Split Motorista / Entregador (Motoboy / Caminhão)
-    const driverUserId = order.driver_id || (order as any).motorista_id || (order as any).motoristaId || null;
-    if (driverUserId) {
-      const { data: uDriver } = await supabase
-        .from('users')
-        .select('asaas_wallet_id, split_enabled, asaas_account_status')
-        .eq('id', driverUserId)
-        .maybeSingle();
-
-      const isDriverSplitActive = uDriver?.split_enabled === true || 
-                                   (uDriver?.split_enabled !== false && uDriver?.asaas_account_status === 'APPROVED') ||
-                                   Boolean(uDriver?.asaas_wallet_id && uDriver?.asaas_account_status !== 'REJECTED');
-
-      if (uDriver?.asaas_wallet_id && isDriverSplitActive && isValidAsaasWalletId(uDriver.asaas_wallet_id)) {
-        const driverVal = pricing.netDriverPayout;
-
-        if (driverVal > 0) {
-          calculatedSplits.push({
-            walletId: uDriver.asaas_wallet_id.trim(),
-            fixedValue: driverVal
-          });
-        }
-      }
-    }
-
     const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
     const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
       return NextResponse.json(
-        { error: 'ASAAS_API_KEY não configurada no servidor (env) nem no Supabase Secrets' },
+        { error: 'ASAAS_API_KEY não configurada no servidor' },
         { status: 400 }
       );
     }
 
     const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
 
-    // Idempotência: verificar se este orderId já possui cobrança gerada no Asaas
+    // Idempotência: verificar se este order.id já possui cobrança gerada no Asaas
     try {
-      const existingPayRes = await fetch(`${ASAAS_URL}/payments?externalReference=${encodeURIComponent(orderId)}`, {
+      const existingPayRes = await fetch(`${ASAAS_URL}/payments?externalReference=${encodeURIComponent(order.id)}`, {
         headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
       });
       if (existingPayRes.ok) {
@@ -178,11 +267,16 @@ export async function POST(request: Request) {
             } catch (_e) {}
 
             return NextResponse.json({
+              success: true,
+              orderId: order.id,
               paymentId: existingPayment.id,
               invoiceUrl: existingPayment.invoiceUrl || existingPayment.bankSlipUrl,
               pixQrCode: existingPix.encodedImage || null,
               pixCopiaECola: existingPix.payload || null,
               status: existingPayment.status,
+              totalValue: calculatedValue,
+              deliveryPin: order.delivery_pin,
+              pickupPin: order.pickup_pin,
               isSandbox: false,
               isExisting: true
             });
@@ -295,8 +389,8 @@ export async function POST(request: Request) {
       billingType: 'PIX',
       value: calculatedValue,
       dueDate: dueDate,
-      externalReference: orderId,
-      description: `Pedido AçaíFood #${String(orderId).substring(0, 8)}`
+      externalReference: order.id,
+      description: `Pedido AçaíFood #${String(order.id).substring(0, 8)}`
     };
 
     if (validSplit && validSplit.length > 0) {
@@ -327,7 +421,7 @@ export async function POST(request: Request) {
         asaas_payment_id: paymentData.id,
         asaas_charge_status: paymentData.status
       })
-      .eq('id', orderId);
+      .eq('id', order.id);
 
     // Buscar QR Code Pix
     let pixData: any = {};
@@ -341,11 +435,16 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
+      success: true,
+      orderId: order.id,
       paymentId: paymentData.id,
       invoiceUrl: paymentData.invoiceUrl || paymentData.bankSlipUrl,
       pixQrCode: pixData.encodedImage || null,
       pixCopiaECola: pixData.payload || null,
       status: paymentData.status,
+      totalValue: calculatedValue,
+      deliveryPin: order.delivery_pin,
+      pickupPin: order.pickup_pin,
       isSandbox: false
     });
 
@@ -357,4 +456,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
