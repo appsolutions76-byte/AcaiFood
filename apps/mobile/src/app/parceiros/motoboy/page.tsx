@@ -36,7 +36,7 @@ export default function MotoboyDashboard() {
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
-  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
+  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
 
   const mounted = useSyncExternalStore(
@@ -505,12 +505,13 @@ export default function MotoboyDashboard() {
                                     orderId: o.id,
                                     otherName: clienteUser?.name || o.clienteNome || 'Cliente',
                                     otherPhone: (clienteUser as any)?.phone || clienteUser?.telefone || o.clienteTelefone || '',
-                                    otherRole: 'Cliente'
+                                    otherRole: 'Cliente',
+                                    initialMode: 'chat'
                                   });
                                 }}
                                 className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                               >
-                                💬 Chat do Pedido
+                                💬 Chat & 📞 Voz
                               </button>
                             </div>
                         </div>
@@ -655,10 +656,46 @@ export default function MotoboyDashboard() {
                                     ⏳ Saldo Disponível p/ Saque Asaas (R$ {Number(getMotoboyFee(o) || 0).toFixed(2)})
                                   </span>
                                 )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const clienteId = o.clienteId || (o.type === 'B2C' ? o.criadoPor : undefined) || o.destinoId;
+                                    const clienteUser = store.users?.[clienteId] || store.users?.[o.destinoId];
+                                    setChatModalData({
+                                      open: true,
+                                      orderId: o.id,
+                                      otherName: clienteUser?.name || o.clienteNome || 'Cliente',
+                                      otherPhone: (clienteUser as any)?.phone || clienteUser?.telefone || o.clienteTelefone || '',
+                                      otherRole: 'Cliente',
+                                      initialMode: 'report'
+                                    });
+                                  }}
+                                  className="w-full text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-lg transition shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                                >
+                                  ⚠️ Reportar Problema
+                                </button>
                             </div>
                         ) : isCanceled ? (
                             <div className="flex flex-col gap-2">
                                <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 text-xs p-2 rounded text-center font-bold">Cancelado</div>
+                               <button
+                                 type="button"
+                                 onClick={() => {
+                                   const clienteId = o.clienteId || (o.type === 'B2C' ? o.criadoPor : undefined) || o.destinoId;
+                                   const clienteUser = store.users?.[clienteId] || store.users?.[o.destinoId];
+                                   setChatModalData({
+                                     open: true,
+                                     orderId: o.id,
+                                     otherName: clienteUser?.name || o.clienteNome || 'Cliente',
+                                     otherPhone: (clienteUser as any)?.phone || clienteUser?.telefone || o.clienteTelefone || '',
+                                     otherRole: 'Cliente',
+                                     initialMode: 'report'
+                                   });
+                                 }}
+                                 className="w-full text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-lg transition shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                               >
+                                 ⚠️ Reportar Problema
+                               </button>
                                <button onClick={() => { if(confirm('Deseja excluir esta corrida do seu histórico?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="w-full text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold py-2 rounded-lg transition cursor-pointer">🗑️ Excluir do Histórico</button>
                             </div>
                         ) : null}
@@ -696,6 +733,7 @@ export default function MotoboyDashboard() {
           otherParticipantName={chatModalData.otherName}
           otherParticipantPhone={chatModalData.otherPhone}
           otherParticipantRole={chatModalData.otherRole}
+          initialMode={chatModalData.initialMode || 'chat'}
         />
       )}
 

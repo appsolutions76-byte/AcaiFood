@@ -41,7 +41,7 @@ export default function FornecedorDashboard() {
     motorista?: MapPoint | null;
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [printerModalOpen, setPrinterModalOpen] = useState(false);
-  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
+  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
   const printedOrdersRef = useRef<Set<string>>(new Set());
 
@@ -409,17 +409,24 @@ export default function FornecedorDashboard() {
                     const compradorUser = (o as any).buyerId ? store.users[(o as any).buyerId] : (o.destinoId ? store.users[o.destinoId] : null);
                     const caminhoneiroUser = o.motoristaId ? store.users[o.motoristaId] : null;
                     const targetOther = caminhoneiroUser || compradorUser;
+                    const isConcluded = o.status === 'entregue' || o.status === 'cancelado' || o.status === 'concluido' || o.status === 'finalizado';
+
                     setChatModalData({
                       open: true,
                       orderId: o.id,
                       otherName: targetOther?.name || o.clienteNome || 'Loja Batedeira',
                       otherPhone: (targetOther as any)?.phone || targetOther?.telefone || o.clienteTelefone || '',
-                      otherRole: caminhoneiroUser ? 'Transporte' : 'Loja Compradora'
+                      otherRole: caminhoneiroUser ? 'Transporte' : 'Loja Compradora',
+                      initialMode: isConcluded ? 'report' : 'chat'
                     });
                   }}
-                  className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 px-2 py-1 rounded inline-flex items-center gap-1 transition shadow-sm ml-2"
+                  className={`text-[10px] font-bold px-2 py-1 rounded inline-flex items-center gap-1 transition shadow-sm ml-2 ${
+                    (o.status === 'entregue' || o.status === 'cancelado')
+                      ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200'
+                      : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200'
+                  }`}
                 >
-                  💬 Chat & 📞 Voz
+                  {(o.status === 'entregue' || o.status === 'cancelado') ? '⚠️ Reportar Problema' : '💬 Chat & 📞 Voz'}
                 </button>
             </div>
             <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
@@ -1209,6 +1216,7 @@ export default function FornecedorDashboard() {
           otherParticipantName={chatModalData.otherName}
           otherParticipantPhone={chatModalData.otherPhone}
           otherParticipantRole={chatModalData.otherRole}
+          initialMode={chatModalData.initialMode || 'chat'}
         />
       )}
 

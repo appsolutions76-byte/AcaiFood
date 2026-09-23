@@ -37,7 +37,7 @@ export default function CaminhaoDashboard() {
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
-  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
+  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
 
   const mounted = useSyncExternalStore(
@@ -298,17 +298,24 @@ export default function CaminhaoDashboard() {
                         const compradorUser = (o as any).buyerId ? store.users[(o as any).buyerId] : (o.destinoId ? store.users[o.destinoId] : null);
                         const vendedorUser = o.origemId ? store.users[o.origemId] : null;
                         const targetOther = compradorUser || vendedorUser;
+                        const isConcluded = o.status === 'entregue' || o.status === 'cancelado' || o.status === 'concluido' || o.status === 'finalizado';
+
                         setChatModalData({
                           open: true,
                           orderId: o.id,
                           otherName: targetOther?.name || o.clienteNome || 'Comprador/Vendedor',
                           otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
-                          otherRole: compradorUser ? 'Loja Compradora' : 'Fornecedor'
+                          otherRole: compradorUser ? 'Loja Compradora' : 'Fornecedor',
+                          initialMode: isConcluded ? 'report' : 'chat'
                         });
                       }}
-                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                      className={`flex-1 font-bold p-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center ${
+                        (o.status === 'entregue' || o.status === 'cancelado')
+                          ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                          : 'bg-purple-600 hover:bg-purple-700 text-white'
+                      }`}
                     >
-                      💬 Chat & 📞 Voz
+                      {(o.status === 'entregue' || o.status === 'cancelado') ? '⚠️ Reportar Problema' : '💬 Chat & 📞 Voz'}
                     </button>
                   </>
                 );
@@ -655,6 +662,7 @@ export default function CaminhaoDashboard() {
           otherParticipantName={chatModalData.otherName}
           otherParticipantPhone={chatModalData.otherPhone}
           otherParticipantRole={chatModalData.otherRole}
+          initialMode={chatModalData.initialMode || 'chat'}
         />
       )}
 

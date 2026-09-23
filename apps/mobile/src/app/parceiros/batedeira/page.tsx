@@ -108,7 +108,7 @@ export default function BatedeiraDashboard() {
     motorista?: MapPoint | null;
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [pixModalData, setPixModalData] = useState<PixModalData>({ open: false });
-  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
+  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33, branco: 38 });
@@ -881,17 +881,24 @@ export default function BatedeiraDashboard() {
                         ? (isB2B ? 'Transporte' : 'Motoboy') 
                         : (isB2B ? 'Fornecedor' : 'Cliente');
 
+                      const isConcluded = o.status === 'entregue' || o.status === 'cancelado' || o.status === 'concluido' || o.status === 'finalizado';
+
                       setChatModalData({
                         open: true,
                         orderId: o.id,
                         otherName: targetOther?.name || (isB2B ? (o.lojaNome || 'Fornecedor') : (o.clienteNome || 'Cliente')),
                         otherPhone: (targetOther as any)?.phone || targetOther?.telefone || (isB2B ? o.lojaTelefone : o.clienteTelefone) || '',
-                        otherRole: targetRole
+                        otherRole: targetRole,
+                        initialMode: isConcluded ? 'report' : 'chat'
                       });
                     }}
-                    className="text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-2 rounded-lg transition shadow-sm flex items-center gap-1 shrink-0"
+                    className={`text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm flex items-center gap-1 shrink-0 ${
+                      (o.status === 'entregue' || isCanceled)
+                        ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    }`}
                   >
-                    💬 Chat & 📞 Voz
+                    {(o.status === 'entregue' || isCanceled) ? '⚠️ Reportar Problema' : '💬 Chat & 📞 Voz'}
                   </button>
                 </div>
               )}
@@ -2906,6 +2913,7 @@ export default function BatedeiraDashboard() {
           otherParticipantName={chatModalData.otherName}
           otherParticipantPhone={chatModalData.otherPhone}
           otherParticipantRole={chatModalData.otherRole}
+          initialMode={chatModalData.initialMode || 'chat'}
         />
       )}
 

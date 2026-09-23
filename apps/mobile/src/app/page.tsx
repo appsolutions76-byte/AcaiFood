@@ -76,7 +76,7 @@ export default function StorefrontPage() {
   const [cpfModalOpen, setCpfModalOpen] = useState(false);
   const [cpfInputValue, setCpfInputValue] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
-  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string }>({ open: false, orderId: "" });
+  const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [orderHistoryModalOpen, setOrderHistoryModalOpen] = useState(false);
   const [historySearchQuery, setHistorySearchQuery] = useState("");
   const [historyFilter, setHistoryFilter] = useState<'all' | 'delivered' | 'canceled'>('all');
@@ -2052,6 +2052,7 @@ export default function StorefrontPage() {
           otherParticipantName={chatModalData.otherName}
           otherParticipantPhone={chatModalData.otherPhone}
           otherParticipantRole={chatModalData.otherRole}
+          initialMode={chatModalData.initialMode || 'chat'}
         />
       )}
 
@@ -2227,12 +2228,13 @@ export default function StorefrontPage() {
                                   orderId: o.id,
                                   otherName: targetOther?.name || o.lojaNome || 'Atendimento',
                                   otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
-                                  otherRole: motoristaUser ? 'Motoboy' : 'Batedeira'
+                                  otherRole: motoristaUser ? 'Motoboy' : 'Batedeira',
+                                  initialMode: 'report'
                                 });
                               }}
-                              className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                              className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-2xs cursor-pointer"
                             >
-                              💬 Mensagens
+                              ⚠️ Reportar Problema
                             </button>
                           </div>
 
