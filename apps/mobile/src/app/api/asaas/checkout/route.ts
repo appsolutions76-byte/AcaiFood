@@ -482,7 +482,7 @@ export async function POST(request: Request) {
     // Se o Asaas não retornou payload, gerar payload compatível BACEN
     const { generateValidPixPayload } = await import('@/lib/pix');
     const finalPixCopiaECola = pixData.payload || generateValidPixPayload({
-      pixKey: 'appsolutions76@gmail.com',
+      pixKey: process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || '42035623000140',
       merchantName: 'ELETROMECANICA BAIA LTDA',
       merchantCity: 'PORTEL',
       amount: calculatedValue,

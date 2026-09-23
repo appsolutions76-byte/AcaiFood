@@ -2187,7 +2187,7 @@ export const useAppStore = create<AppState>()(
           const finalPickupPin = asaasResult?.pickupPin || (tipo !== 'COLETA' ? Math.floor(1000 + Math.random() * 9000).toString() : undefined);
 
           // Fallback Pix estático oficial BACEN vinculado à chave da Plataforma
-          const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || 'appsolutions76@gmail.com';
+          const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || '42035623000140';
           const validPlatformPayload = generateValidPixPayload({
             pixKey: platformPixKey,
             merchantName: 'ELETROMECANICA BAIA LTDA',
