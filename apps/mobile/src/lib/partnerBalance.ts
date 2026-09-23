@@ -131,3 +131,56 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     quantidadePedidos: orderIds.length
   };
 }
+
+export async function reconcilePartnerWithdrawals(partnerId: string, role: string): Promise<void> {
+  const adminSupabase = getSupabaseAdmin();
+  try {
+    const normalizedRole = String(role || '').toLowerCase().trim();
+    const isDriver = ['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(normalizedRole);
+
+    const { data: requests } = await adminSupabase
+      .from('withdrawal_requests')
+      .select('id, status, order_ids, created_at')
+      .eq('partner_id', partnerId)
+      .in('status', ['FALHOU', 'PENDENTE']);
+
+    if (!requests || requests.length === 0) return;
+
+    for (const req of requests) {
+      if (Array.isArray(req.order_ids) && req.order_ids.length > 0) {
+        const { data: checkOrders } = await adminSupabase
+          .from('orders')
+          .select('id, payout_seller_done, payout_driver_done')
+          .in('id', req.order_ids);
+
+        if (checkOrders && checkOrders.length > 0) {
+          const allPaid = checkOrders.every((o: any) => isDriver ? o.payout_driver_done : o.payout_seller_done);
+          if (allPaid) {
+            await adminSupabase
+              .from('withdrawal_requests')
+              .update({
+                status: 'PAGO',
+                failure_reason: null,
+                paid_at: new Date().toISOString()
+              })
+              .eq('id', req.id);
+          }
+        }
+      } else {
+        const bal = await getPartnerAvailableBalance(partnerId, role);
+        if (bal.totalDisponivel === 0) {
+          await adminSupabase
+            .from('withdrawal_requests')
+            .update({
+              status: 'PAGO',
+              failure_reason: null,
+              paid_at: new Date().toISOString()
+            })
+            .eq('id', req.id);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[reconcilePartnerWithdrawals] Aviso ao reconciliar saques:", err);
+  }
+}

@@ -93,7 +93,36 @@ export async function processWithdrawalApproval(
     ? requestRow.order_ids 
     : balanceResult.orderIds;
 
+  const isDriverRole = ['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(String(requestRow.role || partnerUser.role).toLowerCase());
+
   if (finalAmount <= 0) {
+    if (finalOrderIds && finalOrderIds.length > 0) {
+      const { data: checkOrders } = await adminSupabase
+        .from('orders')
+        .select('id, payout_seller_done, payout_driver_done')
+        .in('id', finalOrderIds);
+
+      const allPaid = checkOrders && checkOrders.length > 0 && checkOrders.every((o: any) => isDriverRole ? o.payout_driver_done : o.payout_seller_done);
+      if (allPaid) {
+        await adminSupabase
+          .from('withdrawal_requests')
+          .update({
+            status: 'PAGO',
+            failure_reason: null,
+            reviewed_by: actorId,
+            reviewed_at: new Date().toISOString(),
+            paid_at: new Date().toISOString()
+          })
+          .eq('id', requestId);
+
+        return {
+          success: true,
+          status: 'PAGO',
+          message: 'Solicitação já liquidada anteriormente via Pix Asaas.'
+        };
+      }
+    }
+
     const failMsg = 'O valor do saque é R$ 0,00 ou os pedidos referentes a esta solicitação já foram liquidados.';
     await adminSupabase
       .from('withdrawal_requests')

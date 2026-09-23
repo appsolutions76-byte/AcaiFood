@@ -225,6 +225,18 @@ export async function POST(request: Request) {
           reason: `Repasse Pix #${String(orderId || data.id || '').substring(0, 8)}`,
           balance_after: balanceAfter
         });
+
+        // Atualizar eventuais solicitações de saque pendentes ou que falharam anteriormente
+        await supabase
+          .from('withdrawal_requests')
+          .update({
+            status: 'PAGO',
+            failure_reason: null,
+            paid_at: new Date().toISOString(),
+            asaas_transfer_id: data.id || null
+          })
+          .eq('partner_id', targetPartnerId)
+          .in('status', ['PENDENTE', 'APROVADO', 'FALHOU']);
       }
     } catch (upErr) {
       console.warn("[API Asaas] Aviso ao atualizar payout_done e partner_ledger:", upErr);

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { getPartnerAvailableBalance } from '@/lib/partnerBalance';
+import { getPartnerAvailableBalance, reconcilePartnerWithdrawals } from '@/lib/partnerBalance';
 import { authorizeRequest } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +24,9 @@ export async function GET(request: Request) {
     const user = auth.profile;
     const role = getAppRole(user.role);
     const adminSupabase = getSupabaseAdmin();
+
+    // 0. Auto-reconciliação com histórico bancário Pix caso pedidos já tenham sido quitados
+    await reconcilePartnerWithdrawals(user.id, role);
 
     // 1. Obter valor mínimo de saque em platform_settings
     const { data: ps } = await adminSupabase

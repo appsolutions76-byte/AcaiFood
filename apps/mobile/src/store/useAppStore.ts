@@ -3295,8 +3295,12 @@ export const useAppStore = create<AppState>()(
             if (partnerId) {
                await supabase
                  .from('withdrawal_requests')
-                 .update({ status: 'PAGO', paid_at: new Date().toISOString() })
-                 .in('status', ['PENDENTE', 'APROVADO'])
+                 .update({ 
+                   status: 'PAGO', 
+                   failure_reason: null, 
+                   paid_at: new Date().toISOString() 
+                 })
+                 .in('status', ['PENDENTE', 'APROVADO', 'FALHOU'])
                  .eq('partner_id', partnerId);
             }
          } catch (e) {
