@@ -52,6 +52,11 @@ export default function MotoboyDashboard() {
     s.startRealtime();
   }, []);
 
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    store.fetchOrders(currentUser.id, true);
+  }, [currentUser?.id]);
+
   // Captura contínua do GPS em tempo real quando Online
   useEffect(() => {
     if (!mounted || !currentUser || currentUser.status === 'paused' || typeof window === 'undefined' || !navigator.geolocation) return;
@@ -109,7 +114,7 @@ export default function MotoboyDashboard() {
     const totalFrete = calculateOrderFreight('B2C', dist, cityRates);
     const platPct = Number((cityRates?.b2c_mot_plat ?? 15)) / 100;
     const fee = totalFrete * (1 - platPct);
-    return isNaN(fee) ? 0 : fee;
+    return isNaN(fee) || fee < 0 ? 0 : Number(fee.toFixed(2));
   };
 
   const isDelivered = (st?: string) => {
@@ -240,9 +245,8 @@ export default function MotoboyDashboard() {
     >
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-2 mb-6">
         <div className="flex gap-2 overflow-x-auto">
-          <button onClick={() => setActiveTab('geral')} className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap ${activeTab === 'geral' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}>📊 Visão Geral</button>
-          <button onClick={() => setActiveTab('radar')} className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap ${activeTab === 'radar' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}>🚨 Radar B2C</button>
-          <button onClick={() => setActiveTab('historico')} className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap ${activeTab === 'historico' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}>📦 Minhas Corridas</button>
+          <button onClick={() => setActiveTab('radar')} className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap ${activeTab === 'radar' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}>🚨 Radar B2C ({corridasDisponiveis.length})</button>
+          <button onClick={() => setActiveTab('historico')} className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap ${activeTab === 'historico' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}>📦 Minhas Corridas ({minhasCorridas.length})</button>
         </div>
       </div>
 
@@ -259,6 +263,7 @@ export default function MotoboyDashboard() {
                   ) : corridasDisponiveis.map((o: any) => {
                     const origem = store.users?.[o.origemId];
                     const destino = store.users?.[o.destinoId];
+                    const distKm = Number(o.distancia || 0);
                     return (
                       <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900/50">
                           <div className="flex justify-between items-center mb-2">
@@ -286,7 +291,7 @@ export default function MotoboyDashboard() {
                                 }} 
                                 className="mt-2 text-blue-600 bg-blue-100/50 dark:bg-blue-900/20 p-2 rounded-lg font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 text-center w-full transition border border-blue-200 dark:border-blue-800"
                               >
-                                🗺️ Ver Rota de {o.distancia ? o.distancia.toFixed(1) : '0.0'} km
+                                🗺️ Ver Rota de {distKm.toFixed(1)} km
                               </button>
                           </div>
                           <button onClick={() => store.acaoPedido(o.id, 'aceitar_motorista')} className="w-full bg-zinc-800 hover:bg-black dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white text-base font-bold py-3.5 rounded-xl transition shadow-md">Aceitar Corrida</button>
@@ -368,7 +373,7 @@ export default function MotoboyDashboard() {
                                   }} 
                                   className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/30 p-2.5 rounded-xl font-bold text-center transition border border-blue-200 dark:border-blue-800/80 flex items-center justify-center gap-1.5 text-xs shadow-sm"
                               >
-                                  🗺️ Ver Mapa ({(o.distancia || 0).toFixed(1)} km)
+                                  🗺️ Ver Mapa ({Number(o.distancia || 0).toFixed(1)} km)
                               </button>
                               
                               {origemUser?.lat ? (
@@ -520,11 +525,11 @@ export default function MotoboyDashboard() {
                                 <p>✅ Entrega Concluída</p>
                                 {o.payoutDriverDone ? (
                                   <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800/60 shadow-sm flex items-center gap-1">
-                                    ✅ Repasse Liquidado (R$ {getMotoboyFee(o).toFixed(2)})
+                                    ✅ Repasse Liquidado (R$ {Number(getMotoboyFee(o) || 0).toFixed(2)})
                                   </span>
                                 ) : (
                                   <span className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold px-2 py-1 rounded border border-amber-200 dark:border-amber-800/60 shadow-sm flex items-center gap-1">
-                                    ⏳ Saldo p/ Saque Asaas (R$ {getMotoboyFee(o).toFixed(2)})
+                                    ⏳ Saldo p/ Saque Asaas (R$ {Number(getMotoboyFee(o) || 0).toFixed(2)})
                                   </span>
                                 )}
                             </div>

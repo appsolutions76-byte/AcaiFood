@@ -34,7 +34,13 @@ export default function PartnerActivationGuard({ children, roleName }: PartnerAc
     if (!silent) setIsChecking(true);
 
     try {
-      const res = await fetch('/api/asaas/activation?userId=' + currentUser.id);
+      const { data: sessData } = await supabase.auth.getSession();
+      const authHeaders: any = { 'Content-Type': 'application/json' };
+      if (sessData?.session?.access_token) {
+        authHeaders['Authorization'] = 'Bearer ' + sessData.session.access_token;
+      }
+
+      const res = await fetch('/api/asaas/activation?userId=' + currentUser.id, { headers: authHeaders });
       const data = await res.json();
 
       if (data && data.success) {
@@ -46,7 +52,7 @@ export default function PartnerActivationGuard({ children, roleName }: PartnerAc
           if (!pixData?.pixQrCode) {
             const payRes = await fetch('/api/asaas/activation', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: authHeaders,
               body: JSON.stringify({
                 userId: currentUser.id,
                 name: currentUser.name,
