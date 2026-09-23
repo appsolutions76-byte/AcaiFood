@@ -287,7 +287,7 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
                 )}
               </div>
               <p className="text-[11px] text-purple-200/80">
-                Atendimento exclusivo para <strong className="text-white">{currentUser?.name?.split(" ")[0]}</strong> ({activeUserRole.toUpperCase()})
+                Atendimento exclusivo para <strong className="text-white">{activeUserName}</strong> ({activeUserRole.toUpperCase()})
               </p>
             </div>
           </div>
@@ -353,7 +353,7 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
                 <ShieldCheck size={14} /> Atendimento AçaíFood
               </div>
               <p className="leading-relaxed">
-                Olá, {currentUser?.name?.split(" ")[0]}! Como podemos ajudar você hoje? Envie sua dúvida, sugestão ou relato de pedido que nossa equipe responderá aqui em tempo real.
+                Olá, {activeUserName}! Como podemos ajudar você hoje? Envie sua dúvida, sugestão ou relato de pedido que nossa equipe responderá aqui em tempo real.
               </p>
               <span className="block text-[9px] text-zinc-400 mt-1.5 text-right">Agora</span>
             </div>

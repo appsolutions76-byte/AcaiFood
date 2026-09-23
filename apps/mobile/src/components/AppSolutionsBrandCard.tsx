@@ -32,7 +32,7 @@ export function AppSolutionsBrandCard({ className = '' }: { className?: string }
 
       {/* Corporate Info */}
       <p className="text-xs text-zinc-300 leading-relaxed font-normal">
-        AppSolutions76 é uma marca de <strong className="font-bold text-white">Eletromecânica Baia Ltda</strong> — Engenharia e Tecnologia
+        AppSolutions76 é uma marca de <strong className="font-bold text-white">Eletromecânica Baia Engenharia e Tecnologia Ltda</strong>
       </p>
       <p className="text-[11px] text-zinc-500 font-medium mt-1">
         CNPJ 42.035.623/0001-40
