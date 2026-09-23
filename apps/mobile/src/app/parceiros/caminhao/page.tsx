@@ -144,6 +144,8 @@ export default function CaminhaoDashboard() {
   }, [corridasDisponiveis.length]);
 
   const minhasCorridas = (store.orders || []).filter((o: any) => o.motoristaId === currentUser.id);
+  const caminhaoActiveOrders = minhasCorridas.filter((o: any) => !isDelivered(o.status) && o.status !== 'cancelado');
+  const caminhaoHistoryOrders = minhasCorridas.filter((o: any) => isDelivered(o.status) || o.status === 'cancelado');
   const ganhosHoje = minhasCorridas.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + getDriverFee(curr), 0);
   const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
 
@@ -184,54 +186,235 @@ export default function CaminhaoDashboard() {
     alert(`🔒 Chave PIX Oficial de Repasses:\n\nSua Chave Pix oficial cadastrada é o seu CPF/CNPJ (${cpfKey || 'Cadastrado'}).\n\nPor conformidade bancária e segurança contra fraudes, os repasses de fretes pesados são creditados exclusivamente na conta bancária de mesma titularidade.`);
   };
 
-  const handleResgatarPix = async () => {
-    if (!currentUser) return;
-    const targetKey = String(currentUser.cpfCnpj || currentUser.pixKey || '').replace(/\D/g, '');
+  const renderFreightCard = (o: any) => {
+    const isColeta = o.type === 'COLETA';
+    const origId = o.fornecedorId || o.origemId || o.lojaId;
+    const destId = o.destinoId || o.lojaId;
+    const origemUser = (origId && store.users) ? store.users[origId] : null;
+    const destinoUser = isColeta
+      ? { name: 'Ecoponto Municipal de Caroço', bairro: 'Área de Descarte Ecológico' }
+      : ((destId && store.users) ? store.users[destId] : null);
 
-    if (!targetKey) {
-      alert("Chave Pix (CPF/CNPJ) não localizada no seu cadastro. Entre em contato com o suporte.");
-      return;
-    }
+    return (
+      <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-amber-400 dark:border-amber-600' : 'border-zinc-200 dark:border-zinc-800'}`}>
+        <div className="flex justify-between items-center mb-2">
+            <span className="font-extrabold text-zinc-900 dark:text-white text-sm sm:text-base">{o.title}</span>
+            <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">Líquido: {formatMoney(getDriverFee(o))}</span>
+        </div>
+        
+        <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded-lg text-xs mb-3 flex flex-col gap-1.5 border border-zinc-100 dark:border-zinc-800">
+            <div className="flex items-center gap-2">
+                <span className="text-sm">📍</span> 
+                <div>
+                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">{isColeta ? 'Retirar na Loja de Açaí' : 'Retirar no Fornecedor'}</span>
+                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.lojaNome || origemUser?.name || 'Loja de Açaí'}</span> 
+                    <span className="text-zinc-500 text-[11px]"> ({origemUser?.bairro || o.lojaEndereco || '—'})</span>
+                </div>
+            </div>
+            <div className="flex items-center gap-2 pt-1 border-t border-zinc-200 dark:border-zinc-800">
+                <span className="text-sm">🏁</span> 
+                <div>
+                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">{isColeta ? 'Destino do Caroço' : 'Entregar na Loja'}</span>
+                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{isColeta ? 'Ecoponto Municipal de Caroço' : (o.clienteNome || destinoUser?.name || '—')}</span> 
+                    <span className="text-zinc-500 text-[11px]"> ({isColeta ? 'Descarte Ecológico' : (destinoUser?.bairro || '—')})</span>
+                </div>
+            </div>
+            <div className="mt-2 flex flex-col sm:flex-row gap-2 w-full">
+              <button 
+                  onClick={() => {
+                    const latOrigem = ((origemUser as any)?.lat && (origemUser as any).lat !== 0) ? (origemUser as any).lat : -1.4558;
+                    const lngOrigem = ((origemUser as any)?.lng && (origemUser as any).lng !== 0) ? (origemUser as any).lng : -48.4908;
+                    
+                    const latDestino = (o.deliveryLat && o.deliveryLat !== 0) 
+                      ? o.deliveryLat 
+                      : (((destinoUser as any)?.lat && (destinoUser as any).lat !== 0) ? (destinoUser as any).lat : (latOrigem ? latOrigem + 0.0045 : -1.4552));
+                    
+                    const lngDestino = (o.deliveryLng && o.deliveryLng !== 0) 
+                      ? o.deliveryLng 
+                      : (((destinoUser as any)?.lng && (destinoUser as any).lng !== 0) ? (destinoUser as any).lng : (lngOrigem ? lngOrigem + 0.0045 : -48.4902));
 
-    if (!ganhosHoje || ganhosHoje <= 0) {
-      alert("Não há saldo disponível para saque no momento.");
-      return;
-    }
+                    const driverLat = (currentUser?.lat && currentUser.lat !== 0) ? currentUser.lat : latOrigem - 0.003;
+                    const driverLng = (currentUser?.lng && currentUser.lng !== 0) ? currentUser.lng : lngOrigem - 0.003;
 
-    const saquesHoje = getDailyWithdrawalCount(currentUser.id);
-    if (saquesHoje >= 2) {
-      alert("⚠️ Limite diário atingido:\n\nVocê já realizou 2 saques hoje (limite máximo permitido). Novos valores acumulados serão liquidados automaticamente no encerramento diário pelo administrador ou estarão disponíveis para novo saque amanhã.");
-      return;
-    }
+                    setMapModal({
+                      open: true,
+                      origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
+                      destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
+                      motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Seu Veículo', veiculo: currentUser?.veiculo || 'Caminhão' }
+                    });
+                  }} 
+                  className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/30 p-2.5 rounded-xl font-bold text-center transition border border-blue-200 dark:border-blue-800/80 flex items-center justify-center gap-1.5 text-xs shadow-sm"
+              >
+                  🗺️ Ver Mapa ({(o.distancia || 0).toFixed(1)} km)
+              </button>
+              
+              {origemUser?.lat ? (
+                <a 
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${origemUser.lat},${origemUser.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                >
+                  🚀 GPS p/ Retirada
+                </a>
+              ) : (
+                <a 
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(origemUser?.name || o.lojaNome || 'Origem, Belém')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                >
+                  🚀 GPS p/ Retirada
+                </a>
+              )}
 
-    if (isWithdrawing) return;
+              {(() => {
+                const latOrig = (origemUser as any)?.lat || 0;
+                const lngOrig = (origemUser as any)?.lng || 0;
+                const latDest = o.deliveryLat || (destinoUser as any)?.lat;
+                const lngDest = o.deliveryLng || (destinoUser as any)?.lng;
 
-    if (confirm(`Deseja transferir R$ ${ganhosHoje.toFixed(2)} instantaneamente via PIX para o seu CPF/CNPJ (${targetKey}) cadastrado?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
-      setIsWithdrawing(true);
-      try {
-        const pendingOrders = minhasCorridas.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone);
-        const pendingOrderIds = pendingOrders.map((o: any) => o.id);
+                const hasDistinctDest = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
+                const destAddress = o.deliveryAddress || (destinoUser as any)?.endereco || (destinoUser as any)?.bairro || o.clienteNome || 'Destino';
 
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch('/api/asaas/withdrawals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) }
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          incrementDailyWithdrawalCount(currentUser.id);
-          alert(`✅ Solicitação de Saque no valor de R$ ${ganhosHoje.toFixed(2)} enviada com sucesso!\nO valor será repassado via Pix Asaas para sua chave/subconta.`);
-          store.fetchOrders(currentUser.id, true);
-        } else {
-          const msg = data.error || '';
-          alert(`Solicitação de Saque: ${msg || 'Não foi possível registrar o saque no momento.'}`);
-        }
-      } catch (_err) {
-        alert("Erro de conexão ao solicitar transferência PIX.");
-      } finally {
-        setIsWithdrawing(false);
-      }
-    }
+                const mapsUrl = hasDistinctDest
+                  ? `https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`
+                  : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destAddress)}`;
+
+                return (
+                  <>
+                    <a 
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                    >
+                      🏁 GPS p/ Destino
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const compradorUser = (o as any).buyerId ? store.users[(o as any).buyerId] : (o.destinoId ? store.users[o.destinoId] : null);
+                        const vendedorUser = o.origemId ? store.users[o.origemId] : null;
+                        const targetOther = compradorUser || vendedorUser;
+                        setChatModalData({
+                          open: true,
+                          orderId: o.id,
+                          otherName: targetOther?.name || o.clienteNome || 'Comprador/Vendedor',
+                          otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
+                          otherRole: compradorUser ? 'Loja Compradora' : 'Fornecedor'
+                        });
+                      }}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
+                    >
+                      💬 Chat & 📞 Voz
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+        </div>
+        <OrderTimelineBadges order={o} className="flex flex-wrap gap-2 mb-3" />
+        
+        {o.status === 'em_rota' ? (
+            <div className="flex flex-col gap-2 w-full">
+                {!o.pickedUpAt ? (
+                  o.type === 'B2B' ? (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 p-4 rounded-xl flex flex-col gap-2.5 shadow-inner">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold flex items-center gap-1">
+                          <span>🔑</span> PIN de Retirada (Fornecedor)
+                        </p>
+                        <span className="text-[10px] bg-amber-200/60 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-extrabold px-2 py-0.5 rounded">Etapa 1 de 2</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                        Peça o PIN impresso na comanda ou na tela do fornecedor para confirmar o carregamento do lote de açaí.
+                      </p>
+                      <div className="flex gap-2 mt-1">
+                        <input 
+                          type="text" 
+                          maxLength={4} 
+                          placeholder="0000" 
+                          value={pinInputs[`pickup_${o.id}`] || ''} 
+                          onChange={e => setPinInputs(prev => ({ ...prev, [`pickup_${o.id}`]: e.target.value }))}
+                          className="w-24 text-center font-black tracking-widest text-xl p-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                        <button 
+                          onClick={() => store.acaoPedido(o.id, 'validar_pin_retirada', pinInputs[`pickup_${o.id}`])} 
+                          className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                        >
+                          Validar Carregamento
+                        </button>
+                      </div>
+                      <div className="flex justify-end pt-1">
+                        <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="text-[11px] text-red-600 hover:underline">
+                          ❌ Cancelar transporte
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 w-full">
+                      <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
+                      <button onClick={() => store.acaoPedido(o.id, 'retirar_pedido')} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                        🏪 Confirmar Coleta na Loja
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex gap-2 w-full">
+                    <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
+                    <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                      🏁 Cheguei ao Endereço de Destino
+                    </button>
+                  </div>
+                )}
+            </div>
+        ) : o.status === 'aguardando_cliente' ? (
+            <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 p-4 rounded-xl flex flex-col gap-2.5 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold flex items-center gap-1">
+                    <span>🔑</span> {isColeta ? 'PIN de Confirmação da Coleta' : 'PIN de Entrega (Loja Compradora)'}
+                  </p>
+                  <span className="text-[10px] bg-orange-200/60 dark:bg-orange-800 text-orange-900 dark:text-orange-100 font-extrabold px-2 py-0.5 rounded">{isColeta ? 'Coleta ESG' : 'Etapa 2 de 2'}</span>
+                </div>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                  {isColeta 
+                    ? 'Peça o PIN de 4 dígitos à loja de açaí para finalizar a coleta de resíduos.' 
+                    : 'Peça o PIN de 4 dígitos na tela da loja compradora para finalizar a entrega do açaí.'}
+                </p>
+                <div className="flex gap-2 mt-1">
+                    <input 
+                        type="text" 
+                        maxLength={4} 
+                        placeholder="0000" 
+                        value={pinInputs[o.id] || ''} 
+                        onChange={e => setPinInputs(prev => ({...prev, [o.id]: e.target.value}))}
+                        className="w-24 text-center font-black tracking-widest text-xl p-2.5 rounded-xl border border-orange-300 dark:border-orange-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                    <button 
+                        onClick={() => store.acaoPedido(o.id, 'validar_pin', pinInputs[o.id])} 
+                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                    >
+                        Validar e Finalizar
+                    </button>
+                </div>
+            </div>
+        ) : o.status === 'entregue' || o.status === 'arquivado' ? (
+            <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-3 rounded-xl flex flex-col gap-2 items-center font-bold">
+                <p>✅ Frete Concluído</p>
+                {o.payoutDriverDone ? (
+                  <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800/60 shadow-sm flex items-center gap-1">
+                    ✅ Repasse Liquidado (R$ {getDriverFee(o).toFixed(2)})
+                  </span>
+                ) : (
+                   <span className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-bold px-2 py-1 rounded border border-blue-200 dark:border-blue-800/60 shadow-sm flex items-center gap-1">
+                     ⏳ Saldo p/ Saque Asaas (R$ {getDriverFee(o).toFixed(2)})
+                   </span>
+                )}
+            </div>
+        ) : null}
+      </div>
+    );
   };
 
 
@@ -255,40 +438,74 @@ export default function CaminhaoDashboard() {
       shareModal={<ShareLandingModal isOpen={shareLandingModalOpen} onClose={() => setShareLandingModalOpen(false)} />}
     >
       <div className="space-y-6">
-        {/* Abas do Caminhoneiro */}
-        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-2 shadow-md flex items-center justify-between gap-2 flex-wrap">
+        {/* Barra de Navegação de Abas Fixa no Topo (Sticky) */}
+        <div className="sticky top-[73px] z-30 bg-zinc-950/95 backdrop-blur border border-zinc-800/90 rounded-2xl p-2 mb-6 shadow-lg">
           <div className="flex gap-2 overflow-x-auto">
-            <button onClick={() => setActiveTab('geral')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'geral' ? 'bg-amber-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>📊 Visão Geral</button>
-            <button onClick={() => setActiveTab('radar')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'radar' ? 'bg-amber-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>📡 Radar de Fretes ({corridasDisponiveis.length})</button>
-            <button onClick={() => setActiveTab('historico')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'historico' ? 'bg-amber-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>🚚 Meus Fretes ({minhasCorridas.length})</button>
-          </div>
-          <button 
-            onClick={() => setShareLandingModalOpen(true)}
-            className="text-xs bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 border border-pink-900/50 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-          >
-            <Share2 size={14} /> Compartilhar
-          </button>
-        </div>
-
-        {!currentUser?.asaasLinked && (
-          <div className="bg-amber-950/30 border border-amber-800/60 rounded-2xl p-6 text-center shadow-sm">
-            <h3 className="text-amber-300 font-bold text-lg mb-2">Atenção: Repasses Pendentes!</h3>
-            <p className="text-amber-200/80 text-sm mb-4">
-              Para receber os pagamentos dos seus fretes diretamente no seu PIX ou subconta Asaas, vincule sua Chave PIX / Carteira Asaas.
-            </p>
             <button 
-              onClick={handleLinkAsaas}
-              className="inline-block bg-amber-600 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-amber-700 transition"
+              onClick={() => setActiveTab('radar')} 
+              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'radar' 
+                  ? 'bg-amber-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
             >
-              🤝 Vincular Subconta / Carteira Asaas
+              <span>📡 Radar de Fretes</span>
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'radar' ? 'bg-amber-800 text-white' : 'bg-zinc-800 text-zinc-300'}`}>
+                {corridasDisponiveis.length}
+              </span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('ativos')} 
+              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'ativos' 
+                  ? 'bg-amber-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>📦 Fretes Ativos</span>
+              {caminhaoActiveOrders.length > 0 && (
+                <span className="bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                  {caminhaoActiveOrders.length}
+                </span>
+              )}
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('historico')} 
+              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'historico' 
+                  ? 'bg-amber-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>📋 Histórico</span>
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'historico' ? 'bg-amber-800 text-white' : 'bg-zinc-800 text-zinc-300'}`}>
+                {caminhaoHistoryOrders.length}
+              </span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('carteira')} 
+              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'carteira' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>💳 Carteira Digital</span>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
+                {formatMoney(ganhosHoje)}
+              </span>
             </button>
           </div>
-        )}
+        </div>
 
+        {/* 1. ABA: RADAR */}
         {activeTab === 'radar' && (
         <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
             <div>
-                <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">🚨 Radar de Fretes</h3>
+                <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">🚨 Radar de Fretes Pesados</h3>
                 <div className="space-y-4">
                   {corridasDisponiveis.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
@@ -304,9 +521,9 @@ export default function CaminhaoDashboard() {
                       ? { name: 'Ecoponto Municipal', bairro: 'Área de Descarte Ecológico' }
                       : ((destId && store.users) ? store.users[destId] : null);
                     return (
-                      <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900/50">
+                      <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-amber-100 dark:border-amber-900/50">
                           <div className="flex justify-between items-center mb-2">
-                              <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
+                              <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded">
                                 {isColeta ? '🚛 Coleta de Caroço (Caçamba)' : `Nova Rota ${o.type}`}
                               </span>
                               <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">Líquido: {formatMoney(getDriverFee(o))}</span>
@@ -340,12 +557,12 @@ export default function CaminhaoDashboard() {
                                     motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Seu Veículo', veiculo: currentUser?.veiculo || 'Caminhão' }
                                   });
                                 }} 
-                                className="mt-2 text-blue-600 bg-blue-100/50 dark:bg-blue-900/20 p-2 rounded-lg font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 text-center w-full transition border border-blue-200 dark:border-blue-800"
+                                className="mt-2 text-amber-600 bg-amber-100/50 dark:bg-amber-900/20 p-2 rounded-lg font-bold hover:bg-amber-100 dark:hover:bg-amber-900/40 text-center w-full transition border border-amber-200 dark:border-amber-800 text-xs"
                               >
                                 🗺️ Ver Rota de {o.distancia ? o.distancia.toFixed(1) : '0.0'} km
                               </button>
                           </div>
-                          <button onClick={() => store.acaoPedido(o.id, 'aceitar_motorista')} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-base font-bold py-3.5 rounded-xl transition shadow-md">
+                          <button onClick={() => store.acaoPedido(o.id, 'aceitar_motorista')} className="w-full bg-amber-600 hover:bg-amber-700 text-white text-base font-bold py-3.5 rounded-xl transition shadow-md">
                             {isColeta ? '🚛 Aceitar Coleta' : 'Aceitar Frete'}
                           </button>
                       </div>
@@ -355,248 +572,65 @@ export default function CaminhaoDashboard() {
             </div>
         </div>
         )}
-            
-        {activeTab === 'historico' && (
-        <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
+
+        {/* 2. ABA: FRETES ATIVOS (EM ANDAMENTO) */}
+        {activeTab === 'ativos' && (
+          <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
             <div>
-                <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">📦 Em Andamento</h3>
-                <div className="space-y-4">
-                  {minhasCorridas.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
-                        <span className="text-4xl mb-3 opacity-50">✅</span>
-                        <p className="text-zinc-500 font-medium">Você está livre.</p>
-                    </div>
-                  ) : minhasCorridas.map((o: any) => {
-                    const isColeta = o.type === 'COLETA';
-                    const origId = o.fornecedorId || o.origemId || o.lojaId;
-                    const destId = o.destinoId || o.lojaId;
-                    const origemUser = (origId && store.users) ? store.users[origId] : null;
-                    const destinoUser = isColeta
-                      ? { name: 'Ecoponto Municipal de Caroço', bairro: 'Área de Descarte Ecológico' }
-                      : ((destId && store.users) ? store.users[destId] : null);
-                    return (
-                    <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${o.status === 'em_rota' ? 'border-blue-400 dark:border-blue-600' : 'border-zinc-200 dark:border-zinc-800'}`}>
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="font-extrabold text-zinc-900 dark:text-white text-sm sm:text-base">{o.title}</span>
-                            <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">Líquido: {formatMoney(getDriverFee(o))}</span>
-                        </div>
-                        
-                        <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded-lg text-xs mb-3 flex flex-col gap-1.5 border border-zinc-100 dark:border-zinc-800">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm">📍</span> 
-                                <div>
-                                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">{isColeta ? 'Retirar na Loja de Açaí' : 'Retirar no Fornecedor'}</span>
-                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.lojaNome || origemUser?.name || 'Loja de Açaí'}</span> 
-                                    <span className="text-zinc-500 text-[11px]"> ({origemUser?.bairro || o.lojaEndereco || '—'})</span>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2 pt-1 border-t border-zinc-200 dark:border-zinc-800">
-                                <span className="text-sm">🏁</span> 
-                                <div>
-                                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">{isColeta ? 'Destino do Caroço' : 'Entregar na Loja'}</span>
-                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{isColeta ? 'Ecoponto Municipal de Caroço' : (o.clienteNome || destinoUser?.name || '—')}</span> 
-                                    <span className="text-zinc-500 text-[11px]"> ({isColeta ? 'Descarte Ecológico' : (destinoUser?.bairro || '—')})</span>
-                                </div>
-                            </div>
-                            <div className="mt-2 flex flex-col sm:flex-row gap-2 w-full">
-                              <button 
-                                  onClick={() => {
-                                    const latOrigem = ((origemUser as any)?.lat && (origemUser as any).lat !== 0) ? (origemUser as any).lat : -1.4558;
-                                    const lngOrigem = ((origemUser as any)?.lng && (origemUser as any).lng !== 0) ? (origemUser as any).lng : -48.4908;
-                                    
-                                    const latDestino = (o.deliveryLat && o.deliveryLat !== 0) 
-                                      ? o.deliveryLat 
-                                      : (((destinoUser as any)?.lat && (destinoUser as any).lat !== 0) ? (destinoUser as any).lat : (latOrigem ? latOrigem + 0.0045 : -1.4552));
-                                    
-                                    const lngDestino = (o.deliveryLng && o.deliveryLng !== 0) 
-                                      ? o.deliveryLng 
-                                      : (((destinoUser as any)?.lng && (destinoUser as any).lng !== 0) ? (destinoUser as any).lng : (lngOrigem ? lngOrigem + 0.0045 : -48.4902));
-
-                                    const driverLat = (currentUser?.lat && currentUser.lat !== 0) ? currentUser.lat : latOrigem - 0.003;
-                                    const driverLng = (currentUser?.lng && currentUser.lng !== 0) ? currentUser.lng : lngOrigem - 0.003;
-
-                                    setMapModal({
-                                      open: true,
-                                      origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origemUser?.name || 'Retirada' },
-                                      destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destinoUser?.name || 'Entrega' },
-                                      motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Seu Veículo', veiculo: currentUser?.veiculo || 'Caminhão' }
-                                    });
-                                  }} 
-                                  className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/30 p-2.5 rounded-xl font-bold text-center transition border border-blue-200 dark:border-blue-800/80 flex items-center justify-center gap-1.5 text-xs shadow-sm"
-                              >
-                                  🗺️ Ver Mapa ({(o.distancia || 0).toFixed(1)} km)
-                              </button>
-                              
-                              {origemUser?.lat ? (
-                                <a 
-                                  href={`https://www.google.com/maps/dir/?api=1&destination=${origemUser.lat},${origemUser.lng}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                >
-                                  🚀 GPS p/ Retirada
-                                </a>
-                              ) : (
-                                <a 
-                                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(origemUser?.name || o.lojaNome || 'Origem, Belém')}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                >
-                                  🚀 GPS p/ Retirada
-                                </a>
-                              )}
-
-                              {(() => {
-                                const latOrig = (origemUser as any)?.lat || 0;
-                                const lngOrig = (origemUser as any)?.lng || 0;
-                                const latDest = o.deliveryLat || (destinoUser as any)?.lat;
-                                const lngDest = o.deliveryLng || (destinoUser as any)?.lng;
-
-                                const hasDistinctDest = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
-                                const destAddress = o.deliveryAddress || (destinoUser as any)?.endereco || (destinoUser as any)?.bairro || o.clienteNome || 'Destino';
-
-                                const mapsUrl = hasDistinctDest
-                                  ? `https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`
-                                  : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destAddress)}`;
-
-                                return (
-                                  <>
-                                    <a 
-                                      href={mapsUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                    >
-                                      🏁 GPS p/ Destino
-                                    </a>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const compradorUser = (o as any).buyerId ? store.users[(o as any).buyerId] : (o.destinoId ? store.users[o.destinoId] : null);
-                                        const vendedorUser = o.origemId ? store.users[o.origemId] : null;
-                                        const targetOther = compradorUser || vendedorUser;
-                                        setChatModalData({
-                                          open: true,
-                                          orderId: o.id,
-                                          otherName: targetOther?.name || o.clienteNome || 'Comprador/Vendedor',
-                                          otherPhone: (targetOther as any)?.phone || targetOther?.telefone || '',
-                                          otherRole: compradorUser ? 'Loja Compradora' : 'Fornecedor'
-                                        });
-                                      }}
-                                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                    >
-                                      💬 Chat & 📞 Voz
-                                    </button>
-                                  </>
-                                );
-                              })()}
-                            </div>
-                        </div>
-                        <OrderTimelineBadges order={o} className="flex flex-wrap gap-2 mb-3" />
-                        
-                        {o.status === 'em_rota' ? (
-                            <div className="flex flex-col gap-2 w-full">
-                                {!o.pickedUpAt ? (
-                                  o.type === 'B2B' ? (
-                                    <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 p-4 rounded-xl flex flex-col gap-2.5 shadow-inner">
-                                      <div className="flex items-center justify-between">
-                                        <p className="text-xs font-bold flex items-center gap-1">
-                                          <span>🔑</span> PIN de Retirada (Fornecedor)
-                                        </p>
-                                        <span className="text-[10px] bg-amber-200/60 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-extrabold px-2 py-0.5 rounded">Etapa 1 de 2</span>
-                                      </div>
-                                      <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
-                                        Peça o PIN impresso na comanda ou na tela do fornecedor para confirmar o carregamento do lote de açaí.
-                                      </p>
-                                      <div className="flex gap-2 mt-1">
-                                        <input 
-                                          type="text" 
-                                          maxLength={4} 
-                                          placeholder="0000" 
-                                          value={pinInputs[`pickup_${o.id}`] || ''} 
-                                          onChange={e => setPinInputs(prev => ({ ...prev, [`pickup_${o.id}`]: e.target.value }))}
-                                          className="w-24 text-center font-black tracking-widest text-xl p-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
-                                        />
-                                        <button 
-                                          onClick={() => store.acaoPedido(o.id, 'validar_pin_retirada', pinInputs[`pickup_${o.id}`])} 
-                                          className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm"
-                                        >
-                                          Validar Carregamento
-                                        </button>
-                                      </div>
-                                      <div className="flex justify-end pt-1">
-                                        <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="text-[11px] text-red-600 hover:underline">
-                                          ❌ Cancelar transporte
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="flex gap-2 w-full">
-                                      <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
-                                      <button onClick={() => store.acaoPedido(o.id, 'retirar_pedido')} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
-                                        🏪 Confirmar Coleta na Loja
-                                      </button>
-                                    </div>
-                                  )
-                                ) : (
-                                  <div className="flex gap-2 w-full">
-                                    <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
-                                    <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
-                                      🏁 Cheguei ao Endereço de Destino
-                                    </button>
-                                  </div>
-                                )}
-                            </div>
-                        ) : o.status === 'aguardando_cliente' ? (
-                            <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 p-4 rounded-xl flex flex-col gap-2.5 shadow-inner">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-bold flex items-center gap-1">
-                                    <span>🔑</span> {isColeta ? 'PIN de Confirmação da Coleta' : 'PIN de Entrega (Loja Compradora)'}
-                                  </p>
-                                  <span className="text-[10px] bg-orange-200/60 dark:bg-orange-800 text-orange-900 dark:text-orange-100 font-extrabold px-2 py-0.5 rounded">{isColeta ? 'Coleta ESG' : 'Etapa 2 de 2'}</span>
-                                </div>
-                                <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
-                                  {isColeta 
-                                    ? 'Peça o PIN de 4 dígitos à loja de açaí para finalizar a coleta de resíduos.' 
-                                    : 'Peça o PIN de 4 dígitos na tela da loja compradora para finalizar a entrega do açaí.'}
-                                </p>
-                                <div className="flex gap-2 mt-1">
-                                    <input 
-                                        type="text" 
-                                        maxLength={4} 
-                                        placeholder="0000" 
-                                        value={pinInputs[o.id] || ''} 
-                                        onChange={e => setPinInputs(prev => ({...prev, [o.id]: e.target.value}))}
-                                        className="w-24 text-center font-black tracking-widest text-xl p-2.5 rounded-xl border border-orange-300 dark:border-orange-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
-                                    />
-                                    <button 
-                                        onClick={() => store.acaoPedido(o.id, 'validar_pin', pinInputs[o.id])} 
-                                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm"
-                                    >
-                                        Validar e Finalizar
-                                    </button>
-                                </div>
-                            </div>
-                        ) : o.status === 'entregue' || o.status === 'arquivado' ? (
-                            <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-3 rounded-xl flex flex-col gap-2 items-center font-bold">
-                                <p>✅ Frete Concluído</p>
-                                {o.payoutDriverDone ? (
-                                  <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800/60 shadow-sm flex items-center gap-1">
-                                    ✅ Repasse Liquidado (R$ {getDriverFee(o).toFixed(2)})
-                                  </span>
-                                ) : (
-                                   <span className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-bold px-2 py-1 rounded border border-blue-200 dark:border-blue-800/60 shadow-sm flex items-center gap-1">
-                                     ⏳ Saldo p/ Saque Asaas (R$ {getDriverFee(o).toFixed(2)})
-                                   </span>
-                                )}
-                            </div>
-                        ) : null}
-                    </div>
-                  )})}
-                </div>
+              <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4 flex items-center justify-between">
+                <span>📦 Fretes em Andamento</span>
+                <span className="text-xs text-amber-500 font-bold">{caminhaoActiveOrders.length} ativo(s)</span>
+              </h3>
+              <div className="space-y-4">
+                {caminhaoActiveOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
+                    <span className="text-4xl mb-3 opacity-50">🚚</span>
+                    <p className="text-zinc-500 font-medium">Nenhum frete em andamento no momento.</p>
+                    <button 
+                      onClick={() => setActiveTab('radar')}
+                      className="mt-3 text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-xl transition"
+                    >
+                      Ver Radar de Fretes ({corridasDisponiveis.length})
+                    </button>
+                  </div>
+                ) : (
+                  caminhaoActiveOrders.map(o => renderFreightCard(o))
+                )}
+              </div>
             </div>
-        </div>
+          </div>
+        )}
+
+        {/* 3. ABA: HISTÓRICO DE FRETES */}
+        {activeTab === 'historico' && (
+          <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
+            <div>
+              <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4 flex items-center justify-between">
+                <span>📋 Histórico de Fretes</span>
+                <span className="text-xs text-zinc-400 font-normal">{caminhaoHistoryOrders.length} frete(s) finalizado(s)</span>
+              </h3>
+              <div className="space-y-4">
+                {caminhaoHistoryOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
+                    <span className="text-4xl mb-3 opacity-50">📜</span>
+                    <p className="text-zinc-500 font-medium">Nenhum frete concluído ainda.</p>
+                  </div>
+                ) : (
+                  caminhaoHistoryOrders.map(o => renderFreightCard(o))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. ABA: CARTEIRA DIGITAL */}
+        {activeTab === 'carteira' && (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <PartnerWithdrawalSection 
+              partnerId={currentUser.id} 
+              role="motorista" 
+            />
+          </div>
         )}
 
       <MapModal 

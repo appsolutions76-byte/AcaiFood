@@ -243,22 +243,83 @@ export default function MotoboyDashboard() {
       manualRole="motoboy"
       shareModal={<ShareLandingModal isOpen={shareLandingModalOpen} onClose={() => setShareLandingModalOpen(false)} />}
     >
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-2 mb-6">
+      {/* Barra de Navegação de Abas Fixa no Topo (Sticky) */}
+      <div className="sticky top-[73px] z-30 bg-zinc-950/95 backdrop-blur border border-zinc-800/90 rounded-2xl p-2 mb-6 shadow-lg">
         <div className="flex gap-2 overflow-x-auto">
-          <button onClick={() => setActiveTab('radar')} className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap ${activeTab === 'radar' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}>🚨 Radar B2C ({corridasDisponiveis.length})</button>
-          <button onClick={() => setActiveTab('historico')} className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap ${activeTab === 'historico' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'}`}>📦 Minhas Corridas ({minhasCorridas.length})</button>
+          <button 
+            onClick={() => setActiveTab('radar')} 
+            className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'radar' 
+                ? 'bg-amber-600 text-white shadow-md' 
+                : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+            }`}
+          >
+            <span>🚨 Radar B2C</span>
+            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'radar' ? 'bg-amber-800 text-white' : 'bg-zinc-800 text-zinc-300'}`}>
+              {corridasDisponiveis.length}
+            </span>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('ativos')} 
+            className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'ativos' 
+                ? 'bg-purple-600 text-white shadow-md' 
+                : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+            }`}
+          >
+            <span>📦 Corridas Ativas</span>
+            {motoActiveOrders.length > 0 && (
+              <span className="bg-purple-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                {motoActiveOrders.length}
+              </span>
+            )}
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('historico')} 
+            className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'historico' 
+                ? 'bg-purple-600 text-white shadow-md' 
+                : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+            }`}
+          >
+            <span>📋 Histórico</span>
+            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'historico' ? 'bg-purple-800 text-white' : 'bg-zinc-800 text-zinc-300'}`}>
+              {motoHistoryOrders.length}
+            </span>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('carteira')} 
+            className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'carteira' 
+                ? 'bg-emerald-600 text-white shadow-md' 
+                : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+            }`}
+          >
+            <span>💳 Carteira Digital</span>
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
+              {formatMoney(ganhosHoje)}
+            </span>
+          </button>
         </div>
       </div>
 
+        {/* 1. ABA: RADAR B2C */}
         {activeTab === 'radar' && (
         <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
             <div>
-                <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">🚨 Radar de Corridas</h3>
+                <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4 flex items-center justify-between">
+                  <span>🚨 Radar de Corridas Prontas</span>
+                  <span className="text-xs text-zinc-400 font-normal">{corridasDisponiveis.length} chamada(s) disponível(is)</span>
+                </h3>
                 <div className="space-y-4">
                   {corridasDisponiveis.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
                         <span className="text-4xl mb-3 opacity-50">📡</span>
                         <p className="text-zinc-500 font-medium">Nenhum chamado no radar no momento.</p>
+                        <p className="text-xs text-zinc-400 mt-1">Quando uma batedeira preparar um açaí B2C, ele aparecerá aqui instantaneamente.</p>
                     </div>
                   ) : corridasDisponiveis.map((o: any) => {
                     const origem = store.users?.[o.origemId];
@@ -289,12 +350,12 @@ export default function MotoboyDashboard() {
                                     motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Sua Moto', veiculo: currentUser?.veiculo || 'Moto' }
                                   });
                                 }} 
-                                className="mt-2 text-blue-600 bg-blue-100/50 dark:bg-blue-900/20 p-2 rounded-lg font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 text-center w-full transition border border-blue-200 dark:border-blue-800"
+                                className="mt-2 text-blue-600 bg-blue-100/50 dark:bg-blue-900/20 p-2 rounded-lg font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 text-center w-full transition border border-blue-200 dark:border-blue-800 cursor-pointer"
                               >
                                 🗺️ Ver Rota de {distKm.toFixed(1)} km
                               </button>
                           </div>
-                          <button onClick={() => store.acaoPedido(o.id, 'aceitar_motorista')} className="w-full bg-zinc-800 hover:bg-black dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white text-base font-bold py-3.5 rounded-xl transition shadow-md">Aceitar Corrida</button>
+                          <button onClick={() => store.acaoPedido(o.id, 'aceitar_motorista')} className="w-full bg-zinc-800 hover:bg-black dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white text-base font-bold py-3.5 rounded-xl transition shadow-md cursor-pointer">Aceitar Corrida</button>
                       </div>
                     )
                   })}
@@ -303,17 +364,22 @@ export default function MotoboyDashboard() {
         </div>
         )}
             
-        {activeTab === 'historico' && (
+        {/* 2. ABA: CORRIDAS ATIVAS / EM ANDAMENTO */}
+        {activeTab === 'ativos' && (
         <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
             <div>
-                <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">📦 Em Andamento</h3>
+                <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4 flex items-center justify-between">
+                  <span>📦 Corridas em Andamento</span>
+                  <span className="text-xs text-purple-400 font-bold">{motoActiveOrders.length} corrida(s) ativa(s)</span>
+                </h3>
                 <div className="space-y-4">
-                  {minhasCorridas.length === 0 ? (
+                  {motoActiveOrders.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
-                        <span className="text-4xl mb-3 opacity-50">✅</span>
-                        <p className="text-zinc-500 font-medium">Você está livre.</p>
+                        <span className="text-4xl mb-3 opacity-50">🛵</span>
+                        <p className="text-zinc-500 font-medium">Nenhuma corrida ativa no momento.</p>
+                        <p className="text-xs text-zinc-400 mt-1">Acesse a aba <strong>Radar B2C</strong> para aceitar novas entregas.</p>
                     </div>
-                  ) : minhasCorridas.map((o: any) => {
+                  ) : motoActiveOrders.map((o: any) => {
                     const isCanceled = o.status === 'cancelado';
                     const lojaUser = store.users?.[o.lojaId!] || store.users?.[o.origemId];
                     const clienteId = o.clienteId || (o.type === 'B2C' ? o.criadoPor : undefined) || o.destinoId;
@@ -371,7 +437,7 @@ export default function MotoboyDashboard() {
                                       motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Sua Moto', veiculo: currentUser?.veiculo || 'Moto' }
                                     });
                                   }} 
-                                  className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/30 p-2.5 rounded-xl font-bold text-center transition border border-blue-200 dark:border-blue-800/80 flex items-center justify-center gap-1.5 text-xs shadow-sm"
+                                  className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/30 p-2.5 rounded-xl font-bold text-center transition border border-blue-200 dark:border-blue-800/80 flex items-center justify-center gap-1.5 text-xs shadow-sm cursor-pointer"
                               >
                                   🗺️ Ver Mapa ({Number(o.distancia || 0).toFixed(1)} km)
                               </button>
@@ -430,8 +496,6 @@ export default function MotoboyDashboard() {
                                 onClick={() => {
                                   const clienteId = o.clienteId || (o as any).buyerId || o.destinoId;
                                   const clienteUser = clienteId && store.users ? store.users[clienteId] : null;
-                                  const lojaId = o.lojaId || (o as any).sellerStorefrontId || o.origemId;
-                                  const lojaUser = lojaId && store.users ? store.users[lojaId] : null;
                                   setChatModalData({
                                     open: true,
                                     orderId: o.id,
@@ -440,7 +504,7 @@ export default function MotoboyDashboard() {
                                     otherRole: 'Cliente'
                                   });
                                 }}
-                                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                               >
                                 💬 Chat do Pedido
                               </button>
@@ -472,7 +536,7 @@ export default function MotoboyDashboard() {
                                       />
                                       <button 
                                         onClick={() => store.acaoPedido(o.id, 'validar_pin_retirada', pinInputs[`pickup_${o.id}`])} 
-                                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm cursor-pointer"
                                       >
                                         Validar e Iniciar Rota
                                       </button>
@@ -486,7 +550,7 @@ export default function MotoboyDashboard() {
                                 ) : (
                                   <div className="flex gap-2 w-full">
                                     <button onClick={() => { if(confirm('Deseja realmente cancelar esta corrida?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
-                                    <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                                    <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
                                       🏁 Cheguei ao Endereço do Cliente
                                     </button>
                                   </div>
@@ -514,29 +578,11 @@ export default function MotoboyDashboard() {
                                     />
                                     <button 
                                         onClick={() => store.acaoPedido(o.id, 'validar_pin', pinInputs[o.id])} 
-                                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm cursor-pointer"
                                     >
                                         Validar e Finalizar
                                     </button>
                                 </div>
-                            </div>
-                        ) : o.status === 'entregue' || o.status === 'arquivado' ? (
-                            <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-3 rounded-xl flex flex-col gap-2 items-center font-bold">
-                                <p>✅ Entrega Concluída</p>
-                                {o.payoutDriverDone ? (
-                                  <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800/60 shadow-sm flex items-center gap-1">
-                                    ✅ Repasse Liquidado (R$ {Number(getMotoboyFee(o) || 0).toFixed(2)})
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold px-2 py-1 rounded border border-amber-200 dark:border-amber-800/60 shadow-sm flex items-center gap-1">
-                                    ⏳ Saldo p/ Saque Asaas (R$ {Number(getMotoboyFee(o) || 0).toFixed(2)})
-                                  </span>
-                                )}
-                            </div>
-                        ) : isCanceled ? (
-                            <div className="flex flex-col gap-2">
-                               <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 text-xs p-2 rounded text-center font-bold">Cancelado</div>
-                               <button onClick={() => { if(confirm('Deseja excluir esta corrida do seu histórico?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="w-full text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold py-2 rounded-lg transition">🗑️ Excluir</button>
                             </div>
                         ) : null}
                     </div>
@@ -544,6 +590,86 @@ export default function MotoboyDashboard() {
                 </div>
             </div>
         </div>
+        )}
+
+        {/* 3. ABA: HISTÓRICO DE CORRIDAS (CONCLUÍDAS / CANCELADAS) */}
+        {activeTab === 'historico' && (
+        <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
+            <div>
+                <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4 flex items-center justify-between">
+                  <span>📋 Histórico de Corridas Finalizadas</span>
+                  <span className="text-xs text-zinc-400 font-normal">{motoHistoryOrders.length} corrida(s) no histórico</span>
+                </h3>
+                <div className="space-y-4">
+                  {motoHistoryOrders.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
+                        <span className="text-4xl mb-3 opacity-50">📋</span>
+                        <p className="text-zinc-500 font-medium">Nenhum histórico registrado ainda.</p>
+                        <p className="text-xs text-zinc-400 mt-1">As corridas entregues ou canceladas ficarão arquivadas aqui.</p>
+                    </div>
+                  ) : motoHistoryOrders.map((o: any) => {
+                    const isCanceled = o.status === 'cancelado';
+                    const lojaUser = store.users?.[o.lojaId!] || store.users?.[o.origemId];
+                    const clienteId = o.clienteId || (o.type === 'B2C' ? o.criadoPor : undefined) || o.destinoId;
+                    const clienteUser = store.users?.[clienteId] || store.users?.[o.destinoId];
+                    return (
+                    <div key={o.id} className={`bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border ${isCanceled ? 'border-red-300 opacity-60 border-l-4 border-l-red-400' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-extrabold text-zinc-900 dark:text-white text-sm sm:text-base">{o.title}</span>
+                            <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">Líquido: {formatMoney(getMotoboyFee(o))}</span>
+                        </div>
+                        
+                        <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded-lg text-xs mb-3 flex flex-col gap-1.5 border border-zinc-100 dark:border-zinc-800">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm">📍</span> 
+                                <div>
+                                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">Loja de Origem</span>
+                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.lojaNome || lojaUser?.name || '—'}</span> 
+                                    <span className="text-zinc-500 text-[11px]"> ({lojaUser?.bairro || '—'})</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 pt-1 border-t border-zinc-200 dark:border-zinc-800">
+                                <span className="text-sm">🏁</span> 
+                                <div>
+                                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">Cliente de Destino</span>
+                                    <span className="text-zinc-800 dark:text-zinc-200 font-bold">{o.clienteNome || clienteUser?.name || '—'}</span> 
+                                    <span className="text-purple-600 dark:text-purple-400 font-bold text-[11px]"> ({o.deliveryAddress || clienteUser?.bairro || '—'})</span>
+                                </div>
+                            </div>
+                        </div>
+                        <OrderTimelineBadges order={o} className="flex flex-wrap gap-2 mb-3" />
+                        
+                        {o.status === 'entregue' || o.status === 'arquivado' ? (
+                            <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 text-xs p-3 rounded-xl flex flex-col gap-2 items-center font-bold">
+                                <p>✅ Entrega Concluída com Sucesso</p>
+                                {o.payoutDriverDone ? (
+                                  <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800/60 shadow-sm flex items-center gap-1">
+                                    ✅ Repasse Liquidado via Pix (R$ {Number(getMotoboyFee(o) || 0).toFixed(2)})
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold px-2 py-1 rounded border border-amber-200 dark:border-amber-800/60 shadow-sm flex items-center gap-1">
+                                    ⏳ Saldo Disponível p/ Saque Asaas (R$ {Number(getMotoboyFee(o) || 0).toFixed(2)})
+                                  </span>
+                                )}
+                            </div>
+                        ) : isCanceled ? (
+                            <div className="flex flex-col gap-2">
+                               <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 text-xs p-2 rounded text-center font-bold">Cancelado</div>
+                               <button onClick={() => { if(confirm('Deseja excluir esta corrida do seu histórico?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="w-full text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold py-2 rounded-lg transition cursor-pointer">🗑️ Excluir do Histórico</button>
+                            </div>
+                        ) : null}
+                    </div>
+                  )})}
+                </div>
+            </div>
+        </div>
+        )}
+
+        {/* 4. ABA: CARTEIRA DIGITAL & SAQUES PIX ASAAS */}
+        {activeTab === 'carteira' && (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <PartnerWithdrawalSection partnerId={currentUser.id} role="motorista" />
+          </div>
         )}
 
       <MapModal 

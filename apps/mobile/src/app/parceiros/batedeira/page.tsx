@@ -938,13 +938,76 @@ export default function BatedeiraDashboard() {
       }
     >
       <div className="space-y-6">
-        {/* Abas e Atalhos */}
-        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-2 shadow-md flex items-center justify-between gap-2 flex-wrap">
+        {/* Barra de Navegação de Abas Fixa no Topo (Sticky) */}
+        <div className="sticky top-[73px] z-30 bg-zinc-950/95 backdrop-blur border border-zinc-800/90 rounded-2xl p-2 mb-6 shadow-lg flex items-center justify-between gap-2 flex-wrap">
           <div className="flex gap-2 overflow-x-auto">
-            <button onClick={() => setActiveTab('geral')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'geral' ? 'bg-purple-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>📊 Visão Geral</button>
-            <button onClick={() => setActiveTab('abastecimento')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'abastecimento' ? 'bg-purple-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>🛒 Abastecimento B2B</button>
-            <button onClick={() => setActiveTab('pedidos')} className={`py-2.5 px-4 rounded-xl font-bold text-xs transition whitespace-nowrap ${activeTab === 'pedidos' ? 'bg-purple-600 text-white shadow' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>📦 Histórico e Pedidos</button>
+            <button 
+              onClick={() => setActiveTab('geral')} 
+              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'geral' 
+                  ? 'bg-purple-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>📊 Cardápio & Loja</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('abastecimento')} 
+              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'abastecimento' 
+                  ? 'bg-purple-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>🛒 Abastecimento</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('pedidos')} 
+              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'pedidos' 
+                  ? 'bg-purple-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>📦 Pedidos Ativos</span>
+              {batedeiraActiveOrders.length > 0 && (
+                <span className="bg-purple-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                  {batedeiraActiveOrders.length}
+                </span>
+              )}
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('historico')} 
+              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'historico' 
+                  ? 'bg-purple-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>📋 Histórico</span>
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'historico' ? 'bg-purple-800 text-white' : 'bg-zinc-800 text-zinc-300'}`}>
+                {batedeiraHistoryOrders.length}
+              </span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('carteira')} 
+              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'carteira' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>💳 Carteira Digital</span>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
+                {formatMoney(vendasHoje)}
+              </span>
+            </button>
           </div>
+
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setPrinterModalOpen(true)} 
@@ -2094,20 +2157,55 @@ export default function BatedeiraDashboard() {
           </div>
         )}
 
+        {/* 3. ABA: PEDIDOS ATIVOS */}
         {activeTab === 'pedidos' && (
           <div className="animate-in fade-in zoom-in-95 duration-300">
-            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4">Gestão de Pedidos e Vendas (B2C)</h3>
+            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4 flex items-center justify-between">
+              <span>📦 Pedidos Ativos em Andamento</span>
+              <span className="text-xs text-purple-600 dark:text-purple-400 font-bold">{batedeiraActiveOrders.length} ativo(s)</span>
+            </h3>
             
             <div className="grid grid-cols-1 gap-4">
-              {meusPedidos.filter(o => o.type === 'B2C').length === 0 ? (
+              {batedeiraActiveOrders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
                   <span className="text-4xl mb-3 opacity-50">🛍️</span>
-                  <p className="text-zinc-500 font-medium">Nenhuma venda B2C registrada na loja ainda.</p>
+                  <p className="text-zinc-500 font-medium">Nenhum pedido ativo no momento.</p>
                 </div>
               ) : (
-                meusPedidos.filter(o => o.type === 'B2C').map(renderOrderCard)
+                batedeiraActiveOrders.map(renderOrderCard)
               )}
             </div>
+          </div>
+        )}
+
+        {/* 4. ABA: HISTÓRICO */}
+        {activeTab === 'historico' && (
+          <div className="animate-in fade-in zoom-in-95 duration-300">
+            <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-4 flex items-center justify-between">
+              <span>📋 Histórico de Pedidos e Vendas</span>
+              <span className="text-xs text-zinc-400 font-normal">{batedeiraHistoryOrders.length} pedido(s) finalizado(s)</span>
+            </h3>
+            
+            <div className="grid grid-cols-1 gap-4">
+              {batedeiraHistoryOrders.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-dashed border-zinc-300 dark:border-zinc-700 text-center">
+                  <span className="text-4xl mb-3 opacity-50">📜</span>
+                  <p className="text-zinc-500 font-medium">Nenhum pedido finalizado ainda.</p>
+                </div>
+              ) : (
+                batedeiraHistoryOrders.map(renderOrderCard)
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 5. ABA: CARTEIRA DIGITAL */}
+        {activeTab === 'carteira' && (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <PartnerWithdrawalSection 
+              partnerId={currentUser.id} 
+              role="loja" 
+            />
           </div>
         )}
 

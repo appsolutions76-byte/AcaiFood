@@ -188,11 +188,8 @@ export function PartnerDashboardLayout({
         </header>
 
         {/* Main Dashboard Container */}
-        <main className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+        <main className="max-w-6xl mx-auto p-4 sm:p-6 space-y-4">
           
-          {/* Módulo 1: Cartão de Saldo e Saques BaaS */}
-          <PartnerWithdrawalSection partnerId={partnerId} role={role} />
-
           {/* Módulo 2: Cartão de Status do Parceiro e Informações Operacionais */}
           <div className={`border rounded-3xl p-5 shadow-xl transition relative overflow-hidden ${themeClasses.cardBorder}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
