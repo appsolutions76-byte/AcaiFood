@@ -217,7 +217,7 @@ export default function FornecedorDashboard() {
       return;
     }
 
-    const valorSaque = (vendasHoje && vendasHoje > 0) ? vendasHoje : (emProcessamento || 0);
+    const valorSaque = (vendasHoje && vendasHoje > 0) ? vendasHoje : 0;
     if (!valorSaque || valorSaque <= 0) {
       alert("Não há saldo disponível para saque no momento.");
       return;
@@ -324,7 +324,10 @@ export default function FornecedorDashboard() {
     return Math.max(0, val * (1 - platPct) - subFrete);
   };
 
-  const isCompleted = (st?: string) => st === 'entregue' || st === 'RECEIVED' || st === 'DELIVERED';
+  const isCompleted = (st?: string) => {
+    const norm = String(st || '').toLowerCase().trim();
+    return ['entregue', 'received', 'delivered', 'completed', 'concluido', 'concluído', 'arquivado'].includes(norm);
+  };
   const isPaidOrProcessing = (st?: string) => st === 'pendente' || st === 'preparo' || st === 'pronto' || st === 'em_rota' || st === 'aguardando_cliente' || st === 'PAID' || st === 'PREPARING' || st === 'READY' || st === 'IN_TRANSIT';
 
   const myFornSfIds = [
