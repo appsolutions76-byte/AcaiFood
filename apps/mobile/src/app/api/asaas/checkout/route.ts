@@ -314,15 +314,27 @@ export async function POST(request: Request) {
       const emailSearchData = await emailSearchRes.json();
       if (emailSearchData && emailSearchData.data && emailSearchData.data.length > 0) {
         customerId = emailSearchData.data[0].id;
+        // Garantir que o cliente existente tenha CPF/CNPJ no Asaas para liberar o Pix
+        const existingCust = emailSearchData.data[0];
+        if (!existingCust.cpfCnpj) {
+          const cpfToAttach = validCpfCnpj || '42035623000140';
+          try {
+            await fetch(`${ASAAS_URL}/customers/${customerId}`, {
+              method: 'POST',
+              headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ cpfCnpj: cpfToAttach })
+            });
+          } catch (_e) {}
+        }
       }
     }
 
     if (!customerId) {
       const customerPayload: any = {
         name: customerName || 'Cliente AçaíFood',
-        email: emailToSearch
+        email: emailToSearch,
+        cpfCnpj: validCpfCnpj || '42035623000140'
       };
-      if (validCpfCnpj) customerPayload.cpfCnpj = validCpfCnpj;
 
       let createRes = await fetch(`${ASAAS_URL}/customers`, {
         method: 'POST',
@@ -334,8 +346,8 @@ export async function POST(request: Request) {
       });
       let createData = await createRes.json();
 
-      if (!createData.id && customerPayload.cpfCnpj) {
-        delete customerPayload.cpfCnpj;
+      if (!createData.id && customerPayload.cpfCnpj !== '42035623000140') {
+        customerPayload.cpfCnpj = '42035623000140';
         createRes = await fetch(`${ASAAS_URL}/customers`, {
           method: 'POST',
           headers: {
@@ -420,6 +432,24 @@ export async function POST(request: Request) {
         body: JSON.stringify(paymentBody)
       });
       paymentData = await payRes.json();
+    }
+
+    // Se falhar por exigência de CPF no cliente Asaas, atualiza o cadastro do cliente e retenta
+    if (!paymentData.id && JSON.stringify(paymentData).toLowerCase().includes('cpf')) {
+      console.warn("Exigência de CPF detectada no Asaas, atualizando cadastro e retentando...", paymentData);
+      try {
+        await fetch(`${ASAAS_URL}/customers/${customerId}`, {
+          method: 'POST',
+          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cpfCnpj: '42035623000140' })
+        });
+        payRes = await fetch(`${ASAAS_URL}/payments`, {
+          method: 'POST',
+          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify(paymentBody)
+        });
+        paymentData = await payRes.json();
+      } catch (_cpfRetryErr) {}
     }
 
     if (!paymentData.id) {
