@@ -15,7 +15,8 @@ import {
   Phone,
   Mail,
   User as UserIcon,
-  ShieldAlert
+  ShieldAlert,
+  Headphones
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Order, User } from "@/store/useAppStore";
@@ -41,15 +42,23 @@ interface IncidentReportSectionProps {
   orders: Order[];
   users: Record<string, User>;
   showToast: (msg: string) => void;
+  onNavigateToSupport?: (userId?: string, orderId?: string) => void;
+  initialSearchTerm?: string;
 }
 
-export function IncidentReportSection({ orders, users, showToast }: IncidentReportSectionProps) {
+export function IncidentReportSection({ 
+  orders, 
+  users, 
+  showToast,
+  onNavigateToSupport,
+  initialSearchTerm = ''
+}: IncidentReportSectionProps) {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string>('TODAS');
   const [periodFilter, setPeriodFilter] = useState<string>('TODOS');
   const [roleFilter, setRoleFilter] = useState<string>('TODOS');
-  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>(initialSearchTerm);
   
   // Modal de Nova Ocorrência Manual
   const [newModalOpen, setNewModalOpen] = useState(false);
@@ -150,6 +159,12 @@ export function IncidentReportSection({ orders, users, showToast }: IncidentRepo
   useEffect(() => {
     fetchIncidents();
   }, [orders, users]);
+
+  useEffect(() => {
+    if (initialSearchTerm !== undefined) {
+      setSearchTerm(initialSearchTerm);
+    }
+  }, [initialSearchTerm]);
 
   // Formatação de data, hora e dia da semana
   const formatDateTimeFull = (isoString: string) => {
@@ -666,21 +681,32 @@ export function IncidentReportSection({ orders, users, showToast }: IncidentRepo
 
                       {/* AÇÃO */}
                       <td className="p-3.5 text-right whitespace-nowrap">
-                        {item.status !== 'RESOLVIDO' ? (
-                          <button
-                            onClick={() => handleUpdateStatus(item.id, 'RESOLVIDO')}
-                            className="bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 dark:bg-green-950/30 dark:border-green-800 text-[10px] font-bold px-2.5 py-1 rounded-md transition flex items-center gap-1 ml-auto"
-                          >
-                            <CheckCircle size={12} /> Resolver
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleUpdateStatus(item.id, 'EM_ANALISE')}
-                            className="bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 text-[10px] font-bold px-2 py-1 rounded-md transition flex items-center gap-1 ml-auto"
-                          >
-                            Reabrir
-                          </button>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {onNavigateToSupport && (item.userId || item.orderId) && (
+                            <button
+                              onClick={() => onNavigateToSupport(item.userId, item.orderId)}
+                              title="Abrir chamado na Central de Atendimento & Suporte"
+                              className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:border-purple-800 text-[10px] font-bold px-2 py-1 rounded-md transition flex items-center gap-1 cursor-pointer"
+                            >
+                              <Headphones size={11} /> Suporte
+                            </button>
+                          )}
+                          {item.status !== 'RESOLVIDO' ? (
+                            <button
+                              onClick={() => handleUpdateStatus(item.id, 'RESOLVIDO')}
+                              className="bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 dark:bg-green-950/30 dark:border-green-800 text-[10px] font-bold px-2.5 py-1 rounded-md transition flex items-center gap-1"
+                            >
+                              <CheckCircle size={12} /> Resolver
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleUpdateStatus(item.id, 'EM_ANALISE')}
+                              className="bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 text-[10px] font-bold px-2 py-1 rounded-md transition flex items-center gap-1"
+                            >
+                              Reabrir
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

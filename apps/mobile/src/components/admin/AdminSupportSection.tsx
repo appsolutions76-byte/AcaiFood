@@ -3,18 +3,33 @@
 import React, { useState, useEffect, useRef } from "react";
 import { 
   Headphones, Send, CheckCircle2, MessageSquare, Phone, User, RefreshCw, 
-  Search, ShieldCheck, Clock, ExternalLink, Settings2, Sliders, ToggleLeft, ToggleRight, X, Save
+  Search, ShieldCheck, Clock, ExternalLink, Settings2, Sliders, ToggleLeft, ToggleRight, X, Save,
+  AlertTriangle, FileText, ArrowRight
 } from "lucide-react";
 import { SupportMessageItem, SupportConfig, DEFAULT_SUPPORT_CONFIG } from "@/app/api/support/route";
 import { playChatDing } from "@/lib/soundAlerts";
 import { supabase } from "@/lib/supabase";
+import { Order, User as AppUser } from "@/store/useAppStore";
 
-export function AdminSupportSection() {
+interface AdminSupportSectionProps {
+  onNavigateToAudit?: (orderId?: string, userId?: string) => void;
+  initialSelectedUserId?: string | null;
+  orders?: Order[];
+  users?: Record<string, AppUser>;
+}
+
+export function AdminSupportSection({
+  onNavigateToAudit,
+  initialSelectedUserId = null,
+  orders = [],
+  users = {}
+}: AdminSupportSectionProps) {
   const [allMessages, setAllMessages] = useState<SupportMessageItem[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [incidentLogs, setIncidentLogs] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(initialSelectedUserId);
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<"all" | "open" | "resolved">("open");
+  const [filterStatus, setFilterStatus] = useState<"all" | "open" | "disputes" | "resolved">("open");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
@@ -32,6 +47,7 @@ export function AdminSupportSection() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Carregar mensagens de suporte, incidentes e configuração
   const loadAllSupportMessagesAndConfig = async (showLoading = false) => {
     try {
       if (showLoading) setLoading(true);
@@ -40,6 +56,8 @@ export function AdminSupportSection() {
       if (session?.access_token) {
         authHeaders["Authorization"] = `Bearer ${session.access_token}`;
       }
+
+      // 1. Mensagens e Configuração do Suporte
       const res = await fetch("/api/support?all=true", { headers: authHeaders });
       if (res.ok) {
         const data = await res.json();
@@ -50,6 +68,16 @@ export function AdminSupportSection() {
           setSupportConfig(data.config);
         }
       }
+
+      // 2. Incidentes de Pedidos (incident_logs)
+      const { data: incs } = await supabase
+        .from('incident_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (incs && Array.isArray(incs)) {
+        setIncidentLogs(incs);
+      }
     } catch (_err) {
       console.warn("Erro ao carregar suporte admin:", _err);
     } finally {
@@ -58,10 +86,17 @@ export function AdminSupportSection() {
   };
 
   useEffect(() => {
+    if (initialSelectedUserId) {
+      setSelectedUserId(initialSelectedUserId);
+      setTimeout(scrollToBottom, 100);
+    }
+  }, [initialSelectedUserId]);
+
+  useEffect(() => {
     loadAllSupportMessagesAndConfig(true);
     const interval = setInterval(() => loadAllSupportMessagesAndConfig(false), 6000);
 
-    // Canal Realtime Supabase
+    // Canal Realtime Supabase para support_messages
     const channel = supabase
       .channel("admin-support-global-channel")
       .on(
@@ -78,6 +113,17 @@ export function AdminSupportSection() {
             });
             setTimeout(scrollToBottom, 60);
           }
+        }
+      )
+      .on(
+        "postgres_changes" as any,
+        { event: "*", schema: "public", table: "incident_logs" },
+        () => {
+          // Atualiza incidentes em tempo real
+          supabase.from('incident_logs').select('*').order('created_at', { ascending: false })
+            .then(({ data }) => {
+              if (data) setIncidentLogs(data);
+            });
         }
       )
       .subscribe();
@@ -132,8 +178,12 @@ export function AdminSupportSection() {
     unreadCount: number;
     status: "aberto" | "em_atendimento" | "resolvido";
     messages: SupportMessageItem[];
+    hasIncident: boolean;
+    incident?: any;
+    orderId?: string;
   }>();
 
+  // 1. Inserir mensagens de suporte agrupadas
   allMessages.forEach((msg) => {
     const uId = msg.user_id;
     if (!threadsMap.has(uId)) {
@@ -147,6 +197,7 @@ export function AdminSupportSection() {
         unreadCount: 0,
         status: msg.status || "aberto",
         messages: [],
+        hasIncident: false,
       });
     }
 
@@ -161,6 +212,50 @@ export function AdminSupportSection() {
     }
   });
 
+  // 2. Vincular incidentes aos threads (ou criar threads para usuários com incidentes abertos)
+  incidentLogs.forEach((inc) => {
+    const uId = inc.user_id;
+    if (!uId) return;
+
+    if (!threadsMap.has(uId)) {
+      // Usuário abriu ocorrência formalmente
+      const mockLastMsg: SupportMessageItem = {
+        id: `inc-msg-${inc.id}`,
+        user_id: uId,
+        user_name: inc.user_name || "Usuário",
+        user_role: inc.user_role || "cliente",
+        user_phone: inc.user_phone,
+        content: `🚨 Ocorrência: ${inc.title} - ${inc.description}`,
+        sender: 'user',
+        is_read: inc.status === 'RESOLVIDO',
+        status: inc.status === 'RESOLVIDO' ? 'resolvido' : 'aberto',
+        created_at: inc.created_at
+      };
+
+      threadsMap.set(uId, {
+        userId: uId,
+        userName: inc.user_name || "Usuário",
+        userRole: inc.user_role || "cliente",
+        userPhone: inc.user_phone,
+        lastMessage: mockLastMsg,
+        unreadCount: inc.status !== 'RESOLVIDO' ? 1 : 0,
+        status: inc.status === 'RESOLVIDO' ? 'resolvido' : 'aberto',
+        messages: [mockLastMsg],
+        hasIncident: true,
+        incident: inc,
+        orderId: inc.order_id
+      });
+    } else {
+      const thread = threadsMap.get(uId)!;
+      thread.hasIncident = true;
+      thread.incident = inc;
+      if (inc.order_id) thread.orderId = inc.order_id;
+      if (inc.status !== 'RESOLVIDO' && thread.status === 'resolvido') {
+        thread.status = 'aberto';
+      }
+    }
+  });
+
   const threads = Array.from(threadsMap.values()).sort(
     (a, b) => new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime()
   );
@@ -168,12 +263,15 @@ export function AdminSupportSection() {
   const filteredThreads = threads.filter((t) => {
     if (filterStatus === "open" && t.status === "resolvido") return false;
     if (filterStatus === "resolved" && t.status !== "resolvido") return false;
+    if (filterStatus === "disputes" && !t.hasIncident) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchName = t.userName.toLowerCase().includes(q);
       const matchPhone = (t.userPhone || "").toLowerCase().includes(q);
       const matchRole = t.userRole.toLowerCase().includes(q);
-      return matchName || matchPhone || matchRole;
+      const matchOrder = (t.orderId || "").toLowerCase().includes(q);
+      const matchIncident = (t.incident?.title || "").toLowerCase().includes(q);
+      return matchName || matchPhone || matchRole || matchOrder || matchIncident;
     }
     return true;
   });
@@ -228,6 +326,7 @@ export function AdminSupportSection() {
         authHeaders["Authorization"] = `Bearer ${session.access_token}`;
       }
 
+      // 1. Atualizar chamados de suporte
       await fetch("/api/support", {
         method: "POST",
         headers: authHeaders,
@@ -237,10 +336,26 @@ export function AdminSupportSection() {
           status: "resolvido",
         }),
       });
+
+      // 2. Sincronizar resolução em incident_logs se houver ocorrências vinculadas a este usuário
+      try {
+        await supabase
+          .from('incident_logs')
+          .update({ status: 'RESOLVIDO', updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+      } catch (_e) {}
+
       setAllMessages((prev) =>
         prev.map((m) => (m.user_id === userId ? { ...m, status: "resolvido" } : m))
       );
-    } catch (_err) {}
+      setIncidentLogs((prev) =>
+        prev.map((i) => (i.user_id === userId ? { ...i, status: "RESOLVIDO" } : i))
+      );
+
+      showToast("✅ Chamado e ocorrência marcados como Resolvidos!");
+    } catch (_err) {
+      alert("Erro ao resolver chamado.");
+    }
   };
 
   const getRoleBadge = (role: string) => {
@@ -255,6 +370,8 @@ export function AdminSupportSection() {
         return <span className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded text-[10px] font-bold">👤 Cliente</span>;
     }
   };
+
+  const disputesCount = threads.filter(t => t.hasIncident && t.status !== "resolvido").length;
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
@@ -273,7 +390,7 @@ export function AdminSupportSection() {
             Central de Atendimento & Suporte Geral
           </h3>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Converse ao vivo com clientes, batedeiras, entregadores e fornecedores.
+            Converse ao vivo com clientes, batedeiras, entregadores e fornecedores e solucione ocorrências.
           </p>
         </div>
 
@@ -345,26 +462,37 @@ export function AdminSupportSection() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar por nome, fone..."
+                placeholder="Buscar por nome, fone, pedido..."
                 className="w-full bg-zinc-100 dark:bg-zinc-800 text-xs px-3 py-2 pl-8 rounded-xl outline-none focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-white"
               />
               <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
             </div>
 
-            <div className="flex items-center gap-1 text-[11px]">
+            <div className="grid grid-cols-4 gap-1 text-[10px]">
               <button
                 onClick={() => setFilterStatus("open")}
-                className={`flex-1 py-1 rounded-lg font-bold transition text-center ${
+                className={`py-1 rounded-lg font-bold transition text-center truncate ${
                   filterStatus === "open"
                     ? "bg-purple-600 text-white"
                     : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                 }`}
               >
-                Pendentes ({threads.filter((t) => t.status !== "resolvido").length})
+                Abertos ({threads.filter((t) => t.status !== "resolvido").length})
+              </button>
+              <button
+                onClick={() => setFilterStatus("disputes")}
+                className={`py-1 rounded-lg font-bold transition text-center truncate ${
+                  filterStatus === "disputes"
+                    ? "bg-amber-600 text-white"
+                    : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                }`}
+                title="Chamados com ocorrências de pedidos vinculadas"
+              >
+                ⚠️ Ocorrências ({disputesCount})
               </button>
               <button
                 onClick={() => setFilterStatus("all")}
-                className={`flex-1 py-1 rounded-lg font-bold transition text-center ${
+                className={`py-1 rounded-lg font-bold transition text-center truncate ${
                   filterStatus === "all"
                     ? "bg-purple-600 text-white"
                     : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
@@ -374,7 +502,7 @@ export function AdminSupportSection() {
               </button>
               <button
                 onClick={() => setFilterStatus("resolved")}
-                className={`flex-1 py-1 rounded-lg font-bold transition text-center ${
+                className={`py-1 rounded-lg font-bold transition text-center truncate ${
                   filterStatus === "resolved"
                     ? "bg-purple-600 text-white"
                     : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
@@ -420,8 +548,18 @@ export function AdminSupportSection() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {getRoleBadge(thread.userRole)}
+                      {thread.hasIncident && (
+                        <span className="text-[9px] bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-800 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
+                          <AlertTriangle size={9} /> Ocorrência
+                        </span>
+                      )}
+                      {thread.orderId && (
+                        <span className="text-[9px] bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 px-1.5 py-0.5 rounded font-mono font-bold">
+                          #{String(thread.orderId).slice(-6)}
+                        </span>
+                      )}
                       {thread.status === "resolvido" && (
                         <span className="text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-1.5 py-0.5 rounded font-bold">
                           Resolvido
@@ -445,15 +583,25 @@ export function AdminSupportSection() {
           {activeThread ? (
             <>
               {/* TOPO DO CHAT SELECIONADO */}
-              <div className="p-3.5 sm:p-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3">
+              <div className="p-3.5 sm:p-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-extrabold text-sm text-zinc-900 dark:text-white truncate">
                       {activeThread.userName}
                     </h4>
                     {getRoleBadge(activeThread.userRole)}
+                    {activeThread.hasIncident && (
+                      <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded font-bold flex items-center gap-1">
+                        <AlertTriangle size={11} /> Ocorrência Aberta
+                      </span>
+                    )}
+                    {activeThread.orderId && (
+                      <span className="text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 rounded font-mono font-bold">
+                        Pedido #{String(activeThread.orderId).slice(-6)}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-zinc-500 mt-0.5 flex-wrap">
+                  <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1 flex-wrap">
                     {activeThread.userPhone && (
                       <span className="flex items-center gap-1">
                         📞 {activeThread.userPhone}
@@ -467,7 +615,18 @@ export function AdminSupportSection() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Botão de Atalho para Aba de Auditoria */}
+                  {onNavigateToAudit && (activeThread.orderId || activeThread.hasIncident) && (
+                    <button
+                      onClick={() => onNavigateToAudit(activeThread.orderId || activeThread.incident?.order_id, activeThread.userId)}
+                      className="text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-bold px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 flex items-center gap-1 transition cursor-pointer"
+                      title="Abrir detalhes desta ocorrência na aba de Auditoria"
+                    >
+                      <FileText size={13} /> Ver na Auditoria
+                    </button>
+                  )}
+
                   {activeThread.userPhone && (
                     <a
                       href={`https://wa.me/55${activeThread.userPhone.replace(/\D/g, "")}`}
@@ -478,16 +637,40 @@ export function AdminSupportSection() {
                       <Phone size={13} /> WhatsApp
                     </a>
                   )}
+
                   {activeThread.status !== "resolvido" && (
                     <button
                       onClick={() => handleResolveTicket(activeThread.userId)}
-                      className="text-xs bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 flex items-center gap-1 transition cursor-pointer"
+                      className="text-xs bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1 transition cursor-pointer"
                     >
                       <CheckCircle2 size={13} /> Resolver
                     </button>
                   )}
                 </div>
               </div>
+
+              {/* AVISO DE OCORRÊNCIA VINCULADA */}
+              {activeThread.incident && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/50 p-3 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+                  <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                  <div className="flex-1">
+                    <p className="font-bold">
+                      {activeThread.incident.title || 'Ocorrência Formal de Pedido'}
+                    </p>
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
+                      {activeThread.incident.description}
+                    </p>
+                  </div>
+                  {onNavigateToAudit && (
+                    <button
+                      onClick={() => onNavigateToAudit(activeThread.orderId || activeThread.incident?.order_id, activeThread.userId)}
+                      className="text-[11px] font-bold text-amber-700 hover:text-amber-900 dark:text-amber-300 underline shrink-0"
+                    >
+                      Auditoria &rarr;
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* CORPO DE MENSAGENS */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[350px] max-h-[420px]">
@@ -539,7 +722,7 @@ export function AdminSupportSection() {
               <Headphones size={40} className="text-purple-400 mb-3 opacity-60" />
               <p className="font-bold text-zinc-700 dark:text-zinc-300 text-sm">Selecione uma conversa para atender</p>
               <p className="text-xs text-zinc-500 mt-1 max-w-sm">
-                Quando clientes, batedeiras ou motoristas enviarem mensagens pelo botão de suporte, elas aparecerão listadas à esquerda.
+                Quando clientes, batedeiras ou motoristas enviarem mensagens ou reportarem ocorrências, elas aparecerão listadas à esquerda.
               </p>
             </div>
           )}

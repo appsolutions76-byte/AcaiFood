@@ -106,6 +106,8 @@ function AdminDashboardContent() {
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState<CityRates>(() => rates);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques'>('dashboard');
+  const [selectedSupportUserId, setSelectedSupportUserId] = useState<string | null>(null);
+  const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
   const [activationConfig, setActivationConfig] = useState<{
     activationFee: number;
     freeQuota: number;
@@ -2792,7 +2794,16 @@ function AdminDashboardContent() {
         )}
 
         {activeTab === 'ocorrencias' && (
-          <IncidentReportSection orders={orders} users={users} showToast={showToast} />
+          <IncidentReportSection 
+            orders={orders} 
+            users={users} 
+            showToast={showToast} 
+            initialSearchTerm={auditSearchQuery}
+            onNavigateToSupport={(userId, orderId) => {
+              if (userId) setSelectedSupportUserId(userId);
+              setActiveTab('suporte');
+            }}
+          />
         )}
 
         {activeTab === 'cidades' && (
@@ -3610,7 +3621,15 @@ function AdminDashboardContent() {
 
         {activeTab === 'suporte' && (
           <div className="animate-in fade-in zoom-in-95 duration-200">
-            <AdminSupportSection />
+            <AdminSupportSection 
+              orders={orders}
+              users={users}
+              initialSelectedUserId={selectedSupportUserId}
+              onNavigateToAudit={(orderId, userId) => {
+                setAuditSearchQuery(orderId || userId || '');
+                setActiveTab('ocorrencias');
+              }}
+            />
           </div>
         )}
 
