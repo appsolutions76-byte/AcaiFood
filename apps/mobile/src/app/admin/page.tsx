@@ -1805,73 +1805,77 @@ function AdminDashboardContent() {
           <button onClick={() => setToastMsg(null)} className="text-zinc-400 hover:text-white font-bold text-lg leading-none">&times;</button>
         </div>
       )}
-      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 sticky top-0 z-30">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 max-w-7xl mx-auto w-full">
-          <div className="flex items-center gap-3">
-            <Settings className="text-purple-600" />
-            <div>
-              <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
-              <AsaasPartnerBadge variant="inline" />
+      <header className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-40 shadow-md">
+        {/* Linha Superior do Admin: Título, Asaas e Ações Globais */}
+        <div className="p-3 sm:p-4 border-b border-zinc-100 dark:border-zinc-800/80">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 max-w-7xl mx-auto w-full">
+            <div className="flex items-center gap-3">
+              <Settings className="text-purple-600 shrink-0" />
+              <div>
+                <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Admin: AçaíFood</h1>
+                <AsaasPartnerBadge variant="inline" />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end">
+                <button onClick={() => setAdminManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all cursor-pointer">
+                  <BookOpen size={13} /> Manual
+                </button>
+                <button disabled={isRefreshing} onClick={handleRefresh} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all disabled:opacity-50 cursor-pointer">
+                  {isRefreshing ? '🔄 Atualizando...' : '🔄 Atualizar'}
+                </button>
+                <button 
+                  onClick={() => setShareLandingModalOpen(true)}
+                  className="text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-pink-200 dark:border-pink-800 cursor-pointer"
+                  title="Compartilhar apresentação e vendas do AçaíFood"
+                >
+                  <Share2 size={13} /> <span className="hidden sm:inline">Divulgar App</span>
+                </button>
+                <ThemeToggle />
+                <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs cursor-pointer">
+                    🔑 Senha
+                </button>
+                <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs cursor-pointer">
+                    <Trash2 size={14} /> Limpar
+                </button>
+                <button onClick={() => { if(typeof store.logout === 'function') store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline cursor-pointer">Sair</button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end">
-              <button onClick={() => setAdminManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all">
-                <BookOpen size={13} /> Manual
-              </button>
-              <button disabled={isRefreshing} onClick={handleRefresh} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all disabled:opacity-50">
-                {isRefreshing ? '🔄 Atualizando...' : '🔄 Atualizar'}
-              </button>
-              <button 
-                onClick={() => setShareLandingModalOpen(true)}
-                className="text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-pink-200 dark:border-pink-800"
-                title="Compartilhar apresentação e vendas do AçaíFood"
-              >
-                <Share2 size={13} /> <span className="hidden sm:inline">Divulgar App</span>
-              </button>
-              <ThemeToggle />
-              <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
-                  🔑 Senha
-              </button>
-              <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs">
-                  <Trash2 size={14} /> Limpar
-              </button>
-              <button onClick={() => { if(typeof store.logout === 'function') store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline">Sair</button>
-          </div>
+        </div>
+
+        {/* Linha Inferior do Admin: Abas de Navegação 100% Congeladas / Fixas no Topo */}
+        <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 flex overflow-x-auto no-scrollbar gap-1">
+            <button onClick={() => setActiveTab('dashboard')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'dashboard' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>📊 Visão Geral</button>
+            <button onClick={() => setActiveTab('usuarios')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'usuarios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>👥 Usuários</button>
+            <button onClick={() => setActiveTab('ativacoes')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'ativacoes' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
+              <span>🛡️ Ativação de Parceiros</span>
+              <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full font-black">
+                {subsidizedPartnersCount}/{activationConfig.freeQuota}
+              </span>
+            </button>
+            <button onClick={() => { setActiveTab('anuncios'); fetchAds(); }} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'anuncios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
+              <span>📢 Comerciais & Anúncios</span>
+              {adsList.filter(a => a.isActive !== false && (a as any).active !== false).length > 0 && (
+                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full font-black">
+                  {adsList.filter(a => a.isActive !== false && (a as any).active !== false).length}
+                </span>
+              )}
+            </button>
+            <button onClick={() => setActiveTab('suporte')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'suporte' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
+              <span>🎧 Atendimento & Suporte</span>
+            </button>
+            <button onClick={() => setActiveTab('saques')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'saques' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
+              <span>💳 Financeiro & Repasses</span>
+              {partnersWithPendingPayouts.length > 0 && (
+                <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-black">
+                  {partnersWithPendingPayouts.length}
+                </span>
+              )}
+            </button>
+            <button onClick={() => setActiveTab('pedidos')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🛒 Histórico de Pedidos</button>
+            <button onClick={() => setActiveTab('ocorrencias')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>📋 Ocorrências & Auditoria</button>
+            <button onClick={() => setActiveTab('cidades')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'cidades' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🌍 Cidades / Expansão</button>
         </div>
       </header>
-
-      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 mb-6 flex overflow-x-auto">
-          <button onClick={() => setActiveTab('dashboard')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'dashboard' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📊 Visão Geral</button>
-          <button onClick={() => setActiveTab('usuarios')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'usuarios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>👥 Usuários</button>
-          <button onClick={() => setActiveTab('ativacoes')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'ativacoes' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
-            <span>🛡️ Ativação de Parceiros</span>
-            <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full font-black">
-              {subsidizedPartnersCount}/{activationConfig.freeQuota}
-            </span>
-          </button>
-          <button onClick={() => { setActiveTab('anuncios'); fetchAds(); }} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'anuncios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
-            <span>📢 Comerciais & Anúncios</span>
-            {adsList.filter(a => a.isActive !== false && (a as any).active !== false).length > 0 && (
-              <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full font-black">
-                {adsList.filter(a => a.isActive !== false && (a as any).active !== false).length}
-              </span>
-            )}
-          </button>
-          <button onClick={() => setActiveTab('suporte')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'suporte' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
-            <span>🎧 Atendimento & Suporte</span>
-          </button>
-          <button onClick={() => setActiveTab('saques')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'saques' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>
-            <span>💳 Financeiro & Repasses</span>
-            {partnersWithPendingPayouts.length > 0 && (
-              <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-black">
-                {partnersWithPendingPayouts.length}
-              </span>
-            )}
-          </button>
-          <button onClick={() => setActiveTab('pedidos')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🛒 Histórico de Pedidos</button>
-          <button onClick={() => setActiveTab('ocorrencias')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>📋 Ocorrências & Auditoria</button>
-          <button onClick={() => setActiveTab('cidades')} className={`py-4 px-4 font-bold text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'cidades' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'}`}>🌍 Cidades / Expansão</button>
-      </div>
 
       <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
         
