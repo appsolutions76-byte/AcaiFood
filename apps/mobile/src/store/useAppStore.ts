@@ -165,6 +165,7 @@ export interface Order {
   readyAt?: string;
   receivedAt?: string;
   deliveryPin?: string;
+  pickupPin?: string;
   deliveryAddress?: string;
   deliveryLat?: number;
   deliveryLng?: number;
@@ -2147,6 +2148,7 @@ export const useAppStore = create<AppState>()(
           }
 
           const pin = Math.floor(1000 + Math.random() * 9000).toString();
+          const pickupPin = tipo !== 'COLETA' ? Math.floor(1000 + Math.random() * 9000).toString() : null;
           let dbOrder: any = null;
           try {
             const { data, error: dbError } = await supabase.from('orders').insert({
@@ -2160,6 +2162,7 @@ export const useAppStore = create<AppState>()(
               applied_delivery_fee_per_km: tipo === 'B2C' ? state.rates.b2c_km : (tipo === 'COLETA' ? state.rates.col_km : state.rates.b2b_km),
               applied_delivery_platform_fee_percent: tipo === 'B2C' ? state.rates.b2c_mot_plat : (tipo === 'COLETA' ? state.rates.col_mot_plat : state.rates.b2b_mot_plat),
               delivery_pin: pin,
+              pickup_pin: pickupPin,
               delivery_address: deliveryInfo?.address,
               delivery_lat: deliveryInfo?.lat,
               delivery_lng: deliveryInfo?.lng,
@@ -2418,6 +2421,7 @@ export const useAppStore = create<AppState>()(
             ...novoPedido, 
             id: orderIdToUse, 
             deliveryPin: pin,
+            pickupPin: pickupPin || undefined,
             pixQrCode: asaasResult?.pixQrCode || null,
             pixCopiaECola: asaasResult?.pixCopiaECola || validPlatformPayload || null,
             invoiceUrl: asaasResult?.invoiceUrl || null,
@@ -2471,6 +2475,58 @@ export const useAppStore = create<AppState>()(
         const state = get();
         const currentUser = state.currentUser;
         if (!currentUser) return;
+
+        // 0. Validação Segura do PIN de Retirada (Coleta no Balcão / Fornecedor)
+        if (action === 'validar_pin_retirada') {
+            const cleanPin = (pinStr || '').trim();
+            if (!cleanPin || cleanPin.length !== 4) {
+              alert("⚠️ Por favor, digite o PIN de Retirada de 4 dígitos informado pelo estabelecimento.");
+              return;
+            }
+
+            try {
+              const { data: pinRes, error: pinErr } = await supabase.rpc('check_pickup_pin', {
+                p_order_id: orderId,
+                p_pin: cleanPin,
+                p_operator_id: currentUser.id,
+                p_device_info: typeof navigator !== 'undefined' ? navigator.userAgent : 'App Client'
+              });
+
+              if (!pinErr && pinRes?.success) {
+                const nowIso = new Date().toISOString();
+                set((state) => ({
+                  orders: state.orders.map(o => o.id === orderId ? { ...o, pickedUpAt: nowIso, status: 'em_rota' } : o)
+                }));
+                await get().fetchOrders(currentUser.id, true);
+                return;
+              }
+
+              // Fallback seguro caso a RPC ainda não esteja disponível:
+              const targetOrd = get().orders.find(o => o.id === orderId);
+              const matchesPin = (targetOrd?.pickupPin && targetOrd.pickupPin === cleanPin) || (targetOrd?.deliveryPin && targetOrd.deliveryPin === cleanPin);
+              if (matchesPin) {
+                const nowIso = new Date().toISOString();
+                await supabase.from('orders').update({
+                  status: 'DELIVERING',
+                  picked_up_at: nowIso
+                }).eq('id', orderId);
+                set((state) => ({
+                  orders: state.orders.map(o => o.id === orderId ? { ...o, pickedUpAt: nowIso, status: 'em_rota' } : o)
+                }));
+                await get().fetchOrders(currentUser.id, true);
+                return;
+              }
+
+              const errMsg = pinRes?.error || pinErr?.message || 'PIN de Retirada inválido.';
+              alert(`❌ ${errMsg}`);
+              await get().fetchOrders(currentUser.id, true);
+              return;
+            } catch (err: any) {
+              console.error("Erro ao validar PIN de retirada no servidor:", err);
+              alert("Erro de conexão ao validar o PIN de retirada.");
+              return;
+            }
+        }
 
         // 1. Validação Segura de PIN via RPC Supabase (Regras Parte B Item 1 & 10)
         if (action === 'validar_pin') {
@@ -2832,7 +2888,7 @@ export const useAppStore = create<AppState>()(
              id, order_type, status, products_subtotal, delivery_distance_km, 
              applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
              buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
-             delivery_pin, accepted_at, ready_at, received_at, asaas_payment_id,
+             delivery_pin, pickup_pin, accepted_at, ready_at, received_at, asaas_payment_id,
              payout_seller_done, payout_driver_done, seller_amount, driver_amount, total_delivery_fee,
              order_items ( id, product_name, quantity, unit_price_cents, total_price_cents )
           `);
@@ -3078,6 +3134,7 @@ export const useAppStore = create<AppState>()(
                        readyAt: dbOrder.ready_at || localOrder?.readyAt,
                        receivedAt: dbOrder.received_at || localOrder?.receivedAt,
                        deliveryPin: dbOrder.delivery_pin,
+                       pickupPin: dbOrder.pickup_pin || localOrder?.pickupPin,
                        deliveryAddress: dbOrder.delivery_address || localOrder?.deliveryAddress || dbOrder.buyer?.endereco || dbOrder.buyer?.address || allUsers[dbOrder.buyer_id]?.endereco,
                        deliveryLat: dbOrder.delivery_lat || localOrder?.deliveryLat,
                        deliveryLng: dbOrder.delivery_lng || localOrder?.deliveryLng,

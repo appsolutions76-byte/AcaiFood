@@ -775,6 +775,19 @@ export default function FornecedorDashboard() {
                         Líquido: {formatMoney(o.taxas.repasse)}
                     </p>
                     <OrderTimelineBadges order={o} className="flex flex-wrap gap-2 mt-2" />
+                    {(o.pickupPin || (o as any).pickup_pin) && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && (
+                      <div className="mt-2.5 bg-amber-500 text-white p-2.5 rounded-xl flex items-center justify-between shadow-sm border border-amber-400">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase text-amber-100 flex items-center gap-1">
+                            <span>🔑</span> PIN de Retirada (Despacho B2B)
+                          </p>
+                          <p className="text-[10px] text-amber-50 leading-tight">Informe ao caminhoneiro no carregamento</p>
+                        </div>
+                        <div className="text-xl font-black tracking-widest text-zinc-900 bg-white px-3 py-1 rounded-lg border border-amber-200 shadow-sm">
+                          {o.pickupPin || (o as any).pickup_pin}
+                        </div>
+                      </div>
+                    )}
                 </div>
                 
                 <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-end w-full sm:w-auto border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0 gap-2">

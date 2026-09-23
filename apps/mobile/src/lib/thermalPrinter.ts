@@ -337,6 +337,15 @@ export function generateSingleTicketHTML(
         </div>
       </div>
 
+      <!-- PIN DE RETIRADA / BALCÃO (DUPLO PIN) -->
+      ${(order.pickupPin || (order as any).pickup_pin) ? `
+        <div style="border: 2px solid #000; padding: 6px 4px; margin-top: 6px; margin-bottom: 6px; text-align: center; background: #f0f0f0;">
+          <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; text-transform: uppercase;">🔑 PIN DE RETIRADA (BALCÃO):</div>
+          <div style="font-size: ${is58 ? '18px' : '22px'}; font-weight: 900; letter-spacing: 4px; margin-top: 2px; color: #000;">${order.pickupPin || (order as any).pickup_pin}</div>
+          <div style="font-size: 8px; margin-top: 2px; font-weight: bold;">Informe este PIN ao entregador na retirada</div>
+        </div>
+      ` : ''}
+
       <!-- RODAPÉ -->
       <div style="text-align: center; font-size: ${is58 ? '9px' : '10px'}; padding-top: 4px;">
         <p style="margin: 0; font-weight: bold;">--- AçaíFood Delivery Oficial ---</p>

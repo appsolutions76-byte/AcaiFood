@@ -496,33 +496,83 @@ export default function CaminhaoDashboard() {
                         <OrderTimelineBadges order={o} className="flex flex-wrap gap-2 mb-3" />
                         
                         {o.status === 'em_rota' ? (
-                            <div className="flex gap-2 w-full">
-                                <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
+                            <div className="flex flex-col gap-2 w-full">
                                 {!o.pickedUpAt ? (
-                                  <button onClick={() => store.acaoPedido(o.id, 'retirar_pedido')} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
-                                    🏪 Confirmar Chegada na Loja
-                                  </button>
+                                  o.type === 'B2B' ? (
+                                    <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 p-4 rounded-xl flex flex-col gap-2.5 shadow-inner">
+                                      <div className="flex items-center justify-between">
+                                        <p className="text-xs font-bold flex items-center gap-1">
+                                          <span>🔑</span> PIN de Retirada (Fornecedor)
+                                        </p>
+                                        <span className="text-[10px] bg-amber-200/60 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-extrabold px-2 py-0.5 rounded">Etapa 1 de 2</span>
+                                      </div>
+                                      <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                                        Peça o PIN impresso na comanda ou na tela do fornecedor para confirmar o carregamento do lote de açaí.
+                                      </p>
+                                      <div className="flex gap-2 mt-1">
+                                        <input 
+                                          type="text" 
+                                          maxLength={4} 
+                                          placeholder="0000" 
+                                          value={pinInputs[`pickup_${o.id}`] || ''} 
+                                          onChange={e => setPinInputs(prev => ({ ...prev, [`pickup_${o.id}`]: e.target.value }))}
+                                          className="w-24 text-center font-black tracking-widest text-xl p-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
+                                        />
+                                        <button 
+                                          onClick={() => store.acaoPedido(o.id, 'validar_pin_retirada', pinInputs[`pickup_${o.id}`])} 
+                                          className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                                        >
+                                          Validar Carregamento
+                                        </button>
+                                      </div>
+                                      <div className="flex justify-end pt-1">
+                                        <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="text-[11px] text-red-600 hover:underline">
+                                          ❌ Cancelar transporte
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex gap-2 w-full">
+                                      <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
+                                      <button onClick={() => store.acaoPedido(o.id, 'retirar_pedido')} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                                        🏪 Confirmar Coleta na Loja
+                                      </button>
+                                    </div>
+                                  )
                                 ) : (
-                                  <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
-                                    🏁 Confirmar Chegada no Destino
-                                  </button>
+                                  <div className="flex gap-2 w-full">
+                                    <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
+                                    <button onClick={() => store.acaoPedido(o.id, 'conf_motorista')} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                                      🏁 Cheguei ao Endereço de Destino
+                                    </button>
+                                  </div>
                                 )}
                             </div>
                         ) : o.status === 'aguardando_cliente' ? (
-                            <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 p-4 rounded-xl flex flex-col gap-3 shadow-inner">
-                                <p className="text-xs text-center font-bold">Peça o PIN de Segurança à Loja</p>
-                                <div className="flex gap-2">
+                            <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 p-4 rounded-xl flex flex-col gap-2.5 shadow-inner">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-bold flex items-center gap-1">
+                                    <span>🔑</span> {isColeta ? 'PIN de Confirmação da Coleta' : 'PIN de Entrega (Loja Compradora)'}
+                                  </p>
+                                  <span className="text-[10px] bg-orange-200/60 dark:bg-orange-800 text-orange-900 dark:text-orange-100 font-extrabold px-2 py-0.5 rounded">{isColeta ? 'Coleta ESG' : 'Etapa 2 de 2'}</span>
+                                </div>
+                                <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                                  {isColeta 
+                                    ? 'Peça o PIN de 4 dígitos à loja de açaí para finalizar a coleta de resíduos.' 
+                                    : 'Peça o PIN de 4 dígitos na tela da loja compradora para finalizar a entrega do açaí.'}
+                                </p>
+                                <div className="flex gap-2 mt-1">
                                     <input 
                                         type="text" 
                                         maxLength={4} 
                                         placeholder="0000" 
                                         value={pinInputs[o.id] || ''} 
                                         onChange={e => setPinInputs(prev => ({...prev, [o.id]: e.target.value}))}
-                                        className="w-20 text-center font-bold tracking-widest text-lg p-2 rounded-lg border border-orange-300 dark:border-orange-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
+                                        className="w-24 text-center font-black tracking-widest text-xl p-2.5 rounded-xl border border-orange-300 dark:border-orange-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
                                     />
                                     <button 
                                         onClick={() => store.acaoPedido(o.id, 'validar_pin', pinInputs[o.id])} 
-                                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded-lg transition shadow-md"
+                                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm"
                                     >
                                         Validar e Finalizar
                                     </button>

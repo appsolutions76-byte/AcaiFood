@@ -1378,6 +1378,7 @@ function AdminDashboardContent() {
       "Repasse Vendedor (R$)",
       "Repasse Entregador (R$)",
       "Distancia (km)",
+      "PIN Retirada",
       "PIN Entrega",
       "ID Transacao Asaas",
       "Hora Aceite",
@@ -1411,6 +1412,7 @@ function AdminDashboardContent() {
         `"${((o.type === 'B2B' ? dyn.repasseForn : dyn.repasseLoja) || 0).toFixed(2).replace('.', ',')}"`,
         `"${(dyn.repasseMoto || 0).toFixed(2).replace('.', ',')}"`,
         `"${(o.distancia || 0).toFixed(1).replace('.', ',')}"`,
+        `"${o.pickupPin || (o as any).pickup_pin || ''}"`,
         `"${o.deliveryPin || ''}"`,
         `"${o.asaasPaymentId || ''}"`,
         `"${safeTime(o.acceptedAt) || ''}"`,
@@ -1577,7 +1579,10 @@ function AdminDashboardContent() {
           </div>
           <div style="text-align: right; font-size: 10px;">
             <p style="margin: 0;"><strong>Status:</strong> <span style="text-transform: uppercase; font-weight: bold; color: #7c3aed;">${order.status}</span></p>
-            <p style="margin: 2px 0 0 0;"><strong>PIN de Entrega:</strong> <span style="font-family: monospace; font-weight: 900; font-size: 12px;">${order.deliveryPin || 'Sem PIN'}</span></p>
+            ${(order.pickupPin || (order as any).pickup_pin) ? `
+              <p style="margin: 2px 0 0 0;"><strong>PIN Retirada:</strong> <span style="font-family: monospace; font-weight: 900; font-size: 12px; color: #d97706;">${order.pickupPin || (order as any).pickup_pin}</span></p>
+            ` : ''}
+            <p style="margin: 2px 0 0 0;"><strong>PIN Entrega:</strong> <span style="font-family: monospace; font-weight: 900; font-size: 12px;">${order.deliveryPin || 'Sem PIN'}</span></p>
           </div>
         </div>
 
@@ -2388,10 +2393,18 @@ function AdminDashboardContent() {
                               <span className="bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 px-2 py-1 rounded-md text-[10px] font-bold uppercase inline-block">❌ Cancelado</span>
                             )}
 
+                            {/* PIN de Retirada */}
+                            {(o.pickupPin || (o as any).pickup_pin) && (
+                              <div className="text-[10px] bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-1.5 py-0.5 rounded font-mono text-amber-900 dark:text-amber-300 flex items-center justify-between">
+                                <span className="text-[9px] text-amber-700 dark:text-amber-400 font-sans font-bold">Retirada:</span>
+                                <strong>{o.pickupPin || (o as any).pickup_pin}</strong>
+                              </div>
+                            )}
+
                             {/* PIN de Entrega */}
                             {o.deliveryPin && (
                               <div className="text-[10px] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-zinc-700 dark:text-zinc-300 flex items-center justify-between">
-                                <span className="text-[9px] text-zinc-500 font-sans">PIN:</span>
+                                <span className="text-[9px] text-zinc-500 font-sans">Entrega:</span>
                                 <strong>{o.deliveryPin}</strong>
                               </div>
                             )}
@@ -3910,8 +3923,8 @@ function AdminDashboardContent() {
 
             {/* Conteúdo com Scroll */}
             <div className="p-5 sm:p-6 space-y-6 overflow-y-auto max-h-[80vh] text-xs">
-              {/* Badges de Status, Tipo e Horário de Criação */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+              {/* Badges de Status, Tipo, Horário de Criação e Duplo PIN */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
                 <div>
                   <span className="text-[10px] text-zinc-500 font-bold uppercase block">Status Atual</span>
                   <span className="font-bold text-sm text-zinc-900 dark:text-white uppercase">
@@ -3931,7 +3944,13 @@ function AdminDashboardContent() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase block">PIN de Entrega</span>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase block">PIN Retirada</span>
+                  <span className="font-mono font-black text-sm bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded inline-block">
+                    {selectedAuditOrder.pickupPin || (selectedAuditOrder as any).pickup_pin || '---'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase block">PIN Entrega</span>
                   <span className="font-mono font-black text-sm bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded inline-block">
                     {selectedAuditOrder.deliveryPin || 'Sem PIN'}
                   </span>
