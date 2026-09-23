@@ -122,7 +122,7 @@ export default function PoliticaPrivacidadePage() {
               A marca e plataforma <strong>AçaíFood</strong> é desenvolvida e mantida pela <strong>AppSolutions76</strong>, divisão de tecnologia pertencente à <strong>Eletromecânica Baia Ltda</strong> (Razão Social controladora oficial).
             </p>
             <p className="bg-purple-950/40 border border-purple-800/60 p-4 rounded-2xl text-purple-200">
-              ℹ️ <strong>Identificação Bancária e Pix:</strong> Todas as cobranças, faturas e liquidações via Pix processadas pela nossa parceira BaaS <strong>Asaas IP S.A.</strong> ocorrem formalmente em nome da <strong>Eletromecânica Baia Ltda</strong>. Por isso, nos aplicativos de bancos e comprovantes Pix, o nome do beneficiário/favorecido é exibido como <strong>Eletromecânica Baia Ltda</strong>.
+              ℹ️ <strong>Identificação Bancária e Pix:</strong> Todas as cobranças, faturas e liquidações via Pix processadas pela nossa parceira BaaS <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21)</strong> ocorrem formalmente sob o <strong>Modelo A — Direto Tomador</strong> em nome da <strong>Eletromecânica Baia Ltda</strong>. Por isso, nos aplicativos de bancos e comprovantes Pix, o nome do beneficiário/favorecido é exibido como <strong>Eletromecânica Baia Ltda</strong>.
             </p>
           </section>
 

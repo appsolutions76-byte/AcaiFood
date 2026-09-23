@@ -327,7 +327,7 @@ function CadastroForm() {
             <p><strong>1. Uso da Plataforma:</strong> O AçaíFood atua exclusivamente como intermediador tecnológico entre você (cliente) e as lojas cadastradas.</p>
             <p><strong>2. Responsabilidade do Produto:</strong> A qualidade, o preparo, a integridade e o cumprimento das normas sanitárias do açaí e demais produtos são de inteira e exclusiva responsabilidade da Batedeira (Loja) que preparou o pedido. O AçaíFood não manuseia alimentos.</p>
             <p><strong>3. Entregas:</strong> O tempo de entrega é uma estimativa e pode variar devido a condições climáticas, trânsito ou demanda da loja.</p>
-            <p><strong>4. Processamento de Pagamento:</strong> As transações financeiras e pagamentos digitais (Pix) são processados com segurança por meio da instituição parceira <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.)</strong>, CNPJ 19.540.550/0001-21, autorizada e regulada pelo <strong>Banco Central do Brasil</strong>.</p>
+            <p><strong>4. Processamento de Pagamento (Modelo A — Direto Tomador):</strong> As transações financeiras e pagamentos digitais (Pix) são prestados diretamente pela instituição parceira <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.)</strong>, CNPJ <strong>19.540.550/0001-21</strong>, instituição de pagamento autorizada a funcionar pelo <strong>Banco Central do Brasil</strong>. O AçaíFood atua exclusivamente como integradora tecnológica e distribuidora da experiência.</p>
           </div>
         );
       case 'loja':
@@ -337,7 +337,7 @@ function CadastroForm() {
             <p><strong>1. Qualidade e Legalidade:</strong> Você assume total responsabilidade pela qualidade do produto fornecido, garantindo que ele segue todas as normas sanitárias e da vigilância em saúde locais.</p>
             <p><strong>2. Obrigações Fiscais:</strong> A emissão de notas fiscais e o recolhimento de impostos sobre a venda dos produtos é de sua responsabilidade exclusiva. O AçaíFood apenas emite recibos pelas taxas de uso da plataforma.</p>
             <p><strong>3. Vínculo:</strong> A utilização desta plataforma não cria vínculo empregatício, societário ou de franquia entre o Parceiro e o AçaíFood. A plataforma cobra apenas um comissionamento (Split) sobre as vendas intermediadas.</p>
-            <p><strong>4. Serviços Financeiros & Subconta BaaS:</strong> A abertura de subconta bancária, a custódia de valores, repasses automáticos e divisões de pagamento (Split) são processados pela instituição parceira <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.)</strong>, CNPJ 19.540.550/0001-21, autorizada pelo <strong>Banco Central do Brasil</strong>, em conformidade com as exigências regulatórias do BACEN e COAF (Resolução Conjunta nº 16/2025).</p>
+            <p><strong>4. Serviços Financeiros & Subconta BaaS (Modelo A — Direto Tomador):</strong> A abertura de subconta bancária, a custódia de valores, repasses automáticos e divisões de pagamento (Split) são prestados pela instituição parceira <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.)</strong>, CNPJ <strong>19.540.550/0001-21</strong>, autorizada pelo <strong>Banco Central do Brasil</strong>, em conformidade com as exigências regulatórias do BACEN e COAF (Resolução Conjunta nº 16/2025). A AçaíFood atua exclusivamente como integradora tecnológica.</p>
             <div className="pt-1">
               <SeloAsaas variant="positivo" width={140} height={42} />
             </div>
@@ -349,14 +349,14 @@ function CadastroForm() {
             <p><strong>1. Trabalho Autônomo:</strong> Você atua como profissional independente (autônomo), sem qualquer vínculo empregatício, subordinação ou exclusividade com o AçaíFood ou com as Lojas parceiras.</p>
             <p><strong>2. Responsabilidade Veicular:</strong> É de sua inteira responsabilidade a manutenção do veículo utilizado, os custos operacionais (combustível, internet) e a manutenção de sua CNH regularizada.</p>
             <p><strong>3. Acidentes e Infrações:</strong> O AçaíFood é isento de responsabilidades civis ou criminais decorrentes de acidentes de trânsito, infrações ou danos a terceiros ocorridos durante o trajeto. Conduza com prudência.</p>
-            <p><strong>4. Serviços Financeiros & Subconta BaaS:</strong> O recebimento de fretes, custódia e transferência de valores para sua conta bancária são processados pela instituição parceira <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.)</strong>, CNPJ 19.540.550/0001-21, autorizada pelo <strong>Banco Central do Brasil</strong>, nos termos das normas do BACEN e COAF (Resolução Conjunta nº 16/2025).</p>
+            <p><strong>4. Serviços Financeiros & Subconta BaaS (Modelo A — Direto Tomador):</strong> O recebimento de fretes, custódia e transferência de valores para sua conta bancária são prestados pela instituição parceira <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.)</strong>, CNPJ <strong>19.540.550/0001-21</strong>, autorizada pelo <strong>Banco Central do Brasil</strong>, nos termos das normas do BACEN e COAF (Resolução Conjunta nº 16/2025). A AçaíFood atua como integradora tecnológica.</p>
             <div className="pt-1">
               <SeloAsaas variant="positivo" width={140} height={42} />
             </div>
           </div>
         );
       default:
-        return <p className="text-sm text-zinc-500">Ao usar a plataforma, você concorda com nossas políticas de privacidade e conduta. Os serviços de pagamento e subcontas são operados em parceria com a instituição Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21), autorizada pelo Banco Central do Brasil.</p>;
+        return <p className="text-sm text-zinc-500">Ao usar a plataforma, você concorda com nossas políticas de privacidade e conduta. Os serviços de pagamento e subcontas são operados sob o Modelo A — Direto Tomador pela instituição parceira Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21), autorizada pelo Banco Central do Brasil, atuando o AçaíFood como integradora tecnológica.</p>;
     }
   };
 
