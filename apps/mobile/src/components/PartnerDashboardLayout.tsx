@@ -38,6 +38,7 @@ export interface PartnerDashboardLayoutProps {
   virtualVaultValue?: number;
   manualRole: PartnerRole;
   shareModal?: React.ReactNode;
+  navigationBar?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -59,6 +60,7 @@ export function PartnerDashboardLayout({
   virtualVaultValue = 0,
   manualRole,
   shareModal,
+  navigationBar,
   children
 }: PartnerDashboardLayoutProps) {
   const router = useRouter();
@@ -126,125 +128,121 @@ export function PartnerDashboardLayout({
         <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role={manualRole} />
         {shareModal}
 
-        {/* Top Header Sticky */}
-        <header className="bg-zinc-900/95 backdrop-blur border-b border-zinc-800 sticky top-0 z-40 p-4 shadow-md">
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Top Header Sticky: Painel, Nome da Loja/Parceiro e Todos os Botões/Abas 100% Fixos */}
+        <header className="bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/90 sticky top-0 z-40 p-3 sm:p-4 shadow-xl space-y-3">
+          <div className="max-w-6xl mx-auto space-y-3">
             
-            {/* Title & Asaas Badge */}
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/60 text-purple-400 shrink-0">
-                {roleIcon}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">{title}</h1>
-                  <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                    <ShieldCheck size={12} /> Asaas Ativo ✓
-                  </span>
+            {/* 1. Barra Superior: Título do Painel + Asaas + Botões de Ação Global (Atualizar, Manual, Tema, Sair) */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 sm:p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/60 text-purple-400 shrink-0">
+                  {roleIcon}
                 </div>
-                <div className="mt-0.5">
-                  <AsaasPartnerBadge variant="inline" />
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight">{title}</h1>
+                    <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                      <ShieldCheck size={12} /> Asaas Ativo ✓
+                    </span>
+                  </div>
+                  <div className="mt-0.5">
+                    <AsaasPartnerBadge variant="inline" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Header Action Buttons */}
+              <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
+                <button
+                  onClick={handleHeaderRefresh}
+                  disabled={isRefreshing}
+                  className="bg-zinc-900 hover:bg-zinc-800 text-zinc-200 font-bold px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-zinc-700/80 active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
+                  title="Atualizar dados do painel em tempo real"
+                >
+                  <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
+                  <span>{isRefreshing ? 'Atualizando...' : 'Atualizar'}</span>
+                </button>
+
+                <button
+                  onClick={() => setManualOpen(true)}
+                  className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-500/30 active:scale-95 cursor-pointer shadow-sm"
+                >
+                  <BookOpen size={13} />
+                  <span>Manual</span>
+                </button>
+
+                <ThemeToggle />
+
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-950/40 hover:bg-red-900/60 text-red-400 font-bold px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-red-900/50 active:scale-95 ml-1 cursor-pointer shadow-sm"
+                >
+                  <LogOut size={13} />
+                  <span>Sair</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Cartão de Identificação do Parceiro / Nome da Loja e Status Operacional */}
+            <div className={`border rounded-2xl p-3 sm:p-4 shadow-md transition relative overflow-hidden ${themeClasses.cardBorder}`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">{partnerName || 'Parceiro AçaíFood'}</h2>
+                    {onToggleStatus && (
+                      <button
+                        onClick={onToggleStatus}
+                        className={`px-3 py-1 rounded-full font-bold text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 cursor-pointer ${
+                          isOnline ? themeClasses.statusBtnActive : themeClasses.statusBtnInactive
+                        }`}
+                      >
+                        <Power size={13} />
+                        <span>{statusLabel}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs text-zinc-400 flex-wrap">
+                    {locationText && (
+                      <span className="flex items-center gap-1">
+                        <MapPin size={12} className="text-purple-400 shrink-0" />
+                        <span>{locationText}</span>
+                      </span>
+                    )}
+
+                    {rawPix && (
+                      <span className="flex items-center gap-1 bg-zinc-800/90 px-2 py-0.5 rounded-lg border border-zinc-700/60 text-zinc-300 font-mono text-[11px]">
+                        <Key size={11} className="text-amber-400 shrink-0" />
+                        <span>PIX (CPF/CNPJ): {rawPix}</span>
+                      </span>
+                    )}
+
+                    {onUpdateGPS && (
+                      <button
+                        onClick={onUpdateGPS}
+                        className="text-[11px] text-purple-400 hover:text-purple-300 font-bold underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <MapPin size={11} /> Atualizar GPS
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Header Action Buttons */}
-            <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
-              <button
-                onClick={handleHeaderRefresh}
-                disabled={isRefreshing}
-                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-zinc-700 active:scale-95 disabled:opacity-50 cursor-pointer"
-                title="Atualizar dados do painel em tempo real"
-              >
-                <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-                <span>{isRefreshing ? 'Atualizando...' : 'Atualizar'}</span>
-              </button>
+            {/* 3. Todos os Botões e Abas de Navegação Fixos sem Cortes */}
+            {navigationBar && (
+              <div className="w-full pt-0.5">
+                {navigationBar}
+              </div>
+            )}
 
-              <button
-                onClick={() => setManualOpen(true)}
-                className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-500/30 active:scale-95"
-              >
-                <BookOpen size={14} />
-                <span>Manual</span>
-              </button>
-
-              {shareModal && (
-                <div className="shrink-0">
-                  {/* Share button wrapper */}
-                </div>
-              )}
-
-              <ThemeToggle />
-
-              <button
-                onClick={handleLogout}
-                className="bg-red-950/40 hover:bg-red-900/60 text-red-400 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-red-900/50 active:scale-95 ml-1"
-              >
-                <LogOut size={14} />
-                <span>Sair</span>
-              </button>
-            </div>
           </div>
         </header>
 
         {/* Main Dashboard Container */}
         <main className="max-w-6xl mx-auto p-4 sm:p-6 space-y-4">
-          
-          {/* Módulo 2: Cartão de Status do Parceiro e Informações Operacionais */}
-          <div className={`border rounded-3xl p-5 shadow-xl transition relative overflow-hidden ${themeClasses.cardBorder}`}>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              
-              {/* Informações da Conta e Titular */}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-xl font-black text-white">{partnerName || 'Parceiro AçaíFood'}</h2>
-                  {onToggleStatus && (
-                    <button
-                      onClick={onToggleStatus}
-                      className={`px-3 py-1 rounded-full font-bold text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 ${
-                        isOnline ? themeClasses.statusBtnActive : themeClasses.statusBtnInactive
-                      }`}
-                    >
-                      <Power size={13} />
-                      <span>{statusLabel}</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-4 text-xs text-zinc-400 flex-wrap">
-                  {locationText && (
-                    <span className="flex items-center gap-1">
-                      <MapPin size={13} className="text-purple-400" />
-                      <span>{locationText}</span>
-                    </span>
-                  )}
-
-                  {rawPix && (
-                    <span className="flex items-center gap-1 bg-zinc-800/80 px-2.5 py-1 rounded-lg border border-zinc-700/60 text-zinc-300 font-mono text-[11px]">
-                      <Key size={12} className="text-amber-400" />
-                      <span>PIX (CPF/CNPJ): {rawPix}</span>
-                    </span>
-                  )}
-
-                  {onUpdateGPS && (
-                    <button
-                      onClick={onUpdateGPS}
-                      className="text-[11px] text-purple-400 hover:text-purple-300 font-bold underline flex items-center gap-1"
-                    >
-                      <MapPin size={12} /> Atualizar GPS
-                    </button>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Módulo 3: Conteúdo e Abas Específicas do Parceiro */}
-          <div className="pt-2">
-            {children}
-          </div>
-
+          {children}
         </main>
 
         {/* Floating Toast Notification */}

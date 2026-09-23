@@ -936,14 +936,12 @@ export default function BatedeiraDashboard() {
           role="loja" 
         />
       }
-    >
-      <div className="space-y-6">
-        {/* Barra de Navegação de Abas Fixa no Topo (Sticky) */}
-        <div className="sticky top-[73px] z-30 bg-zinc-950/95 backdrop-blur border border-zinc-800/90 rounded-2xl p-2 mb-6 shadow-lg flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex gap-2 overflow-x-auto">
+      navigationBar={
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1.5 shadow-md flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex gap-1.5 overflow-x-auto py-0.5 no-scrollbar flex-1">
             <button 
               onClick={() => setActiveTab('geral')} 
-              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeTab === 'geral' 
                   ? 'bg-purple-600 text-white shadow-md' 
                   : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
@@ -954,7 +952,7 @@ export default function BatedeiraDashboard() {
 
             <button 
               onClick={() => setActiveTab('abastecimento')} 
-              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeTab === 'abastecimento' 
                   ? 'bg-purple-600 text-white shadow-md' 
                   : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
@@ -965,7 +963,7 @@ export default function BatedeiraDashboard() {
 
             <button 
               onClick={() => setActiveTab('pedidos')} 
-              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeTab === 'pedidos' 
                   ? 'bg-purple-600 text-white shadow-md' 
                   : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
@@ -981,7 +979,7 @@ export default function BatedeiraDashboard() {
 
             <button 
               onClick={() => setActiveTab('historico')} 
-              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeTab === 'historico' 
                   ? 'bg-purple-600 text-white shadow-md' 
                   : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
@@ -995,7 +993,7 @@ export default function BatedeiraDashboard() {
 
             <button 
               onClick={() => setActiveTab('carteira')} 
-              className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeTab === 'carteira' 
                   ? 'bg-emerald-600 text-white shadow-md' 
                   : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
@@ -1008,22 +1006,25 @@ export default function BatedeiraDashboard() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button 
               onClick={() => setPrinterModalOpen(true)} 
-              className="text-xs bg-purple-900/40 hover:bg-purple-900/70 text-purple-300 border border-purple-800 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+              className="text-xs bg-purple-900/40 hover:bg-purple-900/70 text-purple-300 border border-purple-800 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shrink-0"
               title="Configurar Impressora Térmica"
             >
               <Printer size={14} /> Impressora Térmica
             </button>
             <button 
               onClick={() => setShareLandingModalOpen(true)}
-              className="text-xs bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 border border-pink-900/50 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+              className="text-xs bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 border border-pink-900/50 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shrink-0"
             >
               <Share2 size={14} /> Compartilhar
             </button>
           </div>
         </div>
+      }
+    >
+      <div className="space-y-6">
 
         {!currentUser.asaasLinked && (
           <div className="bg-purple-950/30 border border-purple-800/60 rounded-2xl p-6 text-center shadow-sm">

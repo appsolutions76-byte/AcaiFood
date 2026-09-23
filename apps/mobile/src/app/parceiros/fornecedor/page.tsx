@@ -617,82 +617,83 @@ export default function FornecedorDashboard() {
           role="fornecedor" 
         />
       }
-    >
-      {/* Barra de Navegação de Abas Fixa no Topo (Sticky) */}
-      <div className="sticky top-[73px] z-30 bg-zinc-950/95 backdrop-blur border border-zinc-800/90 rounded-2xl p-2 mb-6 shadow-lg flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex gap-2 overflow-x-auto">
-          <button 
-            onClick={() => setActiveTab('geral')} 
-            className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'geral' 
-                ? 'bg-emerald-600 text-white shadow-md' 
-                : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-            }`}
-          >
-            <span>📊 Visão Geral</span>
-          </button>
+      navigationBar={
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1.5 shadow-md flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex gap-1.5 overflow-x-auto py-0.5 no-scrollbar flex-1">
+            <button 
+              onClick={() => setActiveTab('geral')} 
+              className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                activeTab === 'geral' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>📊 Visão Geral</span>
+            </button>
 
-          <button 
-            onClick={() => setActiveTab('pedidos')} 
-            className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'pedidos' 
-                ? 'bg-emerald-600 text-white shadow-md' 
-                : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-            }`}
-          >
-            <span>📦 Pedidos Ativos</span>
-            {fornActiveOrders.length > 0 && (
-              <span className="bg-emerald-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
-                {fornActiveOrders.length}
+            <button 
+              onClick={() => setActiveTab('pedidos')} 
+              className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                activeTab === 'pedidos' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>📦 Pedidos Ativos</span>
+              {fornActiveOrders.length > 0 && (
+                <span className="bg-emerald-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                  {fornActiveOrders.length}
+                </span>
+              )}
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('historico')} 
+              className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                activeTab === 'historico' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>📋 Histórico</span>
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'historico' ? 'bg-emerald-800 text-white' : 'bg-zinc-800 text-zinc-300'}`}>
+                {fornHistoryOrders.length}
               </span>
-            )}
-          </button>
+            </button>
 
-          <button 
-            onClick={() => setActiveTab('historico')} 
-            className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'historico' 
-                ? 'bg-emerald-600 text-white shadow-md' 
-                : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-            }`}
-          >
-            <span>📋 Histórico</span>
-            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'historico' ? 'bg-emerald-800 text-white' : 'bg-zinc-800 text-zinc-300'}`}>
-              {fornHistoryOrders.length}
-            </span>
-          </button>
+            <button 
+              onClick={() => setActiveTab('carteira')} 
+              className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                activeTab === 'carteira' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              <span>💳 Carteira Digital</span>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
+                {formatMoney((vendasHoje && vendasHoje > 0) ? vendasHoje : (emProcessamento || 0))}
+              </span>
+            </button>
+          </div>
 
-          <button 
-            onClick={() => setActiveTab('carteira')} 
-            className={`py-2.5 px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'carteira' 
-                ? 'bg-emerald-600 text-white shadow-md' 
-                : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-            }`}
-          >
-            <span>💳 Carteira Digital</span>
-            <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
-              {formatMoney((vendasHoje && vendasHoje > 0) ? vendasHoje : (emProcessamento || 0))}
-            </span>
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button 
+              onClick={() => setPrinterModalOpen(true)} 
+              className="text-xs bg-emerald-900/40 hover:bg-emerald-900/70 text-emerald-300 border border-emerald-800 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shrink-0"
+              title="Configurar Impressora Térmica"
+            >
+              <Printer size={14} /> Impressora Térmica
+            </button>
+            <button 
+              onClick={() => setShareLandingModalOpen(true)}
+              className="text-xs bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 border border-pink-900/50 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shrink-0"
+            >
+              <Share2 size={14} /> Compartilhar
+            </button>
+          </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setPrinterModalOpen(true)} 
-            className="text-xs bg-emerald-900/40 hover:bg-emerald-900/70 text-emerald-300 border border-emerald-800 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-            title="Configurar Impressora Térmica"
-          >
-            <Printer size={14} /> Impressora Térmica
-          </button>
-          <button 
-            onClick={() => setShareLandingModalOpen(true)}
-            className="text-xs bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 border border-pink-900/50 px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-          >
-            <Share2 size={14} /> Compartilhar
-          </button>
-        </div>
-      </div>
+      }
+    >
 
       <StoreShareCard 
         storeId={currentUser.id} 
