@@ -115,7 +115,10 @@ export async function POST(request: Request) {
       const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
       const pickupPin = orderType !== 'COLETA' ? Math.floor(1000 + Math.random() * 9000).toString() : null;
 
-      const { data: newOrder, error: createOrderErr } = await supabase.from('orders').insert({
+      let newOrder: any = null;
+      let createOrderErr: any = null;
+
+      const basePayload: any = {
         buyer_id: validBuyerId,
         seller_storefront_id: sellerStorefrontId,
         order_type: orderType,
@@ -123,12 +126,26 @@ export async function POST(request: Request) {
         products_subtotal: Number(productsSubtotal || 0),
         delivery_distance_km: Number(deliveryDistanceKm || 0),
         delivery_pin: deliveryPin,
-        pickup_pin: pickupPin,
         delivery_address: deliveryInfo?.address || null,
         delivery_lat: deliveryInfo?.lat ? Number(deliveryInfo.lat) : null,
         delivery_lng: deliveryInfo?.lng ? Number(deliveryInfo.lng) : null,
         delivery_reference: deliveryInfo?.reference || null
-      }).select().single();
+      };
+
+      const fullPayload = { ...basePayload, pickup_pin: pickupPin };
+
+      const resFull = await supabase.from('orders').insert(fullPayload).select().single();
+      if (resFull.data && !resFull.error) {
+        newOrder = resFull.data;
+      } else {
+        // Fallback resiliente: se o banco de produção não tiver a coluna pickup_pin no cache, grava com basePayload
+        const resBase = await supabase.from('orders').insert(basePayload).select().single();
+        if (resBase.data && !resBase.error) {
+          newOrder = resBase.data;
+        } else {
+          createOrderErr = resBase.error || resFull.error;
+        }
+      }
 
       if (createOrderErr || !newOrder) {
         console.error("Erro fatal ao criar pedido no banco:", createOrderErr);
@@ -471,14 +488,16 @@ export async function POST(request: Request) {
     }
 
     // Atualizar order no Supabase com o paymentId, status e charged_amount
-    await supabase
-      .from('orders')
-      .update({
-        asaas_payment_id: paymentData.id,
-        asaas_charge_status: paymentData.status,
-        charged_amount: calculatedValue
-      })
-      .eq('id', order.id);
+    const updPayload: any = {
+      asaas_payment_id: paymentData.id,
+      asaas_charge_status: paymentData.status,
+      charged_amount: calculatedValue
+    };
+    const updRes = await supabase.from('orders').update(updPayload).eq('id', order.id);
+    if (updRes.error && updRes.error.message?.includes('charged_amount')) {
+      delete updPayload.charged_amount;
+      await supabase.from('orders').update(updPayload).eq('id', order.id);
+    }
 
     return NextResponse.json({
       success: true,
