@@ -115,6 +115,36 @@ export async function POST(request: Request) {
       const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
       const pickupPin = orderType !== 'COLETA' ? Math.floor(1000 + Math.random() * 9000).toString() : null;
 
+      // Calcular precificação e regras de frete (Fixo vs KM) antes de persistir no banco
+      const { calculateOrderPricing } = await import('@/lib/pricingEngine');
+      let orderCity: string | null = null;
+      if (validBuyerId) {
+        const { data: uBuyer } = await supabase.from('users').select('cidade').eq('id', validBuyerId).maybeSingle();
+        if (uBuyer?.cidade) orderCity = uBuyer.cidade;
+      }
+      if (!orderCity && sellerStorefrontId) {
+        const { data: sf } = await supabase.from('storefronts').select('partner_id').eq('id', sellerStorefrontId).maybeSingle();
+        if (sf?.partner_id) {
+          const { data: uPartner } = await supabase.from('users').select('cidade').eq('id', sf.partner_id).maybeSingle();
+          if (uPartner?.cidade) orderCity = uPartner.cidade;
+        }
+      }
+
+      const prePricing = await calculateOrderPricing({
+        orderType,
+        distanceKm: Number(deliveryDistanceKm || 0),
+        cityName: orderCity,
+        productsSubtotal: Number(productsSubtotal || 0),
+        sellerStorefrontId
+      }, supabase);
+
+      const isFixedFreight = prePricing.courierPaymentMode === 'FIXED';
+      const effectiveDbDistance = isFixedFreight ? 1.0 : Number(deliveryDistanceKm || 0);
+      const distInfoText = `Distância estimada: ${deliveryDistanceKm || 0} km${isFixedFreight ? ' (Valor Fixo da Moto aplicado)' : ''}`;
+      const effectiveReference = deliveryInfo?.reference
+        ? `${deliveryInfo.reference} | ${distInfoText}`
+        : distInfoText;
+
       let newOrder: any = null;
       let createOrderErr: any = null;
 
@@ -124,12 +154,12 @@ export async function POST(request: Request) {
         order_type: orderType,
         status: 'PENDING',
         products_subtotal: Number(productsSubtotal || 0),
-        delivery_distance_km: Number(deliveryDistanceKm || 0),
+        delivery_distance_km: effectiveDbDistance,
         delivery_pin: deliveryPin,
         delivery_address: deliveryInfo?.address || null,
         delivery_lat: deliveryInfo?.lat ? Number(deliveryInfo.lat) : null,
         delivery_lng: deliveryInfo?.lng ? Number(deliveryInfo.lng) : null,
-        delivery_reference: deliveryInfo?.reference || null
+        delivery_reference: effectiveReference
       };
 
       const fullPayload = { ...basePayload, pickup_pin: pickupPin };

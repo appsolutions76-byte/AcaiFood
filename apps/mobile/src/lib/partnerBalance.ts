@@ -45,12 +45,12 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
       }
 
       for (const o of matchedOrdersMap.values()) {
-        let netDriver = Number((o as any).driver_amount || (o as any).driver_payout || 0);
-        if (netDriver <= 0) {
-          const productsSubtotal = Number((o as any).products_subtotal ?? (o as any).valor ?? (o as any).total_value ?? (o as any).subtotal ?? (o as any).price ?? 0);
-          const distanceKm = Number((o as any).delivery_distance_km ?? (o as any).distancia ?? (o as any).distance ?? 0);
-          const cityName = (o as any).cidade_origem || (o as any).cidade || (o as any).delivery_city || (o as any).city || null;
+        const productsSubtotal = Number((o as any).products_subtotal ?? (o as any).valor ?? (o as any).total_value ?? (o as any).subtotal ?? (o as any).price ?? 0);
+        const distanceKm = Number((o as any).delivery_distance_km ?? (o as any).distancia ?? (o as any).distance ?? 0);
+        const cityName = (o as any).cidade_origem || (o as any).cidade || (o as any).delivery_city || (o as any).city || null;
 
+        let netDriver = 0;
+        try {
           const pricing = await calculateOrderPricing({
             orderType: o.order_type || (o as any).type || 'B2C',
             distanceKm,
@@ -58,8 +58,9 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
             productsSubtotal,
             sellerStorefrontId: o.seller_storefront_id
           }, adminSupabase);
-
           netDriver = pricing.netDriverPayout;
+        } catch (_pErr) {
+          netDriver = Number((o as any).driver_amount || (o as any).driver_payout || 0);
         }
 
         if (netDriver > 0) {
@@ -97,12 +98,12 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
       }
 
       for (const o of matchedOrdersMap.values()) {
-        let netSeller = Number((o as any).seller_amount || (o as any).seller_payout || 0);
-        if (netSeller <= 0) {
-          const productsSubtotal = Number((o as any).products_subtotal ?? (o as any).valor ?? (o as any).total_value ?? (o as any).subtotal ?? (o as any).price ?? 0);
-          const distanceKm = Number((o as any).delivery_distance_km ?? (o as any).distancia ?? (o as any).distance ?? 0);
-          const cityName = (o as any).cidade_origem || (o as any).cidade || (o as any).delivery_city || (o as any).city || null;
+        const productsSubtotal = Number((o as any).products_subtotal ?? (o as any).valor ?? (o as any).total_value ?? (o as any).subtotal ?? (o as any).price ?? 0);
+        const distanceKm = Number((o as any).delivery_distance_km ?? (o as any).distancia ?? (o as any).distance ?? 0);
+        const cityName = (o as any).cidade_origem || (o as any).cidade || (o as any).delivery_city || (o as any).city || null;
 
+        let netSeller = 0;
+        try {
           const pricing = await calculateOrderPricing({
             orderType: o.order_type || (o as any).type || 'B2C',
             distanceKm,
@@ -110,8 +111,9 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
             productsSubtotal,
             sellerStorefrontId: o.seller_storefront_id
           }, adminSupabase);
-
           netSeller = pricing.netSellerPayout;
+        } catch (_pErr) {
+          netSeller = Number((o as any).seller_amount || (o as any).seller_payout || 0);
         }
 
         if (netSeller > 0) {

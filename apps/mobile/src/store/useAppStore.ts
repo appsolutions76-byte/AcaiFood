@@ -235,16 +235,18 @@ export function calculateOrderFreight(
   const oType = String(type || 'B2C').toUpperCase();
 
   if (oType === 'B2C') {
-    if (rates?.courier_payment_mode === 'FIXED') {
+    const isFixed = String(rates?.courier_payment_mode || 'FIXED').toUpperCase() === 'FIXED';
+    if (isFixed) {
       const fixed = rates?.courier_fixed_fee ?? rates?.b2c_km;
-      return Number(fixed !== undefined && fixed !== null && Number(fixed) > 0 ? Number(fixed) : 6.00);
+      return Number(fixed !== undefined && fixed !== null && Number(fixed) > 0 ? Number(fixed) : 4.00);
     }
-    const perKm = Number(rates?.b2c_km ?? 2.00);
+    const perKm = Number(rates?.b2c_km ?? 4.00);
     return Number((dist * perKm).toFixed(2));
   }
 
   if (oType === 'B2B') {
-    if (rates?.transporter_payment_mode === 'FIXED') {
+    const isFixed = String(rates?.transporter_payment_mode || 'FIXED').toUpperCase() === 'FIXED';
+    if (isFixed) {
       const fixed = rates?.transporter_fixed_fee ?? rates?.b2b_km;
       return Number(fixed !== undefined && fixed !== null && Number(fixed) > 0 ? Number(fixed) : 150.00);
     }
@@ -253,7 +255,8 @@ export function calculateOrderFreight(
   }
 
   if (oType === 'COLETA') {
-    if (rates?.ecopoint_payment_mode === 'FIXED') {
+    const isFixed = String(rates?.ecopoint_payment_mode || 'FIXED').toUpperCase() === 'FIXED';
+    if (isFixed) {
       const fixed = rates?.ecopoint_fixed_fee ?? rates?.col_valor ?? rates?.col_km;
       return Number(fixed !== undefined && fixed !== null && Number(fixed) > 0 ? Number(fixed) : 50.00);
     }
@@ -279,24 +282,33 @@ export function calculateOrderTaxes(order: Order, rates: any, storeUsers: Record
     const subPct = Number(loja?.freteSubsidyPct ?? 0) / 100;
     const freteLoja = entregaTotal * subPct;
     
-    platVenda = (order.valor || 0) * (Number(rates?.b2c_plat ?? 10) / 100);
-    platEntrega = entregaTotal * (Number(rates?.b2c_mot_plat ?? 15) / 100);
+    platVenda = (order.valor || 0) * (Number(rates?.b2c_plat ?? 15) / 100);
+    platEntrega = entregaTotal * (Number(rates?.b2c_mot_plat ?? 12) / 100);
 
     repasseLoja = (order.valor || 0) - platVenda - freteLoja;
-    repasseMoto = (order as any).driver_amount || (order.taxas?.entregaMotorista && rates?.courier_payment_mode !== 'FIXED' ? order.taxas.entregaMotorista : (entregaTotal - platEntrega));
+    const isFixed = String(rates?.courier_payment_mode || 'FIXED').toUpperCase() === 'FIXED';
+    repasseMoto = isFixed 
+      ? Number((entregaTotal - platEntrega).toFixed(2))
+      : ((order as any).driver_amount || Number((entregaTotal - platEntrega).toFixed(2)));
   } else if (oType === 'B2B') {
     const forn = order.fornecedorId ? storeUsers[order.fornecedorId] : null;
     const subPct = Number(forn?.freteSubsidyPct ?? 0) / 100;
     const freteForn = entregaTotal * subPct;
 
-    platVenda = (order.valor || 0) * (Number(rates?.b2b_plat ?? 10) / 100);
-    platEntrega = entregaTotal * (Number(rates?.b2b_mot_plat ?? 15) / 100);
+    platVenda = (order.valor || 0) * (Number(rates?.b2b_plat ?? 15) / 100);
+    platEntrega = entregaTotal * (Number(rates?.b2b_mot_plat ?? 12) / 100);
 
     repasseForn = (order.valor || 0) - platVenda - freteForn;
-    repasseMoto = (order as any).driver_amount || (order.taxas?.entregaMotorista && rates?.transporter_payment_mode !== 'FIXED' ? order.taxas.entregaMotorista : (entregaTotal - platEntrega));
+    const isFixed = String(rates?.transporter_payment_mode || 'FIXED').toUpperCase() === 'FIXED';
+    repasseMoto = isFixed
+      ? Number((entregaTotal - platEntrega).toFixed(2))
+      : ((order as any).driver_amount || Number((entregaTotal - platEntrega).toFixed(2)));
   } else if (oType === 'COLETA') {
-    platEntrega = entregaTotal * (Number(rates?.col_mot_plat ?? 15) / 100);
-    repasseMoto = (order as any).driver_amount || (order.taxas?.entregaMotorista && rates?.ecopoint_payment_mode !== 'FIXED' ? order.taxas.entregaMotorista : (entregaTotal - platEntrega));
+    platEntrega = entregaTotal * (Number(rates?.col_mot_plat ?? 12) / 100);
+    const isFixed = String(rates?.ecopoint_payment_mode || 'FIXED').toUpperCase() === 'FIXED';
+    repasseMoto = isFixed
+      ? Number((entregaTotal - platEntrega).toFixed(2))
+      : ((order as any).driver_amount || Number((entregaTotal - platEntrega).toFixed(2)));
   }
 
   return {
@@ -418,17 +430,17 @@ export function incrementDailyWithdrawalCount(userId: string): number {
 
 const DB_DEFAULTS = {
   rates: {
-    b2c_plat: 0, b2c_km: 0, b2c_mot_plat: 0,
-    b2b_plat: 0, b2b_km: 0, b2b_mot_plat: 0,
-    col_plat: 0, col_km: 0, col_mot_plat: 0, col_valor: 0,
+    b2c_plat: 15, b2c_km: 4, b2c_mot_plat: 12,
+    b2b_plat: 15, b2b_km: 4, b2b_mot_plat: 12,
+    col_plat: 10, col_km: 7.5, col_mot_plat: 12, col_valor: 50,
     payout_time: '22:00',
-    courier_payment_mode: 'KM' as const,
-    courier_fixed_fee: 0,
-    transporter_payment_mode: 'KM' as const,
-    transporter_fixed_fee: 0,
-    ecopoint_payment_mode: 'KM' as const,
-    ecopoint_fixed_fee: 0,
-    asaas_fee_split_actors: 1,
+    courier_payment_mode: 'FIXED' as const,
+    courier_fixed_fee: 4,
+    transporter_payment_mode: 'FIXED' as const,
+    transporter_fixed_fee: 4,
+    ecopoint_payment_mode: 'FIXED' as const,
+    ecopoint_fixed_fee: 7.5,
+    asaas_fee_split_actors: 3,
     asaas_pix_fee_fixed: 0.99
   } as CityRates,
   cities: [] as City[],

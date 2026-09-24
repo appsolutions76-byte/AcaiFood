@@ -26,12 +26,12 @@ export interface PayoutOrder {
 
 export function calculateOrderDeliveryTotal(order: PayoutOrder, settings?: PayoutSettings): number {
   const orderType = String(order.order_type || 'B2C').toUpperCase();
-  const courierMode = settings?.courier_payment_mode || 'KM';
-  const courierFixed = Number(settings?.courier_fixed_fee ?? 8.00);
-  const transporterMode = settings?.transporter_payment_mode || 'KM';
-  const transporterFixed = Number(settings?.transporter_fixed_fee ?? 150.00);
-  const ecopointMode = settings?.ecopoint_payment_mode || 'KM';
-  const ecopointFixed = Number(settings?.ecopoint_fixed_fee ?? 50.00);
+  const courierMode = String(settings?.courier_payment_mode || 'FIXED').toUpperCase();
+  const courierFixed = Number(settings?.courier_fixed_fee ?? 4.00);
+  const transporterMode = String(settings?.transporter_payment_mode || 'FIXED').toUpperCase();
+  const transporterFixed = Number(settings?.transporter_fixed_fee ?? 4.00);
+  const ecopointMode = String(settings?.ecopoint_payment_mode || 'FIXED').toUpperCase();
+  const ecopointFixed = Number(settings?.ecopoint_fixed_fee ?? 7.50);
 
   const distKm = Math.max(0, Number(order.delivery_distance_km || 0));
   const feePerKm = Number(order.applied_delivery_fee_per_km || 0);
@@ -41,7 +41,7 @@ export function calculateOrderDeliveryTotal(order: PayoutOrder, settings?: Payou
   } else if (orderType === 'B2B') {
     return transporterMode === 'FIXED' ? transporterFixed : Number((distKm * (feePerKm || 4.00)).toFixed(2));
   } else {
-    return courierMode === 'FIXED' ? courierFixed : Number((distKm * (feePerKm || 2.00)).toFixed(2));
+    return courierMode === 'FIXED' ? courierFixed : Number((distKm * (feePerKm || 4.00)).toFixed(2));
   }
 }
 
