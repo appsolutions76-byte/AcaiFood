@@ -50,19 +50,18 @@ export function generateValidPixPayload(params: {
     .trim()
     .toUpperCase() || 'ELETROMECANICA BAIA LTDA';
 
-  const city = (params.merchantCity || 'PORTEL')
+  const city = (params.merchantCity || 'Portel')
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9 ]/g, "")
     .substring(0, 15)
-    .trim()
-    .toUpperCase() || 'PORTEL';
+    .trim() || 'Portel';
 
   // No padrão Pix Estático BACEN, para transferências diretas sem cobrança pré-registrada na API do PSP, o txId deve ser SEMPRE '***'
   const cleanTxId = '***';
 
   // 26 = Merchant Account Info (GUI + Key)
-  const gui = formatField('00', 'BR.GOV.BCB.PIX');
+  const gui = formatField('00', 'br.gov.bcb.pix');
   const keyField = formatField('01', cleanKey);
   const merchantAccountInfo = formatField('26', `${gui}${keyField}`);
 

@@ -24,6 +24,7 @@ interface PixModalProps {
 
 export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedCnpj, setCopiedCnpj] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const acaoPedido = useAppStore((state: any) => state.acaoPedido);
 
@@ -202,7 +203,7 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
                 />
                 <button
                   onClick={handleCopy}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2"
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 mb-2 cursor-pointer"
                 >
                   {copied ? (
                     <>
@@ -211,6 +212,25 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
                   ) : (
                     <>
                       <Copy size={16} /> 📋 Copiar Código Pix Copia e Cola
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText('42035623000140');
+                    setCopiedCnpj(true);
+                    setTimeout(() => setCopiedCnpj(false), 3000);
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {copiedCnpj ? (
+                    <>
+                      <CheckCircle size={14} /> Chave CNPJ Copiada! (42.035.623/0001-40)
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} /> 🔑 Copiar Chave CNPJ Direta (42.035.623/0001-40)
                     </>
                   )}
                 </button>
