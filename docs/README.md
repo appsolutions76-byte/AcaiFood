@@ -9,6 +9,9 @@ Esta pasta `docs/` é agora a **única fonte de verdade** sobre o app. Ela descr
 | `03_AUDITORIA_2026-09-23.md` | Sexta auditoria: 27 achados em ordem de gravidade + a decisão de negócio pendente |
 | `04_MANUAIS_DE_USO.md` | Manual de cada perfil, reflete o app real (substitui os manuais antigos) |
 | `05_PROMPT_MESTRE_NOVO_APP.md` | Prompt para construir o AçaíFood do zero, já com as correções |
+| `06_PROMPT_CORRECOES_R8.md` | O que funciona e o que não funciona hoje + prompt de correção do app atual (4 fases; repasse depois do PIN para subconta) |
+| `07_AUDITORIA_FINANCEIRA_PIX_2026-09-23.md` | Sétima auditoria (noite de 23/09): causa do Pix recusado, novas brechas, saques |
+| `08_PROMPT_HOTFIX_R9_PIX.md` | Hotfix urgente: Pix da cobrança Asaas, conciliação, brechas críticas, saques. **Aplicar antes do R8** |
 
 ---
 

@@ -105,48 +105,6 @@ export async function authorizeRequest(
     }
   }
 
-  // 2.5. Validar via x-user-id autenticado no banco de dados
-  const headerUserId = request.headers.get('x-user-id');
-  if (headerUserId) {
-    try {
-      const { getSupabaseAdmin } = await import('@/lib/supabaseAdmin');
-      const admin = getSupabaseAdmin();
-      const { data: profile } = await admin
-        .from('users')
-        .select('*')
-        .eq('id', headerUserId)
-        .maybeSingle();
-
-      if (profile) {
-        const rawRole = String(profile.role || '').toLowerCase();
-        const userRole = 
-          (rawRole === 'admin' || rawRole === 'administrador') ? 'admin' :
-          (rawRole === 'partner' || rawRole === 'loja' || rawRole === 'batedeira') ? 'loja' :
-          (rawRole === 'supplier' || rawRole === 'fornecedor') ? 'fornecedor' :
-          (rawRole === 'courier' || rawRole === 'motorista' || rawRole === 'motoboy' || rawRole === 'caminhao' || rawRole === 'driver') ? 'motorista' :
-          'cliente';
-
-        if (allowedRoles && allowedRoles.length > 0) {
-          const isAdminAuth = allowedRoles.includes('admin') && (
-            userRole === 'admin' || 
-            profile.is_admin === true
-          );
-
-          if (!allowedRoles.includes(userRole as any) && !isAdminAuth) {
-            return { authorized: false, error: 'Acesso negado para este perfil de usuário' };
-          }
-        }
-
-        return {
-          authorized: true,
-          source: 'user_jwt',
-          user: { id: profile.id, email: profile.email },
-          profile
-        };
-      }
-    } catch (_e) {}
-  }
-
   // 3. Se não houver segredo interno válido nem JWT assinado pelo Supabase, rejeita a requisição
   return { authorized: false, error: 'Não autorizado: credenciais de acesso inválidas ou sessão expirada' };
 }
@@ -165,21 +123,21 @@ export function unauthorizedResponse(message?: string) {
 export function isValidAsaasWebhook(request: Request): boolean {
   const allowedTokens = new Set([
     process.env.ASAAS_WEBHOOK_TOKEN,
-    process.env.WEBHOOK_SECRET,
-    'acaifood_webhook_secret_token_2026_prod',
-    'acaifood_webhook_2026'
+    process.env.ASAAS_WEBHOOK_TOKEN_PREVIOUS,
+    process.env.WEBHOOK_SECRET
   ].filter(Boolean) as string[]);
 
-  // 1. Verificar header asaas-access-token ou access_token (método oficial do Asaas)
-  const asaasToken = request.headers.get('asaas-access-token') || request.headers.get('access_token');
-  if (asaasToken && allowedTokens.has(asaasToken)) return true;
+  if (allowedTokens.size === 0) {
+    console.warn("⚠️ [Webhook Asaas] Nenhum ASAAS_WEBHOOK_TOKEN configurado no servidor.");
+    return false;
+  }
 
-  // 2. Verificar query param wh_token se enviado
-  try {
-    const url = new URL(request.url);
-    const whToken = url.searchParams.get('wh_token');
-    if (whToken && allowedTokens.has(whToken)) return true;
-  } catch (_e) {}
+  // Verificar header asaas-access-token ou access_token (método oficial do Asaas)
+  const asaasToken = request.headers.get('asaas-access-token') || request.headers.get('access_token');
+  if (asaasToken && allowedTokens.has(asaasToken.trim())) {
+    return true;
+  }
 
   return false;
 }
+

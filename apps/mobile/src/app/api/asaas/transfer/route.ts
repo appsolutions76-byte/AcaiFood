@@ -118,9 +118,27 @@ export async function POST(request: Request) {
     }
 
     const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
+    const isSandbox = ASAAS_URL.includes('sandbox');
+    const keySuffix = ASAAS_API_KEY.length >= 4 ? ASAAS_API_KEY.slice(-4) : 'none';
+    console.log(`[Transfer API] Transferência admin | Ambiente: ${isSandbox ? 'Sandbox' : 'Produção'} | Chave: ***${keySuffix}`);
+
+    // Pré-validação de saldo disponível no Asaas
+    try {
+      const balRes = await fetch(`${ASAAS_URL}/finance/balance`, {
+        headers: { 'access_token': ASAAS_API_KEY }
+      });
+      if (balRes.ok) {
+        const balData = await balRes.json();
+        const currentAsaasBalance = typeof balData.balance === 'number' ? balData.balance : (typeof balData.totalBalance === 'number' ? balData.totalBalance : null);
+        if (currentAsaasBalance !== null && currentAsaasBalance < transferValue) {
+          return NextResponse.json({ error: 'Saldo insuficiente na conta Asaas' }, { status: 400 });
+        }
+      }
+    } catch (balErr) {
+      console.warn('[Transfer API] Aviso ao verificar saldo Asaas:', balErr);
+    }
 
     const targetKey = String(walletId || pixKey).trim();
-    const cleanDigits = targetKey.replace(/\D/g, '');
 
     const transferBody: any = {
       value: Number(transferValue.toFixed(2)),
@@ -134,30 +152,16 @@ export async function POST(request: Request) {
     if (isWalletId || !!walletId) {
       transferBody.walletId = targetKey;
     } else {
-      if (targetKey.includes('@')) {
-        transferBody.pixAddressKey = targetKey.toLowerCase();
-        transferBody.pixAddressKeyType = 'EMAIL';
-      } else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetKey)) {
-        transferBody.pixAddressKey = targetKey.toLowerCase();
-        transferBody.pixAddressKeyType = 'EVP';
-      } else if (cleanDigits.length === 14) {
-        transferBody.pixAddressKey = cleanDigits;
-        transferBody.pixAddressKeyType = 'CNPJ';
-      } else if (targetKey.startsWith('+') || /^\(\d{2}\)/.test(targetKey) || (cleanDigits.length >= 10 && cleanDigits.length <= 11 && (targetKey.includes('(') || targetKey.includes('-') || targetKey.includes(' ')))) {
-        const phoneFormatted = cleanDigits.startsWith('55') && cleanDigits.length >= 12 ? `+${cleanDigits}` : `+55${cleanDigits}`;
-        transferBody.pixAddressKey = phoneFormatted;
-        transferBody.pixAddressKeyType = 'PHONE';
-      } else if (cleanDigits.length === 11) {
-        transferBody.pixAddressKey = cleanDigits;
-        transferBody.pixAddressKeyType = 'CPF';
-      } else if (cleanDigits.length === 10 || cleanDigits.length === 12 || cleanDigits.length === 13) {
-        const phoneFormatted = cleanDigits.startsWith('55') ? `+${cleanDigits}` : `+55${cleanDigits}`;
-        transferBody.pixAddressKey = phoneFormatted;
-        transferBody.pixAddressKeyType = 'PHONE';
-      } else {
-        transferBody.pixAddressKey = targetKey;
-        transferBody.pixAddressKeyType = 'EVP';
+      const { validateAndFormatPixKey } = await import('@/lib/asaasTransferHelpers');
+      const valResult = validateAndFormatPixKey(targetKey, body.pixKeyType || body.pixAddressKeyType);
+      if (!valResult.valid || !valResult.formattedKey || !valResult.type) {
+        return NextResponse.json(
+          { error: `Chave Pix inválida: ${valResult.error || 'Formato incorreto'}` },
+          { status: 400 }
+        );
       }
+      transferBody.pixAddressKey = valResult.formattedKey;
+      transferBody.pixAddressKeyType = valResult.type;
     }
 
     const res = await fetch(`${ASAAS_URL}/transfers`, {

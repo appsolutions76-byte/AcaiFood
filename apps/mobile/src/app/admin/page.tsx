@@ -17,6 +17,7 @@ import { AdminManualModal } from "@/components/AdminManualModal";
 import { IncidentReportSection } from "@/components/IncidentReportSection";
 import { AdminSupportSection } from "@/components/admin/AdminSupportSection";
 import { AdminWithdrawalsSection } from "@/components/admin/AdminWithdrawalsSection";
+import { AdminReconciliationSection } from "@/components/admin/AdminReconciliationSection";
 import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
@@ -105,7 +106,7 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState<CityRates>(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao'>('dashboard');
   const [selectedSupportUserId, setSelectedSupportUserId] = useState<string | null>(null);
   const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
   const [activationConfig, setActivationConfig] = useState<{
@@ -1873,6 +1874,9 @@ function AdminDashboardContent() {
                   {partnersWithPendingPayouts.length}
                 </span>
               )}
+            </button>
+            <button onClick={() => setActiveTab('conciliacao')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'conciliacao' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
+              <span>⚖️ Conciliação Pix</span>
             </button>
             <button onClick={() => setActiveTab('pedidos')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🛒 Histórico de Pedidos</button>
             <button onClick={() => setActiveTab('ocorrencias')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>📋 Ocorrências & Auditoria</button>
@@ -3658,6 +3662,10 @@ function AdminDashboardContent() {
           </div>
         )}
 
+        {activeTab === 'conciliacao' && (
+          <AdminReconciliationSection />
+        )}
+
       </main>
 
       <MapModal 
@@ -4406,16 +4414,10 @@ function AdminDashboardContent() {
               </div>
 
               <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>🔑</span> Chave de API Asaas (Produção)</h4>
-                  <p className="text-xs text-zinc-500 mb-3">Chave de Produção oficial ($aact_prod_...). Usada para confirmação instantânea de Pix no Asaas e Estorno automático.</p>
-                  <div className="grid grid-cols-1 gap-2">
-                      <input 
-                        type="password" 
-                        placeholder="$aact_prod_..." 
-                        value={(localRates as any)?.asaas_api_key || ''} 
-                        onChange={e => setLocalRates({...localRates, asaas_api_key: e.target.value} as any)} 
-                        className="w-full border border-purple-300 dark:border-zinc-700 bg-purple-50/50 dark:bg-zinc-900 rounded-lg p-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-purple-500"
-                      />
+                  <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>🔒</span> Chave de API Asaas</h4>
+                  <p className="text-xs text-zinc-500 mb-2">Por segurança (Auditoria R9), a chave de API oficial ($aact_prod_...) é gerenciada exclusivamente pelas variáveis de ambiente do servidor (<code className="bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded text-purple-600 dark:text-purple-400">ASAAS_API_KEY</code>).</p>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    <span>🛡️</span> Chave protegida no ambiente seguro do servidor
                   </div>
               </div>
             </div>

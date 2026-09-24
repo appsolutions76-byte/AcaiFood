@@ -5,8 +5,11 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-  // Identificação do chamador (se logado)
+  // 1. Identificação e autorização obrigatórias do chamador
   const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
+  if (!auth.authorized) {
+    return unauthorizedResponse(auth.error || 'Acesso negado: faça login para continuar');
+  }
 
   try {
     const body = await request.json();
@@ -14,7 +17,6 @@ export async function POST(request: Request) {
       orderId, 
       orderType = 'B2C',
       targetId,
-      buyerId,
       customerEmail, 
       customerName, 
       customerPhone,
@@ -42,34 +44,20 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. Se o pedido não existe no banco, criar com Service Role no servidor (100% à prova de falhas de RLS)
+    // 2. Determinar o comprador estritamente a partir do JWT autenticado
+    const validBuyerId = (auth.source === 'internal_secret' || auth.source === 'cron_secret')
+      ? (body.buyerId || auth.user?.id)
+      : auth.user?.id;
+
+    if (!validBuyerId) {
+      return NextResponse.json({ error: 'Usuário comprador não identificado na sessão' }, { status: 401 });
+    }
+
+    // Se o pedido não existe no banco, criar com Service Role no servidor
     if (!order) {
-      const callerId = auth.user?.id || auth.profile?.id || buyerId;
-      
-      // Garantir que o comprador existe na tabela users
-      let validBuyerId: string | null = null;
-      if (callerId) {
-        const { data: uBuyer } = await supabase.from('users').select('id, name, email, phone').eq('id', callerId).maybeSingle();
-        if (uBuyer) {
-          validBuyerId = uBuyer.id;
-        } else {
-          // Inserir registro do cliente no banco
-          const { data: newBuyer } = await supabase.from('users').insert({
-            id: callerId,
-            name: customerName || 'Cliente AçaíFood',
-            email: customerEmail || 'appsolutions76@gmail.com',
-            phone: customerPhone || null,
-            role: 'cliente',
-            cpf_cnpj: customerCpfCnpj || null
-          }).select('id').maybeSingle();
-
-          if (newBuyer) validBuyerId = newBuyer.id;
-        }
-      }
-
       // Resolver seller_storefront_id
       let sellerStorefrontId: string | null = null;
-      const storeTargetId = orderType === 'COLETA' ? validBuyerId : (targetId || validBuyerId);
+      const storeTargetId = orderType === 'COLETA' ? validBuyerId : targetId;
 
       if (storeTargetId) {
         // Verificar se é ID de storefront
@@ -81,20 +69,12 @@ export async function POST(request: Request) {
           const { data: sfByPartner } = await supabase.from('storefronts').select('id, partner_id').eq('partner_id', storeTargetId).maybeSingle();
           if (sfByPartner) {
             sellerStorefrontId = sfByPartner.id;
-          } else {
-            // Auto-criar storefront para a loja/parceiro
-            try {
-              const { data: targetUser } = await supabase.from('users').select('name').eq('id', storeTargetId).maybeSingle();
-              const { data: newSf } = await supabase.from('storefronts').insert({
-                partner_id: storeTargetId,
-                store_name: targetUser?.name || 'Loja AçaíFood'
-              }).select('id').maybeSingle();
-              if (newSf) sellerStorefrontId = newSf.id;
-            } catch (_sfErr) {
-              console.warn("Aviso ao criar storefront:", _sfErr);
-            }
           }
         }
+      }
+
+      if (orderType !== 'COLETA' && !sellerStorefrontId) {
+        return NextResponse.json({ error: 'Loja ou fornecedor do pedido não encontrado' }, { status: 400 });
       }
 
       const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
@@ -257,27 +237,27 @@ export async function POST(request: Request) {
         if (existingPayData && existingPayData.data && existingPayData.data.length > 0) {
           const existingPayment = existingPayData.data[0];
           if (existingPayment.status !== 'CANCELLED' && existingPayment.status !== 'REFUNDED') {
-            const { generateValidPixPayload } = await import('@/lib/pix');
-            const validPlatformPayload = generateValidPixPayload({
-              pixKey: process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || '42035623000140',
-              merchantName: 'ELETROMECANICA BAIA LTDA',
-              merchantCity: 'Portel',
-              amount: existingPayment.value || calculatedValue,
-              txId: '***'
+            const qrRes = await fetch(`${ASAAS_URL}/payments/${existingPayment.id}/pixQrCode`, {
+              headers: { 'access_token': ASAAS_API_KEY }
             });
+            const qrData = qrRes.ok ? await qrRes.json() : null;
+            if (!qrData || !qrData.encodedImage || !qrData.payload) {
+              const msg = qrData?.errors?.[0]?.description || qrData?.message || 'Falha ao obter QR Code do Asaas';
+              return NextResponse.json({ error: `Não foi possível gerar o Pix: ${msg}` }, { status: 502 });
+            }
 
             return NextResponse.json({
               success: true,
               orderId: order.id,
               paymentId: existingPayment.id,
               invoiceUrl: existingPayment.invoiceUrl || existingPayment.bankSlipUrl,
-              pixQrCode: null,
-              pixCopiaECola: validPlatformPayload,
+              pixQrCode: qrData.encodedImage,
+              pixCopiaECola: qrData.payload,
               status: existingPayment.status,
               totalValue: existingPayment.value || calculatedValue,
               deliveryPin: order.delivery_pin,
               pickupPin: order.pickup_pin,
-              isSandbox: false,
+              isSandbox: ASAAS_URL.includes('sandbox'),
               isExisting: true
             });
           }
@@ -288,9 +268,7 @@ export async function POST(request: Request) {
     }
 
     // Criar ou Buscar Cliente no Asaas
-    let customerId = '';
-    const emailToSearch = customerEmail || 'appsolutions76@gmail.com';
-    
+    const { validateCpfCnpjDigits } = await import('@/lib/pix');
     const cleanDigits = (val?: string) => {
       if (!val) return undefined;
       const digits = String(val).replace(/\D/g, '');
@@ -298,34 +276,44 @@ export async function POST(request: Request) {
     };
     const validCpfCnpj = cleanDigits(customerCpfCnpj);
 
-    if (validCpfCnpj) {
-      const cpfSearchRes = await fetch(`${ASAAS_URL}/customers?cpfCnpj=${encodeURIComponent(validCpfCnpj)}`, {
-        headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
-      });
+    if (!validCpfCnpj || !validateCpfCnpjDigits(validCpfCnpj)) {
+      return NextResponse.json(
+        { error: 'CPF ou CNPJ válido do cliente é obrigatório para emissão do Pix no Banco Central.' },
+        { status: 400 }
+      );
+    }
+
+    let customerId = '';
+    const emailToSearch = customerEmail || (order?.buyer_id ? `cliente_${order.buyer_id}@acaifood.app.br` : undefined);
+
+    const cpfSearchRes = await fetch(`${ASAAS_URL}/customers?cpfCnpj=${encodeURIComponent(validCpfCnpj)}`, {
+      headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+    });
+    if (cpfSearchRes.ok) {
       const cpfSearchData = await cpfSearchRes.json();
       if (cpfSearchData && cpfSearchData.data && cpfSearchData.data.length > 0) {
         customerId = cpfSearchData.data[0].id;
       }
     }
 
-    if (!customerId) {
+    if (!customerId && emailToSearch) {
       const emailSearchRes = await fetch(`${ASAAS_URL}/customers?email=${encodeURIComponent(emailToSearch)}`, {
         headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
       });
-      const emailSearchData = await emailSearchRes.json();
-      if (emailSearchData && emailSearchData.data && emailSearchData.data.length > 0) {
-        customerId = emailSearchData.data[0].id;
-        // Garantir que o cliente existente tenha CPF/CNPJ no Asaas para liberar o Pix
-        const existingCust = emailSearchData.data[0];
-        if (!existingCust.cpfCnpj) {
-          const cpfToAttach = validCpfCnpj || '42035623000140';
-          try {
-            await fetch(`${ASAAS_URL}/customers/${customerId}`, {
-              method: 'POST',
-              headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ cpfCnpj: cpfToAttach })
-            });
-          } catch (_e) {}
+      if (emailSearchRes.ok) {
+        const emailSearchData = await emailSearchRes.json();
+        if (emailSearchData && emailSearchData.data && emailSearchData.data.length > 0) {
+          const existingCust = emailSearchData.data[0];
+          customerId = existingCust.id;
+          if (!existingCust.cpfCnpj || existingCust.cpfCnpj !== validCpfCnpj) {
+            try {
+              await fetch(`${ASAAS_URL}/customers/${customerId}`, {
+                method: 'POST',
+                headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cpfCnpj: validCpfCnpj })
+              });
+            } catch (_e) {}
+          }
         }
       }
     }
@@ -333,11 +321,12 @@ export async function POST(request: Request) {
     if (!customerId) {
       const customerPayload: any = {
         name: customerName || 'Cliente AçaíFood',
-        email: emailToSearch,
-        cpfCnpj: validCpfCnpj || '42035623000140'
+        email: emailToSearch || `cliente_${Date.now()}@acaifood.app.br`,
+        cpfCnpj: validCpfCnpj,
+        mobilePhone: customerPhone ? String(customerPhone).replace(/\D/g, '') : undefined
       };
 
-      let createRes = await fetch(`${ASAAS_URL}/customers`, {
+      const createRes = await fetch(`${ASAAS_URL}/customers`, {
         method: 'POST',
         headers: {
           'access_token': ASAAS_API_KEY,
@@ -345,20 +334,7 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify(customerPayload)
       });
-      let createData = await createRes.json();
-
-      if (!createData.id && customerPayload.cpfCnpj !== '42035623000140') {
-        customerPayload.cpfCnpj = '42035623000140';
-        createRes = await fetch(`${ASAAS_URL}/customers`, {
-          method: 'POST',
-          headers: {
-            'access_token': ASAAS_API_KEY,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(customerPayload)
-        });
-        createData = await createRes.json();
-      }
+      const createData = await createRes.json();
 
       if (createData.id) {
         customerId = createData.id;
@@ -435,24 +411,6 @@ export async function POST(request: Request) {
       paymentData = await payRes.json();
     }
 
-    // Se falhar por exigência de CPF no cliente Asaas, atualiza o cadastro do cliente e retenta
-    if (!paymentData.id && JSON.stringify(paymentData).toLowerCase().includes('cpf')) {
-      console.warn("Exigência de CPF detectada no Asaas, atualizando cadastro e retentando...", paymentData);
-      try {
-        await fetch(`${ASAAS_URL}/customers/${customerId}`, {
-          method: 'POST',
-          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cpfCnpj: '42035623000140' })
-        });
-        payRes = await fetch(`${ASAAS_URL}/payments`, {
-          method: 'POST',
-          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify(paymentBody)
-        });
-        paymentData = await payRes.json();
-      } catch (_cpfRetryErr) {}
-    }
-
     if (!paymentData.id) {
       const msg = paymentData.errors
         ? paymentData.errors.map((e: any) => e.description).join(', ')
@@ -460,38 +418,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Asaas Cobrança: ${msg}` }, { status: 400 });
     }
 
-    // Atualizar order no Supabase com o paymentId
+    // Obter QR Code dinâmico oficial do Asaas para a cobrança criada
+    const qrRes = await fetch(`${ASAAS_URL}/payments/${paymentData.id}/pixQrCode`, {
+      headers: { 'access_token': ASAAS_API_KEY }
+    });
+    const qrData = qrRes.ok ? await qrRes.json() : null;
+
+    if (!qrData || !qrData.encodedImage || !qrData.payload) {
+      const msg = qrData?.errors?.[0]?.description || qrData?.message || 'Falha ao obter QR Code do Asaas';
+      console.error("Erro Asaas ao obter pixQrCode:", qrData);
+      return NextResponse.json(
+        { error: `Não foi possível gerar o Pix oficial da cobrança: ${msg}` },
+        { status: 502 }
+      );
+    }
+
+    // Atualizar order no Supabase com o paymentId, status e charged_amount
     await supabase
       .from('orders')
       .update({
         asaas_payment_id: paymentData.id,
-        asaas_charge_status: paymentData.status
+        asaas_charge_status: paymentData.status,
+        charged_amount: calculatedValue
       })
       .eq('id', order.id);
-
-    // 4. Gerar Payload Pix oficial BACEN EMV-Co com VALOR AUTOMÁTICO PRÉ-FIXADO (Tag 54)
-    // Isso garante aceitação universal em todos os bancos e impede fraudes ou erros de handshake CobV
-    const { generateValidPixPayload } = await import('@/lib/pix');
-    const finalPixCopiaECola = generateValidPixPayload({
-      pixKey: process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || '42035623000140',
-      merchantName: 'ELETROMECANICA BAIA LTDA',
-      merchantCity: 'Portel',
-      amount: calculatedValue,
-      txId: '***'
-    });
 
     return NextResponse.json({
       success: true,
       orderId: order.id,
       paymentId: paymentData.id,
       invoiceUrl: paymentData.invoiceUrl || paymentData.bankSlipUrl,
-      pixQrCode: null, // PixModal gera QR code com a URL padrão para o finalPixCopiaECola com valor travado
-      pixCopiaECola: finalPixCopiaECola,
+      pixQrCode: qrData.encodedImage,
+      pixCopiaECola: qrData.payload,
       status: paymentData.status,
       totalValue: calculatedValue,
       deliveryPin: order.delivery_pin,
       pickupPin: order.pickup_pin,
-      isSandbox: false
+      isSandbox: ASAAS_URL.includes('sandbox')
     });
 
   } catch (error: any) {

@@ -29,12 +29,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Apenas administradores podem bloquear usuários.' }, { status: 403 });
     }
 
+    const adminSupabase = getSupabaseAdmin();
+
+    // Validação de autodesbloqueio: se o usuário estiver bloqueado ou pausado pelo admin no banco, rejeitar
+    if (!isAdmin) {
+      const { data: currentDbUser } = await adminSupabase
+        .from('users')
+        .select('status')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const currentStatus = String(currentDbUser?.status || '').toLowerCase();
+      if (currentStatus === 'blocked' || currentStatus === 'bloqueado' || currentStatus === 'paused' || currentStatus === 'pausado') {
+        return NextResponse.json(
+          { error: 'Sua conta está suspensa ou pausada pela moderação. Entre em contato com o suporte administrativo.' },
+          { status: 403 }
+        );
+      }
+    }
+
     const cleanStatus = status === 'blocked' ? 'blocked' : (status === 'paused' ? 'paused' : 'active');
     const isOnline = cleanStatus === 'active';
 
     // 1. Atualizar com Supabase Admin (Service Role)
     let updated = false;
-    const adminSupabase = getSupabaseAdmin();
     try {
       const { data, error } = await adminSupabase
         .from('users')

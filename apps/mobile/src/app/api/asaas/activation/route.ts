@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
-import { generateValidPixPayload } from '@/lib/pix';
 import { getFounderQuotaStatus } from '@/lib/founderQuota';
 
 export const dynamic = 'force-dynamic';
@@ -259,35 +258,25 @@ export async function POST(request: Request) {
       }
     }
 
-    let pixQrCode = null;
-    let pixCopiaECola = null;
-    try {
-      const qrRes = await fetch(`${ASAAS_URL}/payments/${payData.id}/pixQrCode`, {
-        headers: { 'access_token': ASAAS_API_KEY }
-      });
-      if (qrRes.ok) {
-        const qrData = await qrRes.json();
-        pixQrCode = qrData.encodedImage || null;
-        pixCopiaECola = qrData.payload || null;
-      }
-    } catch (_qErr) {}
+    const qrRes = await fetch(`${ASAAS_URL}/payments/${payData.id}/pixQrCode`, {
+      headers: { 'access_token': ASAAS_API_KEY }
+    });
+    const qrData = qrRes.ok ? await qrRes.json() : null;
 
-    if (!pixCopiaECola) {
-      pixCopiaECola = generateValidPixPayload({
-        pixKey: 'contato@acaifood.app.br',
-        merchantName: 'AcaiFood Ativacao',
-        merchantCity: 'BELEM',
-        amount: activationFee,
-        txId: `ACT${userId.slice(0, 6)}`
-      });
+    if (!qrData || !qrData.encodedImage || !qrData.payload) {
+      const msg = qrData?.errors?.[0]?.description || qrData?.message || 'Falha ao obter QR Code do Asaas';
+      return NextResponse.json(
+        { error: `Não foi possível obter o Pix oficial de ativação: ${msg}` },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json({
       success: true,
       isFounderSubsidized: false,
       paymentId: payData.id,
-      pixQrCode,
-      pixCopiaECola,
+      pixQrCode: qrData.encodedImage,
+      pixCopiaECola: qrData.payload,
       invoiceUrl: payData.invoiceUrl || payData.bankSlipUrl,
       value: activationFee
     });

@@ -520,6 +520,13 @@ export default function StorefrontPage() {
   const processCheckout = async () => {
     if (!cart.storeId || cart.items.length === 0) return;
 
+    const userCpf = store.currentUser?.cpfCnpj || (store.currentUser?.id ? store.users[store.currentUser.id]?.cpfCnpj : undefined);
+    if (!userCpf || !validateCpfCnpjDigits(userCpf)) {
+      alert('Por favor, informe seu CPF ou CNPJ de cadastro para gerar o Pix registrado no Banco Central.');
+      setCpfModalOpen(true);
+      return;
+    }
+
     let deliveryInfo: { address?: string; lat?: number; lng?: number; reference?: string } | undefined = undefined;
 
     if (addressMode === 'gps' && gpsLocation) {
@@ -552,6 +559,11 @@ export default function StorefrontPage() {
         return;
       }
 
+      if (res.error) {
+        alert(`Não foi possível gerar a cobrança: ${res.error}`);
+        return;
+      }
+
       if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
          setPixModalData({
             open: true,
@@ -563,22 +575,12 @@ export default function StorefrontPage() {
             isSandbox: res.isSandbox,
             totalValue: res.totalValue || finalCartTotal
          });
-
-         if (res.error) {
-            console.warn("Nota do checkout Asaas:", res.error);
-         }
          return;
-      }
-
-      if (res.error) {
-         alert(`Aviso do Asaas: ${res.error}`);
-      } else {
-         alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
       }
     } else if (typeof res === 'string' && res.startsWith('http')) {
       window.location.href = res;
     } else {
-      alert('✅ Pedido realizado com sucesso! A loja já recebeu seu pedido e iniciará o preparo.');
+      alert('✅ Pedido realizado com sucesso!');
     }
   };
 

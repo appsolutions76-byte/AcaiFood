@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabase';
-import { generateValidPixPayload } from '@/lib/pix';
+import { validateCpfCnpjDigits } from '@/lib/pix';
 import { initAudioUnlock, playNewOrderChime, playDeliveryAlertTone } from '@/lib/soundAlerts';
 
 // --- UTILITÁRIOS: Haversine e Coordenadas de Belém ---
@@ -396,13 +396,6 @@ export async function getAuthHeaders() {
   };
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;
-  }
-  const current = useAppStore.getState()?.currentUser;
-  if (current?.id) {
-    headers['x-user-id'] = current.id;
-  }
-  if (current?.role) {
-    headers['x-user-role'] = String(current.role).toLowerCase();
   }
   return headers;
 }
@@ -1180,7 +1173,7 @@ export const useAppStore = create<AppState>()(
                 body: JSON.stringify({
                   userId,
                   name: uAny?.name || 'Parceiro AçaíFood',
-                  email: uAny?.email || 'appsolutions76@gmail.com',
+                  email: uAny?.email || `parceiro_${userId}@acaifood.app.br`,
                   cpfCnpj: cpfCnpjToUse,
                   phone: uAny?.telefone || uAny?.phone || '',
                   endereco: uAny?.endereco || '',
@@ -1246,7 +1239,11 @@ export const useAppStore = create<AppState>()(
          lastFetchRatesTime = now;
 
          try {
-           const { data, error } = await supabase.from('platform_settings').select('*').limit(1).maybeSingle();
+           const { data, error } = await supabase
+             .from('platform_settings')
+             .select('id, b2c_fee_percentage, motoboy_fee_per_km, motoboy_platform_fee_percentage, b2b_fee_percentage, truck_fee_per_km, truck_platform_fee_percentage, col_fee_percentage, col_fee_per_km, col_platform_fee_percentage, col_fixed_price, payout_time, courier_payment_mode, courier_fixed_fee, transporter_payment_mode, transporter_fixed_fee, ecopoint_payment_mode, ecopoint_fixed_fee, asaas_fee_split_actors, asaas_pix_fee_fixed')
+             .limit(1)
+             .maybeSingle();
            if (data && !error) {
                set((state) => ({ rates: { 
                    ...state.rates,
@@ -1269,8 +1266,7 @@ export const useAppStore = create<AppState>()(
                    ecopoint_payment_mode: data.ecopoint_payment_mode || state.rates.ecopoint_payment_mode || 'KM',
                    ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? state.rates.ecopoint_fixed_fee ?? 0,
                    asaas_fee_split_actors: Number(data.asaas_fee_split_actors ?? state.rates.asaas_fee_split_actors ?? 1),
-                   asaas_pix_fee_fixed: Number(data.asaas_pix_fee_fixed ?? state.rates.asaas_pix_fee_fixed ?? 0.99),
-                   asaas_api_key: data.asaas_api_key || (state.rates as any).asaas_api_key || ''
+                   asaas_pix_fee_fixed: Number(data.asaas_pix_fee_fixed ?? state.rates.asaas_pix_fee_fixed ?? 0.99)
                } }));
            }
          } catch (error) {
@@ -1316,8 +1312,7 @@ export const useAppStore = create<AppState>()(
              ecopoint_payment_mode: mergedRates.ecopoint_payment_mode,
              ecopoint_fixed_fee: mergedRates.ecopoint_fixed_fee,
              asaas_fee_split_actors: mergedRates.asaas_fee_split_actors,
-             asaas_pix_fee_fixed: mergedRates.asaas_pix_fee_fixed,
-             asaas_api_key: (mergedRates as any).asaas_api_key
+             asaas_pix_fee_fixed: mergedRates.asaas_pix_fee_fixed
          };
          
          // Remove undefined values
@@ -2143,6 +2138,12 @@ export const useAppStore = create<AppState>()(
             }
           }
 
+          if (!userCpfCnpj || !validateCpfCnpjDigits(userCpfCnpj)) {
+            return {
+              error: 'Por favor, informe seu CPF para gerar o Pix registrado no Banco Central.'
+            };
+          }
+
           const subHeaders = await getAuthHeaders();
           let asaasResult: any = null;
           let checkoutErrorMsg = '';
@@ -2155,7 +2156,7 @@ export const useAppStore = create<AppState>()(
                 orderType: tipo,
                 targetId: targetId,
                 buyerId: currentUser.id,
-                customerEmail: currentUser.email || 'appsolutions76@gmail.com',
+                customerEmail: currentUser.email || null,
                 customerName: currentUser.name || 'Cliente AçaíFood',
                 customerPhone: currentUser.telefone || (currentUser as any).phone || '',
                 customerCpfCnpj: userCpfCnpj,
@@ -2173,76 +2174,60 @@ export const useAppStore = create<AppState>()(
             });
 
             const apiData = await apiRes.json();
-            if (apiRes.ok && apiData && (apiData.pixCopiaECola || apiData.pixQrCode || apiData.invoiceUrl || apiData.orderId)) {
+            if (apiRes.ok && apiData && (apiData.pixCopiaECola || apiData.pixQrCode || apiData.invoiceUrl)) {
               asaasResult = apiData;
             } else if (apiData && apiData.error) {
               checkoutErrorMsg = apiData.error;
             }
           } catch (err: any) {
             console.warn("Erro ao chamar /api/asaas/checkout:", err);
+            checkoutErrorMsg = err.message || 'Erro de conexão ao gerar o Pix';
           }
 
-          const orderIdToUse = asaasResult?.orderId || `PED-${String(state.orderCounter).padStart(3, '0')}`;
-          const finalPin = asaasResult?.deliveryPin || Math.floor(1000 + Math.random() * 9000).toString();
-          const finalPickupPin = asaasResult?.pickupPin || (tipo !== 'COLETA' ? Math.floor(1000 + Math.random() * 9000).toString() : undefined);
+          if (!asaasResult || (!asaasResult.pixCopiaECola && !asaasResult.pixQrCode && !asaasResult.invoiceUrl)) {
+            return {
+              error: checkoutErrorMsg || 'Não foi possível gerar o Pix oficial da cobrança no Asaas. Tente novamente.'
+            };
+          }
 
-          // Fallback Pix estático oficial BACEN vinculado à chave da Plataforma
-          const platformPixKey = process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || '42035623000140';
-          const validPlatformPayload = generateValidPixPayload({
-            pixKey: platformPixKey,
-            merchantName: 'ELETROMECANICA BAIA LTDA',
-            merchantCity: 'PORTEL',
-            amount: totalValue,
-            txId: '***'
-          });
+          const orderIdToUse = asaasResult.orderId;
+          const finalPin = asaasResult.deliveryPin || novoPedido.deliveryPin;
+          const finalPickupPin = asaasResult.pickupPin || novoPedido.pickupPin;
 
-          // Salva pedido no estado local com dados do Pix anexados
+          // Salva pedido no estado local com dados do Pix oficial Asaas
           const finalPedido: Order = { 
             ...novoPedido, 
             id: orderIdToUse, 
             deliveryPin: finalPin,
             pickupPin: finalPickupPin,
-            pixQrCode: asaasResult?.pixQrCode || null,
-            pixCopiaECola: asaasResult?.pixCopiaECola || validPlatformPayload || null,
-            invoiceUrl: asaasResult?.invoiceUrl || null,
-            totalValue: asaasResult?.totalValue || totalValue,
-            ...(asaasResult?.paymentId ? { asaasPaymentId: asaasResult.paymentId, paymentId: asaasResult.paymentId } : {})
+            pixQrCode: asaasResult.pixQrCode || null,
+            pixCopiaECola: asaasResult.pixCopiaECola || null,
+            invoiceUrl: asaasResult.invoiceUrl || null,
+            totalValue: asaasResult.totalValue || totalValue,
+            ...(asaasResult.paymentId ? { asaasPaymentId: asaasResult.paymentId, paymentId: asaasResult.paymentId } : {})
           };
 
           set({ 
              orders: [finalPedido, ...get().orders.filter(o => o.id !== orderIdToUse)], 
              orderCounter: get().orderCounter + 1,
-             cart: { storeId: null, items: [] } // Limpa o carrinho
+             cart: { storeId: null, items: [] } // Limpa o carrinho somente após sucesso confirmado
           });
 
-          // 1. Se o Asaas gerou a cobrança Pix oficial (com Split para batedeira/fornecedor e motorista)
-          if (asaasResult && (asaasResult.pixCopiaECola || asaasResult.pixQrCode || asaasResult.invoiceUrl)) {
-             return {
-                invoiceUrl: asaasResult.invoiceUrl,
-                pixQrCode: asaasResult.pixQrCode || null,
-                pixCopiaECola: asaasResult.pixCopiaECola || null,
-                paymentId: asaasResult.paymentId,
-                orderId: orderIdToUse,
-                isSandbox: !!asaasResult.isSandbox,
-                totalValue: asaasResult.totalValue || totalValue
-             };
-          }
-
           return {
-             invoiceUrl: asaasResult?.invoiceUrl || null,
-             pixQrCode: null,
-             pixCopiaECola: validPlatformPayload,
-             paymentId: asaasResult?.paymentId || null,
+             invoiceUrl: asaasResult.invoiceUrl || null,
+             pixQrCode: asaasResult.pixQrCode || null,
+             pixCopiaECola: asaasResult.pixCopiaECola || null,
+             paymentId: asaasResult.paymentId,
              orderId: orderIdToUse,
-             isSandbox: false,
-             totalValue: totalValue,
-             error: checkoutErrorMsg || undefined
+             isSandbox: Boolean(asaasResult.isSandbox),
+             totalValue: asaasResult.totalValue || totalValue
           };
           
         } catch(e: any) {
             console.error("Fatal exception during checkout:", e);
-            alert("Erro fatal ao processar o pagamento: " + (e.message || JSON.stringify(e)));
-            return null;
+            return {
+              error: e.message || 'Erro fatal ao processar o pagamento'
+            };
         }
 
       },

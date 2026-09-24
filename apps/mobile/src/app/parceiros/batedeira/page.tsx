@@ -605,6 +605,10 @@ export default function BatedeiraDashboard() {
     setB2bCheckoutModalOpen(false);
 
     if (res && typeof res === 'object') {
+      if (res.error) {
+         alert(`Não foi possível realizar o pedido B2B: ${res.error}`);
+         return;
+      }
       if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
          setPixModalData({
             open: true,
@@ -618,11 +622,7 @@ export default function BatedeiraDashboard() {
          });
          return;
       }
-      if (res.error) {
-         alert(`Aviso do Asaas: ${res.error}`);
-      } else {
-         alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
-      }
+      alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
     } else if (typeof res === 'string' && res.startsWith('http')) {
       window.location.href = res;
     } else {
@@ -1291,6 +1291,10 @@ export default function BatedeiraDashboard() {
                           <button onClick={async () => {
                               const res: any = await store.criarPedido('COLETA');
                               if (res && typeof res === 'object') {
+                                if (res.error) {
+                                   alert(`Não foi possível chamar a caçamba: ${res.error}`);
+                                   return;
+                                }
                                 if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
                                    setPixModalData({
                                       open: true,
@@ -1304,11 +1308,7 @@ export default function BatedeiraDashboard() {
                                    });
                                    return;
                                 }
-                                if (res.error) {
-                                   alert(`Aviso do Asaas: ${res.error}`);
-                                } else {
-                                   alert('✅ Chamada de caçamba registrada com sucesso!');
-                                }
+                                alert('✅ Chamada de caçamba registrada com sucesso!');
                               } else if (typeof res === 'string' && res.startsWith('http')) {
                                 window.location.href = res;
                               } else {

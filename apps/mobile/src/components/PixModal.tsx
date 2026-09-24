@@ -110,9 +110,7 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
     ? (data.qrCode.startsWith('data:') || data.qrCode.startsWith('http')
         ? data.qrCode
         : `data:image/png;base64,${data.qrCode}`)
-    : (data.copiaECola
-        ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data.copiaECola)}`
-        : null);
+    : null;
 
   const handleCopy = () => {
     if (data.copiaECola) {

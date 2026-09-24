@@ -157,20 +157,61 @@ export async function processWithdrawalApproval(
     return { success: false, status: 'FALHOU', error: failMsg };
   }
 
-  // 6. Realizar transferência via API Asaas
+  // 6. Realizar transferência via API Asaas unificada
   let asaasTransferId = '';
+  let transferStatus = '';
   let apiSuccess = false;
   let apiErrorMsg = '';
 
+  const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
+  const asaasApiKey = await getAsaasApiKey();
+  const baseUrl = getAsaasBaseUrl(asaasApiKey);
+  const isSandbox = baseUrl.includes('sandbox');
+  const keySuffix = asaasApiKey.length >= 4 ? asaasApiKey.slice(-4) : 'none';
+  console.log(`[WithdrawalApproval] Processando saque #${requestId.substring(0, 8)} | Ambiente: ${isSandbox ? 'Sandbox' : 'Produção'} | Chave: ***${keySuffix}`);
+
+  if (!asaasApiKey) {
+    const failMsg = 'Chave ASAAS_API_KEY não configurada no servidor.';
+    await adminSupabase
+      .from('withdrawal_requests')
+      .update({
+        status: 'FALHOU',
+        failure_reason: failMsg,
+        reviewed_by: actorId,
+        reviewed_at: new Date().toISOString()
+      })
+      .eq('id', requestId);
+    return { success: false, status: 'FALHOU', error: failMsg };
+  }
+
+  // 6.1 Pré-validação de saldo disponível na conta Asaas
   try {
-    const asaasApiKey = process.env.ASAAS_API_KEY || '';
-    const asaasEnv = process.env.ASAAS_ENVIRONMENT || 'production';
-    const baseUrl = asaasEnv === 'sandbox' ? 'https://sandbox.asaas.com/api/v3' : 'https://www.asaas.com/api/v3';
-
-    if (!asaasApiKey) {
-      throw new Error('Chave ASAAS_API_KEY não configurada no servidor.');
+    const balRes = await fetch(`${baseUrl}/finance/balance`, {
+      headers: { 'access_token': asaasApiKey }
+    });
+    if (balRes.ok) {
+      const balData = await balRes.json();
+      const currentAsaasBalance = typeof balData.balance === 'number' ? balData.balance : (typeof balData.totalBalance === 'number' ? balData.totalBalance : null);
+      if (currentAsaasBalance !== null && currentAsaasBalance < finalAmount) {
+        const failMsg = 'Saldo insuficiente na conta Asaas';
+        console.warn(`[WithdrawalApproval] Saldo insuficiente no Asaas. Disponível: R$ ${currentAsaasBalance}, Solicitado: R$ ${finalAmount}`);
+        await adminSupabase
+          .from('withdrawal_requests')
+          .update({
+            status: 'FALHOU',
+            failure_reason: failMsg,
+            reviewed_by: actorId,
+            reviewed_at: new Date().toISOString()
+          })
+          .eq('id', requestId);
+        return { success: false, status: 'FALHOU', error: failMsg };
+      }
     }
+  } catch (balErr) {
+    console.warn('[WithdrawalApproval] Aviso ao consultar saldo Asaas:', balErr);
+  }
 
+  try {
     const res = await fetch(`${baseUrl}/transfers`, {
       method: 'POST',
       headers: {
@@ -185,6 +226,7 @@ export async function processWithdrawalApproval(
     if (res.ok && data?.id) {
       apiSuccess = true;
       asaasTransferId = data.id;
+      transferStatus = data.status || 'PENDING';
     } else {
       apiErrorMsg = data?.errors?.[0]?.description || data?.message || 'Erro na resposta do Asaas ao efetuar transferência';
     }
@@ -194,29 +236,31 @@ export async function processWithdrawalApproval(
 
   const nowIso = new Date().toISOString();
 
-  // 7. Em caso de Sucesso
+  // 7. Em caso de Sucesso ou Processamento no Asaas
   if (apiSuccess) {
     const isDriver = ['motorista', 'motoboy', 'caminhao', 'courier'].includes(String(requestRow.role || partnerUser.role).toLowerCase());
+    const isDone = transferStatus === 'DONE' || transferStatus === 'COMPLETED' || transferStatus === 'CONFIRMED';
+    const finalRequestStatus = isDone ? 'PAGO' : 'PROCESSING';
     
     // Atualizar status da solicitação
     await adminSupabase
       .from('withdrawal_requests')
       .update({
-        status: 'PAGO',
+        status: finalRequestStatus,
         requested_amount: finalAmount,
         order_ids: finalOrderIds,
         asaas_transfer_id: asaasTransferId,
         pix_key_used: transferPayload.pixAddressKey || null,
         wallet_id_used: transferPayload.walletId || null,
-        paid_at: nowIso,
+        paid_at: isDone ? nowIso : null,
         reviewed_by: actorId,
         reviewed_at: nowIso,
         processed_automatically: (actorId === null)
       })
       .eq('id', requestId);
 
-    // Marcar pedidos cobertos como pagos
-    if (finalOrderIds.length > 0) {
+    // Marcar pedidos cobertos como pagos se transferência liquidada
+    if (isDone && finalOrderIds.length > 0) {
       const updateField = isDriver ? { payout_driver_done: true } : { payout_seller_done: true };
       await adminSupabase
         .from('orders')
@@ -244,7 +288,7 @@ export async function processWithdrawalApproval(
           order_id: finalOrderIds?.[0] || null,
           amount: finalAmount,
           type: 'debit',
-          reason: `Saque processado Pix Asaas (ID: ${asaasTransferId})`,
+          reason: `Saque ${isDone ? 'processado' : 'enviado'} Pix Asaas (ID: ${asaasTransferId})`,
           balance_after: balanceAfter
         });
     } catch (lErr) {
@@ -253,10 +297,12 @@ export async function processWithdrawalApproval(
 
     return {
       success: true,
-      status: 'PAGO',
+      status: finalRequestStatus as any,
       transferId: asaasTransferId,
       amount: finalAmount,
-      message: `Saque de R$ ${finalAmount.toFixed(2)} processado com sucesso via Pix Asaas!`
+      message: isDone 
+        ? `Saque de R$ ${finalAmount.toFixed(2)} processado e liquidado com sucesso via Pix Asaas!`
+        : `Transferência de R$ ${finalAmount.toFixed(2)} enviada ao Asaas (Status: ${transferStatus}). Aguardando liquidação bancária.`
     };
   }
 

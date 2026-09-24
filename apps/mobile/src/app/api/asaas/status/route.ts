@@ -186,8 +186,69 @@ export async function POST(request: Request) {
     console.log("Recebido Webhook Asaas (POST):", JSON.stringify(body));
 
     const event = body.event;
-    const payment = body.payment || body;
+    const payment = body.payment || (event?.startsWith('PAYMENT_') ? body : null);
+    const transfer = body.transfer || (event?.startsWith('TRANSFER_') ? body : null);
 
+    // 1. Processamento de Webhooks de Transferência / Saque Pix (TRANSFER_*)
+    if (transfer || String(event || '').startsWith('TRANSFER_')) {
+      const transferId = transfer?.id || body.id;
+      const transferStatus = transfer?.status || (
+        (event === 'TRANSFER_DONE' || event === 'TRANSFER_COMPLETED') ? 'DONE' :
+        (event === 'TRANSFER_FAILED' || event === 'TRANSFER_CANCELLED' || event === 'TRANSFER_REVERSED') ? 'FAILED' :
+        'PENDING'
+      );
+
+      const supabase = getSupabaseAdmin();
+      if (transferId) {
+        if (transferStatus === 'DONE' || event === 'TRANSFER_DONE' || event === 'TRANSFER_COMPLETED') {
+          const { data: wr } = await supabase
+            .from('withdrawal_requests')
+            .select('*')
+            .eq('asaas_transfer_id', transferId)
+            .maybeSingle();
+
+          if (wr) {
+            const nowIso = new Date().toISOString();
+            await supabase
+              .from('withdrawal_requests')
+              .update({
+                status: 'PAGO',
+                paid_at: nowIso
+              })
+              .eq('id', wr.id);
+
+            if (Array.isArray(wr.order_ids) && wr.order_ids.length > 0) {
+              const isDriver = ['motorista', 'motoboy', 'caminhao', 'courier'].includes(String(wr.role || '').toLowerCase());
+              const updateField = isDriver ? { payout_driver_done: true } : { payout_seller_done: true };
+              await supabase.from('orders').update(updateField).in('id', wr.order_ids);
+            }
+            console.log(`✅ Webhook Asaas: Saque #${wr.id} liquidado com sucesso (Transferência #${transferId})!`);
+          }
+        } else if (transferStatus === 'FAILED' || event === 'TRANSFER_FAILED' || event === 'TRANSFER_CANCELLED' || event === 'TRANSFER_REVERSED') {
+          const failReason = transfer?.failReason || transfer?.description || `Transferência ${transferStatus.toLowerCase()} no Asaas`;
+          const { data: wr } = await supabase
+            .from('withdrawal_requests')
+            .select('*')
+            .eq('asaas_transfer_id', transferId)
+            .maybeSingle();
+
+          if (wr) {
+            await supabase
+              .from('withdrawal_requests')
+              .update({
+                status: 'FALHOU',
+                failure_reason: failReason
+              })
+              .eq('id', wr.id);
+            console.warn(`⚠️ Webhook Asaas: Saque #${wr.id} falhou (Transferência #${transferId}): ${failReason}`);
+          }
+        }
+      }
+
+      return NextResponse.json({ success: true, processed: true, event });
+    }
+
+    // 2. Processamento de Webhooks de Cobrança Pix (PAYMENT_*)
     const status = payment?.status || (event === 'PAYMENT_RECEIVED' ? 'RECEIVED' : event === 'PAYMENT_CONFIRMED' ? 'CONFIRMED' : 'PENDING');
     const orderId = payment?.externalReference;
     const paymentId = payment?.id;
@@ -210,6 +271,33 @@ export async function POST(request: Request) {
           return NextResponse.json({ success: false, error: 'Identificador do pedido ausente' }, { status: 400 });
         }
 
+        // Buscar dados do pedido para validação de integridade de valor
+        let orderQuery = supabase.from('orders').select('id, status, charged_amount, products_subtotal');
+        if (orderId) {
+          orderQuery = orderQuery.eq('id', orderId);
+        } else if (paymentId) {
+          orderQuery = orderQuery.eq('asaas_payment_id', paymentId);
+        }
+        const { data: currentOrder } = await orderQuery.maybeSingle();
+
+        if (currentOrder) {
+          const expectedAmount = currentOrder.charged_amount ? Number(currentOrder.charged_amount) : null;
+          const receivedAmount = payment?.value ? Number(payment.value) : null;
+
+          if (expectedAmount !== null && receivedAmount !== null && Math.abs(expectedAmount - receivedAmount) > 0.05) {
+            console.error(`🚨 [Webhook Asaas] Divergência de valor no pedido #${currentOrder.id}! Esperado: R$ ${expectedAmount}, Recebido: R$ ${receivedAmount}`);
+            try {
+              await supabase.from('incident_logs').insert({
+                order_id: currentOrder.id,
+                action_type: 'PAYMENT_VALUE_MISMATCH',
+                description: `Valor pago no Asaas (R$ ${receivedAmount}) difere do valor cobrado (R$ ${expectedAmount})`,
+                created_at: new Date().toISOString()
+              });
+            } catch (_logErr) {}
+            return NextResponse.json({ success: false, error: 'Divergência no valor do pagamento recebido' }, { status: 400 });
+          }
+        }
+
         let query = supabase.from('orders').update({
           status: 'PAID',
           paid_at: new Date().toISOString(),
@@ -230,9 +318,10 @@ export async function POST(request: Request) {
           console.log(`✅ Webhook Asaas: Pedido #${orderId || paymentId} atualizado para PAID com sucesso!`);
           
           // Gerar PIN de entrega
-          if (orderId) {
+          const finalOrderId = orderId || currentOrder?.id;
+          if (finalOrderId) {
             try {
-              await supabase.rpc('generate_delivery_pin', { p_order_id: orderId });
+              await supabase.rpc('generate_delivery_pin', { p_order_id: finalOrderId });
             } catch (_e) {}
           }
         }
