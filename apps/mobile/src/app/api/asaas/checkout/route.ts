@@ -53,6 +53,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Usuário comprador não identificado na sessão' }, { status: 401 });
     }
 
+    // Garantir que o perfil do comprador autenticado existe na tabela users para integridade de FK
+    const { data: existingBuyer } = await supabase.from('users').select('id, cpf_cnpj').eq('id', validBuyerId).maybeSingle();
+    if (!existingBuyer) {
+      try {
+        await supabase.from('users').insert({
+          id: validBuyerId,
+          name: customerName || auth.user?.user_metadata?.name || 'Cliente AçaíFood',
+          email: customerEmail || auth.user?.email || `cliente_${validBuyerId}@acaifood.app.br`,
+          phone: customerPhone || null,
+          cpf_cnpj: customerCpfCnpj || null,
+          role: 'cliente'
+        });
+      } catch (_buyerErr) {
+        console.warn("Aviso ao sincronizar perfil do comprador em users:", _buyerErr);
+      }
+    } else if (customerCpfCnpj && existingBuyer.cpf_cnpj !== customerCpfCnpj) {
+      try {
+        await supabase.from('users').update({ cpf_cnpj: customerCpfCnpj }).eq('id', validBuyerId);
+      } catch (_updErr) {}
+    }
+
     // Se o pedido não existe no banco, criar com Service Role no servidor
     if (!order) {
       // Resolver seller_storefront_id
@@ -60,15 +81,29 @@ export async function POST(request: Request) {
       const storeTargetId = orderType === 'COLETA' ? validBuyerId : targetId;
 
       if (storeTargetId) {
-        // Verificar se é ID de storefront
+        // 1. Verificar se é ID de storefront
         const { data: sfById } = await supabase.from('storefronts').select('id, partner_id').eq('id', storeTargetId).maybeSingle();
         if (sfById) {
           sellerStorefrontId = sfById.id;
         } else {
-          // Verificar se é partner_id
+          // 2. Verificar se é partner_id
           const { data: sfByPartner } = await supabase.from('storefronts').select('id, partner_id').eq('partner_id', storeTargetId).maybeSingle();
           if (sfByPartner) {
             sellerStorefrontId = sfByPartner.id;
+          } else {
+            // 3. Se o parceiro existe em users mas ainda não tem storefront, auto-criar
+            try {
+              const { data: partnerUser } = await supabase.from('users').select('id, name').eq('id', storeTargetId).maybeSingle();
+              if (partnerUser) {
+                const { data: newSf } = await supabase.from('storefronts').insert({
+                  partner_id: partnerUser.id,
+                  store_name: partnerUser.name || 'Loja AçaíFood'
+                }).select('id').maybeSingle();
+                if (newSf) sellerStorefrontId = newSf.id;
+              }
+            } catch (_sfAutoErr) {
+              console.warn("Aviso ao auto-criar storefront para parceiro:", _sfAutoErr);
+            }
           }
         }
       }
@@ -90,14 +125,16 @@ export async function POST(request: Request) {
         delivery_pin: deliveryPin,
         pickup_pin: pickupPin,
         delivery_address: deliveryInfo?.address || null,
-        delivery_lat: deliveryInfo?.lat || null,
-        delivery_lng: deliveryInfo?.lng || null,
+        delivery_lat: deliveryInfo?.lat ? Number(deliveryInfo.lat) : null,
+        delivery_lng: deliveryInfo?.lng ? Number(deliveryInfo.lng) : null,
         delivery_reference: deliveryInfo?.reference || null
       }).select().single();
 
       if (createOrderErr || !newOrder) {
         console.error("Erro fatal ao criar pedido no banco:", createOrderErr);
-        return NextResponse.json({ error: 'Erro ao registrar pedido no banco de dados' }, { status: 500 });
+        return NextResponse.json({ 
+          error: `Erro ao registrar pedido no banco: ${createOrderErr?.message || createOrderErr?.details || 'Falha de gravação'}` 
+        }, { status: 500 });
       }
 
       order = newOrder;
