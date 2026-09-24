@@ -129,8 +129,9 @@ export default function MotoboyDashboard() {
     if (!isReady) return false;
     return true;
   });
+  const [serverBalance, setServerBalance] = useState<number | null>(null);
   const minhasCorridasAll = (store.orders || []).filter((o: any) => o && currentUser?.id && o.motoristaId === currentUser.id);
-  const ganhosHoje = minhasCorridasAll.filter((o: any) => o && isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + (curr ? getMotoboyFee(curr) : 0), 0);
+  const ganhosHoje = serverBalance !== null ? serverBalance : minhasCorridasAll.filter((o: any) => o && isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + (curr ? getMotoboyFee(curr) : 0), 0);
   const saquesHoje = currentUser?.id ? getDailyWithdrawalCount(currentUser.id) : 0;
 
   const motoActiveOrders = minhasCorridasAll.filter((o: any) => o && !isDelivered(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
@@ -709,7 +710,7 @@ export default function MotoboyDashboard() {
         {/* 4. ABA: CARTEIRA DIGITAL & SAQUES PIX ASAAS */}
         {activeTab === 'carteira' && (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-            <PartnerWithdrawalSection partnerId={currentUser.id} role="motorista" />
+            <PartnerWithdrawalSection partnerId={currentUser.id} role="motorista" onBalanceLoaded={setServerBalance} />
           </div>
         )}
       </div>

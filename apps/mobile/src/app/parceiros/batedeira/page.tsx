@@ -458,6 +458,7 @@ export default function BatedeiraDashboard() {
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  const [serverBalance, setServerBalance] = useState<number | null>(null);
   const mySfIds = ((store.users[currentUser.id] as any)?.storefronts || []).map((s: any) => s.id);
   const meusPedidosAll = (store.orders || []).filter((o: any) => {
     if (!currentUser?.id) return false;
@@ -469,7 +470,7 @@ export default function BatedeiraDashboard() {
                       (o.type === 'B2C' && o.lojaNome && currentUser.name && o.lojaNome.toLowerCase().trim() === currentUser.name.toLowerCase().trim());
     return isMyStore;
   });
-  const vendasHoje = meusPedidosAll.filter((o: any) => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone).reduce((acc: number, curr: any) => acc + (curr.taxas?.repasse || 0), 0);
+  const vendasHoje = serverBalance !== null ? serverBalance : meusPedidosAll.filter((o: any) => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone).reduce((acc: number, curr: any) => acc + (curr.taxas?.repasse || 0), 0);
   const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
   
   const batedeiraActiveOrders = meusPedidosAll.filter((o: any) => 
@@ -2200,6 +2201,7 @@ export default function BatedeiraDashboard() {
             <PartnerWithdrawalSection 
               partnerId={currentUser.id} 
               role="loja" 
+              onBalanceLoaded={setServerBalance}
             />
           </div>
         )}

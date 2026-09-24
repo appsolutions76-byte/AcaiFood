@@ -9,9 +9,10 @@ interface PartnerWithdrawalSectionProps {
   partnerId: string;
   role: string;
   showToast?: (msg: string) => void;
+  onBalanceLoaded?: (balance: number) => void;
 }
 
-export function PartnerWithdrawalSection({ partnerId, role, showToast }: PartnerWithdrawalSectionProps) {
+export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalanceLoaded }: PartnerWithdrawalSectionProps) {
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
   const [balanceData, setBalanceData] = useState<{
@@ -30,6 +31,9 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast }: Partner
       const data = await res.json();
       if (res.ok && data.success) {
         setBalanceData(data);
+        if (typeof onBalanceLoaded === 'function') {
+          onBalanceLoaded(Number(data.totalDisponivel || 0));
+        }
       } else {
         console.warn("Aviso ao carregar dados de saque:", data.error);
       }
