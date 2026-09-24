@@ -1271,13 +1271,13 @@ export const useAppStore = create<AppState>()(
                    col_mot_plat: data.col_platform_fee_percentage ?? state.rates.col_mot_plat,
                    col_valor: data.col_fixed_price ?? state.rates.col_valor,
                    payout_time: data.payout_time || state.rates.payout_time || '22:00',
-                   courier_payment_mode: data.courier_payment_mode || state.rates.courier_payment_mode || 'KM',
-                   courier_fixed_fee: data.courier_fixed_fee ?? state.rates.courier_fixed_fee ?? 0,
-                   transporter_payment_mode: data.transporter_payment_mode || state.rates.transporter_payment_mode || 'KM',
-                   transporter_fixed_fee: data.transporter_fixed_fee ?? state.rates.transporter_fixed_fee ?? 0,
-                   ecopoint_payment_mode: data.ecopoint_payment_mode || state.rates.ecopoint_payment_mode || 'KM',
-                   ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? state.rates.ecopoint_fixed_fee ?? 0,
-                   asaas_fee_split_actors: Number(data.asaas_fee_split_actors ?? state.rates.asaas_fee_split_actors ?? 1),
+                   courier_payment_mode: data.courier_payment_mode || state.rates.courier_payment_mode || 'FIXED',
+                   courier_fixed_fee: data.courier_fixed_fee ?? state.rates.courier_fixed_fee ?? 4,
+                   transporter_payment_mode: data.transporter_payment_mode || state.rates.transporter_payment_mode || 'FIXED',
+                   transporter_fixed_fee: data.transporter_fixed_fee ?? state.rates.transporter_fixed_fee ?? 4,
+                   ecopoint_payment_mode: data.ecopoint_payment_mode || state.rates.ecopoint_payment_mode || 'FIXED',
+                   ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? state.rates.ecopoint_fixed_fee ?? 7.5,
+                   asaas_fee_split_actors: Number(data.asaas_fee_split_actors ?? state.rates.asaas_fee_split_actors ?? 3),
                    asaas_pix_fee_fixed: Number(data.asaas_pix_fee_fixed ?? state.rates.asaas_pix_fee_fixed ?? 0.99)
                } }));
            }
