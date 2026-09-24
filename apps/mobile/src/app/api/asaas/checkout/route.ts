@@ -257,23 +257,24 @@ export async function POST(request: Request) {
         if (existingPayData && existingPayData.data && existingPayData.data.length > 0) {
           const existingPayment = existingPayData.data[0];
           if (existingPayment.status !== 'CANCELLED' && existingPayment.status !== 'REFUNDED') {
-            let existingPix: any = {};
-            try {
-              const pixRes = await fetch(`${ASAAS_URL}/payments/${existingPayment.id}/pixQrCode`, {
-                headers: { 'access_token': ASAAS_API_KEY }
-              });
-              existingPix = await pixRes.json();
-            } catch (_e) {}
+            const { generateValidPixPayload } = await import('@/lib/pix');
+            const validPlatformPayload = generateValidPixPayload({
+              pixKey: process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || '42035623000140',
+              merchantName: 'ELETROMECANICA BAIA LTDA',
+              merchantCity: 'Portel',
+              amount: existingPayment.value || calculatedValue,
+              txId: '***'
+            });
 
             return NextResponse.json({
               success: true,
               orderId: order.id,
               paymentId: existingPayment.id,
               invoiceUrl: existingPayment.invoiceUrl || existingPayment.bankSlipUrl,
-              pixQrCode: existingPix.encodedImage || null,
-              pixCopiaECola: existingPix.payload || null,
+              pixQrCode: null,
+              pixCopiaECola: validPlatformPayload,
               status: existingPayment.status,
-              totalValue: calculatedValue,
+              totalValue: existingPayment.value || calculatedValue,
               deliveryPin: order.delivery_pin,
               pickupPin: order.pickup_pin,
               isSandbox: false,
@@ -468,23 +469,13 @@ export async function POST(request: Request) {
       })
       .eq('id', order.id);
 
-    // Buscar QR Code Pix oficial no Asaas
-    let pixData: any = {};
-    try {
-      const pixRes = await fetch(`${ASAAS_URL}/payments/${paymentData.id}/pixQrCode`, {
-        headers: { 'access_token': ASAAS_API_KEY }
-      });
-      pixData = await pixRes.json();
-    } catch (e) {
-      console.warn("Erro ao buscar QR Code Pix do Asaas:", e);
-    }
-
-    // Se o Asaas não retornou payload, gerar payload compatível BACEN
+    // 4. Gerar Payload Pix oficial BACEN EMV-Co com VALOR AUTOMÁTICO PRÉ-FIXADO (Tag 54)
+    // Isso garante aceitação universal em todos os bancos e impede fraudes ou erros de handshake CobV
     const { generateValidPixPayload } = await import('@/lib/pix');
-    const finalPixCopiaECola = pixData.payload || generateValidPixPayload({
+    const finalPixCopiaECola = generateValidPixPayload({
       pixKey: process.env.NEXT_PUBLIC_PLATFORM_PIX_KEY || '42035623000140',
       merchantName: 'ELETROMECANICA BAIA LTDA',
-      merchantCity: 'PORTEL',
+      merchantCity: 'Portel',
       amount: calculatedValue,
       txId: '***'
     });
@@ -494,7 +485,7 @@ export async function POST(request: Request) {
       orderId: order.id,
       paymentId: paymentData.id,
       invoiceUrl: paymentData.invoiceUrl || paymentData.bankSlipUrl,
-      pixQrCode: pixData.encodedImage || null,
+      pixQrCode: null, // PixModal gera QR code com a URL padrão para o finalPixCopiaECola com valor travado
       pixCopiaECola: finalPixCopiaECola,
       status: paymentData.status,
       totalValue: calculatedValue,
