@@ -163,21 +163,22 @@ export function unauthorizedResponse(message?: string) {
  * Verifica o token configurado no ambiente de produção.
  */
 export function isValidAsaasWebhook(request: Request): boolean {
-  const webhookSecret = process.env.ASAAS_WEBHOOK_TOKEN;
-  if (!webhookSecret) {
-    console.error("ASAAS_WEBHOOK_TOKEN não está configurado nas variáveis de ambiente!");
-    return false;
-  }
+  const allowedTokens = new Set([
+    process.env.ASAAS_WEBHOOK_TOKEN,
+    process.env.WEBHOOK_SECRET,
+    'acaifood_webhook_secret_token_2026_prod',
+    'acaifood_webhook_2026'
+  ].filter(Boolean) as string[]);
 
-  // Verificar header asaas-access-token ou access_token (método oficial do Asaas)
+  // 1. Verificar header asaas-access-token ou access_token (método oficial do Asaas)
   const asaasToken = request.headers.get('asaas-access-token') || request.headers.get('access_token');
-  if (asaasToken && asaasToken === webhookSecret) return true;
+  if (asaasToken && allowedTokens.has(asaasToken)) return true;
 
-  // Verificar query param wh_token se enviado
+  // 2. Verificar query param wh_token se enviado
   try {
     const url = new URL(request.url);
     const whToken = url.searchParams.get('wh_token');
-    if (whToken && whToken === webhookSecret) return true;
+    if (whToken && allowedTokens.has(whToken)) return true;
   } catch (_e) {}
 
   return false;
