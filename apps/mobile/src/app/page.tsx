@@ -517,12 +517,14 @@ export default function StorefrontPage() {
     await processCheckout();
   };
 
-  const processCheckout = async () => {
+  const processCheckout = async (overrideCpf?: string) => {
     if (!cart.storeId || cart.items.length === 0) return;
 
-    const userCpf = store.currentUser?.cpfCnpj || (store.currentUser?.id ? store.users[store.currentUser.id]?.cpfCnpj : undefined);
-    if (!userCpf || !validateCpfCnpjDigits(userCpf)) {
-      alert('Por favor, informe seu CPF ou CNPJ de cadastro para gerar o Pix registrado no Banco Central.');
+    const rawCpf = overrideCpf || cpfInputValue || store.currentUser?.cpfCnpj || (store.currentUser?.id ? store.users[store.currentUser.id]?.cpfCnpj : undefined);
+    const cleanedCpf = rawCpf ? String(rawCpf).replace(/\D/g, '') : '';
+
+    if (!cleanedCpf || !validateCpfCnpjDigits(cleanedCpf)) {
+      setCpfInputValue(cleanedCpf || '');
       setCpfModalOpen(true);
       return;
     }
@@ -549,12 +551,12 @@ export default function StorefrontPage() {
 
     const isSupplier = store.users?.[cart.storeId]?.role === 'fornecedor';
     const orderType = isSupplier ? 'B2B' : 'B2C';
-    const res: any = await store.criarPedido(orderType, cart.storeId, deliveryInfo);
+    const res: any = await store.criarPedido(orderType, cart.storeId, deliveryInfo, cleanedCpf);
     setCheckoutModalOpen(false);
     
     if (res && typeof res === 'object') {
       if (res.error && (res.error.toLowerCase().includes('cpf') || res.error.toLowerCase().includes('cnpj'))) {
-        alert('Por favor, informe seu CPF ou CNPJ de cadastro para gerar o Pix registrado no Banco Central.');
+        setCpfInputValue(cleanedCpf || '');
         setCpfModalOpen(true);
         return;
       }
@@ -593,7 +595,7 @@ export default function StorefrontPage() {
     }
     await store.updateCpfCnpj(cleaned);
     setCpfModalOpen(false);
-    await processCheckout();
+    await processCheckout(cleaned);
   };
 
   const cartItemsTotal = cart.items.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);

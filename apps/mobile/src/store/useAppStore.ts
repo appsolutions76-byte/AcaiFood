@@ -331,7 +331,7 @@ interface AppState {
   linkAsaasAccount: (userId: string, walletId: string) => Promise<void>;
   fetchRates: (force?: boolean) => Promise<void>;
   saveRates: (newRates: Partial<AppState['rates']>) => Promise<void>;
-  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => Promise<any>;
+  criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }, overrideCpf?: string) => Promise<any>;
   acaoPedido: (orderId: string, action: string, pinStr?: string, reasonStr?: string) => Promise<void>;
   incrementAdminBalances: (order: Order) => Promise<void>;
   setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
@@ -1943,7 +1943,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      criarPedido: async (tipo, targetId, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }) => {
+      criarPedido: async (tipo, targetId, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }, overrideCpf?: string) => {
         await get().fetchAllUsers(true);
         const state = get();
         if (!state.currentUser) return;
@@ -2121,24 +2121,28 @@ export const useAppStore = create<AppState>()(
                 ? Number((novoPedido.valor + (novoPedido.taxas.entregaCliente || 0)).toFixed(2))
                 : Number((novoPedido.valor + (novoPedido.taxas.entregaLoja || 0)).toFixed(2)));
 
-          let userCpfCnpj = currentUser.cpfCnpj || get().users[currentUser.id]?.cpfCnpj;
+          let userCpfCnpj = overrideCpf ? String(overrideCpf).replace(/\D/g, '') : (currentUser.cpfCnpj || get().users[currentUser.id]?.cpfCnpj);
           if (!userCpfCnpj && currentUser.id) {
             try {
               const { data: dbUser } = await supabase.from('users').select('cpf_cnpj').eq('id', currentUser.id).maybeSingle();
               if (dbUser && dbUser.cpf_cnpj) {
                 userCpfCnpj = dbUser.cpf_cnpj;
-                const updatedUser = { ...currentUser, cpfCnpj: dbUser.cpf_cnpj };
-                set((state) => ({
-                  currentUser: updatedUser,
-                  users: { ...state.users, [currentUser.id]: updatedUser }
-                }));
               }
             } catch (err) {
               console.warn("Erro ao buscar CPF do usuário no banco:", err);
             }
           }
 
-          if (!userCpfCnpj || !validateCpfCnpjDigits(userCpfCnpj)) {
+          if (userCpfCnpj && validateCpfCnpjDigits(userCpfCnpj)) {
+            const updatedUser = { ...currentUser, cpfCnpj: userCpfCnpj };
+            set((state) => ({
+              currentUser: updatedUser,
+              users: { ...state.users, [currentUser.id]: updatedUser }
+            }));
+            if (currentUser.id) {
+              supabase.from('users').update({ cpf_cnpj: userCpfCnpj }).eq('id', currentUser.id).then();
+            }
+          } else {
             return {
               error: 'Por favor, informe seu CPF para gerar o Pix registrado no Banco Central.'
             };
