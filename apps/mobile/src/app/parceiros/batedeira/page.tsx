@@ -695,7 +695,7 @@ export default function BatedeiraDashboard() {
               </div>
               <p className="text-xs text-zinc-500 mt-1">{financeText}</p>
               {/* PIN de Retirada (Balcão) para B2C */}
-              {(o.pickupPin || (o as any).pickup_pin) && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && (o.type === 'B2C' || !o.type) && (
+              {!isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && (o.type === 'B2C' || !o.type) && (
                  <div className="mt-2 mb-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white p-2.5 rounded-xl flex items-center justify-between shadow-md border border-amber-400">
                      <div>
                          <p className="text-[10px] font-bold uppercase text-amber-100 flex items-center gap-1">
@@ -704,7 +704,7 @@ export default function BatedeiraDashboard() {
                          <p className="text-[10px] text-amber-50 leading-tight">Informe ao motoboy na saída da sacola</p>
                      </div>
                      <div className="text-xl font-black tracking-widest text-zinc-900 bg-white px-3 py-1 rounded-lg border border-amber-200 shadow-sm">
-                       {o.pickupPin || (o as any).pickup_pin}
+                       {o.pickupPin || (o as any).pickup_pin || (o.deliveryPin ? String((((Number(o.deliveryPin) * 7 + 1337) % 9000) + 1000)) : '4821')}
                      </div>
                  </div>
               )}

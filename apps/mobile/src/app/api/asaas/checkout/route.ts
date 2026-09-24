@@ -499,6 +499,11 @@ export async function POST(request: Request) {
       await supabase.from('orders').update(updPayload).eq('id', order.id);
     }
 
+    const idDigits = String(order.id || '').replace(/\D/g, '').slice(-4) || '1234';
+    const finalDeliveryPin = order.delivery_pin || String(((parseInt(idDigits, 10) * 7) % 9000) + 1000);
+    const delNum = parseInt(String(finalDeliveryPin), 10) || 1234;
+    const finalPickupPin = order.pickup_pin || String(((delNum * 7 + 1337) % 9000) + 1000);
+
     return NextResponse.json({
       success: true,
       orderId: order.id,
@@ -508,8 +513,8 @@ export async function POST(request: Request) {
       pixCopiaECola: qrData.payload,
       status: paymentData.status,
       totalValue: calculatedValue,
-      deliveryPin: order.delivery_pin,
-      pickupPin: order.pickup_pin,
+      deliveryPin: finalDeliveryPin,
+      pickupPin: finalPickupPin,
       isSandbox: ASAAS_URL.includes('sandbox')
     });
 

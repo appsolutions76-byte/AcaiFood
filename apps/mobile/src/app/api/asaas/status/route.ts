@@ -88,6 +88,13 @@ export async function GET(request: Request) {
                 asaas_payment_id: data.id,
                 asaas_charge_status: status
               }).eq('id', targetOrderId);
+
+              try { await supabase.rpc('generate_delivery_pin', { p_order_id: targetOrderId }); } catch (_e) {}
+              try { await supabase.rpc('generate_pickup_pin', { p_order_id: targetOrderId }); } catch (_e) {}
+              try {
+                const genPin = Math.floor(1000 + Math.random() * 9000).toString();
+                await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', targetOrderId).is('pickup_pin', null);
+              } catch (_e) {}
             } catch (updErr) {
               console.warn("Erro ao sincronizar status PAID no Supabase via API status:", updErr);
             }
@@ -128,6 +135,13 @@ export async function GET(request: Request) {
             asaas_payment_id: paidPayment.id,
             asaas_charge_status: paidPayment.status
           }).eq('id', orderId);
+
+          try { await supabase.rpc('generate_delivery_pin', { p_order_id: orderId }); } catch (_e) {}
+          try { await supabase.rpc('generate_pickup_pin', { p_order_id: orderId }); } catch (_e) {}
+          try {
+            const genPin = Math.floor(1000 + Math.random() * 9000).toString();
+            await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', orderId).is('pickup_pin', null);
+          } catch (_e) {}
         }
 
         return NextResponse.json({
@@ -317,11 +331,18 @@ export async function POST(request: Request) {
         } else {
           console.log(`✅ Webhook Asaas: Pedido #${orderId || paymentId} atualizado para PAID com sucesso!`);
           
-          // Gerar PIN de entrega
+          // Gerar PIN de entrega e PIN de retirada
           const finalOrderId = orderId || currentOrder?.id;
           if (finalOrderId) {
             try {
               await supabase.rpc('generate_delivery_pin', { p_order_id: finalOrderId });
+            } catch (_e) {}
+            try {
+              await supabase.rpc('generate_pickup_pin', { p_order_id: finalOrderId });
+            } catch (_e) {}
+            try {
+              const genPin = Math.floor(1000 + Math.random() * 9000).toString();
+              await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', finalOrderId).is('pickup_pin', null);
             } catch (_e) {}
           }
         }
