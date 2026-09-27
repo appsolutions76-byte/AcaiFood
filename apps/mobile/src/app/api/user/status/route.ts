@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
     const adminSupabase = getSupabaseAdmin();
 
-    // Validação de autodesbloqueio: se o usuário estiver bloqueado ou pausado pelo admin no banco, rejeitar
+    // Validação de autodesbloqueio: se o usuário estiver com punição administrativa no banco (bloqueado/suspenso), rejeitar
     if (!isAdmin) {
       const { data: currentDbUser } = await adminSupabase
         .from('users')
@@ -40,9 +40,9 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       const currentStatus = String(currentDbUser?.status || '').toLowerCase();
-      if (currentStatus === 'blocked' || currentStatus === 'bloqueado' || currentStatus === 'paused' || currentStatus === 'pausado') {
+      if (currentStatus === 'blocked' || currentStatus === 'bloqueado' || currentStatus === 'suspended' || currentStatus === 'suspenso') {
         return NextResponse.json(
-          { error: 'Sua conta está suspensa ou pausada pela moderação. Entre em contato com o suporte administrativo.' },
+          { error: 'Sua conta está suspensa ou bloqueada pela moderação administrativa. Entre em contato com o suporte.' },
           { status: 403 }
         );
       }

@@ -138,6 +138,17 @@ export function isValidAsaasWebhook(request: Request): boolean {
     return true;
   }
 
+  // Fallback de segurança: verificar query param wh_token ou token na URL
+  try {
+    const url = new URL(request.url);
+    const queryToken = url.searchParams.get('wh_token') || url.searchParams.get('token');
+    if (queryToken && allowedTokens.has(queryToken.trim())) {
+      return true;
+    }
+  } catch {
+    // Ignora erro de parsing de URL se houver
+  }
+
   return false;
 }
 
