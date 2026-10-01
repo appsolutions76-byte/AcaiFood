@@ -39,6 +39,8 @@ export default function CaminhaoDashboard() {
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const lastAvailableCountRef = React.useRef(0);
 
   const mounted = useSyncExternalStore(
     emptySubscribe,
@@ -76,6 +78,28 @@ export default function CaminhaoDashboard() {
       navigator.geolocation.clearWatch(watchId);
     };
   }, [mounted, currentUser?.id, currentUser?.status]);
+
+  const corridasDisponiveis = (store.orders || []).filter((o: any) => {
+    if (o.motoristaId) return false;
+    if (o.status === 'cancelado' || o.status === 'arquivado' || o.status === 'entregue') return false;
+    
+    // Coleta (caçamba de caroço) fica disponível assim que o pagamento Pix é confirmado pela loja
+    if (o.type === 'COLETA') {
+      return o.status === 'pronto' || o.status === 'pendente' || (o.status as string) === 'READY' || (o.status as string) === 'PAID' || (o.status as string) === 'SEARCHING_OPERATOR';
+    }
+    // Frete B2B fica disponível quando o fornecedor apronta o pedido
+    if (o.type === 'B2B') {
+      return o.status === 'pronto' || (o.status as string) === 'READY' || (o.status as string) === 'SEARCHING_OPERATOR';
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (corridasDisponiveis.length > lastAvailableCountRef.current) {
+      playDeliveryAlertTone();
+    }
+    lastAvailableCountRef.current = corridasDisponiveis.length;
+  }, [corridasDisponiveis.length]);
 
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
@@ -121,36 +145,12 @@ export default function CaminhaoDashboard() {
     return ['entregue', 'received', 'delivered', 'completed', 'concluido', 'concluído', 'arquivado'].includes(norm);
   };
 
-  const corridasDisponiveis = (store.orders || []).filter((o: any) => {
-    if (o.motoristaId) return false;
-    if (o.status === 'cancelado' || o.status === 'arquivado' || o.status === 'entregue') return false;
-    
-    // Coleta (caçamba de caroço) fica disponível assim que o pagamento Pix é confirmado pela loja
-    if (o.type === 'COLETA') {
-      return o.status === 'pronto' || o.status === 'pendente' || (o.status as string) === 'READY' || (o.status as string) === 'PAID' || (o.status as string) === 'SEARCHING_OPERATOR';
-    }
-    // Frete B2B fica disponível quando o fornecedor apronta o pedido
-    if (o.type === 'B2B') {
-      return o.status === 'pronto' || (o.status as string) === 'READY' || (o.status as string) === 'SEARCHING_OPERATOR';
-    }
-    return false;
-  });
-
-  const lastAvailableCountRef = React.useRef(0);
-  useEffect(() => {
-    if (corridasDisponiveis.length > lastAvailableCountRef.current) {
-      playDeliveryAlertTone();
-    }
-    lastAvailableCountRef.current = corridasDisponiveis.length;
-  }, [corridasDisponiveis.length]);
-
   const minhasCorridas = (store.orders || []).filter((o: any) => o.motoristaId === currentUser.id);
   const caminhaoActiveOrders = minhasCorridas.filter((o: any) => !isDelivered(o.status) && o.status !== 'cancelado');
   const caminhaoHistoryOrders = minhasCorridas.filter((o: any) => isDelivered(o.status) || o.status === 'cancelado');
   const ganhosHoje = minhasCorridas.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + getDriverFee(curr), 0);
   const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {

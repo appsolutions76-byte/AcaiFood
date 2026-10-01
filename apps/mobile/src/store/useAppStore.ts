@@ -415,17 +415,25 @@ export async function getAuthHeaders() {
 // Controle de Limite de Saques Diários (Máximo 2 por dia por parceiro)
 export function getDailyWithdrawalCount(userId: string): number {
   if (typeof window === 'undefined' || !userId) return 0;
-  const today = new Date().toISOString().split('T')[0];
-  const stored = localStorage.getItem(`acaifood_withdrawals_${userId}_${today}`);
-  return stored ? parseInt(stored, 10) || 0 : 0;
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem(`acaifood_withdrawals_${userId}_${today}`);
+    return stored ? parseInt(stored, 10) || 0 : 0;
+  } catch (_e) {
+    return 0;
+  }
 }
 
 export function incrementDailyWithdrawalCount(userId: string): number {
   if (typeof window === 'undefined' || !userId) return 1;
-  const today = new Date().toISOString().split('T')[0];
-  const count = getDailyWithdrawalCount(userId) + 1;
-  localStorage.setItem(`acaifood_withdrawals_${userId}_${today}`, String(count));
-  return count;
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const count = getDailyWithdrawalCount(userId) + 1;
+    localStorage.setItem(`acaifood_withdrawals_${userId}_${today}`, String(count));
+    return count;
+  } catch (_e) {
+    return 1;
+  }
 }
 
 const DB_DEFAULTS = {

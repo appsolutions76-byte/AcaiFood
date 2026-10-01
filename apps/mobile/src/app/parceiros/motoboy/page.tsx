@@ -38,6 +38,8 @@ export default function MotoboyDashboard() {
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
+  const [serverBalance, setServerBalance] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const mounted = useSyncExternalStore(
     emptySubscribe,
@@ -129,7 +131,6 @@ export default function MotoboyDashboard() {
     if (!isReady) return false;
     return true;
   });
-  const [serverBalance, setServerBalance] = useState<number | null>(null);
   const minhasCorridasAll = (store.orders || []).filter((o: any) => o && currentUser?.id && o.motoristaId === currentUser.id);
   const ganhosHoje = serverBalance !== null ? serverBalance : minhasCorridasAll.filter((o: any) => o && isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + (curr ? getMotoboyFee(curr) : 0), 0);
   const saquesHoje = currentUser?.id ? getDailyWithdrawalCount(currentUser.id) : 0;
@@ -137,7 +138,6 @@ export default function MotoboyDashboard() {
   const motoActiveOrders = minhasCorridasAll.filter((o: any) => o && !isDelivered(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
   const motoHistoryOrders = minhasCorridasAll.filter((o: any) => o && (isDelivered(o.status) || o.status === 'cancelado' || o.status === 'arquivado'));
   const minhasCorridas = [...motoActiveOrders, ...motoHistoryOrders];
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {

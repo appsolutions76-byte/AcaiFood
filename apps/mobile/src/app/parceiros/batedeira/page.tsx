@@ -176,6 +176,7 @@ export default function BatedeiraDashboard() {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
+  const [serverBalance, setServerBalance] = useState<number | null>(null);
 
   const mounted = useSyncExternalStore(
     emptySubscribe,
@@ -458,7 +459,6 @@ export default function BatedeiraDashboard() {
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const [serverBalance, setServerBalance] = useState<number | null>(null);
   const mySfIds = ((store.users[currentUser.id] as any)?.storefronts || []).map((s: any) => s.id);
   const meusPedidosAll = (store.orders || []).filter((o: any) => {
     if (!currentUser?.id) return false;
