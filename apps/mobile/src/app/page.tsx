@@ -17,6 +17,7 @@ import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { validateCpfCnpjDigits } from "@/lib/pix";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
+import { OrderReceiptModal } from "@/components/OrderReceiptModal";
 
 const emptySubscribe = () => () => {};
 
@@ -78,6 +79,7 @@ export default function StorefrontPage() {
   const [manualOpen, setManualOpen] = useState(false);
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [orderHistoryModalOpen, setOrderHistoryModalOpen] = useState(false);
+  const [receiptModalOrder, setReceiptModalOrder] = useState<any | null>(null);
   const [historySearchQuery, setHistorySearchQuery] = useState("");
   const [historyFilter, setHistoryFilter] = useState<'all' | 'delivered' | 'canceled'>('all');
   const { cart, addToCart, removeFromCart, updateCartQuantity } = store;
@@ -1518,6 +1520,13 @@ export default function StorefrontPage() {
                               >
                                 💬 Chat & 📞 Voz
                               </button>
+                              <button
+                                onClick={() => setReceiptModalOrder(o)}
+                                className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 border border-emerald-200 dark:border-emerald-800 transition cursor-pointer shadow-2xs"
+                                title="Ver Comprovante Oficial Asaas"
+                              >
+                                📄 Comprovante Asaas
+                              </button>
                             </div>
                         </div>
                         
@@ -1986,6 +1995,12 @@ export default function StorefrontPage() {
         onClose={() => setPixModalData({ open: false })} 
       />
 
+      <OrderReceiptModal
+        open={!!receiptModalOrder}
+        order={receiptModalOrder}
+        onClose={() => setReceiptModalOrder(null)}
+      />
+
       {/* Modal para Solicitação de CPF no Checkout */}
       {cpfModalOpen && (
         <div className="fixed inset-0 bg-black/75 z-[210] flex items-center justify-center p-4">
@@ -2239,6 +2254,14 @@ export default function StorefrontPage() {
                               className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-2xs cursor-pointer"
                             >
                               ⚠️ Reportar Problema
+                            </button>
+
+                            <button
+                              onClick={() => setReceiptModalOrder(o)}
+                              className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 border border-emerald-200 dark:border-emerald-800 transition cursor-pointer shadow-2xs"
+                              title="Visualizar Comprovante Asaas"
+                            >
+                              📄 Comprovante Asaas
                             </button>
                           </div>
 

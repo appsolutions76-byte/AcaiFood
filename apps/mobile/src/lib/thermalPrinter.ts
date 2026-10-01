@@ -335,6 +335,9 @@ export function generateSingleTicketHTML(
         <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 4px; text-align: right; color: #000;">
           💳 Pagamento: PIX (Confirmado ✅)
         </div>
+        <div style="font-size: ${is58 ? '9px' : '10px'}; margin-top: 2px; text-align: right; color: #222;">
+          🏦 Intermediação: <strong>ASAAS IP S.A.</strong>
+        </div>
       </div>
 
       <!-- PIN DE RETIRADA / BALCÃO (DUPLO PIN) -->
@@ -346,9 +349,13 @@ export function generateSingleTicketHTML(
         </div>
       ` : ''}
 
-      <!-- RODAPÉ -->
+      <!-- RODAPÉ & SELO ASAAS -->
       <div style="text-align: center; font-size: ${is58 ? '9px' : '10px'}; padding-top: 4px;">
-        <p style="margin: 0; font-weight: bold;">--- AçaíFood Delivery Oficial ---</p>
+        <div style="border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px;">
+          <p style="margin: 0; font-weight: bold; font-size: ${is58 ? '9px' : '10px'};">[ PAGAMENTO PROCESSADO VIA ASAAS ]</p>
+          <p style="margin: 1px 0 0 0; font-size: 8px;">Asaas Gestão Financeira Inst. de Pagamento S.A.</p>
+        </div>
+        <p style="margin: 4px 0 0 0; font-weight: bold;">--- AçaíFood Delivery Oficial ---</p>
         <p style="margin: 2px 0 0 0;">www.acaifood.app.br</p>
         <br />
         <p style="margin: 0; font-size: 8px;">.</p>

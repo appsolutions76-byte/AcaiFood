@@ -131,21 +131,71 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
         </button>
 
         {isPaid ? (
-          <div className="py-4">
-            <div className="bg-emerald-100 dark:bg-emerald-900/40 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle size={40} className="mx-auto" />
+          <div className="py-2">
+            <div className="bg-emerald-100 dark:bg-emerald-900/40 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-2 text-emerald-600 dark:text-emerald-400 ring-4 ring-emerald-50 dark:ring-emerald-950">
+              <CheckCircle size={36} className="mx-auto" />
             </div>
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">
+            <h3 className="text-lg font-extrabold text-zinc-900 dark:text-white mb-1">
               ✅ Pagamento Confirmado!
             </h3>
-            <p className="text-xs text-zinc-500 mb-6">
-              Seu Pix foi recebido com sucesso. O pedido já foi liberado para preparo e envio!
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+              Seu Pix foi processado com sucesso. O pedido já foi liberado para preparo e entrega!
             </p>
+
+            {/* Cartão Comprovante Asaas */}
+            <div className="bg-slate-50 dark:bg-zinc-800/70 border border-slate-200 dark:border-zinc-700 rounded-xl p-3.5 mb-4 text-left text-xs space-y-1.5 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-zinc-700 pb-2 mb-2">
+                <span className="font-bold text-slate-700 dark:text-zinc-200 text-[11px] uppercase tracking-wider">
+                  Comprovante de Pagamento
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  ● Liquidado
+                </span>
+              </div>
+
+              {data.totalValue !== undefined && (
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-500 dark:text-zinc-400">Valor Total Pago:</span>
+                  <span className="font-extrabold text-sm text-zinc-900 dark:text-white">
+                    {formatMoney(data.totalValue)}
+                  </span>
+                </div>
+              )}
+
+              {data.orderId && (
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-500 dark:text-zinc-400">Pedido:</span>
+                  <span className="font-mono font-medium text-zinc-800 dark:text-zinc-200">
+                    #{data.orderId.slice(0, 8).toUpperCase()}
+                  </span>
+                </div>
+              )}
+
+              {data.paymentId && (
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-zinc-500 dark:text-zinc-400">Transação Asaas:</span>
+                  <span className="font-mono text-zinc-700 dark:text-zinc-300 select-all">
+                    {data.paymentId}
+                  </span>
+                </div>
+              )}
+
+              <div className="pt-2 mt-2 border-t border-slate-200/80 dark:border-zinc-700 flex flex-col items-center justify-center gap-1">
+                <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium text-center">
+                  Intermediado e Liquidado por:
+                </div>
+                <SeloAsaas variant="positivo" width={120} height={36} />
+                <div className="text-[9px] text-zinc-400 dark:text-zinc-500 text-center">
+                  Asaas Gestão Financeira IP S.A.
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={onClose}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
             >
-              Concluir
+              Concluir e Acompanhar Pedido
             </button>
           </div>
         ) : (
