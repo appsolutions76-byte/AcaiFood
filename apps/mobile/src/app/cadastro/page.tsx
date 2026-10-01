@@ -1014,7 +1014,7 @@ export default function CadastroPage() {
         <AsaasPartnerBadge variant="footer" className="mt-2" />
       </div>
 
-      <p className="text-center text-xs text-zinc-500 dark:text-zinc-400 mt-6">
+      <p className="text-center text-xs text-zinc-700 dark:text-zinc-300 font-medium mt-6">
         AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.
       </p>
     </div>

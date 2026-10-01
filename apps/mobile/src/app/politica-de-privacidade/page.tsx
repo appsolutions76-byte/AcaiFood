@@ -129,7 +129,7 @@ export default function PoliticaPrivacidadePage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center text-xs text-zinc-500 pb-8 space-y-3">
+        <div className="text-center text-xs text-zinc-700 dark:text-zinc-300 pb-8 space-y-3 font-medium">
           <p>© 2026 AçaíFood • AppSolutions76 • Eletromecânica Baia Ltda. Todos os direitos reservados.</p>
           <AsaasPartnerBadge variant="footer" />
         </div>
