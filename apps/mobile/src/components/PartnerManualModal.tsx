@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, BookOpen, ShoppingBag, Store, Factory, Bike, Truck, ShieldCheck, MapPin, QrCode, MessageSquare, Printer, DollarSign } from "lucide-react";
+import { X, BookOpen, ShoppingBag, Store, Factory, Bike, Truck, ShieldCheck, MapPin, QrCode, MessageSquare, Printer, DollarSign, FileText, Headphones } from "lucide-react";
 
 export type PartnerRole = 'batedeira' | 'fornecedor' | 'motoboy' | 'caminhao' | 'login';
 
@@ -13,7 +13,7 @@ interface PartnerManualModalProps {
 
 // ===================== CLIENTE (CONSUMIDOR) =====================
 function ManualCliente() {
-  const [tab, setTab] = useState<'comprar' | 'endereco' | 'pix' | 'rastreio_pin'>('comprar');
+  const [tab, setTab] = useState<'comprar' | 'endereco' | 'pix' | 'rastreio_pin' | 'comprovante'>('comprar');
 
   return (
     <div className="space-y-4 text-sm">
@@ -22,7 +22,8 @@ function ManualCliente() {
           ['comprar', '🛒 Como Fazer Pedidos'],
           ['endereco', '📍 Endereço & GPS'],
           ['pix', '💳 Pagamento Pix & Estorno'],
-          ['rastreio_pin', '🔐 Rastreio, Chat & PIN']
+          ['rastreio_pin', '🔐 Rastreio, Chat & PIN'],
+          ['comprovante', '📄 Comprovante & Suporte']
         ].map(([k, l]) => (
           <button
             key={k}
@@ -46,7 +47,7 @@ function ManualCliente() {
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
             <p>1. 🏙️ <strong>Seleção de Cidade</strong>: O app exibe as batedeiras e lojas da sua cidade. Certifique-se de que sua cidade está correta no topo da tela.</p>
             <p>2. 🏪 <strong>Escolha a Loja</strong>: Toque na batedeira de sua preferência para abrir o cardápio de açaí fresco e adicionais.</p>
-            <p>3. 🥣 <strong>Personalize o Açaí</strong>: Escolha a consistência (<em>Popular, Médio ou Grosso</em>), tamanho/litros e adicionais (tapioca, farinha d’água, leite condensado, frutas, etc.).</p>
+            <p>3. 🥣 <strong>Personalize o Açaí</strong>: Escolha a consistência (<em>Popular, Médio, Grosso ou Branco</em>), quantidade e adicionais (tapioca, farinha d’água, leite condensado, frutas, churrasco, etc.).</p>
             <p>4. 🛍️ <strong>Sacola de Compras</strong>: Revise os itens, quantidades e o resumo de valores (subtotal + taxa de entrega).</p>
           </div>
           <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs">
@@ -79,9 +80,9 @@ function ManualCliente() {
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
             <p>1. ⚡ <strong>Aprovação Automática</strong>: Ao finalizar, o app gera o <strong>QR Code Pix</strong> e a chave <strong>Pix Copia e Cola</strong> oficial do Asaas.</p>
-            <p>2. 📱 <strong>Pague no seu Banco</strong>: Abra o aplicativo do seu banco, escolha Pix Copia e Cola, cole o código e confirme.</p>
-            <p>3. ⏱️ <strong>Sem Envio de Comprovante</strong>: A confirmação ocorre automaticamente em poucos segundos via Webhook Asaas e Supabase Realtime.</p>
-            <p>4. ↩️ <strong>Garantia de Estorno Pix Automático (Refund)</strong>: Se a batedeira não puder atender ou se você cancelar antes do início do preparo, <strong>100% do valor é estornado automaticamente para a sua conta bancária</strong> via Pix em segundos.</p>
+            <p>2. 📱 <strong>Pague no seu Banco</strong>: Abra o aplicativo do seu banco, escolha Pix Copia e Cola, cole o código e confirme. O recebedor formal é <strong>Eletromecânica Baia Ltda</strong> (empresa detentora da AçaíFood).</p>
+            <p>3. ⏱️ <strong>Confirmação em Segundos</strong>: A validação ocorre em tempo real via Webhook Asaas e Supabase Realtime.</p>
+            <p>4. ↩️ <strong>Garantia de Estorno Pix Automático (Refund)</strong>: Se a batedeira não puder atender ou se você cancelar antes do preparo, <strong>100% do valor é estornado automaticamente para a sua conta bancária</strong> via Pix em segundos.</p>
           </div>
         </div>
       )}
@@ -93,13 +94,31 @@ function ManualCliente() {
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
             <p>🗺️ <strong>Rastreamento em Tempo Real</strong>: Acompanhe no mapa interativo o trajeto real pelas ruas da cidade (linhas coloridas OSRM) e o motoboy em deslocamento ao vivo.</p>
-            <p>💬 <strong>Chat Integrado no Pedido</strong>: Converse diretamente com a batedeira ou com o motoboy com identificação automática do seu papel. Há também atalho direto para ligar ou abrir o WhatsApp.</p>
+            <p>💬 <strong>Chat Integrado no Pedido</strong>: Converse diretamente com a batedeira ou com o motoboy. Há também atalho direto para discar ou abrir WhatsApp.</p>
             <p className="font-bold text-purple-900 dark:text-purple-300">🔐 Regra de Ouro do PIN de 4 Dígitos:</p>
             <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 space-y-1">
               <p>• O <strong>PIN de 4 dígitos</strong> aparece em destaque no card do seu pedido.</p>
               <p>• <strong>IMPORTANTE:</strong> Somente dite o código PIN para o motoboy <strong>após receber o seu pedido em mãos</strong>.</p>
               <p>• A digitação desse PIN pelo motoboy no aplicativo dele é a comprovação digital irrevogável de que a entrega foi concluída com sucesso.</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'comprovante' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <FileText size={16} className="text-purple-600" /> Comprovante Oficial Asaas & Suporte ao Vivo
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
+            <p>📄 <strong>Comprovante com Logomarca Asaas</strong>: Em qualquer pedido pago ou histórico, clique no botão <strong>"📄 Comprovante Asaas"</strong> para abrir o documento oficial contendo:</p>
+            <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
+              <li>Selo e logomarca oficial do <strong>Asaas IP S.A.</strong></li>
+              <li>ID da transação bancária e dados fiscais da Eletromecânica Baia Ltda</li>
+              <li>Detalhamento de produtos, frete, estabelecimento e data/hora</li>
+              <li>Botão para <strong>Imprimir / Salvar em PDF</strong> ou cupom térmico</li>
+            </ul>
+            <p>🎧 <strong>Suporte em Tempo Real</strong>: Toque no botão flutuante de atendimento para abrir o <strong>Chat de Suporte ao Vivo</strong> com analistas e administradores da plataforma.</p>
           </div>
         </div>
       )}
@@ -115,9 +134,9 @@ function ManualBatedeira() {
       <div className="flex gap-2 flex-wrap">
         {[
           ['operacao','📦 Operação B2C & Radar'],
-          ['impressao','🖨️ Impressão Térmica'],
+          ['impressao','🖨️ Impressão Térmica & PIN Balcão'],
           ['b2b','🏭 Abastecimento B2B & Coleta'],
-          ['financeiro','💰 Financeiro & Repasses']
+          ['financeiro','💰 Financeiro, Saques & Asaas']
         ].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k as any)}
             className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${tab === k ? 'bg-purple-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-purple-100'}`}
@@ -133,14 +152,15 @@ function ManualBatedeira() {
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
             <p>1. 🔔 <strong>Chegada de Pedido</strong>: O pedido chega com status <strong>Pagamento Confirmado (Pix Pago)</strong> e emite aviso sonoro.</p>
             <p>2. 👨‍🍳 <strong>Aceitar e Preparar</strong>: Clique em <em>Aceitar e Preparar</em>. O pedido passa para o status <code>preparo</code>.</p>
-            <p>3. 🏍️ <strong>NOVO — Acionamento sob Demanda (Chamar Moto)</strong>: Quando o açaí estiver embalado e pronto para entrega, clique em <strong>"Chamar Moto"</strong>. Somente após esse clique o pedido aparece no radar dos motoboys, impedindo que o entregador chegue antes da hora.</p>
-            <p>4. 🗺️ <strong>Acompanhamento no Mapa</strong>: Visualize em tempo real o trajeto real do motoboy até sua loja para retirar e da loja até o cliente.</p>
-            <p>5. 💬 <strong>Chat Integrado</strong>: Converse com o cliente ou motoboy diretamente pelo chat do pedido com atalho para telefone e WhatsApp.</p>
-            <p>6. ↩️ <strong>Cancelamento com Estorno Pix Automático</strong>: Caso precise recusar o pedido antes do envio, o estorno de 100% é feito automaticamente pelo Asaas devolvendo o dinheiro ao cliente.</p>
+            <p>3. 🔑 <strong>PIN de Balcão (Retirada Segura)</strong>: A comanda e o app geram o PIN de Balcão da loja. Ao entregar o pacote ao motoboy, confirme este código.</p>
+            <p>4. 🏍️ <strong>Acionamento sob Demanda (Chamar Moto)</strong>: Quando o açaí estiver embalado e pronto, clique em <strong>"Chamar Moto"</strong>. O pedido entra no radar dos entregadores disponíveis.</p>
+            <p>5. 🗺️ <strong>Acompanhamento no Mapa</strong>: Visualize em tempo real o trajeto real do motoboy até sua loja e da loja até o cliente.</p>
+            <p>6. 💬 <strong>Chat Integrado & Suporte</strong>: Comunique-se com o cliente/motoboy pelo chat do pedido ou acione o suporte central.</p>
+            <p>7. ↩️ <strong>Cancelamento com Estorno Pix Automático</strong>: Caso precise recusar antes do envio, o estorno de 100% é feito automaticamente pelo Asaas.</p>
           </div>
           <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs">
             <p className="font-bold text-purple-900 dark:text-purple-300">💡 Gestão da Vitrine & Frete Promocional:</p>
-            <p className="text-purple-800 dark:text-purple-300 mt-1">Na aba <em>Visão Geral</em>, ajuste preços de balcão (Popular, Médio, Grosso), adicione novos produtos ao cardápio e configure o <strong>Subsídio de Frete</strong> (% que sua loja cobre para oferecer frete mais barato ou grátis ao cliente).</p>
+            <p className="text-purple-800 dark:text-purple-300 mt-1">Na aba <em>Visão Geral</em>, ajuste preços (Popular, Médio, Grosso, Branco), adicione produtos extras (carnes, frutas, bebidas) e configure o <strong>Subsídio de Frete</strong>.</p>
           </div>
         </div>
       )}
@@ -148,18 +168,18 @@ function ManualBatedeira() {
       {tab === 'impressao' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-            <Printer size={16} className="text-purple-600" /> Impressão Térmica de Comandas
+            <Printer size={16} className="text-purple-600" /> Impressão Térmica de Comandas & PIN
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-            <p>1. 🖨️ <strong>Conexão da Impressora</strong>: Configure sua impressora térmica padrão (58mm ou 80mm USB/Rede).</p>
+            <p>1. 🖨️ <strong>Conexão da Impressora</strong>: Suporte automático a impressoras térmicas padrão de <strong>58mm e 80mm</strong> (USB/Rede/Windows).</p>
             <p>2. 🔄 <strong>Modo de Disparo</strong>: Escolha entre <em>Impressão Automática</em> (ao aceitar o pedido) ou <em>Impressão Manual</em> pelo botão do card.</p>
             <p>3. 📄 <strong>Vias de Comanda</strong>: Imprima a <em>VIA 1 (Cozinha/Preparo)</em> e a <em>VIA 2 (Entrega/Motoboy)</em>.</p>
-            <p>4. 📋 <strong>Dados Completos na Comanda</strong>:</p>
+            <p>4. 📋 <strong>Elementos Oficiais no Cupom</strong>:</p>
             <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
-              <li>Nome do Cliente e Telefone com DDD</li>
-              <li>Endereço Completo, Bairro e Ponto de Referência</li>
-              <li>Itens, consistência do açaí, adicionais e observações</li>
-              <li>Valor dos produtos, taxa de entrega e total pago via Pix</li>
+              <li>Nome do Cliente, Telefone e Endereço com Ponto de Referência</li>
+              <li>Itens, adicionais e valor total pago via Pix</li>
+              <li><strong>🔑 PIN DE RETIRADA (BALCÃO)</strong> em destaque no cupom</li>
+              <li>Identificação oficial: <strong>[ PAGAMENTO PROCESSADO VIA ASAAS ]</strong></li>
             </ul>
           </div>
         </div>
@@ -171,15 +191,14 @@ function ManualBatedeira() {
             <Factory size={16} className="text-purple-600" /> Abastecimento B2B e Coleta de Caroço
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-            <p>1. Na aba <strong>🛒 Abastecimento B2B</strong>, visualize fornecedores atacadistas da sua região.</p>
-            <p>2. Escolha o lote (latas, sacas, paneiros de frutos de safra) e pague com Pix dinâmico.</p>
-            <p>3. O fornecedor prepara a carga e despacha um Caminhão pesado para entrega.</p>
-            <p>4. 🔑 <strong>PIN B2B</strong>: Na entrega das latas, confira o produto na porta e forneça o seu <strong>PIN de 4 dígitos</strong> ao caminhoneiro para concluir o recebimento.</p>
+            <p>1. Na aba <strong>🛒 Abastecimento B2B</strong>, visualize produtores e fornecedores da sua região.</p>
+            <p>2. Escolha o lote (latas, sacas, paneiros de frutos) e pague com Pix dinâmico Asaas.</p>
+            <p>3. O fornecedor prepara a carga e despacha um Caminhão para entrega.</p>
+            <p>4. 🔑 <strong>PIN B2B</strong>: Na entrega das latas, confira o produto e forneça o seu <strong>PIN de 4 dígitos</strong> ao caminhoneiro para concluir o recebimento.</p>
           </div>
           <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs space-y-1">
             <p className="font-bold text-amber-900 dark:text-amber-300">🚛 Solicitação de Caçamba (Coleta de Caroço ESG):</p>
-            <p className="text-amber-700 dark:text-amber-300">Solicite caçambas para descarte sustentável de caroços até os Ecopontos e Usinas credenciadas da cidade. Entregue seu <strong>PIN de Coleta</strong> ao motorista da caçamba após o carregamento dos sacos.</p>
-            <p className="text-[11px] text-amber-800 dark:text-amber-400 italic">📌 Nota: O caroço vai para usinas de biomassa/reciclagem e <strong>NÃO retorna ao fornecedor de frutos</strong>.</p>
+            <p className="text-amber-700 dark:text-amber-300">Solicite caçambas para descarte sustentável de caroços até os Ecopontos e Usinas credenciadas da cidade. O caroço vai para usinas de biomassa/adubo e <strong>não retorna ao produtor</strong>.</p>
           </div>
         </div>
       )}
@@ -187,22 +206,19 @@ function ManualBatedeira() {
       {tab === 'financeiro' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-            <DollarSign size={16} className="text-purple-600" /> Recebimento Líquido & Repasses Asaas
+            <DollarSign size={16} className="text-purple-600" /> Recebimento Líquido & Solicitação de Saques
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-            <p>• <strong>Divisão Automática (Split)</strong>: A cada pedido entregue com PIN, o sistema calcula seu valor líquido: <code>Subtotal − Comissão da Plataforma (%) − Subsídio de Frete</code>.</p>
-            <p>• <strong>Vinculação de Carteira & Chave Pix</strong>: Em conformidade com o Banco Central e o gateway Asaas, os repasses são creditados na subconta digital ou via Chave Pix no CPF/CNPJ cadastrado.</p>
-            <p>• <strong>Saques Instantâneos Pix</strong>: Realize até <strong>2 saques instantâneos por dia</strong> para sua conta bancária a qualquer momento, além da varredura programada diária.</p>
+            <p>• <strong>Divisão Automática (Split)</strong>: A cada pedido entregue com PIN, o sistema calcula seu valor líquido: <code>Subtotal − Comissão (%) − Subsídio de Frete</code>.</p>
+            <p>• <strong>Painel de Saques</strong>: Na aba Financeiro, acompanhe seu saldo disponível e envie <strong>Solicitações de Saque</strong> (valor mínimo padrão de R$ 20,00).</p>
+            <p>• <strong>Aprovação & Auditoria</strong>: A equipe administrativa audita e aprova os saques para liquidação direta na sua conta bancária via Pix Asaas.</p>
           </div>
           <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs space-y-1.5">
             <p className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
               🛡️ Regra do Banco Central — Mesma Titularidade Obrigatória (Pix CPF/CNPJ):
             </p>
             <p className="text-amber-800 dark:text-amber-300">
-              Conforme as <strong>Resoluções BCB nº 1/2020 e nº 80/2021 do Banco Central do Brasil</strong> e as normas de segurança do Asaas, todo saque ou repasse é processado <strong>exclusivamente para a conta bancária do mesmo titular (mesmo CPF ou CNPJ)</strong> cadastrado na plataforma.
-            </p>
-            <p className="text-amber-700 dark:text-amber-400 text-[11px]">
-              🔒 <strong>Blindagem Antifraude</strong>: Essa exigência legal impede que terceiros desviem seu saldo para chaves aleatórias ou contas de terceiros. Seu dinheiro só entra na sua própria conta bancária.
+              Conforme as <strong>Resoluções BCB nº 1/2020 e nº 80/2021 do Banco Central do Brasil</strong> e as normas de segurança do Asaas, todo saque é processado <strong>exclusivamente para a conta bancária do mesmo titular (mesmo CPF ou CNPJ)</strong> cadastrado na plataforma, impedindo desvio de valores.
             </p>
           </div>
         </div>
@@ -221,22 +237,18 @@ function ManualFornecedor() {
       <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
         <p>1. 📦 <strong>Catálogo Atacadista</strong>: Configure preços por lata, paneiro ou saca, além de insumos adicionais.</p>
         <p>2. 🔔 <strong>Recebimento de Pedido B2B</strong>: Ao receber uma ordem de compra com Pix confirmado, separe o lote no armazém ou porto.</p>
-        <p>3. 🚛 <strong>NOVO — Despacho com "Chamar Caminhão"</strong>: Após a carga estar pronta, clique em <strong>"Chamar Caminhão"</strong> para que a rota apareça no radar dos caminhoneiros credenciados na sua região.</p>
-        <p>4. 🖨️ <strong>Comanda de Saída B2B</strong>: Imprima o romaneio de expedição com dados completos da batedeira compradora, endereço de entrega e quantidade.</p>
-        <p>5. 💬 <strong>Chat do Transporte</strong>: Comunique-se em tempo real com o motorista do caminhão e com a loja compradora.</p>
+        <p>3. 🚛 <strong>Despacho com "Chamar Caminhão"</strong>: Após a carga estar pronta, clique em <strong>"Chamar Caminhão"</strong> para que a rota apareça no radar dos caminhoneiros credenciados.</p>
+        <p>4. 🖨️ <strong>Comanda de Saída B2B</strong>: Imprima o romaneio de expedição com dados completos da batedeira compradora e identificação Asaas.</p>
+        <p>5. 💬 <strong>Chat do Transporte & Suporte</strong>: Comunique-se em tempo real com o motorista e a loja compradora.</p>
         <p>6. 🔐 <strong>Conclusão e PIN</strong>: O caminhoneiro valida a entrega no destino mediante o PIN fornecido pela batedeira, liberando seu repasse financeiro.</p>
-        <p>7. ↩️ <strong>Estorno Automático</strong>: Caso não haja lote disponível para entrega, a recusa dispara o estorno Pix automático para a batedeira.</p>
       </div>
       <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1">
         <p className="font-bold text-emerald-900 dark:text-emerald-300">📌 Escopo do Fornecedor:</p>
-        <p className="text-emerald-700 dark:text-emerald-300">O fornecedor atua exclusivamente na venda dos frutos frescos colhidos e <strong>NÃO recebe ou precisa receber caroços de volta</strong>.</p>
+        <p className="text-emerald-700 dark:text-emerald-300">O fornecedor atua exclusivamente na venda dos frutos frescos colhidos e <strong>não recebe caroços de volta</strong>.</p>
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
-        <p className="font-bold">💰 Repasse Líquido & Saques (Regra Banco Central):</p>
-        <p className="text-zinc-600 dark:text-zinc-400">Receba o valor líquido das vendas atacadistas via Pix (até 2 saques instantâneos diários permitidos).</p>
-        <div className="bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-lg border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300">
-          🛡️ <strong>Mesma Titularidade Obrigatória (BCB/Asaas)</strong>: O saque Pix é creditado unicamente na conta bancária vinculada ao CPF ou CNPJ cadastrado do produtor/fornecedor, garantindo proteção total contra desvio de valores.
-        </div>
+        <p className="font-bold">💰 Painel de Saques & Mesma Titularidade (BCB/Asaas):</p>
+        <p className="text-zinc-600 dark:text-zinc-400">Solicite saques do seu saldo disponível (mínimo R$ 20,00). O valor é creditado unicamente na conta bancária do CPF/CNPJ cadastrado.</p>
       </div>
     </div>
   );
@@ -251,28 +263,20 @@ function ManualMotoboy() {
       </h4>
       <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
         <p>1. 📡 <strong>Status Online & GPS</strong>: Marque como <em>Online</em> para transmitir seu posicionamento em tempo real e receber chamados da sua praça.</p>
-        <p>2. 🏍️ <strong>NOVO — Radar de Prontos</strong>: Você só recebe chamados de pedidos que a batedeira já preparou e clicou em <em>"Chamar Moto"</em>, eliminando tempo de espera inútil na porta da loja.</p>
-        <p>3. 👁️ <strong>Transparência Antes do Aceite</strong>: Veja o valor líquido do frete, a distância em km e o mapa da rota pelas ruas antes de aceitar a corrida.</p>
-        <p>4. 🧭 <strong>Navegação Nativa por GPS (Google Maps)</strong>:</p>
+        <p>2. 🏍️ <strong>Radar de Prontos</strong>: Você só recebe chamados de pedidos que a batedeira já preparou e acionou <em>"Chamar Moto"</em>, eliminando tempo de espera na loja.</p>
+        <p>3. 👁️ <strong>Transparência de Ganhos</strong>: Veja o valor líquido do frete, a distância em km e o mapa da rota antes de aceitar.</p>
+        <p>4. 🧭 <strong>Navegação GPS & Chegada</strong>:</p>
         <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
-          <li>Toque em <em>"🚀 GPS p/ Retirada"</em> para abrir a navegação curva-a-curva até a batedeira.</li>
-          <li>Ao chegar, clique em <em>"🏪 Confirmar Chegada na Loja"</em> (registra a retirada).</li>
-          <li>Após retirar, toque em <em>"🏁 GPS p/ Cliente"</em> para navegar até o destino final.</li>
+          <li>Toque em <em>"🚀 GPS p/ Retirada"</em> para navegar até a loja.</li>
+          <li>Ao chegar, clique em <em>"🏪 Confirmar Chegada na Loja"</em> e retire os pacotes.</li>
+          <li>Toque em <em>"🏁 GPS p/ Cliente"</em> para navegar até o destino.</li>
           <li>Ao chegar ao cliente, clique em <em>"Confirmar Chegada no Cliente"</em>.</li>
         </ul>
-        <p>5. 💬 <strong>Chat Integrado</strong>: Use o chat do pedido para tirar dúvidas com o cliente ou loja, com atalho para discagem telefônica direta.</p>
-        <p>6. 🔐 <strong>Validação Obrigatória do PIN de 4 Dígitos</strong>: Peça o PIN ao cliente, digite na tela e confirme. Sem o PIN correto, a entrega não fecha e o valor do frete não é liberado.</p>
-      </div>
-      <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs">
-        <p className="font-bold text-amber-900 dark:text-amber-300">🔐 Segurança Contra Fraudes:</p>
-        <p className="text-amber-700 dark:text-amber-300 mt-1">O PIN é gerado exclusivamente para o cliente. Não entregue a mercadoria sem digitar o PIN correto na sua tela.</p>
+        <p>5. 🔐 <strong>Validação Obrigatória do PIN de 4 Dígitos</strong>: Peça o PIN ao cliente, digite na tela e confirme. Sem o PIN correto, a entrega não fecha e o frete não é liberado.</p>
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
-        <p className="font-bold">💸 Saque Instantâneo Pix (Regra Banco Central):</p>
-        <p className="text-zinc-600 dark:text-zinc-400">Acompanhe seu saldo em tempo real e use o botão <em>💸 Saque Instantâneo Pix</em> para transferir seus ganhos para seu banco pessoal (até 2 saques diários).</p>
-        <div className="bg-purple-50 dark:bg-purple-950/40 p-2.5 rounded-lg border border-purple-200 dark:border-purple-800 text-[11px] text-purple-900 dark:text-purple-300">
-          🛡️ <strong>Chave Pix no seu CPF (Mesma Titularidade BACEN)</strong>: Por determinação do Banco Central e segurança antifraude, a chave Pix é obrigatoriamente o seu <strong>CPF cadastrado</strong>. Os saques só caem na conta bancária em seu nome.
-        </div>
+        <p className="font-bold">💸 Solicitação de Saques Pix (Regra Banco Central):</p>
+        <p className="text-zinc-600 dark:text-zinc-400">Acompanhe seu saldo em tempo real na aba Financeiro e utilize o botão <em>Solicitar Saque</em> (mínimo R$ 20,00). O valor é transferido para sua conta bancária vinculada ao seu CPF cadastrado.</p>
       </div>
     </div>
   );
@@ -289,19 +293,16 @@ function ManualCaminhao() {
         <p>1. 📡 <strong>Ficar Online</strong>: Ative seu GPS para receber notificações de fretes pesados na sua região.</p>
         <p>2. 🚛 <strong>2 Modalidades no Radar</strong>:</p>
         <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
-          <li><strong>Frete B2B</strong>: Transporte de sacas, latas e paneiros do Fornecedor para a Batedeira (chamado liberado pelo fornecedor via <em>Chamar Caminhão</em>).</li>
-          <li><strong>Coleta de Resíduos (Caçamba)</strong>: Remoção de caroços da Batedeira para destinação em Ecopontos e Usinas (não retorna ao fornecedor).</li>
+          <li><strong>Frete B2B</strong>: Transporte de sacas, latas e paneiros do Fornecedor para a Batedeira (acionado via <em>Chamar Caminhão</em>).</li>
+          <li><strong>Coleta de Resíduos (Caçamba)</strong>: Remoção de caroços da Batedeira para Ecopontos e Usinas.</li>
         </ul>
-        <p>3. 🗺️ <strong>Rotas & Navegação</strong>: Visualize origem, destino, traçado pelas vias principais e valor líquido do frete (por km rodado ou tarifa fixa).</p>
-        <p>4. 🧭 <strong>Botões de GPS</strong>: Use os atalhos <em>"🚀 GPS p/ Retirada"</em> e <em>"🏁 GPS p/ Destino"</em> para abrir a rota no Google Maps.</p>
-        <p>5. 🔐 <strong>PIN de Conclusão</strong>: Ao descarregar, solicite o PIN de 4 dígitos ao responsável no destino (loja ou ecoponto) e valide na tela para liberar o repasse no Pix.</p>
+        <p>3. 🗺️ <strong>Rotas & Navegação</strong>: Visualize origem, destino, traçado pelas vias principais e valor líquido do frete.</p>
+        <p>4. 🧭 <strong>Botões de GPS</strong>: Use os atalhos <em>"🚀 GPS p/ Retirada"</em> e <em>"🏁 GPS p/ Destino"</em> para abrir no Google Maps.</p>
+        <p>5. 🔐 <strong>PIN de Conclusão</strong>: Ao descarregar, solicite o PIN de 4 dígitos ao responsável no destino (loja ou ecoponto) e valide na tela.</p>
       </div>
       <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-800 text-xs space-y-1.5">
-        <p className="font-bold text-blue-900 dark:text-blue-300">💰 Repasses Transparentes & Saques (Regra Banco Central):</p>
-        <p className="text-blue-700 dark:text-blue-300">O valor exibido no radar já é o valor líquido do transportador, com suporte a até 2 saques instantâneos diários via Pix.</p>
-        <div className="bg-white/80 dark:bg-zinc-900/80 p-2.5 rounded-lg border border-blue-200 dark:border-blue-800 text-[11px] text-blue-950 dark:text-blue-200">
-          🛡️ <strong>Chave Pix no CPF/CNPJ (Mesma Titularidade BACEN)</strong>: A transferência de valores é feita exclusivamente para a conta bancária do titular cadastrado, prevenindo fraudes e garantindo que o dinheiro do frete chegue seguro ao motorista.
-        </div>
+        <p className="font-bold text-blue-900 dark:text-blue-300">💰 Repasses & Solicitação de Saque (Regra Banco Central):</p>
+        <p className="text-blue-700 dark:text-blue-300">Solicite saques do seu saldo acumulado diretamente no painel. O repasse é efetuado na conta bancária vinculada ao CPF/CNPJ de mesma titularidade.</p>
       </div>
     </div>
   );
@@ -350,11 +351,11 @@ function ManualLogin() {
             </div>
             <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200 dark:border-amber-800">
               <span className="font-bold block mb-1">🚛 3. Logística Reversa ESG</span>
-              <p className="text-zinc-600 dark:text-zinc-400">Coleta e descarte sustentável de caroços de açaí transportados por caçambas até os Ecopontos credenciados.</p>
+              <p className="text-zinc-600 dark:text-zinc-400">Coleta e descarte sustentável de caroços transportados por caçambas até os Ecopontos credenciados.</p>
             </div>
             <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-xl border border-blue-200 dark:border-blue-800">
               <span className="font-bold block mb-1">💳 4. Motor Financeiro Asaas</span>
-              <p className="text-zinc-600 dark:text-zinc-400">Pagamentos Pix com aprovação instantânea, divisão automática (Triple Split) e liquidação segura.</p>
+              <p className="text-zinc-600 dark:text-zinc-400">Pagamentos Pix com aprovação instantânea, divisão automática (Triple Split), comprovantes oficiais e esteira de saques.</p>
             </div>
           </div>
         </div>
@@ -379,15 +380,12 @@ function ManualLogin() {
               <p className="text-[11px] leading-relaxed">
                 Por determinação legal do <strong>Banco Central do Brasil</strong> e conformidade com o <strong>Asaas</strong>, a conta bancária para recebimento e o cadastro no aplicativo <strong>devem pertencer obrigatoriamente à mesma titularidade (mesmo CPF ou CNPJ)</strong>.
               </p>
-              <p className="text-[11px] text-amber-800 dark:text-amber-400">
-                Essa medida antifraude protege o parceiro garantindo que saques e repasses jamais sejam desviados para contas de terceiros.
-              </p>
             </div>
             <p>5. Complete o endereço com <strong>Cidade e Bairro</strong> para cálculo territorial correto.</p>
             <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-300 mt-2 space-y-1">
               <p className="font-bold">🛡️ Ativação Inteligente Asaas:</p>
-              <p>• Contas contam com ativação conforme limite de vagas promocionais disponibilizadas pela administração.</p>
-              <p>• Sua subconta digital Asaas para split de pagamentos é conectada <strong>automaticamente assim que você concluir sua 1ª venda ou aceitar sua 1ª corrida</strong>.</p>
+              <p>• Contas contam com ativação conforme limite de vagas de fundadores liberadas pela administração.</p>
+              <p>• A subconta digital Asaas para split de pagamentos é conectada <strong>automaticamente assim que você concluir sua 1ª venda ou corrida</strong>.</p>
             </div>
           </div>
         </div>

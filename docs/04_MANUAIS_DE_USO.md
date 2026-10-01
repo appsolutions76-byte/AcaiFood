@@ -1,71 +1,93 @@
-# AçaíFood — Manuais de uso (versão que reflete o app atual)
+# AçaíFood — Manuais de Uso Oficiais (Versão Atualizada 2026)
 
-> Substitui `MANUAIS_DE_USO_TODOS_OS_USUARIOS.*` e o manual mestre antigo. Principal mudança: **saque não é instantâneo**, é uma **solicitação aprovada pelo administrador** (ou paga automaticamente no horário configurado, se o admin ligar essa opção).
-> Site: https://www.acaifood.app.br
+> Documentação oficial de operação e fluxos de usuários para a plataforma **AçaíFood**.
+> Site Oficial: https://www.acaifood.app.br
+> Razão Social e Gateway: **Eletromecânica Baia Ltda** & **Asaas Gestão Financeira Instituição de Pagamento S.A.** (CNPJ: 19.540.550/0001-21)
 
 ---
 
-## 1. Cliente
+## 1. Cliente (Consumidor Final)
 
-1. **Cadastre-se** em `/cadastro` (nome, e-mail, senha, telefone, cidade, bairro, endereço) e permita o GPS.
-2. **Escolha uma loja** na tela inicial. Cada loja mostra o açaí de 1 litro (Popular, Médio, Grosso, Branco) e produtos extras. O carrinho aceita itens de **uma loja por vez**.
-3. **Informe onde receber:** endereço do cadastro, sua localização GPS atual, ou um endereço/ponto de encontro digitado. O frete é calculado pela distância até a loja (ou é um valor fixo, se sua cidade usar frete fixo). Algumas lojas pagam parte do frete para você.
-4. **Pague por Pix.** Aparece o QR Code e o copia-e-cola. A confirmação é automática em poucos segundos.
-5. **Acompanhe** o pedido (pago → em preparo → pronto → a caminho → chegou) e fale com a loja ou o entregador pelo chat, ligação ou WhatsApp.
-6. **PIN de 4 dígitos:** aparece no seu pedido depois do pagamento. **Só diga o PIN ao entregador quando o açaí estiver na sua mão.** O PIN é o que libera o pagamento da loja e do entregador.
-7. **Cancelar:** antes da entrega com PIN, você pode cancelar e o Pix é estornado automaticamente.
+1. **Cadastro & Cidade:** Acesse `/cadastro` (nome, e-mail, senha, telefone com DDD, cidade, bairro e endereço) ou entre diretamente na página inicial com geolocalização ativa.
+2. **Escolha do Açaí:** Selecione a batedeira de sua preferência. Escolha a textura/consistência do açaí (*Popular, Médio, Grosso ou Branco*), adicione complementos (farinhas, frutas, leite em pó, churrascos, bebidas) e revise a sacola.
+3. **Opções Flexíveis de Entrega:**
+   - *Endereço do Cadastro:* Entrega na sua residência cadastrada.
+   - *GPS ao Vivo:* Localização exata em tempo real com precisão métrica.
+   - *Ponto de Encontro com Referência:* Ideal para portos, trapiches, praças e feiras.
+4. **Pagamento Pix Asaas:** QR Code dinâmico e código Pix Copia e Cola gerados instantaneamente. A compensação ocorre em segundos via Webhook oficial.
+5. **📄 Comprovante Oficial Asaas:** Após o pagamento ou no histórico de pedidos, toque em **"📄 Comprovante Asaas"** para abrir o recibo com selo oficial Asaas, ID da transação e opção de impressão em PDF A4 ou cupom térmico.
+6. **Acompanhamento & Chat:** Acompanhe o motoboy em tempo real pelo mapa interativo (traçado OSRM) e converse pelo Chat interno com atalhos de ligação/WhatsApp.
+7. **🔐 Regra de Ouro do PIN (4 dígitos):** O PIN aparece em destaque no card do pedido. **Somente forneça o PIN ao motoboy após receber o açaí em mãos.**
+8. **Estorno Pix Automático (Refund):** Caso a batedeira recuse o pedido ou haja cancelamento antes do preparo, 100% do valor é estornado automaticamente para a conta do cliente.
+9. **🎧 Suporte ao Vivo:** Atendimento direto com analistas pelo botão flutuante de chat na tela.
 
-## 2. Loja / Batedeira
+---
 
-**Ativação:** as primeiras 50 lojas/parceiros são fundadores (grátis). Depois disso há uma taxa única de R$ 12,90 por Pix. Em seguida, envie os dados para a sua subconta Asaas. Enquanto o Asaas não aprovar, o recebimento automático fica pendente.
+## 2. Loja / Batedeira de Açaí
 
-**Vendas (B2C)**
-- Configure o cardápio base (preço, foto, descrição e disponibilidade de cada tipo de açaí) e os produtos extras.
-- Novo pedido pago toca um alerta. **Aceite** para mandar ao preparo e imprima a comanda (impressora térmica/bobina).
-- Com o açaí pronto, toque **Chamar moto**. O pedido vai para o radar dos motoboys.
-- Opcional: **subsídio de frete**, uma % do frete que a loja paga no lugar do cliente (sai do seu repasse).
+1. **Ativação & Homologação:** Acesso conforme vagas de fundadores liberadas pelo Admin ou quitação de taxa de homologação Asaas. Subconta bancária vinculada automaticamente para split.
+2. **Gestão de Vitrine & Cardápio:**
+   - Configuração de preços (Popular, Médio, Grosso, Branco), fotos e descrições.
+   - Adição e precificação de produtos extras (carnes, porções, bebidas, farinhas).
+   - **Subsídio de Frete (%):** Definição opcional de percentual de frete que a loja cobre para incentivar as vendas.
+3. **Fluxo de Vendas B2C:**
+   - Notificação sonoro-visual ao receber pedido com Pix confirmado.
+   - Clique em **"Aceitar e Preparar"** (status passa para `preparo`).
+   - Impressão térmica automática ou manual de comandas (58mm/80mm) com vias de Cozinha e Entrega contendo o **PIN de Balcão** e selo Asaas.
+   - Quando o pedido estiver embalado, clique em **"Chamar Moto"** para liberar a rota no radar dos motoboys.
+4. **Abastecimento B2B (Compra de Frutos):**
+   - Compras atacadistas de latas/paneiros/sacas de frutos direto dos produtores credenciados.
+   - Fornecimento do PIN B2B ao motorista do caminhão no ato do descarregamento.
+5. **Logística Reversa ESG (Coleta de Caroço):**
+   - Solicitação de caçamba para recolhimento sustentável de caroços destinados a Ecopontos e usinas de biomassa/adubo.
+6. **Financeiro & Esteira de Saques:**
+   - Repasses líquidos calculados por divisão automática (*Triple Split*).
+   - Solicitação de saque do saldo disponível (mínimo padrão de R$ 20,00) via esteira de aprovação com liquidação em conta bancária de mesma titularidade (CPF/CNPJ).
 
-**Compras de fruto (B2B):** em "Abastecimento B2B", escolha o fornecedor, adicione latas ao carrinho e pague por Pix. Quando o caminhão chegar, **informe o seu PIN** ao caminhoneiro para confirmar o recebimento.
+---
 
-**Coleta de caroço:** solicite a coleta, pague o frete da caçamba e informe o PIN ao motorista na retirada. O caroço vai para biomassa, olarias, adubo ou ecopontos.
+## 3. Fornecedor de Frutos (Atacado B2B)
 
-**Dinheiro:** a plataforma retém a comissão sobre as vendas (definida pelo admin, entre 5% e 10%), o subsídio de frete que você escolheu e a parte da taxa Pix. Para receber, toque em **Solicitar saque** (mínimo R$ 20). A solicitação fica **pendente até o administrador aprovar** ou até o horário do pagamento automático. O Pix vai para a chave/CPF/CNPJ cadastrado no seu perfil.
+1. **Catálogo Atacadista:** Definição de valores por lata, paneiro ou saca e disponibilidade de estoque.
+2. **Separação de Carga:** Ao receber pedido com Pix aprovado pela batedeira, separe o lote no armazém ou porto.
+3. **Despacho via "Chamar Caminhão":** Acionamento sob demanda que projeta a carga pesada no radar dos caminhoneiros da região.
+4. **Romaneio de Expedição:** Impressão de comprovante/romaneio com dados completos de entrega e identificação Asaas.
+5. **Conclusão com PIN:** O caminhoneiro valida a entrega com o PIN da batedeira compradora, liberando o repasse financeiro.
+6. **Saques:** Solicitação direta no painel financeiro para conta de mesma titularidade (Resolução BCB / Asaas).
 
-## 3. Fornecedor (atacado B2B)
+---
 
-1. Defina o **preço da lata** e a disponibilidade.
-2. Pedido pago pela Loja/Batedeira: **aceite**, separe e imprima.
-3. Toque **Chamar caminhão**.
-4. O caminhoneiro confirma a entrega com o PIN da Loja/Batedeira compradora.
-5. Opcional: subsídio de frete. Saque: igual ao da Loja/Batedeira (solicitação + aprovação).
+## 4. Motoboy (Logística Urbana B2C)
 
-## 4. Motoboy (entregas B2C)
+1. **Status Online & GPS:** Transmissão de telemetria em tempo real para recebimento de chamados na sua praça.
+2. **Radar de Prontos:** Visualização de corridas liberadas pelas batedeiras após clique em "Chamar Moto", exibindo distância, mapa e ganho líquido transparente.
+3. **Navegação GPS:**
+   - *🚀 GPS p/ Retirada:* Navegação curva-a-curva até a loja e botão de confirmação de chegada.
+   - *🏁 GPS p/ Cliente:* Navegação até a residência ou ponto de encontro do cliente.
+4. **Validação do PIN do Cliente:** Digitação do código PIN de 4 dígitos informado pelo cliente no ato do recebimento para conclusão da corrida.
+5. **Ganhos & Saques:** Saldo acumulado por entregas com PIN, com solicitação de transferência Pix para a conta bancária do seu CPF cadastrado.
 
-1. Fique **Online** para ver o **Radar de corridas**, com distância e ganho líquido.
-2. **Aceite.** Só um motoboy consegue aceitar cada corrida.
-3. Use **GPS p/ retirada**, marque a **retirada** e depois **GPS p/ entrega**.
-4. Na porta, peça o **PIN ao cliente** e digite. São 5 tentativas; depois o pedido bloqueia e só o suporte libera.
-5. **Ganhos:** corridas confirmadas com PIN entram no seu saldo. Toque em **Solicitar saque**: o valor vai para aprovação do administrador (não é imediato). *(A tela ainda mostra "saque instantâneo / 2 por dia"; isso será corrigido.)*
+---
 
-## 5. Caminhão / Caçamba
+## 5. Caminhoneiro / Motorista de Caçamba
 
-- **Radar de fretes** com dois tipos: **B2B** (latas do fornecedor até a Loja/Batedeira) e **Coleta** (caroço da Loja/Batedeira até o destino).
-- O ganho é por km ou valor fixo, conforme a cidade.
-- Aceite, use os botões de GPS, e no destino peça o **PIN** ao responsável.
-- Saque: solicitação + aprovação, como os demais.
+1. **Radar Pesado:** Chamados de frete **B2B** (frutos do fornecedor para batedeiras) e **Coleta de Caroço** (batedeiras para ecopontos).
+2. **Rotas e Navegação:** Traçado OSRM por vias compatíveis com veículos de carga e atalhos para Google Maps.
+3. **Validação de PIN:** Solicitação do PIN ao responsável no destino para homologação do frete.
+4. **Repasses:** Saldo líquido com suporte a esteira de saques auditada.
 
-## 6. Administrador (`/admin`)
+---
 
-| Aba | Para que serve |
-|---|---|
-| Dashboard | Volume, receita da plataforma, balanços diário/mensal/histórico |
-| Usuários | Pausar, bloquear, excluir, editar |
-| Pedidos | Histórico, filtros, **Forçar baixa** (entrega sem PIN em caso excepcional, fica registrada), estornos |
-| Cidades | Criar cidade, ativar/pausar, taxas próprias (km ou fixo, % da plataforma, horário e liga/desliga do Pix automático) |
-| Ocorrências | Registrar e acompanhar incidentes (PIN, estorno, disputa, reclamação…) |
-| Ativações | Taxa de adesão e vagas de fundador |
-| Anúncios | Banners e stories da tela inicial |
-| Suporte | Conversas de suporte |
-| Saques | **Aprovar ou recusar** saques; configurar o pagamento automático, o horário e o valor mínimo |
+## 6. Painel do Administrador Master (`/admin`)
 
-⚠️ Enquanto os itens críticos da auditoria não forem corrigidos: **mantenha o pagamento automático desligado** e confira cada saque contra os pedidos entregues com PIN antes de aprovar.
+| Módulo / Aba | Funcionalidades Principais |
+| :--- | :--- |
+| **Visão Geral** | Métricas globais de GMV (volume bruto), receita líquida da plataforma, balanços e gráficos operacionais. |
+| **Saques** | Esteira de auditoria, aprovação e rejeição de saques solicitados pelos parceiros com validação de chaves Pix e saldo em subcontas Asaas. |
+| **Usuários** | Gestão de contas (Ativar, Pausar, Bloquear, Excluir) e liquidações manuais (*"💸 Pagar e Zerar"* e *"⚡ Pagar Todos"*). |
+| **Pedidos** | Auditoria completa de status, inspeção de rotas no mapa, comprovantes fiscais e botão de contingência *"Forçar Baixa"*. |
+| **Cidades / Expansão** | Parametrização tarifária independente por município (KM rodado vs. Taxa Fixa, comissões percentuais e horário de varredura). |
+| **Ativações** | Configuração da taxa de homologação/adesão de parceiros e controle de vagas promocionais de fundadores. |
+| **Suporte ao Vivo** | Central de atendimento em tempo real por chat com clientes e parceiros, com histórico e alertas sonoros. |
+| **Anúncios & Stories** | Cadastro e moderação de banners de marketing e stories patrocinados na vitrine inicial. |
+| **Ocorrências & Auditoria** | Registro e acompanhamento de incidentes (cancelamentos, disputas, erros de PIN e contestações) com exportação em PDF A4 e CSV. |
