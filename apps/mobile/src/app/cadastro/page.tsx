@@ -38,6 +38,7 @@ function CadastroForm() {
   const [isLocating, setIsLocating] = useState(false);
   const [termosAceitos, setTermosAceitos] = useState(false);
   const [termosModalOpen, setTermosModalOpen] = useState(false);
+  const [asaasModalOpen, setAsaasModalOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [isRegisteringAtStore, setIsRegisteringAtStore] = useState(true);
   
@@ -329,7 +330,7 @@ function CadastroForm() {
             <p><strong>1. Uso da Plataforma:</strong> O AçaíFood atua exclusivamente como intermediador tecnológico entre você (cliente) e as lojas cadastradas.</p>
             <p><strong>2. Responsabilidade do Produto:</strong> A qualidade, o preparo, a integridade e o cumprimento das normas sanitárias do açaí e demais produtos são de inteira e exclusiva responsabilidade da Batedeira (Loja) que preparou o pedido. O AçaíFood não manuseia alimentos.</p>
             <p><strong>3. Entregas:</strong> O tempo de entrega é uma estimativa e pode variar devido a condições climáticas, trânsito ou demanda da loja.</p>
-            <p><strong>4. Processamento de Pagamento (Modelo A — Direto Tomador):</strong> As transações financeiras e pagamentos digitais (Pix) são prestados diretamente pela instituição parceira <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.)</strong>, CNPJ <strong>19.540.550/0001-21</strong>, instituição de pagamento autorizada a funcionar pelo <strong>Banco Central do Brasil</strong>. O AçaíFood atua exclusivamente como integradora tecnológica e distribuidora da experiência.</p>
+            <p><strong>4. Prestação de Serviços Financeiros:</strong> Os serviços financeiros e de pagamentos disponibilizados por meio da presente plataforma, incluindo abertura e manutenção de conta de pagamento, processamento de transações, emissão de boletos, transferências, pagamentos e demais movimentações de valores, são prestados pelo <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.</strong>, instituição de pagamento autorizada a funcionar pelo <strong>Banco Central do Brasil</strong>. A <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como integradora tecnológica e distribuidora da experiência do produto, não sendo instituição financeira ou de pagamento, nem realizando intermediação financeira em nome próprio. O cliente declara ciência de que o relacionamento financeiro/ de pagamentos e a responsabilidade regulatória pelos serviços acima descritos são do <strong>ASAAS GESTÃO FINANCEIRA S.A.</strong>, nos termos da regulamentação vigente.</p>
           </div>
         );
       case 'loja':
@@ -339,7 +340,7 @@ function CadastroForm() {
             <p><strong>1. Qualidade e Legalidade:</strong> Você assume total responsabilidade pela qualidade do produto fornecido, garantindo que ele segue todas as normas sanitárias e da vigilância em saúde locais.</p>
             <p><strong>2. Obrigações Fiscais:</strong> A emissão de notas fiscais e o recolhimento de impostos sobre a venda dos produtos é de sua responsabilidade exclusiva. O AçaíFood apenas emite recibos pelas taxas de uso da plataforma.</p>
             <p><strong>3. Vínculo:</strong> A utilização desta plataforma não cria vínculo empregatício, societário ou de franquia entre o Parceiro e o AçaíFood. A plataforma cobra apenas um comissionamento (Split) sobre as vendas intermediadas.</p>
-            <p><strong>4. Serviços Financeiros & Subconta BaaS (Modelo A — Direto Tomador):</strong> A abertura de subconta bancária, a custódia de valores, repasses automáticos e divisões de pagamento (Split) são prestados pela instituição parceira <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.)</strong>, CNPJ <strong>19.540.550/0001-21</strong>, autorizada pelo <strong>Banco Central do Brasil</strong>, em conformidade com as exigências regulatórias do BACEN e COAF (Resolução Conjunta nº 16/2025). A AçaíFood atua exclusivamente como integradora tecnológica.</p>
+            <p><strong>4. Prestação de Serviços Financeiros:</strong> Os serviços financeiros e de pagamentos disponibilizados por meio da presente plataforma, incluindo abertura e manutenção de conta de pagamento, processamento de transações, emissão de boletos, transferências, pagamentos e demais movimentações de valores, são prestados pelo <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.</strong>, instituição de pagamento autorizada a funcionar pelo <strong>Banco Central do Brasil</strong>. A <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como integradora tecnológica e distribuidora da experiência do produto, não sendo instituição financeira ou de pagamento, nem realizando intermediação financeira em nome próprio. O cliente declara ciência de que o relacionamento financeiro/ de pagamentos e a responsabilidade regulatória pelos serviços acima descritos são do <strong>ASAAS GESTÃO FINANCEIRA S.A.</strong>, nos termos da regulamentação vigente.</p>
             <div className="pt-1">
               <SeloAsaas variant="positivo" width={140} height={42} />
             </div>
@@ -351,14 +352,14 @@ function CadastroForm() {
             <p><strong>1. Trabalho Autônomo:</strong> Você atua como profissional independente (autônomo), sem qualquer vínculo empregatício, subordinação ou exclusividade com o AçaíFood ou com as Lojas parceiras.</p>
             <p><strong>2. Responsabilidade Veicular:</strong> É de sua inteira responsabilidade a manutenção do veículo utilizado, os custos operacionais (combustível, internet) e a manutenção de sua CNH regularizada.</p>
             <p><strong>3. Acidentes e Infrações:</strong> O AçaíFood é isento de responsabilidades civis ou criminais decorrentes de acidentes de trânsito, infrações ou danos a terceiros ocorridos durante o trajeto. Conduza com prudência.</p>
-            <p><strong>4. Serviços Financeiros & Subconta BaaS (Modelo A — Direto Tomador):</strong> O recebimento de fretes, custódia e transferência de valores para sua conta bancária são prestados pela instituição parceira <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.)</strong>, CNPJ <strong>19.540.550/0001-21</strong>, autorizada pelo <strong>Banco Central do Brasil</strong>, nos termos das normas do BACEN e COAF (Resolução Conjunta nº 16/2025). A AçaíFood atua como integradora tecnológica.</p>
+            <p><strong>4. Prestação de Serviços Financeiros:</strong> Os serviços financeiros e de pagamentos disponibilizados por meio da presente plataforma, incluindo abertura e manutenção de conta de pagamento, processamento de transações, emissão de boletos, transferências, pagamentos e demais movimentações de valores, são prestados pelo <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.</strong>, instituição de pagamento autorizada a funcionar pelo <strong>Banco Central do Brasil</strong>. A <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como integradora tecnológica e distribuidora da experiência do produto, não sendo instituição financeira ou de pagamento, nem realizando intermediação financeira em nome próprio. O cliente declara ciência de que o relacionamento financeiro/ de pagamentos e a responsabilidade regulatória pelos serviços acima descritos são do <strong>ASAAS GESTÃO FINANCEIRA S.A.</strong>, nos termos da regulamentação vigente.</p>
             <div className="pt-1">
               <SeloAsaas variant="positivo" width={140} height={42} />
             </div>
           </div>
         );
       default:
-        return <p className="text-sm text-zinc-500">Ao usar a plataforma, você concorda com nossas políticas de privacidade e conduta. Os serviços de pagamento e subcontas são operados sob o Modelo A — Direto Tomador pela instituição parceira Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21), autorizada pelo Banco Central do Brasil, atuando o AçaíFood como integradora tecnológica.</p>;
+        return <p className="text-sm text-zinc-500">Ao usar a plataforma, você concorda com nossas políticas de privacidade e conduta. Os serviços financeiros e de pagamentos são prestados pelo ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., instituição de pagamento autorizada a funcionar pelo Banco Central do Brasil, atuando a ELETROMECANICA BAIA exclusivamente como integradora tecnológica e distribuidora da experiência do produto.</p>;
     }
   };
 
@@ -517,6 +518,31 @@ function CadastroForm() {
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     Retirada de caroço de açaí nas batedeiras para levar ao ecoponto.
                   </p>
+                </div>
+              </div>
+            </button>
+
+            {/* Botão Exclusivo Asaas - Termos de Serviços Financeiros */}
+            <button
+              type="button"
+              onClick={() => setAsaasModalOpen(true)}
+              className="group text-left w-full cursor-pointer focus:outline-none"
+            >
+              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-blue-500/40 dark:border-blue-500/30 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-lg hover:shadow-blue-500/10 transition-all flex items-start gap-3.5 h-full shadow-sm relative overflow-hidden">
+                <div className="bg-blue-50 dark:bg-blue-950/60 p-3 rounded-xl text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform shrink-0 flex items-center justify-center border border-blue-200 dark:border-blue-800/50">
+                  <ShieldCheck size={28} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <h3 className="text-base font-bold text-zinc-900 dark:text-white">Termos Financeiros</h3>
+                    <span className="px-1.5 py-0.5 text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded uppercase tracking-wider">Asaas</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                    Responsabilidade regulatória e serviços prestados pelo Asaas IP S.A.
+                  </p>
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <SeloAsaas variant="positivo" width={110} height={32} />
+                  </div>
                 </div>
               </div>
             </button>
@@ -910,6 +936,62 @@ function CadastroForm() {
             <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
                 <button type="button" onClick={() => setTermosModalOpen(false)} className="px-5 py-2.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Fechar</button>
                 <button type="button" onClick={() => { setTermosAceitos(true); setTermosModalOpen(false); }} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition shadow-sm">Li e Concordo</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {asaasModalOpen && (
+        <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh] border border-blue-500/30">
+            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-zinc-900 text-white p-5 flex justify-between items-center shrink-0 border-b border-blue-500/30">
+              <div className="flex items-center gap-3">
+                <SeloAsaas variant="negativo-branco" width={110} height={32} />
+                <h3 className="font-bold text-base sm:text-lg text-white">Termo de Responsabilidade Financeira</h3>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setAsaasModalOpen(false)} 
+                className="text-zinc-400 hover:text-white font-bold text-2xl leading-none p-1 rounded-lg hover:bg-white/10 transition"
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-4 text-sm text-zinc-700 dark:text-zinc-300">
+              <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl text-blue-900 dark:text-blue-200 text-xs flex items-start gap-2.5">
+                <ShieldCheck className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" size={18} />
+                <div>
+                  <strong className="block text-sm mb-0.5">Instituição de Pagamento Autorizada pelo Banco Central do Brasil</strong>
+                  <span>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.), CNPJ 19.540.550/0001-21</span>
+                </div>
+              </div>
+
+              <div className="space-y-3 leading-relaxed">
+                <h4 className="font-bold text-zinc-900 dark:text-white text-base border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                  4. Prestação de Serviços Financeiros
+                </h4>
+                <p>
+                  Os serviços financeiros e de pagamentos disponibilizados por meio da presente plataforma, incluindo abertura e manutenção de conta de pagamento, processamento de transações, emissão de boletos, transferências, pagamentos e demais movimentações de valores, são prestados pelo <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A.</strong>, instituição de pagamento autorizada a funcionar pelo <strong>Banco Central do Brasil</strong>.
+                </p>
+                <p>
+                  A <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como integradora tecnológica e distribuidora da experiência do produto, não sendo instituição financeira ou de pagamento, nem realizando intermediação financeira em nome próprio.
+                </p>
+                <p>
+                  O cliente declara ciência de que o relacionamento financeiro/ de pagamentos e a responsabilidade regulatória pelos serviços acima descritos são do <strong>ASAAS GESTÃO FINANCEIRA S.A.</strong>, nos termos da regulamentação vigente.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/80 flex items-center justify-between border-t border-zinc-200 dark:border-zinc-800">
+              <SeloAsaas variant="positivo" width={130} height={36} />
+              <button 
+                type="button" 
+                onClick={() => setAsaasModalOpen(false)} 
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-sm text-sm"
+              >
+                Entendido
+              </button>
             </div>
           </div>
         </div>
