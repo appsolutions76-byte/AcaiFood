@@ -2584,24 +2584,32 @@ export const useAppStore = create<AppState>()(
            try {
               const targetOrder = state.orders.find(o => o.id === orderId);
               const paymentIdToUse = (targetOrder as any)?.paymentId || (targetOrder as any)?.asaasPaymentId || (targetOrder as any)?.asaas_payment_id;
-              getAuthHeaders().then(authHeaders => {
-                fetch('/api/asaas/refund', {
-                  method: 'POST',
-                  headers: authHeaders,
-                  body: JSON.stringify({ 
-                    orderId: orderId,
-                    paymentId: paymentIdToUse,
-                    value: targetOrder?.valor || (targetOrder as any)?.totalValue,
-                    reason: reasonStr || 'Cancelamento solicitado pelo usuário antes do PIN'
-                  })
-                }).then(r => r.json()).then(data => {
-                  if (data.success) console.log("✅ Estorno Asaas efetuado com sucesso:", data);
-                  else console.warn("Aviso no estorno Asaas:", data);
-                }).catch(e => console.warn("Erro ao solicitar estorno Asaas:", e));
+              getAuthHeaders().then(async authHeaders => {
+                try {
+                  const res = await fetch('/api/asaas/refund', {
+                    method: 'POST',
+                    headers: authHeaders,
+                    body: JSON.stringify({ 
+                      orderId: orderId,
+                      paymentId: paymentIdToUse,
+                      value: targetOrder?.valor || (targetOrder as any)?.totalValue,
+                      reason: reasonStr || 'Cancelamento solicitado pelo usuário antes do PIN'
+                    })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    console.log("✅ Estorno Asaas efetuado com sucesso:", data);
+                    await get().fetchOrders(currentUser.id, true);
+                  } else {
+                    console.warn("⚠️ Aviso no estorno Asaas:", data.error || data);
+                  }
+                } catch (fetchErr) {
+                  console.warn("Erro ao solicitar estorno Asaas:", fetchErr);
+                }
               });
            } catch(e) {
               console.error("Exceção ao solicitar estorno:", e);
-            }
+           }
          }
       },
 

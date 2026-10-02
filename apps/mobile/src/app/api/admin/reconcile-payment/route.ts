@@ -213,31 +213,73 @@ export async function POST(request: Request) {
     }
 
     // ==========================================
-    // AÇÃO 2: CANCELAR E REGISTRAR DEVOLUÇÃO
+    // AÇÃO 2: CANCELAR E REGISTRAR DEVOLUÇÃO / ESTORNO
     // ==========================================
     if (action === 'cancel_and_refund') {
-      // Cancelar cobrança pendente no Asaas
+      let asaasRefundMessage = '';
+      let asaasRefundStatus = 'CANCELLED';
+
       if (order.asaas_payment_id && ASAAS_API_KEY) {
         try {
-          await fetch(`${ASAAS_URL}/payments/${order.asaas_payment_id}`, {
-            method: 'DELETE',
+          const payRes = await fetch(`${ASAAS_URL}/payments/${order.asaas_payment_id}`, {
             headers: { 'access_token': ASAAS_API_KEY }
           });
+          if (payRes.ok) {
+            const payData = await payRes.json();
+            const chargeStatus = String(payData.status || '').toUpperCase();
+
+            if (['RECEIVED', 'CONFIRMED'].includes(chargeStatus)) {
+              // Estorno Pix no Asaas
+              const refRes = await fetch(`${ASAAS_URL}/payments/${order.asaas_payment_id}/refund`, {
+                method: 'POST',
+                headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: reason || 'Cancelamento e devolução solicitados pelo administrador' })
+              });
+              const refData = await refRes.json();
+              if (refRes.ok && !refData.errors) {
+                asaasRefundStatus = 'REFUNDED';
+                asaasRefundMessage = 'Estorno Pix processado com sucesso no Asaas.';
+                await supabase.from('refund_history').insert({
+                  order_id: orderId,
+                  payment_id: order.asaas_payment_id,
+                  requested_value: Number(payData.value || order.charged_amount || 0),
+                  asaas_refund_id: refData.id || null,
+                  status: 'REFUNDED',
+                  requested_by: adminUser?.id || null
+                });
+              } else {
+                const msg = refData.errors ? refData.errors.map((e: any) => e.description).join(', ') : (refData.message || JSON.stringify(refData));
+                console.warn("Aviso ao solicitar estorno Asaas:", msg);
+                asaasRefundMessage = `Aviso Asaas: ${msg}`;
+              }
+            } else if (['PENDING', 'AWAITING_PAYMENT'].includes(chargeStatus)) {
+              await fetch(`${ASAAS_URL}/payments/${order.asaas_payment_id}`, {
+                method: 'DELETE',
+                headers: { 'access_token': ASAAS_API_KEY }
+              });
+              asaasRefundMessage = 'Cobrança Pix pendente cancelada no Asaas.';
+            }
+          }
         } catch (delErr) {
-          console.warn("Aviso ao cancelar cobrança Asaas:", delErr);
+          console.warn("Aviso ao cancelar/estornar cobrança Asaas:", delErr);
         }
       }
+
+      const finalStatus = asaasRefundStatus === 'REFUNDED' ? 'REFUNDED' : 'CANCELLED';
 
       const { error: cancelErr } = await supabase
         .from('orders')
         .update({
-          status: 'CANCELLED',
-          asaas_charge_status: 'CANCELLED'
+          status: finalStatus,
+          asaas_charge_status: finalStatus,
+          cancellation_reason: reason || 'Cancelado pelo administrador',
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: adminUser?.id || null
         })
         .eq('id', orderId);
 
       if (cancelErr) {
-        return NextResponse.json({ error: 'Erro ao cancelar pedido' }, { status: 500 });
+        return NextResponse.json({ error: 'Erro ao cancelar pedido no banco de dados' }, { status: 500 });
       }
 
       // Registrar auditoria em incident_logs
