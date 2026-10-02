@@ -94,28 +94,28 @@ export function PartnerDashboardLayout({
 
   const themeClasses = {
     purple: {
-      bgHeader: 'bg-purple-950/20 border-purple-900/40',
-      badgeBg: 'bg-purple-500/10 border-purple-500/30 text-purple-300',
+      bgHeader: 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/40',
+      badgeBg: 'bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300',
       statusBtnActive: 'bg-emerald-600 text-white hover:bg-emerald-700',
-      statusBtnInactive: 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700',
-      cardBorder: 'border-purple-900/40 bg-zinc-900/90',
-      vaultText: 'text-emerald-400',
+      statusBtnInactive: 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400 hover:bg-zinc-300 dark:hover:bg-zinc-700',
+      cardBorder: 'border-purple-200 dark:border-purple-900/40 bg-white dark:bg-zinc-900/90',
+      vaultText: 'text-emerald-600 dark:text-emerald-400',
     },
     emerald: {
-      bgHeader: 'bg-emerald-950/20 border-emerald-900/40',
-      badgeBg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300',
+      bgHeader: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40',
+      badgeBg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300',
       statusBtnActive: 'bg-emerald-600 text-white hover:bg-emerald-700',
-      statusBtnInactive: 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700',
-      cardBorder: 'border-emerald-900/40 bg-zinc-900/90',
-      vaultText: 'text-emerald-400',
+      statusBtnInactive: 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400 hover:bg-zinc-300 dark:hover:bg-zinc-700',
+      cardBorder: 'border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900/90',
+      vaultText: 'text-emerald-600 dark:text-emerald-400',
     },
     amber: {
-      bgHeader: 'bg-amber-950/20 border-amber-900/40',
-      badgeBg: 'bg-amber-500/10 border-amber-500/30 text-amber-300',
+      bgHeader: 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40',
+      badgeBg: 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300',
       statusBtnActive: 'bg-emerald-600 text-white hover:bg-emerald-700',
-      statusBtnInactive: 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700',
-      cardBorder: 'border-amber-900/40 bg-zinc-900/90',
-      vaultText: 'text-emerald-400',
+      statusBtnInactive: 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400 hover:bg-zinc-300 dark:hover:bg-zinc-700',
+      cardBorder: 'border-amber-200 dark:border-amber-900/40 bg-white dark:bg-zinc-900/90',
+      vaultText: 'text-emerald-600 dark:text-emerald-400',
     }
   }[themeColor];
 
@@ -129,26 +129,26 @@ export function PartnerDashboardLayout({
 
   return (
     <PartnerActivationGuard roleName={roleGuardName}>
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-24 font-sans">
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 pb-24 font-sans">
         <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role={manualRole} />
         {shareModal}
 
         {/* Top Header Sticky: Janela Única Concentrada e Congelada no Topo */}
-        <header className="bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/90 sticky top-0 z-40 p-2.5 sm:p-4 shadow-xl">
+        <header className="bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/90 sticky top-0 z-40 p-2.5 sm:p-4 shadow-md">
           <div className="max-w-6xl mx-auto space-y-2.5 sm:space-y-3">
             
             {/* 1. Linha Superior: Nome da Loja/Parceiro + Status + Detalhes Rápidos + Ações Globais */}
-            <div className={`border rounded-2xl p-3 sm:p-3.5 shadow-md transition relative overflow-hidden ${themeClasses.cardBorder}`}>
+            <div className={`border rounded-2xl p-3 sm:p-3.5 shadow-sm transition relative overflow-hidden ${themeClasses.cardBorder}`}>
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <div className="flex items-start sm:items-center gap-3">
-                  <div className="p-2 sm:p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/60 text-purple-400 shrink-0 mt-0.5 sm:mt-0">
+                  <div className="p-2 sm:p-2.5 rounded-2xl bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/60 text-purple-700 dark:text-purple-400 shrink-0 mt-0.5 sm:mt-0">
                     {roleIcon}
                   </div>
                   
                   <div className="space-y-1">
                     {/* Nome da Loja / Parceiro como Título Principal + Status Operacional + Asaas */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight">
+                      <h1 className="text-lg sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
                         {partnerName || title}
                       </h1>
 
@@ -165,31 +165,31 @@ export function PartnerDashboardLayout({
                         </button>
                       )}
 
-                      <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                      <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
                         <ShieldCheck size={12} /> Asaas Ativo ✓
                       </span>
                     </div>
 
                     {/* Informações de Localização, Chave PIX, GPS e Parceira Financeira */}
-                    <div className="flex items-center gap-3 text-xs text-white flex-wrap pt-0.5">
+                    <div className="flex items-center gap-3 text-xs text-zinc-700 dark:text-zinc-300 flex-wrap pt-0.5">
                       {locationText && (
-                        <span className="flex items-center gap-1 text-white">
-                          <MapPin size={12} className="text-purple-400 shrink-0" />
-                          <span className="text-white">{locationText}</span>
+                        <span className="flex items-center gap-1 text-zinc-700 dark:text-zinc-300">
+                          <MapPin size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                          <span className="text-zinc-700 dark:text-zinc-300">{locationText}</span>
                         </span>
                       )}
 
                       {rawPix && (
-                        <span className="flex items-center gap-1 bg-zinc-800/90 px-2 py-0.5 rounded-lg border border-zinc-700/60 text-white font-mono text-[11px]">
-                          <Key size={11} className="text-amber-400 shrink-0" />
-                          <span className="text-white">PIX (CPF/CNPJ): {rawPix}</span>
+                        <span className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/90 px-2 py-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700/60 text-zinc-800 dark:text-zinc-200 font-mono text-[11px]">
+                          <Key size={11} className="text-amber-500 dark:text-amber-400 shrink-0" />
+                          <span className="text-zinc-800 dark:text-zinc-200">PIX (CPF/CNPJ): {rawPix}</span>
                         </span>
                       )}
 
                       {onUpdateGPS && (
                         <button
                           onClick={onUpdateGPS}
-                          className="text-[11px] text-white hover:text-purple-300 font-bold underline flex items-center gap-1 cursor-pointer"
+                          className="text-[11px] text-zinc-700 dark:text-zinc-300 hover:text-purple-600 dark:hover:text-purple-300 font-bold underline flex items-center gap-1 cursor-pointer"
                         >
                           <MapPin size={11} /> Atualizar GPS
                         </button>
@@ -205,29 +205,29 @@ export function PartnerDashboardLayout({
                   {onOpenPrinter && (
                     <button 
                       onClick={onOpenPrinter} 
-                      className="bg-purple-900/50 hover:bg-purple-900/80 text-white border border-purple-700/60 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm shrink-0"
+                      className="bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 dark:hover:bg-purple-900/80 text-purple-900 dark:text-white border border-purple-300 dark:border-purple-700/60 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm shrink-0"
                       title="Configurar Impressora Térmica"
                     >
-                      <Printer size={13} className="text-purple-300" />
-                      <span className="text-white font-bold">Impressora</span>
+                      <Printer size={13} className="text-purple-600 dark:text-purple-300" />
+                      <span className="font-bold">Impressora</span>
                     </button>
                   )}
 
                   {onOpenShare && (
                     <button 
                       onClick={onOpenShare}
-                      className="bg-pink-950/50 hover:bg-pink-900/70 text-white border border-pink-800/60 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm shrink-0"
+                      className="bg-pink-100 dark:bg-pink-950/50 hover:bg-pink-200 dark:hover:bg-pink-900/70 text-pink-900 dark:text-white border border-pink-300 dark:border-pink-800/60 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm shrink-0"
                       title="Compartilhar link da loja / parceiro"
                     >
-                      <Share2 size={13} className="text-pink-300" />
-                      <span className="text-white font-bold">Compartilhar</span>
+                      <Share2 size={13} className="text-pink-600 dark:text-pink-300" />
+                      <span className="font-bold">Compartilhar</span>
                     </button>
                   )}
 
                   <button
                     onClick={handleHeaderRefresh}
                     disabled={isRefreshing}
-                    className="bg-zinc-900 hover:bg-zinc-800 text-zinc-200 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-zinc-700/80 active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm shrink-0"
+                    className="bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-zinc-300 dark:border-zinc-700/80 active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm shrink-0"
                     title="Atualizar dados do painel em tempo real"
                   >
                     <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
@@ -236,7 +236,7 @@ export function PartnerDashboardLayout({
 
                   <button
                     onClick={() => setManualOpen(true)}
-                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-500/30 active:scale-95 cursor-pointer shadow-sm shrink-0"
+                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-500/30 active:scale-95 cursor-pointer shadow-sm shrink-0"
                   >
                     <BookOpen size={13} />
                     <span>Manual</span>
@@ -246,7 +246,7 @@ export function PartnerDashboardLayout({
 
                   <button
                     onClick={handleLogout}
-                    className="bg-red-950/40 hover:bg-red-900/60 text-red-400 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-red-900/50 active:scale-95 ml-1 cursor-pointer shadow-sm shrink-0"
+                    className="bg-red-100 dark:bg-red-950/40 hover:bg-red-200 dark:hover:bg-red-900/60 text-red-700 dark:text-red-400 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition border border-red-300 dark:border-red-900/50 active:scale-95 ml-1 cursor-pointer shadow-sm shrink-0"
                   >
                     <LogOut size={13} />
                     <span>Sair</span>
