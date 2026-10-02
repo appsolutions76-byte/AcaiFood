@@ -6,7 +6,7 @@ import { ShieldCheck, ArrowLeft, Lock, FileText, Smartphone, Users } from "lucid
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
 export default function PoliticaPrivacidadePage() {
-  const currentDate = "7 de Agosto de 2026";
+  const currentDate = "2 de Outubro de 2026";
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans p-4 sm:p-8">
@@ -30,7 +30,7 @@ export default function PoliticaPrivacidadePage() {
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-white">Política de Privacidade</h1>
           <p className="text-sm text-purple-200">
-            Última atualização: {currentDate} | AçaíFood Tecnologia Ltda.
+            Última atualização: {currentDate} | Eletromecânica Baia Ltda (CNPJ 42.035.623/0001-40), titular da marca AçaíFood
           </p>
         </div>
 
@@ -56,7 +56,7 @@ export default function PoliticaPrivacidadePage() {
             <ul className="list-disc pl-5 space-y-1 text-zinc-300">
               <li><strong>Dados de Cadastro:</strong> Nome completo, e-mail, senha criptografada, telefone/WhatsApp, CPF ou CNPJ.</li>
               <li><strong>Dados de Endereço e Geolocalização (GPS):</strong> Endereço completo de entrega e coordenadas GPS (latitude e longitude) enviadas com permissão para cálculo exato do frete e acompanhamento em tempo real no mapa.</li>
-              <li><strong>Dados Financeiros e de Pagamento:</strong> Chave Pix e ID de carteira de pagamentos para processamento de cobranças e repasses automatizados (via instituição parceira Asaas IP S.A. - ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21).</li>
+              <li><strong>Dados Financeiros e de Pagamento:</strong> Chave Pix e ID de carteira de pagamentos para processamento de cobranças e repasses automatizados (via instituição parceira Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ 19.540.550/0001-21).</li>
               <li><strong>Dados do Dispositivo:</strong> Endereço IP, dados de conexão, navegador e tipo de sistema operacional.</li>
             </ul>
           </section>
@@ -89,7 +89,7 @@ export default function PoliticaPrivacidadePage() {
             </p>
             <ul className="list-disc pl-5 space-y-1 text-zinc-300">
               <li><strong>Com os Parceiros da Transação:</strong> Nome do cliente, telefone e endereço são exibidos para a loja e o entregador responsável pelo pedido.</li>
-              <li><strong>Com Gateway de Pagamentos e Subcontas BaaS (Asaas IP S.A. / ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21):</strong> CPF/CNPJ, nome e dados da cobrança para liquidação bancária via Pix.</li>
+              <li><strong>Com Gateway de Pagamentos e Subcontas BaaS (Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ 19.540.550/0001-21):</strong> CPF/CNPJ, nome e dados da cobrança para liquidação bancária via Pix.</li>
               <li><strong>Autoridades Judiciais:</strong> Mediante ordem judicial ou obrigação legal.</li>
             </ul>
           </section>
@@ -122,7 +122,7 @@ export default function PoliticaPrivacidadePage() {
               A marca e plataforma <strong>AçaíFood</strong> é desenvolvida e mantida pela <strong>AppSolutions76</strong>, divisão de tecnologia pertencente à <strong>Eletromecânica Baia Ltda</strong> (Razão Social controladora oficial).
             </p>
             <p className="bg-purple-950/40 border border-purple-800/60 p-4 rounded-2xl text-purple-200">
-              ℹ️ <strong>Identificação Bancária e Pix:</strong> Todas as cobranças, faturas e liquidações via Pix processadas pela nossa parceira BaaS <strong>Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21)</strong> ocorrem formalmente sob o <strong>Modelo A — Direto Tomador</strong> em nome da <strong>Eletromecânica Baia Ltda</strong>. Por isso, nos aplicativos de bancos e comprovantes Pix, o nome do beneficiário/favorecido é exibido como <strong>Eletromecânica Baia Ltda</strong>.
+              ℹ️ <strong>Identificação Bancária e Pix:</strong> Todas as cobranças, faturas e liquidações via Pix processadas pela nossa parceira BaaS <strong>Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ 19.540.550/0001-21</strong> ocorrem formalmente sob o <strong>Modelo A — Direto Tomador</strong> em nome da <strong>Eletromecânica Baia Ltda</strong>. Por isso, nos aplicativos de bancos e comprovantes Pix, o nome do beneficiário/favorecido é exibido como <strong>Eletromecânica Baia Ltda</strong>.
             </p>
           </section>
 

@@ -91,14 +91,14 @@ async function handleProcessSettlements(request: Request) {
         .maybeSingle();
 
       const walletId = partner?.asaas_wallet_id?.trim();
-      const isKycApproved = partner?.asaas_account_status === 'APPROVED' || partner?.split_enabled === true;
+      const isKycApproved = partner?.asaas_account_status === 'APPROVED';
 
       if (!walletId || !isKycApproved) {
         await supabase
           .from('settlements')
           .update({
             status: 'WAITING_ACCOUNT',
-            last_error: !walletId ? 'Parceiro sem carteira Asaas vinculada' : 'Subconta Asaas aguardando aprovação de KYC'
+            last_error: !walletId ? 'Parceiro sem carteira Asaas vinculada' : 'Subconta Asaas aguardando aprovação de KYC (status deve ser APPROVED)'
           })
           .eq('id', settlement.id);
 
@@ -121,17 +121,20 @@ async function handleProcessSettlements(request: Request) {
           const checkData = await checkRes.json();
           if (checkData?.data && checkData.data.length > 0) {
             const existingTransfer = checkData.data[0];
+            const isConfirmed = existingTransfer.status === 'DONE' || existingTransfer.status === 'COMPLETED' || existingTransfer.status === 'CONFIRMED';
+            const finalSt = isConfirmed ? 'DONE' : 'PROCESSING';
+
             await supabase
               .from('settlements')
               .update({
-                status: 'DONE',
+                status: finalSt,
                 asaas_transfer_id: existingTransfer.id,
-                transferred_at: new Date().toISOString(),
+                transferred_at: isConfirmed ? new Date().toISOString() : null,
                 last_error: null
               })
               .eq('id', settlement.id);
 
-            results.push({ id: settlement.id, status: 'ALREADY_TRANSFERRED', transferId: existingTransfer.id });
+            results.push({ id: settlement.id, status: finalSt, transferId: existingTransfer.id });
             continue;
           }
         }
@@ -173,17 +176,20 @@ async function handleProcessSettlements(request: Request) {
         const transferData = await transferRes.json();
 
         if (transferRes.ok && transferData.id) {
+          const isConfirmed = transferData.status === 'DONE' || transferData.status === 'COMPLETED' || transferData.status === 'CONFIRMED';
+          const targetStatus = isConfirmed ? 'DONE' : 'PROCESSING';
+
           await supabase
             .from('settlements')
             .update({
-              status: 'DONE',
+              status: targetStatus,
               asaas_transfer_id: transferData.id,
-              transferred_at: new Date().toISOString(),
+              transferred_at: isConfirmed ? new Date().toISOString() : null,
               last_error: null
             })
             .eq('id', settlement.id);
 
-          results.push({ id: settlement.id, status: 'DONE', transferId: transferData.id });
+          results.push({ id: settlement.id, status: targetStatus, transferId: transferData.id });
         } else {
           const errorMsg = transferData.errors
             ? transferData.errors.map((e: any) => e.description).join(', ')

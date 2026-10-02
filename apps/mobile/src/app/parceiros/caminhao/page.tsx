@@ -542,13 +542,13 @@ export default function CaminhaoDashboard() {
                               <div className="flex items-center gap-2">
                                 <span className="text-zinc-400 text-xs">📍</span> 
                                 <span className="text-zinc-700 dark:text-zinc-300 font-medium">
-                                  {isColeta ? `Retirar em: ${o.lojaNome || origem?.name || 'Loja de Açaí'} (${origem?.bairro || o.lojaEndereco || 'Belém'})` : (origem?.bairro || '—')}
+                                  {isColeta ? `Retirar em: ${o.lojaNome || origem?.name || 'Loja de Açaí'} (${o.origem_bairro || origem?.bairro || 'Belém'})` : (o.origem_bairro || origem?.bairro || '—')}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-zinc-400 text-xs">🏁</span> 
                                 <span className="text-zinc-700 dark:text-zinc-300 font-medium">
-                                  {isColeta ? 'Descarte: Ecoponto Municipal de Caroço' : (destino?.bairro || '—')}
+                                  {isColeta ? 'Descarte: Ecoponto Municipal de Caroço' : (o.delivery_bairro || destino?.bairro || '—')}
                                 </span>
                               </div>
                               <button 
@@ -563,7 +563,7 @@ export default function CaminhaoDashboard() {
                                   setMapModal({
                                     open: true,
                                     origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origem?.name || 'Retirada' },
-                                    destino: { lat: latDestino, lng: lngDestino, name: isColeta ? 'Ecoponto Municipal' : (o.clienteNome || destino?.name || 'Entrega') },
+                                    destino: { lat: latDestino, lng: lngDestino, name: isColeta ? 'Ecoponto Municipal' : `Destino (${o.delivery_bairro || 'Entrega'})` },
                                     motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Seu Veículo', veiculo: currentUser?.veiculo || 'Caminhão' }
                                   });
                                 }} 

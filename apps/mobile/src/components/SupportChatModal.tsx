@@ -27,6 +27,7 @@ interface SupportChatModalProps {
 export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAULT_SUPPORT_CONFIG }: SupportChatModalProps) {
   const [messages, setMessages] = useState<SupportMessageItem[]>([]);
   const [inputText, setInputText] = useState("");
+  const [category, setCategory] = useState<'geral' | 'financeiro' | 'pedido' | 'parceria'>('geral');
   const [sending, setSending] = useState(false);
   const [liveConfig, setLiveConfig] = useState<SupportConfig>(config);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -115,6 +116,7 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
       user_role: activeUserRole,
       user_phone: activeUserPhone,
       user_email: currentUser?.email || "",
+      category: category,
       content: textToSend,
       sender: "user",
       is_read: false,
@@ -387,13 +389,75 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
           <div ref={messagesEndRef} />
         </div>
 
+        {/* SELETOR DE CATEGORIA */}
+        <div className="bg-zinc-50 dark:bg-zinc-950 px-3 py-2 border-t border-zinc-200 dark:border-zinc-800 flex items-center gap-1.5 overflow-x-auto text-[11px] shrink-0">
+          <span className="text-zinc-500 shrink-0 font-medium mr-1">Assunto:</span>
+          <button
+            type="button"
+            onClick={() => setCategory('geral')}
+            className={`px-2.5 py-1 rounded-xl font-bold transition shrink-0 ${
+              category === 'geral' 
+                ? 'bg-purple-600 text-white shadow-xs' 
+                : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700'
+            }`}
+          >
+            💬 Dúvida Geral
+          </button>
+          <button
+            type="button"
+            onClick={() => setCategory('financeiro')}
+            className={`px-2.5 py-1 rounded-xl font-bold transition shrink-0 ${
+              category === 'financeiro' 
+                ? 'bg-blue-600 text-white shadow-xs' 
+                : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700'
+            }`}
+          >
+            💳 Pagamento, Pix ou repasse
+          </button>
+          <button
+            type="button"
+            onClick={() => setCategory('pedido')}
+            className={`px-2.5 py-1 rounded-xl font-bold transition shrink-0 ${
+              category === 'pedido' 
+                ? 'bg-emerald-600 text-white shadow-xs' 
+                : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700'
+            }`}
+          >
+            📦 Pedido / Entrega
+          </button>
+          <button
+            type="button"
+            onClick={() => setCategory('parceria')}
+            className={`px-2.5 py-1 rounded-xl font-bold transition shrink-0 ${
+              category === 'parceria' 
+                ? 'bg-amber-600 text-white shadow-xs' 
+                : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700'
+            }`}
+          >
+            🤝 Parceria
+          </button>
+        </div>
+
+        {/* AVISO REGULATÓRIO ASAAS SE SELECIONADO FINANCEIRO */}
+        {category === 'financeiro' && (
+          <div className="bg-blue-50 dark:bg-blue-950/50 border-t border-blue-200 dark:border-blue-800/60 p-2.5 px-3.5 text-[11px] text-blue-900 dark:text-blue-200 flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 font-bold">
+              <span>🏛️</span>
+              <span>Serviços Financeiros Asaas (BACEN)</span>
+            </div>
+            <p className="text-[10px] text-blue-800 dark:text-blue-300 leading-tight">
+              Os pagamentos, cobranças Pix e liquidações de saldo são operados por <strong>ASAAS GESTÃO FINANCEIRA S.A.</strong> (CNPJ 19.540.550/0001-21). Canais oficiais da instituição: <strong>0800 007 0070</strong> | <strong>suporte@asaas.com.br</strong> | <strong>ouvidoria@asaas.com.br</strong>.
+            </p>
+          </div>
+        )}
+
         {/* INPUT DE MENSAGEM */}
         <form onSubmit={handleSendMessage} className="p-3 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex items-center gap-2 shrink-0">
           <input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Digite sua mensagem para o suporte..."
+            placeholder={category === 'financeiro' ? 'Descreva o problema com pagamento, Pix ou repasse...' : 'Digite sua mensagem para o suporte...'}
             className="flex-1 bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-3 text-xs text-zinc-900 dark:text-white outline-none focus:border-purple-500 transition shadow-inner"
           />
           <button

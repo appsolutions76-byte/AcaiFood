@@ -337,8 +337,8 @@ export default function MotoboyDashboard() {
                               <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">Líquido: {formatMoney(getMotoboyFee(o))}</span>
                           </div>
                           <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded text-sm mb-4 flex flex-col gap-1 border border-zinc-100 dark:border-zinc-800">
-                              <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">📍</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{origem?.bairro || '—'}</span></div>
-                              <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">🏁</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{destino?.bairro || '—'}</span></div>
+                              <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">📍</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{o.origem_bairro || origem?.bairro || '—'}</span></div>
+                              <div className="flex items-center gap-2"><span className="text-zinc-400 text-xs">🏁</span> <span className="text-zinc-700 dark:text-zinc-300 font-medium">{o.delivery_bairro || destino?.bairro || '—'}</span></div>
                               <button 
                                 onClick={() => {
                                   const latOrigem = (origem?.lat && origem.lat !== 0) ? origem.lat : -1.4558;
@@ -351,7 +351,7 @@ export default function MotoboyDashboard() {
                                   setMapModal({
                                     open: true,
                                     origem: { lat: latOrigem, lng: lngOrigem, name: o.lojaNome || origem?.name || 'Retirada' },
-                                    destino: { lat: latDestino, lng: lngDestino, name: o.clienteNome || destino?.name || 'Entrega' },
+                                    destino: { lat: latDestino, lng: lngDestino, name: `Destino (${o.delivery_bairro || 'Entrega'})` },
                                     motorista: { lat: driverLat, lng: driverLng, name: currentUser?.name || 'Sua Moto', veiculo: currentUser?.veiculo || 'Moto' }
                                   });
                                 }} 

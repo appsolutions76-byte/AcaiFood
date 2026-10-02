@@ -24,11 +24,13 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
 
     const matchedOrdersMap = new Map<string, any>();
 
+    const ORDER_BALANCE_COLS = 'id, status, driver_id, seller_storefront_id, order_type, products_subtotal, delivery_distance_km, driver_amount, seller_amount, seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, payout_seller_done, payout_driver_done';
+
     if (isDriver) {
       // 1. Motorista / Motoboy / Caminhão: consultar orders por driver_id ou motorista_id
       const queries = [
-        adminSupabase.from('orders').select('*').eq('driver_id', partnerId).or('payout_driver_done.eq.false,payout_driver_done.is.null').in('status', validStatuses),
-        adminSupabase.from('orders').select('*').eq('motorista_id', partnerId).or('payout_driver_done.eq.false,payout_driver_done.is.null').in('status', validStatuses),
+        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).eq('driver_id', partnerId).or('payout_driver_done.eq.false,payout_driver_done.is.null').in('status', validStatuses),
+        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).eq('motorista_id', partnerId).or('payout_driver_done.eq.false,payout_driver_done.is.null').in('status', validStatuses),
       ];
 
       const results = await Promise.allSettled(queries);
@@ -78,10 +80,10 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
       const validIds = Array.from(new Set([...sfIds, partnerId]));
 
       const queries = [
-        adminSupabase.from('orders').select('*').in('seller_storefront_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
-        adminSupabase.from('orders').select('*').in('loja_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
-        adminSupabase.from('orders').select('*').in('fornecedor_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
-        adminSupabase.from('orders').select('*').in('origem_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
+        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).in('seller_storefront_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
+        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).in('loja_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
+        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).in('fornecedor_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
+        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).in('origem_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
       ];
 
       const results = await Promise.allSettled(queries);

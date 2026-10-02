@@ -185,14 +185,14 @@ export default function PartnerActivationGuard({ children, roleName }: PartnerAc
               Conta Aguardando Ativação
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              {roleName ? `Painel exclusivo para parceiros homologados (${roleName}).` : 'Painel exclusivo para parceiros homologados.'}
+              {roleName ? `Painel exclusivo para parceiros ativos (${roleName}).` : 'Painel exclusivo para parceiros ativos.'}
             </p>
           </div>
 
           <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-2xl p-4 text-left space-y-1">
             <p className="text-xs font-black text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
               <Clock size={16} className="text-purple-600 shrink-0" />
-              Taxa Única de Homologação Asaas
+              Taxa de ativação da plataforma AçaíFood
             </p>
             <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
               As vagas de fundadores liberadas pelo Admin foram preenchidas. Para desbloquear seu painel operacional e começar a receber pedidos e corridas, conclua a ativação via Pix:

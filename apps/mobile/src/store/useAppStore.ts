@@ -128,6 +128,11 @@ export interface User {
   products?: Product[];
   storefrontId?: string;
   storefronts?: any[];
+  postalCode?: string;
+  birthDate?: string;
+  monthlyIncome?: number;
+  companyType?: string;
+  addressNumber?: string;
 }
 
 export interface Order {
@@ -543,8 +548,9 @@ export const useAppStore = create<AppState>()(
           
           set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
 
-          // Se for usuário parceiro/motorista legado sem walletId mas com CPF, gera subconta automaticamente em segundo plano
-          if ((appRole === 'loja' || appRole === 'fornecedor' || appRole === 'motorista') && !loggedUser.asaasWalletId && loggedUser.cpfCnpj) {
+          // Se for usuário parceiro/motorista legado sem walletId mas com CPF e dados KYC preenchidos, gera subconta automaticamente
+          const hasKycData = Boolean(userProfile.postal_code && (userProfile.birth_date || userProfile.company_type));
+          if ((appRole === 'loja' || appRole === 'fornecedor' || appRole === 'motorista') && !loggedUser.asaasWalletId && loggedUser.cpfCnpj && hasKycData) {
             getAuthHeaders().then(authHeaders => {
               fetch('/api/asaas/subaccount', {
                 method: 'POST',
@@ -556,8 +562,13 @@ export const useAppStore = create<AppState>()(
                   cpfCnpj: loggedUser.cpfCnpj,
                   phone: loggedUser.telefone,
                   endereco: loggedUser.endereco,
+                  addressNumber: userProfile.address_number,
                   bairro: loggedUser.bairro,
                   cidade: loggedUser.cidade,
+                  postalCode: userProfile.postal_code,
+                  birthDate: userProfile.birth_date,
+                  monthlyIncome: userProfile.monthly_income,
+                  companyType: userProfile.company_type,
                   role: userProfile.role
                 })
               }).then(r => r.json()).then(data => {
@@ -732,21 +743,26 @@ export const useAppStore = create<AppState>()(
                 }
 
                 // Fallback para API nativa Next.js se a Edge Function não retornou walletId
-                if (!walletId && newUser.cpfCnpj) {
+                if (!walletId && newUser.cpfCnpj && data.postalCode) {
                   const subHeaders = await getAuthHeaders();
                   const subRes = await fetch('/api/asaas/subaccount', {
                     method: 'POST',
                     headers: subHeaders,
                     body: JSON.stringify({
-                      userId:   newUser.id,
-                      name:     newUser.name,
-                      email:    newUser.email,
-                      cpfCnpj:  newUser.cpfCnpj,
-                      phone:    newUser.telefone,
-                      endereco: newUser.endereco,
-                      bairro:   newUser.bairro,
-                      cidade:   newUser.cidade,
-                      role:     dbRole,
+                      userId:        newUser.id,
+                      name:          newUser.name,
+                      email:         newUser.email,
+                      cpfCnpj:       newUser.cpfCnpj,
+                      phone:         newUser.telefone,
+                      endereco:      newUser.endereco,
+                      addressNumber: (data as any).addressNumber,
+                      bairro:        newUser.bairro,
+                      cidade:        newUser.cidade,
+                      postalCode:    (data as any).postalCode,
+                      birthDate:     (data as any).birthDate,
+                      monthlyIncome: (data as any).monthlyIncome,
+                      companyType:   (data as any).companyType,
+                      role:          dbRole,
                     })
                   });
                   const subData = await subRes.json();
@@ -785,21 +801,26 @@ export const useAppStore = create<AppState>()(
                 if (asaasData?.walletId) walletId = asaasData.walletId;
               } catch (_e) {}
 
-              if (!walletId) {
+              if (!walletId && (data as any).postalCode) {
                 const subHeaders = await getAuthHeaders();
                 const subRes = await fetch('/api/asaas/subaccount', {
                   method: 'POST',
                   headers: subHeaders,
                   body: JSON.stringify({
-                    userId:   newUser.id,
-                    name:     newUser.name,
-                    email:    newUser.email,
-                    cpfCnpj:  newUser.cpfCnpj,
-                    phone:    newUser.telefone,
-                    endereco: newUser.endereco || 'Centro',
-                    bairro:   newUser.bairro,
-                    cidade:   newUser.cidade,
-                    role:     dbRole,
+                    userId:        newUser.id,
+                    name:          newUser.name,
+                    email:         newUser.email,
+                    cpfCnpj:       newUser.cpfCnpj,
+                    phone:         newUser.telefone,
+                    endereco:      newUser.endereco || 'Centro',
+                    addressNumber: (data as any).addressNumber,
+                    bairro:        newUser.bairro,
+                    cidade:        newUser.cidade,
+                    postalCode:    (data as any).postalCode,
+                    birthDate:     (data as any).birthDate,
+                    monthlyIncome: (data as any).monthlyIncome,
+                    companyType:   (data as any).companyType,
+                    role:          dbRole,
                   })
                 });
                 const subData = await subRes.json();
@@ -1188,20 +1209,26 @@ export const useAppStore = create<AppState>()(
           try {
             const uAny = targetUser as any;
             const cpfCnpjToUse = uAny?.cpfCnpj || uAny?.cpf_cnpj;
-            if (cpfCnpjToUse) {
+            const postalCodeToUse = uAny?.postalCode || uAny?.postal_code || uAny?.cep;
+            if (cpfCnpjToUse && postalCodeToUse) {
               const subRes = await fetch('/api/asaas/subaccount', {
                 method: 'POST',
                 headers: await getAuthHeaders(),
                 body: JSON.stringify({
                   userId,
-                  name: uAny?.name || 'Parceiro AçaíFood',
-                  email: uAny?.email || `parceiro_${userId}@acaifood.app.br`,
-                  cpfCnpj: cpfCnpjToUse,
-                  phone: uAny?.telefone || uAny?.phone || '',
-                  endereco: uAny?.endereco || '',
-                  bairro: uAny?.bairro || '',
-                  cidade: uAny?.cidade || 'Belém',
-                  role: uAny?.role
+                  name:          uAny?.name || 'Parceiro AçaíFood',
+                  email:         uAny?.email || `parceiro_${userId}@acaifood.app.br`,
+                  cpfCnpj:       cpfCnpjToUse,
+                  phone:         uAny?.telefone || uAny?.phone || '',
+                  endereco:      uAny?.endereco || '',
+                  addressNumber: uAny?.addressNumber || uAny?.address_number,
+                  bairro:        uAny?.bairro || '',
+                  cidade:        uAny?.cidade || 'Belém',
+                  postalCode:    postalCodeToUse,
+                  birthDate:     uAny?.birthDate || uAny?.birth_date,
+                  monthlyIncome: uAny?.monthlyIncome || uAny?.monthly_income,
+                  companyType:   uAny?.companyType || uAny?.company_type,
+                  role:          uAny?.role
                 })
               });
               if (subRes.ok) {
@@ -2275,7 +2302,6 @@ export const useAppStore = create<AppState>()(
               const { data: pinRes, error: pinErr } = await supabase.rpc('check_pickup_pin', {
                 p_order_id: orderId,
                 p_pin: cleanPin,
-                p_operator_id: currentUser.id,
                 p_device_info: typeof navigator !== 'undefined' ? navigator.userAgent : 'App Client'
               });
 
@@ -2320,7 +2346,6 @@ export const useAppStore = create<AppState>()(
               const { data: pinRes, error: pinErr } = await supabase.rpc('check_delivery_pin', {
                 p_order_id: orderId,
                 p_pin: cleanPin,
-                p_operator_id: currentUser.id,
                 p_device_info: typeof navigator !== 'undefined' ? navigator.userAgent : 'App Client'
               });
 
@@ -2348,8 +2373,7 @@ export const useAppStore = create<AppState>()(
         if (action === 'aceitar_motorista') {
             try {
               const { data: acceptRes, error: acceptErr } = await supabase.rpc('accept_order_atomic', {
-                p_order_id: orderId,
-                p_operator_id: currentUser.id
+                p_order_id: orderId
               });
 
               if (acceptErr || !acceptRes?.success) {
@@ -2672,19 +2696,22 @@ export const useAppStore = create<AppState>()(
          const currentUser = (state.currentUser?.id === userId ? state.currentUser : state.users[userId]) || state.currentUser;
          if (!currentUser) return;
 
-         const roleLower = String(currentUser.role || '').toLowerCase();
+          const roleLower = String(currentUser.role || '').toLowerCase();
+          const isDriverRole = roleLower === 'motorista' || roleLower === 'courier' || roleLower === 'caminhao' || roleLower === 'motoboy' || roleLower === 'driver';
 
-          // Fetch orders using primary query (sem colunas de PIN)
-          let query = supabase.from('orders').select(`
+          const ORDER_SELECT_FIELDS = `
              id, order_type, status, products_subtotal, delivery_distance_km, 
              applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
              buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
              accepted_at, ready_at, received_at, asaas_payment_id,
              payout_seller_done, payout_driver_done, seller_amount, driver_amount, total_delivery_fee,
              seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount,
-             pricing_snapshot, delivery_address, delivery_lat, delivery_lng, delivery_reference,
+             pricing_snapshot, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro,
              order_items ( id, product_name, quantity, unit_price_cents, total_price_cents )
-          `);
+          `;
+
+          // Fetch orders using primary query (sem colunas de PIN)
+          let query = supabase.from('orders').select(ORDER_SELECT_FIELDS);
 
           if (roleLower === 'loja' || roleLower === 'partner' || roleLower === 'batedeira' || roleLower === 'partner_admin') {
              const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
@@ -2696,8 +2723,8 @@ export const useAppStore = create<AppState>()(
              const sfIds = (sfList || []).map((s: any) => s.id);
              sfIds.push(currentUser.id);
              query = query.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
-          } else if (roleLower === 'motorista' || roleLower === 'courier' || roleLower === 'caminhao' || roleLower === 'motoboy' || roleLower === 'driver') {
-             query = query.or(`driver_id.is.null,driver_id.eq.${currentUser.id}`);
+          } else if (isDriverRole) {
+             query = query.eq('driver_id', currentUser.id);
           } else if (roleLower === 'cliente' || roleLower === 'client') {
              query = query.eq('buyer_id', currentUser.id);
           } else if (roleLower === 'admin') {
@@ -2719,14 +2746,14 @@ export const useAppStore = create<AppState>()(
 
           if (error || !dbOrders) {
              console.warn("Primary fetchOrders query notice (executing safe fallback):", error);
-             let fallbackQuery = supabase.from('orders').select('*, order_items ( id, product_name, quantity, unit_price_cents, total_price_cents )');
+             let fallbackQuery = supabase.from('orders').select(ORDER_SELECT_FIELDS);
              if (roleLower === 'loja' || roleLower === 'partner' || roleLower === 'batedeira' || roleLower === 'partner_admin') {
                 const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
                 const sfIds = (sfList || []).map((s: any) => s.id);
                 sfIds.push(currentUser.id);
                 fallbackQuery = fallbackQuery.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
-             } else if (roleLower === 'motorista' || roleLower === 'courier' || roleLower === 'caminhao' || roleLower === 'motoboy' || roleLower === 'driver') {
-                fallbackQuery = fallbackQuery.or(`driver_id.is.null,driver_id.eq.${currentUser.id}`);
+             } else if (isDriverRole) {
+                fallbackQuery = fallbackQuery.eq('driver_id', currentUser.id);
              } else if (roleLower === 'cliente' || roleLower === 'client') {
                 fallbackQuery = fallbackQuery.eq('buyer_id', currentUser.id);
              }
@@ -2743,10 +2770,10 @@ export const useAppStore = create<AppState>()(
             if (dbOrders.length > 0) {
                try {
                  const orderIds = dbOrders.map((o: any) => o.id);
+                 // PINs filtrados por papel no servidor: comprador recebe só o PIN de entrega,
+                 // loja só o de retirada, motorista nenhum (R13 / auditoria 15, P3)
                  const { data: pinsData } = await supabase
-                   .from('order_pins')
-                   .select('order_id, delivery_pin, pickup_pin')
-                   .in('order_id', orderIds);
+                   .rpc('get_my_order_pins_bulk', { p_order_ids: orderIds });
 
                  if (pinsData) {
                    pinsData.forEach((p: any) => {
@@ -2810,7 +2837,7 @@ export const useAppStore = create<AppState>()(
               }
             });
 
-             const mappedOrders = dbOrders.map((dbOrder: any) => {
+             let mappedOrders = dbOrders.map((dbOrder: any) => {
                  let appStatus: Order['status'] = 'aguardando_pagamento';
                  if (dbOrder.status === 'PENDING' || dbOrder.status === 'CREATED') appStatus = 'aguardando_pagamento';
                  if (dbOrder.status === 'PAID') appStatus = dbOrder.order_type === 'COLETA' ? 'pronto' : 'pendente';
@@ -2994,6 +3021,56 @@ export const useAppStore = create<AppState>()(
                        }
                     };
              });
+
+             if (isDriverRole) {
+               try {
+                 const { data: radarData } = await supabase.rpc('get_driver_radar');
+                 if (Array.isArray(radarData) && radarData.length > 0) {
+                   const radarOrders: any[] = radarData.map((item: any) => {
+                     const isReady = item.status === 'READY' || item.status === 'SEARCHING_OPERATOR' || item.status === 'PREPARING' || item.status === 'PAID';
+                     return {
+                       id: item.id,
+                       title: item.order_type === 'COLETA' ? 'Coleta de Caçamba' : (item.order_type === 'B2B' ? 'Carga B2B' : 'Corrida B2C'),
+                       type: item.order_type || 'B2C',
+                       status: isReady ? 'pronto' : 'pendente',
+                       motoristaId: null,
+                       distancia: Number(item.delivery_distance_km || 0),
+                       valor: Number(item.driver_payout_amount || 0),
+                       totalValue: Number(item.driver_payout_amount || 0),
+                       driver_amount: Number(item.driver_payout_amount || 0),
+                       driver_payout_amount: Number(item.driver_payout_amount || 0),
+                       lojaNome: item.origin_name || 'Estabelecimento Parceiro',
+                       lojaEndereco: item.origin_bairro || 'Retirada',
+                       origem_bairro: item.origin_bairro || 'Centro',
+                       delivery_bairro: item.delivery_bairro || 'Destino',
+                       deliveryAddress: item.delivery_bairro || 'Bairro de destino',
+                       deliveryReference: undefined,
+                       deliveryLat: item.approx_lat ? Number(item.approx_lat) : undefined,
+                       deliveryLng: item.approx_lng ? Number(item.approx_lng) : undefined,
+                       clienteNome: 'Cliente AçaíFood',
+                       clienteTelefone: undefined,
+                       produtos: [],
+                       criadoEm: item.created_at || new Date().toISOString(),
+                       confirmacao: { entregador: false, recebedor: false },
+                       taxas: {
+                         entregaTotal: Number(item.driver_payout_amount || 0),
+                         entregaMotorista: Number(item.driver_payout_amount || 0),
+                         entregaCliente: 0,
+                         entregaLoja: 0,
+                         entregaFornecedor: 0,
+                         plataformaVenda: 0,
+                         plataformaEntrega: 0,
+                         plataformaTotal: 0,
+                         repasse: Number(item.driver_payout_amount || 0)
+                       }
+                     };
+                   });
+                   mappedOrders = [...mappedOrders, ...radarOrders];
+                 }
+               } catch (rErr) {
+                 console.warn("Aviso ao carregar radar do motorista:", rErr);
+               }
+             }
 
              set({ orders: mappedOrders });
          }

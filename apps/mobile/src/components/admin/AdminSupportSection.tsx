@@ -318,7 +318,7 @@ export function AdminSupportSection({
     }
   };
 
-  const handleResolveTicket = async (userId: string) => {
+  const handleResolveTicket = async (userId: string, isMerited: boolean = true) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const authHeaders: any = { "Content-Type": "application/json" };
@@ -334,6 +334,7 @@ export function AdminSupportSection({
           action: "resolve",
           userId,
           status: "resolvido",
+          is_merited: isMerited
         }),
       });
 
@@ -346,16 +347,60 @@ export function AdminSupportSection({
       } catch (_e) {}
 
       setAllMessages((prev) =>
-        prev.map((m) => (m.user_id === userId ? { ...m, status: "resolvido" } : m))
+        prev.map((m) => (m.user_id === userId ? { ...m, status: "resolvido", is_merited: isMerited } : m))
       );
       setIncidentLogs((prev) =>
         prev.map((i) => (i.user_id === userId ? { ...i, status: "RESOLVIDO" } : i))
       );
 
-      showToast("✅ Chamado e ocorrência marcados como Resolvidos!");
+      showToast(`✅ Chamado marcado como Resolvido (${isMerited ? 'Procedente' : 'Improcedente'})!`);
     } catch (_err) {
       alert("Erro ao resolver chamado.");
     }
+  };
+
+  const handleForwardToAsaas = async (userId: string) => {
+    const protocol = prompt("Informe o número do protocolo ou chamado aberto no Asaas (ou confirme para gerar automático):", `ASAAS-${Date.now().toString().slice(-6)}`);
+    if (!protocol) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        authHeaders["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch("/api/support", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          action: "forward_asaas",
+          userId,
+          protocol
+        }),
+      });
+
+      if (res.ok) {
+        setAllMessages(prev => prev.map(m => m.user_id === userId ? { ...m, forwarded_to_asaas: true, asaas_protocol: protocol } : m));
+        showToast(`🏛️ Chamado encaminhado ao Asaas com protocolo ${protocol}!`);
+      } else {
+        alert("Erro ao registrar encaminhamento ao Asaas.");
+      }
+    } catch (e: any) {
+      alert("Erro ao encaminhar: " + e.message);
+    }
+  };
+
+  const handleDownloadMonthlyReport = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    window.open(`/api/admin/monthly-report?format=csv&token=${token}`, '_blank');
+  };
+
+  const handleDownloadLegacyKyc = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    window.open(`/api/admin/kyc-legacy-export?token=${token}`, '_blank');
   };
 
   const getRoleBadge = (role: string) => {
@@ -382,7 +427,7 @@ export function AdminSupportSection({
         </div>
       )}
 
-      {/* HEADER DA SEÇÃO COM CONTROLE RÁPIDO DE STATUS E BOTÃO DE CONFIGURAÇÕES */}
+      {/* HEADER DA SEÇÃO COM CONTROLE RÁPIDO DE STATUS E BOTÕES DE RELATÓRIO ASAAS */}
       <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/50 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h3 className="text-lg font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
@@ -390,12 +435,29 @@ export function AdminSupportSection({
             Central de Atendimento & Suporte Geral
           </h3>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Converse ao vivo com clientes, batedeiras, entregadores e fornecedores e solucione ocorrências.
+            Converse ao vivo com clientes, batedeiras, entregadores e fornecedores e solucione ocorrências (Conformidade Asaas BaaS Cl. 7.1 e 11).
           </p>
         </div>
 
-        {/* CONTROLES DE STATUS / HORÁRIOS */}
+        {/* CONTROLES DE STATUS / HORÁRIOS / RELATÓRIOS ASAAS */}
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-start lg:justify-end">
+          {/* BOTÕES DE EXPORTAÇÃO REGULATÓRIA */}
+          <button
+            onClick={handleDownloadMonthlyReport}
+            className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 font-bold px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800 flex items-center gap-1.5 shadow-2xs transition active:scale-95 cursor-pointer shrink-0"
+            title="Exportar Relatório Mensal de Chamados e Conformidade Asaas (Cláusula 11)"
+          >
+            📊 Relatório Mensal Asaas
+          </button>
+
+          <button
+            onClick={handleDownloadLegacyKyc}
+            className="text-xs bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 font-bold px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-800 flex items-center gap-1.5 shadow-2xs transition active:scale-95 cursor-pointer shrink-0"
+            title="Exportar CSV de Regularização de Subcontas Legadas Asaas"
+          >
+            📥 Regularização Subcontas
+          </button>
+
           {/* SELETOR RÁPIDO DE MODO DE OPERAÇÃO */}
           <div className="flex items-center bg-zinc-200/80 dark:bg-zinc-800 p-1 rounded-xl text-xs font-bold">
             <button
@@ -407,7 +469,7 @@ export function AdminSupportSection({
               }`}
               title="Abre e fecha automaticamente de acordo com o relógio"
             >
-              🕒 Auto (Relógio)
+              🕒 Auto
             </button>
             <button
               onClick={() => handleSaveConfig({ mode: "open" })}
@@ -418,7 +480,7 @@ export function AdminSupportSection({
               }`}
               title="Forçar atendimento como Aberto/Online agora"
             >
-              🟢 Forçar Aberto
+              🟢 Aberto
             </button>
             <button
               onClick={() => handleSaveConfig({ mode: "closed" })}
@@ -429,7 +491,7 @@ export function AdminSupportSection({
               }`}
               title="Forçar atendimento como Fechado/Pausado agora"
             >
-              🔴 Forçar Fechado
+              🔴 Fechado
             </button>
           </div>
 
@@ -616,6 +678,21 @@ export function AdminSupportSection({
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Botão Encaminhar ao Asaas (Cláusula 7.1) */}
+                  {activeThread.messages.some(m => m.forwarded_to_asaas) ? (
+                    <span className="text-[11px] bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-bold px-2.5 py-1 rounded-xl border border-blue-300 dark:border-blue-800 flex items-center gap-1">
+                      🏛️ Asaas ({activeThread.messages.find(m => m.forwarded_to_asaas)?.asaas_protocol || 'Encaminhado'})
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleForwardToAsaas(activeThread.userId)}
+                      className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 font-bold px-3 py-1.5 rounded-xl border border-blue-300 dark:border-blue-800 flex items-center gap-1 transition cursor-pointer"
+                      title="Encaminhar este caso financeiro para a ouvidoria/suporte oficial do Asaas"
+                    >
+                      🏛️ Encaminhar ao Asaas
+                    </button>
+                  )}
+
                   {/* Botão de Atalho para Aba de Auditoria */}
                   {onNavigateToAudit && (activeThread.orderId || activeThread.hasIncident) && (
                     <button
@@ -638,16 +715,55 @@ export function AdminSupportSection({
                     </a>
                   )}
 
-                  {activeThread.status !== "resolvido" && (
-                    <button
-                      onClick={() => handleResolveTicket(activeThread.userId)}
-                      className="text-xs bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1 transition cursor-pointer"
-                    >
-                      <CheckCircle2 size={13} /> Resolver
-                    </button>
+                  {activeThread.status !== "resolvido" ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleResolveTicket(activeThread.userId, true)}
+                        className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1 transition cursor-pointer"
+                        title="Marcar chamado como resolvido com reclamação procedente"
+                      >
+                        <CheckCircle2 size={13} /> Procedente
+                      </button>
+                      <button
+                        onClick={() => handleResolveTicket(activeThread.userId, false)}
+                        className="text-xs bg-zinc-600 hover:bg-zinc-700 text-white font-bold px-2.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1 transition cursor-pointer"
+                        title="Marcar chamado como resolvido com reclamação improcedente"
+                      >
+                        Improcedente
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold px-2.5 py-1 rounded-xl">
+                      ✅ Resolvido
+                    </span>
                   )}
                 </div>
               </div>
+
+              {/* AVISO DE CHAMADO FINANCEIRO > 24H SEM ENCAMINHAMENTO */}
+              {(() => {
+                const isFinancial = activeThread.messages.some(m => m.category === 'financeiro' || /pix|pagamento|repasse|saque|asaas/i.test(m.content));
+                const isForwarded = activeThread.messages.some(m => m.forwarded_to_asaas);
+                const isOlderThan24h = (Date.now() - new Date(activeThread.lastMessage.created_at).getTime()) > 24 * 60 * 60 * 1000;
+
+                if (isFinancial && !isForwarded && activeThread.status !== 'resolvido' && isOlderThan24h) {
+                  return (
+                    <div className="bg-red-50 dark:bg-red-950/40 border-b border-red-300 dark:border-red-800 p-2.5 px-4 flex items-center justify-between text-xs text-red-900 dark:text-red-200">
+                      <div className="flex items-center gap-2 font-bold animate-pulse">
+                        <span>🚨</span>
+                        <span>ATENÇÃO: Reclamação financeira aberta há mais de 24 horas sem encaminhamento ao Asaas!</span>
+                      </div>
+                      <button
+                        onClick={() => handleForwardToAsaas(activeThread.userId)}
+                        className="bg-red-600 hover:bg-red-700 text-white text-[11px] font-black px-2.5 py-1 rounded-lg transition"
+                      >
+                        Encaminhar Agora
+                      </button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               {/* AVISO DE OCORRÊNCIA VINCULADA */}
               {activeThread.incident && (

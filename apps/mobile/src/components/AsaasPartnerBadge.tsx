@@ -12,7 +12,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
       <div className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-zinc-900 dark:text-white text-xs font-semibold shadow-xs ${className}`}>
         <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
         <span className="text-zinc-800 dark:text-zinc-100">
-          Parceira Financeira: <strong className="text-zinc-950 dark:text-white font-bold">Asaas IP S.A. (CNPJ 19.540.550/0001-21)</strong>
+          Parceira Financeira: <strong className="text-zinc-950 dark:text-white font-bold">Asaas Gestão Financeira Instituição de Pagamento S.A. (CNPJ 19.540.550/0001-21)</strong>
         </span>
       </div>
     );
@@ -23,7 +23,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
       <span className={`inline-flex items-center gap-1 text-xs text-zinc-800 dark:text-zinc-100 font-semibold ${className}`}>
         <ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
         <span>
-          Parceira Financeira: <strong className="text-zinc-950 dark:text-white font-bold">Asaas IP S.A. (CNPJ 19.540.550/0001-21)</strong> (Banco Central do Brasil)
+          Parceira Financeira: <strong className="text-zinc-950 dark:text-white font-bold">Asaas Gestão Financeira Instituição de Pagamento S.A. (CNPJ 19.540.550/0001-21)</strong> (Banco Central do Brasil)
         </span>
       </span>
     );
@@ -35,7 +35,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
         <div className="flex items-center justify-center gap-1.5 flex-wrap">
           <ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>
-            Tecnologia AçaíFood • Parceira Financeira: <strong className="text-zinc-950 dark:text-white font-bold">Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21)</strong>
+            Tecnologia AçaíFood • Parceira Financeira: <strong className="text-zinc-950 dark:text-white font-bold">Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ 19.540.550/0001-21</strong>
           </span>
         </div>
         <div className="flex items-center justify-center gap-1.5 flex-wrap">
@@ -53,7 +53,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
       <div className="flex items-center justify-center gap-1.5 flex-wrap">
         <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
         <span>
-          Parceira Financeira & BaaS: <strong className="text-zinc-950 dark:text-white font-bold">Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ: 19.540.550/0001-21)</strong> — Autorizada pelo Banco Central do Brasil
+          Parceira Financeira & BaaS: <strong className="text-zinc-950 dark:text-white font-bold">Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ: 19.540.550/0001-21</strong> — Autorizada pelo Banco Central do Brasil
         </span>
       </div>
       <div className="flex items-center justify-center gap-1.5 flex-wrap text-[11px] text-zinc-600 dark:text-zinc-300">
@@ -79,7 +79,7 @@ export function EmpresaControladoraNota({ className = '' }: { className?: string
         <span>Empresa Controladora & Razão Social do Pagamento</span>
       </div>
       <p className="leading-relaxed text-[11px] text-zinc-700 dark:text-zinc-200">
-        A marca e plataforma <strong className="text-zinc-950 dark:text-white font-bold">AçaíFood</strong> é desenvolvida pela <strong className="text-zinc-950 dark:text-white font-bold">AppSolutions76</strong>, divisão pertencente à <strong className="text-zinc-950 dark:text-white font-bold">Eletromecânica Baia Ltda</strong>. Todas as cobranças Pix e liquidações via <strong className="text-zinc-950 dark:text-white font-bold">Asaas IP S.A. (ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTOS S.A., CNPJ 19.540.550/0001-21)</strong> operam sob o <strong className="text-zinc-950 dark:text-white font-bold">Modelo A — Direto Tomador</strong> e são emitidas em nome da razão social <strong className="text-zinc-950 dark:text-white font-bold">Eletromecânica Baia Ltda</strong>.
+        A marca e plataforma <strong className="text-zinc-950 dark:text-white font-bold">AçaíFood</strong> é desenvolvida pela <strong className="text-zinc-950 dark:text-white font-bold">AppSolutions76</strong>, divisão pertencente à <strong className="text-zinc-950 dark:text-white font-bold">Eletromecânica Baia Ltda</strong>. Todas as cobranças Pix e liquidações via <strong className="text-zinc-950 dark:text-white font-bold">Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ 19.540.550/0001-21</strong> operam sob o <strong className="text-zinc-950 dark:text-white font-bold">Modelo A — Direto Tomador</strong> e são emitidas em nome da razão social <strong className="text-zinc-950 dark:text-white font-bold">Eletromecânica Baia Ltda</strong>.
       </p>
     </div>
   );

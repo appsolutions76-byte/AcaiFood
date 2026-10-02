@@ -94,6 +94,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Você só pode vincular uma subconta ao seu próprio perfil de usuário.' }, { status: 403 });
     }
 
+    // 1.1 Checagem obrigatória dos termos Asaas, Mandato e Chave Pix (Cláusula 8.2.4)
+    const { data: acceptedTerms } = await supabase
+      .from('terms_acceptances')
+      .select('document')
+      .eq('user_id', userId);
+
+    const acceptedDocs = new Set((acceptedTerms || []).map((t: any) => t.document));
+    const requiredDocs = ['asaas_terms', 'subaccount_mandate', 'pix_random_key_consent'];
+    const missingDocs = requiredDocs.filter(d => !acceptedDocs.has(d));
+
+    if (missingDocs.length > 0) {
+      return NextResponse.json(
+        { 
+          error: `Aceites regulatórios Asaas pendentes (${missingDocs.join(', ')}). É obrigatório aceitar os Termos do Asaas, o Mandato de Subconta e o Consentimento de Chave Pix para abrir a subconta bancária.` 
+        }, 
+        { status: 400 }
+      );
+    }
+
     // 2. Checagem de taxa de ativação da plataforma
     const { data: platformSettings } = await supabase
       .from('platform_settings')

@@ -22,6 +22,8 @@ import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 
+import { AdminMfaGuard } from "@/components/admin/AdminMfaGuard";
+
 const emptySubscribe = () => () => {};
 
 class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
@@ -69,7 +71,9 @@ class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, 
 export default function AdminPageWrapper() {
   return (
     <AdminErrorBoundary>
-      <AdminDashboardContent />
+      <AdminMfaGuard>
+        <AdminDashboardContent />
+      </AdminMfaGuard>
     </AdminErrorBoundary>
   );
 }

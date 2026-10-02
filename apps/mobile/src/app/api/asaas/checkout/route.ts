@@ -4,6 +4,20 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
+// Lê o PIN de entrega atual em order_pins (o PIN não fica mais na tabela orders)
+async function readDeliveryPin(supabase: any, orderId: string): Promise<string | undefined> {
+  try {
+    const { data } = await supabase
+      .from('order_pins')
+      .select('delivery_pin')
+      .eq('order_id', orderId)
+      .maybeSingle();
+    return data?.delivery_pin || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function POST(request: Request) {
   // 1. Identificação e autorização obrigatórias do chamador
   const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
@@ -35,7 +49,7 @@ export async function POST(request: Request) {
     if (orderId && typeof orderId === 'string' && orderId.length >= 10 && !orderId.startsWith('PED-')) {
       const { data: existingOrder } = await supabase
         .from('orders')
-        .select('*')
+        .select('id, status, buyer_id, seller_storefront_id, order_type, products_subtotal, delivery_distance_km, asaas_payment_id, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro, seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount, pricing_snapshot')
         .eq('id', orderId)
         .maybeSingle();
 
@@ -68,7 +82,9 @@ export async function POST(request: Request) {
       } catch (_buyerErr) {
         console.warn("Aviso ao sincronizar perfil do comprador em users:", _buyerErr);
       }
-    } else if (customerCpfCnpj && existingBuyer.cpf_cnpj !== customerCpfCnpj) {
+    } else if (customerCpfCnpj && !existingBuyer.cpf_cnpj) {
+      // Só completa o CPF/CNPJ se o cadastro ainda não tiver um. Nunca sobrescreve
+      // (parceiros com subconta Asaas têm CPF/CNPJ travado — contrato BaaS 8.2.3)
       try {
         await supabase.from('users').update({ cpf_cnpj: customerCpfCnpj }).eq('id', validBuyerId);
       } catch (_updErr) {}
@@ -78,7 +94,7 @@ export async function POST(request: Request) {
     if (!order) {
       // Resolver seller_storefront_id
       let sellerStorefrontId: string | null = null;
-      const storeTargetId = orderType === 'COLETA' ? validBuyerId : targetId;
+      const storeTargetId = orderType === 'COLETA' ? null : targetId;
 
       if (storeTargetId) {
         // 1. Verificar se é ID de storefront
@@ -160,6 +176,7 @@ export async function POST(request: Request) {
         delivery_lat: deliveryInfo?.lat ? Number(deliveryInfo.lat) : null,
         delivery_lng: deliveryInfo?.lng ? Number(deliveryInfo.lng) : null,
         delivery_reference: effectiveReference,
+        delivery_bairro: deliveryInfo?.bairro || auth.user?.bairro || null,
         seller_payout_amount: prePricing.netSellerPayout,
         driver_payout_amount: prePricing.netDriverPayout,
         platform_fee_amount: (prePricing.platformSalesFee || 0) + (prePricing.platformDeliveryFee || 0),
@@ -169,13 +186,14 @@ export async function POST(request: Request) {
       };
 
       const fullPayload = { ...basePayload, pickup_pin: pickupPin };
+      const ORDER_RETURN_COLS = 'id, buyer_id, seller_storefront_id, status, order_type, products_subtotal, delivery_distance_km, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro, seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount, pricing_snapshot, created_at';
 
-      const resFull = await supabase.from('orders').insert(fullPayload).select().single();
+      const resFull = await supabase.from('orders').insert(fullPayload).select(ORDER_RETURN_COLS).single();
       if (resFull.data && !resFull.error) {
         newOrder = resFull.data;
       } else {
         // Fallback resiliente: se o banco de produção não tiver a coluna pickup_pin no cache, grava com basePayload
-        const resBase = await supabase.from('orders').insert(basePayload).select().single();
+        const resBase = await supabase.from('orders').insert(basePayload).select(ORDER_RETURN_COLS).single();
         if (resBase.data && !resBase.error) {
           newOrder = resBase.data;
         } else {
@@ -293,8 +311,7 @@ export async function POST(request: Request) {
               pixCopiaECola: qrData.payload,
               status: existingPayment.status,
               totalValue: existingPayment.value || calculatedValue,
-              deliveryPin: order.delivery_pin,
-              pickupPin: order.pickup_pin,
+              deliveryPin: await readDeliveryPin(supabase, order.id),
               isSandbox: ASAAS_URL.includes('sandbox'),
               isExisting: true
             });
@@ -448,10 +465,8 @@ export async function POST(request: Request) {
       await supabase.from('orders').update(updPayload).eq('id', order.id);
     }
 
-    const idDigits = String(order.id || '').replace(/\D/g, '').slice(-4) || '1234';
-    const finalDeliveryPin = order.delivery_pin || String(((parseInt(idDigits, 10) * 7) % 9000) + 1000);
-    const delNum = parseInt(String(finalDeliveryPin), 10) || 1234;
-    const finalPickupPin = order.pickup_pin || String(((delNum * 7 + 1337) % 9000) + 1000);
+    // PIN de entrega lido de order_pins (fonte única). O PIN de retirada é da loja e não vai ao comprador.
+    const finalDeliveryPin = await readDeliveryPin(supabase, order.id);
 
     return NextResponse.json({
       success: true,
@@ -463,7 +478,6 @@ export async function POST(request: Request) {
       status: paymentData.status,
       totalValue: calculatedValue,
       deliveryPin: finalDeliveryPin,
-      pickupPin: finalPickupPin,
       isSandbox: ASAAS_URL.includes('sandbox')
     });
 

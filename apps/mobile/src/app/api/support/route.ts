@@ -35,10 +35,18 @@ export interface SupportMessageItem {
   user_role: string;
   user_phone?: string;
   user_email?: string;
+  category?: 'geral' | 'financeiro' | 'pedido' | 'parceria' | 'outro';
   content: string;
   sender: 'user' | 'admin';
   is_read: boolean;
   status: 'aberto' | 'em_atendimento' | 'resolvido';
+  forwarded_to_asaas?: boolean;
+  forwarded_to_asaas_at?: string;
+  asaas_protocol?: string;
+  is_merited?: boolean;
+  first_responded_at?: string;
+  resolved_at?: string;
+  resolution_notes?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -212,6 +220,7 @@ export async function POST(request: Request) {
         user_role: userRecord.role || message.user_role || 'cliente',
         user_phone: userRecord.phone || userRecord.telefone || message.user_phone || '',
         user_email: userRecord.email || message.user_email || '',
+        category: message.category || 'geral',
         content: message.content || '',
         sender: message.sender || 'user',
         is_read: false,
@@ -223,6 +232,14 @@ export async function POST(request: Request) {
       try {
         const { error } = await supabase.from('support_messages').insert([msgItem]);
         if (!error) {
+          // Se o admin respondeu, marcar first_responded_at se nulo
+          if (msgItem.sender === 'admin') {
+            await supabase
+              .from('support_messages')
+              .update({ first_responded_at: new Date().toISOString() })
+              .eq('user_id', userRecord.id)
+              .is('first_responded_at', null);
+          }
           return NextResponse.json({ success: true, message: msgItem });
         }
       } catch (_err) {}
@@ -258,12 +275,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: msgItem });
     }
 
-    // AÇÃO 3: RESOLVER TICKET
-    if (action === 'resolve' && userId) {
+    // AÇÃO 3: ENCAMINHAR AO ASAAS (CLÁUSULA 7.1)
+    if (action === 'forward_asaas' && userId) {
+      const auth = await authorizeRequest(request, ['admin']);
+      if (!auth.authorized) {
+        return unauthorizedResponse(auth.error || 'Apenas administradores podem encaminhar chamados ao Asaas.');
+      }
+
+      const protocol = body.protocol || `ASAAS-${Date.now()}`;
+      const nowIso = new Date().toISOString();
+
       try {
         await supabase
           .from('support_messages')
-          .update({ status: status || 'resolvido', is_read: true, updated_at: new Date().toISOString() })
+          .update({
+            forwarded_to_asaas: true,
+            forwarded_to_asaas_at: nowIso,
+            asaas_protocol: protocol,
+            updated_at: nowIso
+          })
+          .eq('user_id', userId);
+      } catch (_err) {}
+
+      return NextResponse.json({
+        success: true,
+        forwarded: true,
+        asaas_protocol: protocol,
+        forwarded_at: nowIso
+      });
+    }
+
+    // AÇÃO 4: RESOLVER TICKET (COM INDICAÇÃO DE PROCEDÊNCIA)
+    if (action === 'resolve' && userId) {
+      const isMerited = body.is_merited !== undefined ? Boolean(body.is_merited) : true;
+      const notes = body.notes || '';
+      const nowIso = new Date().toISOString();
+
+      try {
+        await supabase
+          .from('support_messages')
+          .update({
+            status: status || 'resolvido',
+            is_read: true,
+            is_merited: isMerited,
+            resolved_at: nowIso,
+            resolution_notes: notes,
+            updated_at: nowIso
+          })
           .eq('user_id', userId);
       } catch (_err) {}
 
@@ -278,7 +336,7 @@ export async function POST(request: Request) {
           const currentCfg = JSON.parse(firstRow.asaas_platform_wallet_id) || {};
           if (Array.isArray(currentCfg.support_messages)) {
             currentCfg.support_messages = currentCfg.support_messages.map((m: SupportMessageItem) => 
-              m.user_id === userId ? { ...m, status: status || 'resolvido', is_read: true } : m
+              m.user_id === userId ? { ...m, status: status || 'resolvido', is_read: true, is_merited: isMerited, resolved_at: nowIso } : m
             );
             await supabase
               .from('platform_settings')
@@ -288,7 +346,7 @@ export async function POST(request: Request) {
         } catch (_e) {}
       }
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, resolved_at: nowIso, is_merited: isMerited });
     }
 
     return NextResponse.json({ error: 'Ação inválida' }, { status: 400 });

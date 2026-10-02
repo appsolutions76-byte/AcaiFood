@@ -22,9 +22,13 @@ export async function getFounderQuotaStatus(userId?: string): Promise<FounderQuo
   try {
     const { data: row } = await supabase
       .from('platform_settings')
-      .select('*')
+      .select('activation_fee_enabled, asaas_platform_wallet_id')
       .limit(1)
       .maybeSingle();
+
+    if (row?.activation_fee_enabled !== undefined && row.activation_fee_enabled !== null) {
+      activationEnabled = Boolean(row.activation_fee_enabled);
+    }
 
     if (row?.asaas_platform_wallet_id) {
       try {
@@ -32,7 +36,9 @@ export async function getFounderQuotaStatus(userId?: string): Promise<FounderQuo
         if (parsed && typeof parsed === 'object') {
           if (parsed.activationFee !== undefined) activationFee = Number(parsed.activationFee);
           if (parsed.freeQuota !== undefined) freeQuota = Number(parsed.freeQuota);
-          if (parsed.activationEnabled !== undefined) activationEnabled = Boolean(parsed.activationEnabled);
+          if (row.activation_fee_enabled === undefined && parsed.activationEnabled !== undefined) {
+            activationEnabled = Boolean(parsed.activationEnabled);
+          }
         }
       } catch (_e) {}
     }

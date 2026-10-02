@@ -2,7 +2,7 @@
 
 > **Documentação oficial de operação e fluxos de negócio da plataforma AçaíFood.**  
 > **Produção:** https://www.acaifood.app.br (espelho: https://acai-food-mobile.vercel.app)  
-> **Gateway Financeiro:** Asaas Gestão Financeira S.A. | **Tomadora:** Eletromecânica Baia Ltda (CNPJ: 19.540.550/0001-21)
+> **Instituição de pagamento (BaaS):** Asaas Gestão Financeira Instituição de Pagamento S.A. (CNPJ 19.540.550/0001-21) | **Tomadora e titular da marca AçaíFood:** Eletromecânica Baia Ltda (CNPJ 42.035.623/0001-40)
 
 ---
 
@@ -10,7 +10,7 @@
 
 Marketplace web/PWA da cadeia do açaí no Pará e regiões de expansão. Conecta quem consome açaí batido, batedeiras artesanais/industriais, fornecedores de frutos no atacado, motoboys urbanos e caminhoneiros/caçambeiros (logística pesada e coleta reversa de caroços). 
 
-Todos os pagamentos são liquidados via **Pix Dinâmico do Asaas**, com custódia e divisão das parcelas da loja, entregador e plataforma.
+Todos os pagamentos são feitos por **Pix dinâmico da cobrança Asaas**, que cai na conta da Tomadora no Asaas. Os parceiros recebem hoje pelo **saque aprovado pelo admin**, transferido para a **subconta Asaas aprovada** do parceiro. O repasse automático depois do PIN (`settlements`) está construído, mas **desligado** (`settlements_enabled = false`) até a aprovação escrita do Asaas (ver `13_CONFORMIDADE_CONTRATO_ASAAS_BAAS.md`). Não há split na cobrança nem custódia.
 
 ---
 
@@ -42,7 +42,7 @@ Todos os pagamentos são liquidados via **Pix Dinâmico do Asaas**, com custódi
 1. Ao criar a conta, o parceiro é direcionado para ativação.
 2. Os primeiros 50 parceiros cadastrados são contemplados como **Fundadores** (isenção de taxa).
 3. Para os demais parceiros, é gerada a cobrança Pix de homologação (R$ 12,90) via Asaas.
-4. É criada a subconta Asaas do parceiro para custódia e repasse das operações.
+4. É criada a subconta Asaas do parceiro (com os dados reais de cadastro exigidos pelo Asaas), para onde vão os repasses.
 
 ---
 
@@ -67,7 +67,7 @@ Todos os pagamentos são liquidados via **Pix Dinâmico do Asaas**, com custódi
 
 ## 6. Governança Financeira e Segurança
 
-- **Segurança de PINs:** PINs residem na tabela isolada `order_pins` protegida por RLS. Nem motoristas nem usuários anônimos conseguem ler PINs diretamente.
+- **Segurança de PINs:** os PINs ficam só em `order_pins` (a tabela `orders` não guarda PIN nem hash). A leitura é feita pela função `get_my_order_pins_bulk`: o comprador recebe só o PIN de entrega, a loja só o de retirada, o motorista nenhum. Só o motorista atribuído consegue validar o PIN (`check_delivery_pin` / `check_pickup_pin`).
 - **Avanço de Status Seguro:** Todas as transições de status são intermediadas pela RPC `advance_order_status` ou `check_delivery_pin`, impedindo alterações arbitrárias pelo navegador.
 - **Baixa Forçada Auditada:** Admins podem dar baixa de contingência apenas em pedidos em rota ou travados por excesso de tentativas, exigindo justificativa obrigatória registrada em `admin_audit_log`.
-- **Prevenção de Pagamento em Duplicidade:** O split é mantido sob controle centralizado e liquidado com validação estrita de titularidade bancária.
+- **Prevenção de Pagamento em Duplicidade:** não há split no checkout. Enquanto o repasse automático estiver desligado, o único caminho é o saque aprovado pelo admin; ao ligar, o pedido que gera repasse é marcado como pago (`payout_*_done`) e sai do saldo de saque.

@@ -1,10 +1,11 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getPartnerAvailableBalance } from '@/lib/partnerBalance';
 import { buildAsaasTransferPayload } from '@/lib/asaasTransferHelpers';
+import { logAdminAction } from '@/lib/adminAudit';
 
 export interface ProcessApprovalResult {
   success: boolean;
-  status: 'PAGO' | 'FALHOU' | 'REJEITADO';
+  status: 'PAGO' | 'PROCESSING' | 'FALHOU' | 'REJEITADO';
   transferId?: string;
   amount?: number;
   message?: string;
@@ -16,12 +17,14 @@ export async function processWithdrawalApproval(
   actorId: string | null
 ): Promise<ProcessApprovalResult> {
   const adminSupabase = getSupabaseAdmin();
+  const attemptId = `ATTEMPT_${requestId}_${Date.now()}`;
 
-  // 1. Trava atômica (P5): Tentar atualizar status para 'APROVADO' de forma atômica
+  // 1. Trava atômica condicional (P5 & H2): Marcar como 'PROCESSING' com transfer_attempt_id
   const { data: lockRow, error: lockErr } = await adminSupabase
     .from('withdrawal_requests')
     .update({
-      status: 'APROVADO',
+      status: 'PROCESSING',
+      transfer_attempt_id: attemptId,
       reviewed_by: actorId,
       reviewed_at: new Date().toISOString()
     })
@@ -46,7 +49,7 @@ export async function processWithdrawalApproval(
   // 2. Buscar dados atualizados do parceiro em users
   const { data: partnerUser, error: pErr } = await adminSupabase
     .from('users')
-    .select('*')
+    .select('id, name, email, role, cpf_cnpj, pix_key, pix_key_type, asaas_wallet_id, asaas_account_status, split_enabled')
     .eq('id', requestRow.partner_id)
     .single();
 
@@ -63,14 +66,13 @@ export async function processWithdrawalApproval(
     return { success: false, status: 'FALHOU', error: 'Parceiro não encontrado.' };
   }
 
-  // 3. Revalidar subconta/status Asaas do parceiro (P2)
-  const isAccountActive = partnerUser.split_enabled === true || 
-                          partnerUser.asaas_account_status === 'APPROVED' || 
-                          Boolean(partnerUser.asaas_wallet_id || partnerUser.pix_key || partnerUser.cpf_cnpj);
-  if (partnerUser.asaas_account_status === 'REJECTED' || !isAccountActive) {
+  // 3. Revalidar subconta/status Asaas do parceiro (H2 / Cláusula 8.2.3)
+  // Exige estritamente asaas_account_status = 'APPROVED' e asaas_wallet_id
+  const isAccountActive = partnerUser.asaas_account_status === 'APPROVED' && Boolean(partnerUser.asaas_wallet_id);
+  if (!isAccountActive) {
     const failMsg = partnerUser.asaas_account_status === 'REJECTED'
       ? 'A subconta do parceiro no Asaas foi rejeitada pela instituição financeira.'
-      : 'A subconta do parceiro no Asaas ainda não está aprovada/ativa (split_enabled desativado).';
+      : 'A subconta do parceiro no Asaas ainda não está homologada e aprovada (asaas_account_status deve ser APPROVED).';
 
     await adminSupabase
       .from('withdrawal_requests')
@@ -81,6 +83,16 @@ export async function processWithdrawalApproval(
         reviewed_at: new Date().toISOString()
       })
       .eq('id', requestId);
+
+    await logAdminAction({
+      actorId,
+      action: 'WITHDRAWAL_FAILED_UNAPPROVED_ACCOUNT',
+      targetType: 'WITHDRAWAL_REQUEST',
+      targetId: requestId,
+      beforeState: { status: requestRow.status, requested_amount: requestRow.requested_amount },
+      afterState: { status: 'FALHOU', reason: failMsg }
+    });
+
     return { success: false, status: 'FALHOU', error: failMsg };
   }
 
@@ -94,6 +106,40 @@ export async function processWithdrawalApproval(
     : balanceResult.orderIds;
 
   const isDriverRole = ['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(String(requestRow.role || partnerUser.role).toLowerCase());
+
+  // 4.1 Validação de duplicidade de ordens (Recusa se algum pedido estiver em outro saque aberto/pago)
+  if (finalOrderIds && finalOrderIds.length > 0) {
+    const { data: otherWithdrawals } = await adminSupabase
+      .from('withdrawal_requests')
+      .select('id, order_ids, status')
+      .in('status', ['PAGO', 'PROCESSING'])
+      .neq('id', requestId);
+
+    if (otherWithdrawals && otherWithdrawals.length > 0) {
+      const alreadyUsedOrderIds = new Set<string>();
+      for (const ow of otherWithdrawals) {
+        if (Array.isArray(ow.order_ids)) {
+          ow.order_ids.forEach((oid: string) => alreadyUsedOrderIds.add(oid));
+        }
+      }
+
+      const duplicateOrderId = finalOrderIds.find((id: string) => alreadyUsedOrderIds.has(id));
+      if (duplicateOrderId) {
+        const failMsg = `O pedido ${duplicateOrderId} já está vinculado a outro saque aberto ou liquidado.`;
+        await adminSupabase
+          .from('withdrawal_requests')
+          .update({
+            status: 'FALHOU',
+            failure_reason: failMsg,
+            reviewed_by: actorId,
+            reviewed_at: new Date().toISOString()
+          })
+          .eq('id', requestId);
+
+        return { success: false, status: 'FALHOU', error: failMsg };
+      }
+    }
+  }
 
   if (finalAmount <= 0) {
     if (finalOrderIds && finalOrderIds.length > 0) {
@@ -136,39 +182,13 @@ export async function processWithdrawalApproval(
     return { success: false, status: 'FALHOU', error: failMsg };
   }
 
-  // 5. Resolver payload de transferência Asaas (exclusivamente do cadastro do banco)
-  const transferPayload = buildAsaasTransferPayload(
-    partnerUser,
-    finalAmount,
-    `Saque AçaíFood - Solicitação ${requestId.substring(0, 8)}`
-  );
-
-  if (!transferPayload) {
-    const failMsg = 'Nenhuma chave Pix (CPF, CNPJ, e-mail, telefone) ou WalletId cadastrada no perfil do parceiro.';
-    await adminSupabase
-      .from('withdrawal_requests')
-      .update({
-        status: 'FALHOU',
-        failure_reason: failMsg,
-        reviewed_by: actorId,
-        reviewed_at: new Date().toISOString()
-      })
-      .eq('id', requestId);
-    return { success: false, status: 'FALHOU', error: failMsg };
-  }
-
-  // 6. Realizar transferência via API Asaas unificada
-  let asaasTransferId = '';
-  let transferStatus = '';
-  let apiSuccess = false;
-  let apiErrorMsg = '';
-
+  // 5. Configuração e chaves Asaas
   const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
   const asaasApiKey = await getAsaasApiKey();
   const baseUrl = getAsaasBaseUrl(asaasApiKey);
   const isSandbox = baseUrl.includes('sandbox');
   const keySuffix = asaasApiKey.length >= 4 ? asaasApiKey.slice(-4) : 'none';
-  console.log(`[WithdrawalApproval] Processando saque #${requestId.substring(0, 8)} | Ambiente: ${isSandbox ? 'Sandbox' : 'Produção'} | Chave: ***${keySuffix}`);
+  console.log(`[WithdrawalApproval] Processando saque #${requestId.substring(0, 8)} | Tentativa: ${attemptId} | Ambiente: ${isSandbox ? 'Sandbox' : 'Produção'} | Chave: ***${keySuffix}`);
 
   if (!asaasApiKey) {
     const failMsg = 'Chave ASAAS_API_KEY não configurada no servidor.';
@@ -184,32 +204,75 @@ export async function processWithdrawalApproval(
     return { success: false, status: 'FALHOU', error: failMsg };
   }
 
-  // 6.1 Pré-validação de saldo disponível na conta Asaas
+  // 6. Consulta de Idempotência no Asaas antes de transferir (H2)
   try {
-    const balRes = await fetch(`${baseUrl}/finance/balance`, {
+    const prevAttempt = requestRow.transfer_attempt_id || requestId;
+    const checkRes = await fetch(`${baseUrl}/transfers?externalReference=${encodeURIComponent(prevAttempt)}`, {
       headers: { 'access_token': asaasApiKey }
     });
-    if (balRes.ok) {
-      const balData = await balRes.json();
-      const currentAsaasBalance = typeof balData.balance === 'number' ? balData.balance : (typeof balData.totalBalance === 'number' ? balData.totalBalance : null);
-      if (currentAsaasBalance !== null && currentAsaasBalance < finalAmount) {
-        const failMsg = 'Saldo insuficiente na conta Asaas';
-        console.warn(`[WithdrawalApproval] Saldo insuficiente no Asaas. Disponível: R$ ${currentAsaasBalance}, Solicitado: R$ ${finalAmount}`);
+    if (checkRes.ok) {
+      const checkData = await checkRes.json();
+      if (checkData?.data && checkData.data.length > 0) {
+        const existingTransfer = checkData.data[0];
+        const isDone = existingTransfer.status === 'DONE' || existingTransfer.status === 'COMPLETED' || existingTransfer.status === 'CONFIRMED';
+        const finalStatus = isDone ? 'PAGO' : 'PROCESSING';
+
         await adminSupabase
           .from('withdrawal_requests')
           .update({
-            status: 'FALHOU',
-            failure_reason: failMsg,
-            reviewed_by: actorId,
-            reviewed_at: new Date().toISOString()
+            status: finalStatus,
+            asaas_transfer_id: existingTransfer.id,
+            paid_at: isDone ? new Date().toISOString() : null,
+            failure_reason: null
           })
           .eq('id', requestId);
-        return { success: false, status: 'FALHOU', error: failMsg };
+
+        if (isDone && finalOrderIds.length > 0) {
+          const updateField = isDriverRole ? { payout_driver_done: true } : { payout_seller_done: true };
+          await adminSupabase.from('orders').update(updateField).in('id', finalOrderIds);
+        }
+
+        return {
+          success: true,
+          status: finalStatus,
+          transferId: existingTransfer.id,
+          amount: finalAmount,
+          message: isDone ? 'Transferência já havia sido liquidada no Asaas.' : 'Transferência em processamento no Asaas.'
+        };
       }
     }
-  } catch (balErr) {
-    console.warn('[WithdrawalApproval] Aviso ao consultar saldo Asaas:', balErr);
+  } catch (chkErr) {
+    console.warn('[WithdrawalApproval] Aviso ao checar idempotência prévia:', chkErr);
   }
+
+  // 7. Resolver payload de transferência Asaas com externalReference
+  const transferPayload: any = buildAsaasTransferPayload(
+    partnerUser,
+    finalAmount,
+    `Saque AçaíFood - #${requestId.substring(0, 8)}`
+  );
+
+  if (!transferPayload) {
+    const failMsg = 'Não foi possível construir o payload de transferência Asaas.';
+    await adminSupabase
+      .from('withdrawal_requests')
+      .update({
+        status: 'FALHOU',
+        failure_reason: failMsg,
+        reviewed_by: actorId,
+        reviewed_at: new Date().toISOString()
+      })
+      .eq('id', requestId);
+    return { success: false, status: 'FALHOU', error: failMsg };
+  }
+
+  transferPayload.externalReference = attemptId;
+
+  // 8. Realizar transferência via API Asaas
+  let asaasTransferId = '';
+  let transferStatus = '';
+  let apiSuccess = false;
+  let apiErrorMsg = '';
 
   try {
     const res = await fetch(`${baseUrl}/transfers`, {
@@ -236,13 +299,10 @@ export async function processWithdrawalApproval(
 
   const nowIso = new Date().toISOString();
 
-  // 7. Em caso de Sucesso ou Processamento no Asaas
   if (apiSuccess) {
-    const isDriver = ['motorista', 'motoboy', 'caminhao', 'courier'].includes(String(requestRow.role || partnerUser.role).toLowerCase());
     const isDone = transferStatus === 'DONE' || transferStatus === 'COMPLETED' || transferStatus === 'CONFIRMED';
     const finalRequestStatus = isDone ? 'PAGO' : 'PROCESSING';
     
-    // Atualizar status da solicitação
     await adminSupabase
       .from('withdrawal_requests')
       .update({
@@ -259,16 +319,15 @@ export async function processWithdrawalApproval(
       })
       .eq('id', requestId);
 
-    // Marcar pedidos cobertos como pagos se transferência liquidada
     if (isDone && finalOrderIds.length > 0) {
-      const updateField = isDriver ? { payout_driver_done: true } : { payout_seller_done: true };
+      const updateField = isDriverRole ? { payout_driver_done: true } : { payout_seller_done: true };
       await adminSupabase
         .from('orders')
         .update(updateField)
         .in('id', finalOrderIds);
     }
 
-    // Registrar extrato/ledger respeitando os CHECK constraints (P4)
+    // Registrar extrato/ledger
     try {
       const { data: history } = await adminSupabase
         .from('partner_ledger')
@@ -279,50 +338,66 @@ export async function processWithdrawalApproval(
         return item.type === 'credit' ? acc + Number(item.amount || 0) : acc - Number(item.amount || 0);
       }, 0);
 
-      const balanceAfter = Number(Math.max(0, currentBal - finalAmount).toFixed(2));
+      const newBal = Math.max(0, currentBal - finalAmount);
 
-      await adminSupabase
-        .from('partner_ledger')
-        .insert({
-          partner_id: requestRow.partner_id,
-          order_id: finalOrderIds?.[0] || null,
-          amount: finalAmount,
-          type: 'debit',
-          reason: `Saque ${isDone ? 'processado' : 'enviado'} Pix Asaas (ID: ${asaasTransferId})`,
-          balance_after: balanceAfter
-        });
-    } catch (lErr) {
-      console.warn("Aviso ao registrar débito em partner_ledger:", lErr);
-    }
+      await adminSupabase.from('partner_ledger').insert({
+        partner_id: requestRow.partner_id,
+        type: 'debit',
+        amount: finalAmount,
+        balance_after: newBal,
+        description: `Saque aprovado #${requestId.substring(0, 8)} via Pix Asaas (Transf: ${asaasTransferId})`
+      });
+    } catch (_lErr) {}
+
+    await logAdminAction({
+      actorId,
+      action: 'WITHDRAWAL_APPROVED',
+      targetType: 'WITHDRAWAL_REQUEST',
+      targetId: requestId,
+      beforeState: { status: 'PENDENTE', amount: finalAmount },
+      afterState: { status: finalRequestStatus, asaas_transfer_id: asaasTransferId, attemptId }
+    });
 
     return {
       success: true,
-      status: finalRequestStatus as any,
+      status: finalRequestStatus,
       transferId: asaasTransferId,
       amount: finalAmount,
-      message: isDone 
-        ? `Saque de R$ ${finalAmount.toFixed(2)} processado e liquidado com sucesso via Pix Asaas!`
-        : `Transferência de R$ ${finalAmount.toFixed(2)} enviada ao Asaas (Status: ${transferStatus}). Aguardando liquidação bancária.`
+      message: `Saque de R$ ${finalAmount.toFixed(2)} processado com sucesso via Asaas (Status: ${finalRequestStatus}).`
+    };
+  } else {
+    await adminSupabase
+      .from('withdrawal_requests')
+      .update({
+        status: 'FALHOU',
+        failure_reason: apiErrorMsg,
+        reviewed_by: actorId,
+        reviewed_at: nowIso
+      })
+      .eq('id', requestId);
+
+    try {
+      await adminSupabase.from('payout_failures').insert({
+        partner_id: requestRow.partner_id,
+        amount: finalAmount,
+        reason: apiErrorMsg,
+        gateway_response: { error: apiErrorMsg, requestId, attemptId }
+      });
+    } catch (_fErr) {}
+
+    await logAdminAction({
+      actorId,
+      action: 'WITHDRAWAL_REJECTED_API_ERROR',
+      targetType: 'WITHDRAWAL_REQUEST',
+      targetId: requestId,
+      beforeState: { status: 'PENDENTE', amount: finalAmount },
+      afterState: { status: 'FALHOU', error: apiErrorMsg, attemptId }
+    });
+
+    return {
+      success: false,
+      status: 'FALHOU',
+      error: `Erro no Asaas: ${apiErrorMsg}`
     };
   }
-
-  // 8. Em caso de Falha no Asaas
-  await adminSupabase
-    .from('withdrawal_requests')
-    .update({
-      status: 'FALHOU',
-      requested_amount: finalAmount,
-      order_ids: finalOrderIds,
-      failure_reason: apiErrorMsg,
-      reviewed_by: actorId,
-      reviewed_at: nowIso,
-      processed_automatically: (actorId === null)
-    })
-    .eq('id', requestId);
-
-  return {
-    success: false,
-    status: 'FALHOU',
-    error: `Falha ao transferir via Asaas: ${apiErrorMsg}`
-  };
 }

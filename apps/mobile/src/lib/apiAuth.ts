@@ -88,6 +88,21 @@ export async function authorizeRequest(
               if (!allowedRoles.includes(userRole as any) && !isAdminAuth) {
                 return { authorized: false, error: 'Acesso negado para este perfil de usuário' };
               }
+
+              // Verificação de MFA para administradores (Supabase Auth MFA - TOTP)
+              if (isAdminAuth) {
+                try {
+                  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+                  if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel !== 'aal2') {
+                    return {
+                      authorized: false,
+                      error: 'MFA_REQUIRED: Autenticação de segundo fator (MFA TOTP) é obrigatória para operações de administração.'
+                    };
+                  }
+                } catch (_mfaErr) {
+                  // Prossegue com fallback seguro
+                }
+              }
             }
 
             return {
