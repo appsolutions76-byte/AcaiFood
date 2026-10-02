@@ -5,6 +5,8 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(request: Request) {
   try {
     const auth = await authorizeRequest(request, ['admin', 'loja', 'cliente', 'fornecedor', 'motorista']);
@@ -31,25 +33,79 @@ export async function POST(request: Request) {
 
     let asaasPaymentId = paymentId ? String(paymentId).trim() : '';
     let targetOrder: any = null;
+    const cleanOrderId = orderId ? String(orderId).trim() : '';
+    const isUUID = cleanOrderId ? UUID_REGEX.test(cleanOrderId) : false;
 
     // 1. Buscar o pedido no banco de dados Supabase
-    if (orderId) {
-      const { data: orderData } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .maybeSingle();
+    if (cleanOrderId && isUUID) {
+      try {
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', cleanOrderId)
+          .maybeSingle();
 
-      targetOrder = orderData;
-      if (orderData?.asaas_payment_id && !asaasPaymentId) {
-        asaasPaymentId = orderData.asaas_payment_id;
+        targetOrder = orderData;
+      } catch (err) {
+        console.warn("Aviso ao buscar pedido por UUID:", err);
       }
     }
 
-    // 2. Se ainda não tem asaasPaymentId, buscar por externalReference no Asaas
-    if (!asaasPaymentId && orderId) {
+    // Se o cleanOrderId for na verdade um paymentId do Asaas (começa com pay_ ou cbr_)
+    if (!asaasPaymentId && (cleanOrderId.startsWith('pay_') || cleanOrderId.startsWith('cbr_'))) {
+      asaasPaymentId = cleanOrderId;
+    }
+
+    // 2. Se não encontrou por ID direto mas tem asaasPaymentId, buscar na tabela por asaas_payment_id
+    if (!targetOrder && asaasPaymentId) {
       try {
-        const searchRes = await fetch(`${ASAAS_URL}/payments?externalReference=${encodeURIComponent(orderId)}`, {
+        const { data: orderDataByPay } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('asaas_payment_id', asaasPaymentId)
+          .maybeSingle();
+
+        if (orderDataByPay) {
+          targetOrder = orderDataByPay;
+        }
+      } catch (err) {
+        console.warn("Aviso ao buscar pedido por asaas_payment_id:", err);
+      }
+    }
+
+    // 3. Se cleanOrderId não é UUID completo (ex: PED-321e88f5 ou 321e88f5), buscar pedidos recentes
+    if (!targetOrder && cleanOrderId && !isUUID) {
+      try {
+        const prefix = cleanOrderId.replace(/^PED-/i, '').toLowerCase();
+        const { data: recentOrders } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (Array.isArray(recentOrders)) {
+          const match = recentOrders.find(o => 
+            o.id.toLowerCase().startsWith(prefix) || 
+            o.asaas_payment_id === cleanOrderId
+          );
+          if (match) {
+            targetOrder = match;
+          }
+        }
+      } catch (err) {
+        console.warn("Aviso ao buscar pedido recente por prefixo:", err);
+      }
+    }
+
+    if (targetOrder?.asaas_payment_id && !asaasPaymentId) {
+      asaasPaymentId = targetOrder.asaas_payment_id;
+    }
+
+    // 4. Se ainda não tem asaasPaymentId, buscar por externalReference no Asaas
+    const referenceToSearch = targetOrder?.id || cleanOrderId;
+    if (!asaasPaymentId && referenceToSearch) {
+      try {
+        const searchRes = await fetch(`${ASAAS_URL}/payments?externalReference=${encodeURIComponent(referenceToSearch)}`, {
           headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
         });
         if (searchRes.ok) {
@@ -57,7 +113,9 @@ export async function POST(request: Request) {
           if (searchData?.data && searchData.data.length > 0) {
             asaasPaymentId = searchData.data[0].id;
             // Salvar no pedido para referência futura
-            await supabase.from('orders').update({ asaas_payment_id: asaasPaymentId }).eq('id', orderId);
+            if (targetOrder?.id) {
+              await supabase.from('orders').update({ asaas_payment_id: asaasPaymentId }).eq('id', targetOrder.id);
+            }
           }
         }
       } catch (e) {
@@ -65,7 +123,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Validação de segurança: Não permitir estorno de pedidos entregues/concluídos
+    // 5. Validação de segurança: Não permitir estorno de pedidos entregues/concluídos
     if (targetOrder) {
       const currentStatus = String(targetOrder.status || '').toUpperCase();
       if (['RECEIVED', 'COMPLETED', 'DELIVERED', 'ENTREGUE'].includes(currentStatus)) {
@@ -83,7 +141,7 @@ export async function POST(request: Request) {
     let refundStatus = 'REFUND_REQUESTED';
     let refundMessage = '';
 
-    // 4. Se localizamos a cobrança no Asaas, verificar seu status atual antes de estornar
+    // 6. Se localizamos a cobrança no Asaas, verificar seu status atual antes de estornar
     if (asaasPaymentId) {
       const payRes = await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}`, {
         headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
@@ -95,11 +153,11 @@ export async function POST(request: Request) {
       } else {
         const payObj = await payRes.json();
         const asaasChargeStatus = String(payObj?.status || '').toUpperCase();
-        const origValue = Number(payObj?.value || targetOrder?.charged_amount || targetOrder?.total_amount || 0);
-        const refundValue = value ? Number(value) : origValue;
+        const origValue = Number(payObj?.value || targetOrder?.charged_amount || targetOrder?.total_amount || targetOrder?.products_subtotal || 0);
+        const refundValue = (value && Number(value) > 0) ? Number(value) : origValue;
 
         // CASO A: Cobrança Paga / Recebida -> Executar Estorno Pix
-        if (['RECEIVED', 'CONFIRMED'].includes(asaasChargeStatus)) {
+        if (['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH', 'DUNNING_RECEIVED'].includes(asaasChargeStatus)) {
           // Checar histórico para não ultrapassar o valor original
           try {
             const { data: existingRefunds } = await supabase
@@ -122,7 +180,9 @@ export async function POST(request: Request) {
           console.log(`[Asaas Refund] Executando estorno Pix para ${asaasPaymentId} (R$ ${refundValue})...`);
 
           const refundBodyPayload: any = { description: cancelReasonText };
-          if (refundValue > 0) refundBodyPayload.value = refundValue;
+          if (refundValue > 0) {
+            refundBodyPayload.value = Number(refundValue.toFixed(2));
+          }
 
           const refundRes = await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}/refund`, {
             method: 'POST',
@@ -133,7 +193,7 @@ export async function POST(request: Request) {
             body: JSON.stringify(refundBodyPayload)
           });
 
-          const refundData = await refundRes.json();
+          const refundData = await refundRes.json().catch(() => ({}));
 
           if (refundRes.ok && !refundData.errors) {
             refundId = refundData.id || null;
@@ -143,7 +203,7 @@ export async function POST(request: Request) {
             // Registrar no histórico de estornos
             try {
               await supabase.from('refund_history').insert({
-                order_id: orderId || null,
+                order_id: targetOrder?.id || (isUUID ? cleanOrderId : null),
                 payment_id: asaasPaymentId,
                 requested_value: refundValue,
                 asaas_refund_id: refundId,
@@ -154,8 +214,8 @@ export async function POST(request: Request) {
               console.warn("Aviso ao inserir refund_history:", hisErr);
             }
           } else {
-            const msg = refundData.errors
-              ? refundData.errors.map((e: any) => e.description).join(', ')
+            const msg = Array.isArray(refundData.errors)
+              ? refundData.errors.map((e: any) => e.description || e.message).join(', ')
               : (refundData.message || JSON.stringify(refundData));
             console.error("[Asaas Refund Error]:", msg);
             refundMessage = `Asaas Estorno: ${msg}`;
@@ -198,28 +258,30 @@ export async function POST(request: Request) {
       refundMessage = 'Pedido cancelado no sistema (nenhuma cobrança Pix vinculada).';
     }
 
-    // 5. Atualizar status do pedido no Supabase
-    if (orderId) {
+    // 7. Atualizar status do pedido no Supabase
+    const effectiveOrderId = targetOrder?.id || (isUUID ? cleanOrderId : null);
+    if (effectiveOrderId) {
       try {
-        const finalDbStatus = (refundStatus === 'REFUNDED') ? 'REFUNDED' : 'CANCELLED';
+        const finalDbStatus = (refundStatus === 'REFUNDED' || refundStatus === 'REFUND_REQUESTED' || refundStatus === 'REFUND_IN_PROGRESS') ? 'REFUNDED' : 'CANCELLED';
 
         await supabase.from('orders').update({
           status: finalDbStatus,
           cancellation_reason: cancelReasonText,
           asaas_refund_id: refundId,
           asaas_refund_status: refundStatus,
+          asaas_charge_status: finalDbStatus,
           cancelled_at: new Date().toISOString(),
           cancelled_by: actorId
-        }).eq('id', orderId);
+        }).eq('id', effectiveOrderId);
 
         // Reverter splits associados
         if (finalDbStatus === 'REFUNDED') {
-          await supabase.from('splits').update({ status: 'REVERSED' }).eq('order_id', orderId);
+          await supabase.from('splits').update({ status: 'REVERSED' }).eq('order_id', effectiveOrderId);
         }
 
         // Registrar auditoria
         await supabase.from('order_status_history').insert({
-          order_id: orderId,
+          order_id: effectiveOrderId,
           from_status: targetOrder?.status || 'PAID',
           to_status: finalDbStatus,
           actor_id: actorId,

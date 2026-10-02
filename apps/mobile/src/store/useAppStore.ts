@@ -2584,31 +2584,30 @@ export const useAppStore = create<AppState>()(
 
         if (newDbStatus === 'CANCELLED') {
            try {
-              const targetOrder = state.orders.find(o => o.id === orderId);
+              const targetOrder = get().orders.find(o => o.id === orderId) || state.orders.find(o => o.id === orderId);
               const paymentIdToUse = (targetOrder as any)?.paymentId || (targetOrder as any)?.asaasPaymentId || (targetOrder as any)?.asaas_payment_id;
-              getAuthHeaders().then(async authHeaders => {
-                try {
-                  const res = await fetch('/api/asaas/refund', {
-                    method: 'POST',
-                    headers: authHeaders,
-                    body: JSON.stringify({ 
-                      orderId: orderId,
-                      paymentId: paymentIdToUse,
-                      value: targetOrder?.valor || (targetOrder as any)?.totalValue,
-                      reason: reasonStr || 'Cancelamento solicitado pelo usuário antes do PIN'
-                    })
-                  });
-                  const data = await res.json();
-                  if (data.success) {
-                    console.log("✅ Estorno Asaas efetuado com sucesso:", data);
-                    await get().fetchOrders(currentUser.id, true);
-                  } else {
-                    console.warn("⚠️ Aviso no estorno Asaas:", data.error || data);
-                  }
-                } catch (fetchErr) {
-                  console.warn("Erro ao solicitar estorno Asaas:", fetchErr);
+              const authHeaders = await getAuthHeaders();
+              try {
+                const res = await fetch('/api/asaas/refund', {
+                  method: 'POST',
+                  headers: authHeaders,
+                  body: JSON.stringify({ 
+                    orderId: orderId,
+                    paymentId: paymentIdToUse,
+                    value: targetOrder?.valor || (targetOrder as any)?.totalValue,
+                    reason: reasonStr || 'Cancelamento solicitado pelo usuário antes do PIN'
+                  })
+                });
+                const data = await res.json();
+                if (data.success) {
+                  console.log("✅ Estorno Asaas efetuado com sucesso:", data);
+                  await get().fetchOrders(currentUser.id, true);
+                } else {
+                  console.warn("⚠️ Aviso no estorno Asaas:", data.error || data);
                 }
-              });
+              } catch (fetchErr) {
+                console.warn("Erro ao solicitar estorno Asaas:", fetchErr);
+              }
            } catch(e) {
               console.error("Exceção ao solicitar estorno:", e);
            }
