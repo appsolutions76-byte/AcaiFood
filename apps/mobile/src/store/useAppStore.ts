@@ -184,6 +184,8 @@ export interface Order {
   totalValue?: number;
   asaasPaymentId?: string | null;
   asaas_payment_id?: string | null;
+  paymentId?: string | null;
+  asaasChargeStatus?: string | null;
   cidadeOrigem?: string;
 }
 
@@ -2988,6 +2990,10 @@ export const useAppStore = create<AppState>()(
                        valor: dbOrder.products_subtotal,
                        totalValue: (localOrder?.totalValue && Math.abs(Number(localOrder.totalValue) - orderTotalValue) < 0.05) ? Number(localOrder.totalValue) : orderTotalValue,
                        motoristaId: dbOrder.driver_id,
+                        asaas_payment_id: dbOrder.asaas_payment_id || localOrder?.asaas_payment_id || localOrder?.paymentId || localOrder?.asaasPaymentId,
+                        asaasPaymentId: dbOrder.asaas_payment_id || localOrder?.asaasPaymentId || localOrder?.paymentId,
+                        paymentId: dbOrder.asaas_payment_id || localOrder?.paymentId || localOrder?.asaasPaymentId,
+                        asaasChargeStatus: dbOrder.asaas_charge_status || localOrder?.asaasChargeStatus,
                        confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
                        taxas: {
                           entregaTotal: finalEntregaTotal,
@@ -3255,8 +3261,7 @@ export const useAppStore = create<AppState>()(
           deliveryPin: undefined,
           pixQrCode: undefined,
           pixCopiaECola: undefined,
-          asaasPaymentId: undefined,
-          paymentId: undefined,
+
           invoiceUrl: undefined,
         }));
         return { ...rest, orders: safeOrders, users: safeUsers, currentUser: safeCurrentUser };
