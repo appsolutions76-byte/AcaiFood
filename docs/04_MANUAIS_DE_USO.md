@@ -1,93 +1,151 @@
-# AçaíFood — Manuais de Uso Oficiais (Versão Atualizada 2026)
+# AçaíFood — Manuais de Uso Oficiais e Guia Operacional (Versão Pós-R12 / Outubro 2026)
 
-> Documentação oficial de operação e fluxos de usuários para a plataforma **AçaíFood**.
-> Site Oficial: https://www.acaifood.app.br
-> Razão Social e Gateway: **Eletromecânica Baia Ltda** & **Asaas Gestão Financeira Instituição de Pagamento S.A.** (CNPJ: 19.540.550/0001-21)
+> **Documentação oficial de operação e fluxos de usuários para a plataforma AçaíFood.**  
+> **Site Oficial de Produção:** https://www.acaifood.app.br (espelho: https://acai-food-mobile.vercel.app)  
+> **Razão Social da Tomadora:** Eletromecânica Baia Ltda (CNPJ: 19.540.550/0001-21)  
+> **Instituição de Pagamento / Gateway BaaS:** Asaas Gestão Financeira Instituição de Pagamento S.A.  
 
 ---
 
 ## 1. Cliente (Consumidor Final)
 
-1. **Cadastro & Cidade:** Acesse `/cadastro` (nome, e-mail, senha, telefone com DDD, cidade, bairro e endereço) ou entre diretamente na página inicial com geolocalização ativa.
-2. **Escolha do Açaí:** Selecione a batedeira de sua preferência. Escolha a textura/consistência do açaí (*Popular, Médio, Grosso ou Branco*), adicione complementos (farinhas, frutas, leite em pó, churrascos, bebidas) e revise a sacola.
-3. **Opções Flexíveis de Entrega:**
-   - *Endereço do Cadastro:* Entrega na sua residência cadastrada.
-   - *GPS ao Vivo:* Localização exata em tempo real com precisão métrica.
-   - *Ponto de Encontro com Referência:* Ideal para portos, trapiches, praças e feiras.
-4. **Pagamento Pix Asaas:** QR Code dinâmico e código Pix Copia e Cola gerados instantaneamente. A compensação ocorre em segundos via Webhook oficial.
-5. **📄 Comprovante Oficial Asaas:** Após o pagamento ou no histórico de pedidos, toque em **"📄 Comprovante Asaas"** para abrir o recibo com selo oficial Asaas, ID da transação e opção de impressão em PDF A4 ou cupom térmico.
-6. **Acompanhamento & Chat:** Acompanhe o motoboy em tempo real pelo mapa interativo (traçado OSRM) e converse pelo Chat interno com atalhos de ligação/WhatsApp.
-7. **🔐 Regra de Ouro do PIN (4 dígitos):** O PIN aparece em destaque no card do pedido. **Somente forneça o PIN ao motoboy após receber o açaí em mãos.**
-8. **Estorno Pix Automático (Refund):** Caso a batedeira recuse o pedido ou haja cancelamento antes do preparo, 100% do valor é estornado automaticamente para a conta do cliente.
-9. **🎧 Suporte ao Vivo:** Atendimento direto com analistas pelo botão flutuante de chat na tela.
+### 1.1 Cadastro & Localização
+1. Acesse o app pelo navegador do celular ou computador em [acaifood.app.br](https://www.acaifood.app.br).
+2. Faça o cadastro em `/cadastro` informando Nome Completo, E-mail, Telefone/WhatsApp (com DDD), CPF válido e Cidade/Bairro.
+3. No momento do cadastro, há o registro formal de aceite dos **Termos de Uso e Política de Privacidade** da plataforma e do provedor de liquidação financeira (Asaas).
+
+### 1.2 Escolha do Açaí e Montagem da Sacola
+1. Selecione a **Batedeira/Loja** de sua preferência no catálogo da sua cidade.
+2. Escolha o tipo/consistência do litro de açaí:
+   - **Popular**
+   - **Médio**
+   - **Grosso**
+   - **Branco**
+3. Adicione complementos opcionais (farinha d'água, tapioca, açúcar, frutas, leite em pó, churrascos, bebidas) e revise a sacola de compras.
+
+### 1.3 Opções de Endereço e Entrega
+- **Endereço do Cadastro:** Entrega na sua residência habitual.
+- **GPS em Tempo Real:** Localização exata atual via satélite.
+- **Ponto de Encontro com Referência:** Ideal para feiras, portos, trapiches, praças e barcos.
+
+### 1.4 Pagamento Seguro via Pix Asaas
+1. Ao finalizar, é gerado um **QR Code Pix Dinâmico e Copia e Cola Oficial do Asaas**.
+2. O valor cobrado é exatamente o total validado pelo servidor (produtos + frete com eventuais subsídios da loja).
+3. A compensação é automática em poucos segundos.
+
+### 1.5 🔐 Regra de Ouro do PIN de Entrega (4 Dígitos)
+- Assim que o pagamento é aprovado, um **código PIN de 4 dígitos** exclusivo é gerado e exibido **apenas na tela do cliente** (armazenado de forma isolada e segura).
+- **ATENÇÃO:** Só informe este código de 4 dígitos ao motoboy **no momento em que o açaí for entregue em suas mãos**.
+- A digitação correta do PIN pelo motoboy é a confirmação irrevogável de que o pedido foi entregue e libera o repasse à loja e ao entregador.
+
+### 1.6 Cancelamento e Estorno
+- Se o estabelecimento não puder atender ou o pedido for cancelado antes da saída para entrega, o estorno do Pix é solicitado diretamente via sistema para a conta de origem.
 
 ---
 
-## 2. Loja / Batedeira de Açaí
+## 2. Loja / Batedeira de Açaí (Parceiro B2C)
 
-1. **Ativação & Homologação:** Acesso conforme vagas de fundadores liberadas pelo Admin ou quitação de taxa de homologação Asaas. Subconta bancária vinculada automaticamente para split.
-2. **Gestão de Vitrine & Cardápio:**
-   - Configuração de preços (Popular, Médio, Grosso, Branco), fotos e descrições.
-   - Adição e precificação de produtos extras (carnes, porções, bebidas, farinhas).
-   - **Subsídio de Frete (%):** Definição opcional de percentual de frete que a loja cobre para incentivar as vendas.
-3. **Fluxo de Vendas B2C:**
-   - Notificação sonoro-visual ao receber pedido com Pix confirmado.
-   - Clique em **"Aceitar e Preparar"** (status passa para `preparo`).
-   - Impressão térmica automática ou manual de comandas (58mm/80mm) com vias de Cozinha e Entrega contendo o **PIN de Balcão** e selo Asaas.
-   - Quando o pedido estiver embalado, clique em **"Chamar Moto"** para liberar a rota no radar dos motoboys.
-4. **Abastecimento B2B (Compra de Frutos):**
-   - Compras atacadistas de latas/paneiros/sacas de frutos direto dos produtores credenciados.
-   - Fornecimento do PIN B2B ao motorista do caminhão no ato do descarregamento.
-5. **Logística Reversa ESG (Coleta de Caroço):**
-   - Solicitação de caçamba para recolhimento sustentável de caroços destinados a Ecopontos e usinas de biomassa/adubo.
-6. **Financeiro & Esteira de Saques:**
-   - Repasses líquidos calculados por divisão automática (*Triple Split*).
-   - Solicitação de saque do saldo disponível (mínimo padrão de R$ 20,00) via esteira de aprovação com liquidação em conta bancária de mesma titularidade (CPF/CNPJ).
+### 2.1 Cadastro, KYC e Ativação
+1. Acesse `/cadastro` e selecione o perfil **Batedeira/Loja**.
+2. Preencha os dados cadastrais (Razão Social/Nome, CNPJ/CPF, data de nascimento/abertura, faturamento mensal estimado, endereço completo com CEP e dados de contato).
+3. **Subconta Asaas:** É gerada a subconta bancária vinculada no Asaas para custódia e repasse das vendas.
+4. Parceiros fundadores (vagas promocionais iniciais liberadas pelo Admin) têm isenção de adesão. Demais parceiros quitam a taxa de homologação de R$ 12,90 via Pix dinâmico.
+
+### 2.2 Gestão de Cardápio e Vitrine
+- Configure os preços dos 4 tipos de açaí (Popular, Médio, Grosso, Branco), fotos, descrições e status de disponibilidade (Ativo / Esgotado).
+- Cadastre complementos, porções, acompanhamentos e bebidas com preços individuais.
+- **Subsídio de Frete (%):** Defina se a loja deseja pagar uma porcentagem do frete para baratear a entrega para seus clientes.
+
+### 2.3 Recepção e Produção do Pedido B2C
+1. Ao receber novo pedido pago, o painel emite alerta sonoro.
+2. Clique em **"Aceitar e Preparar"** (o status vai para `PREPARING`).
+3. **Impressão de Comanda:** O sistema suporta impressão térmica (58mm e 80mm) contendo os itens, endereço, observações e comprovante Asaas.
+4. Quando o produto estiver batido e embalado, clique em **"Chamar Motoboy"** (o status vai para `READY`, tornando o pedido visível no radar dos entregadores).
+
+### 2.4 PIN de Retirada (Balcão)
+- Para segurança da batedeira, quando o motoboy chegar para retirar o pacote, a loja pode exigir a validação do **PIN de Retirada** exibido no painel da loja.
+
+### 2.5 Abastecimento B2B (Compra de Frutos Atacado)
+- A batedeira pode comprar latas, paneiros ou sacas de açaí diretamente de fornecedores cadastrados através da aba B2B.
+- O pagamento é feito via Pix Asaas e a liberação para o motorista do caminhão ocorre mediante o PIN B2B da batedeira.
+
+### 2.6 Logística Reversa de Caroço (ESG)
+- Solicite a coleta de caroços de açaí diretamente pelo painel. Um motorista de caçamba/caminhão recolhe o volume para destinação correta (ecopontos, olarias, queima de caldeiras ou compostagem).
+
+### 2.7 Financeiro e Saques
+- O saldo das vendas é mantido em segurança e liberado após a conclusão das entregas confirmadas com PIN.
+- Solicite a transferência do saldo disponível para a conta bancária da mesma titularidade do CNPJ/CPF cadastrado.
 
 ---
 
 ## 3. Fornecedor de Frutos (Atacado B2B)
 
-1. **Catálogo Atacadista:** Definição de valores por lata, paneiro ou saca e disponibilidade de estoque.
-2. **Separação de Carga:** Ao receber pedido com Pix aprovado pela batedeira, separe o lote no armazém ou porto.
-3. **Despacho via "Chamar Caminhão":** Acionamento sob demanda que projeta a carga pesada no radar dos caminhoneiros da região.
-4. **Romaneio de Expedição:** Impressão de comprovante/romaneio com dados completos de entrega e identificação Asaas.
-5. **Conclusão com PIN:** O caminhoneiro valida a entrega com o PIN da batedeira compradora, liberando o repasse financeiro.
-6. **Saques:** Solicitação direta no painel financeiro para conta de mesma titularidade (Resolução BCB / Asaas).
+1. **Catálogo de Frutos:** Cadastre o lote disponível de frutos (por lata, paneiro ou saca), tipo do fruto, origem e preço unitário.
+2. **Recepção de Pedido B2B:** Ao ser notificado de compra por uma batedeira, separe o lote no porto, feira ou armazém.
+3. **Chamar Caminhão:** Acione o frete pesado para que os caminhoneiros vejam a carga no radar.
+4. **Romaneio:** Emita o comprovante de saída do lote com identificação da transação.
+5. **Conclusão:** O caminhoneiro realiza o transporte e entrega na batedeira, que valida o recebimento pelo PIN.
 
 ---
 
-## 4. Motoboy (Logística Urbana B2C)
+## 4. Motoboy / Entregador Urbano (Logística B2C)
 
-1. **Status Online & GPS:** Transmissão de telemetria em tempo real para recebimento de chamados na sua praça.
-2. **Radar de Prontos:** Visualização de corridas liberadas pelas batedeiras após clique em "Chamar Moto", exibindo distância, mapa e ganho líquido transparente.
-3. **Navegação GPS:**
-   - *🚀 GPS p/ Retirada:* Navegação curva-a-curva até a loja e botão de confirmação de chegada.
-   - *🏁 GPS p/ Cliente:* Navegação até a residência ou ponto de encontro do cliente.
-4. **Validação do PIN do Cliente:** Digitação do código PIN de 4 dígitos informado pelo cliente no ato do recebimento para conclusão da corrida.
-5. **Ganhos & Saques:** Saldo acumulado por entregas com PIN, com solicitação de transferência Pix para a conta bancária do seu CPF cadastrado.
+### 4.1 Cadastro e Validação
+1. Cadastre-se em `/cadastro` selecionando o perfil **Motoboy**.
+2. Preencha CPF, dados do veículo e chave Pix vinculada ao próprio CPF.
+3. Conceda permissão de GPS para telemetria em tempo real.
+
+### 4.2 Radar de Pedidos Prontos
+- O radar exibe pedidos liberados pelas batedeiras da sua região com:
+  - Bairro de retirada e distância aproximada;
+  - Valor líquido do ganho da corrida de forma 100% transparente.
+- Ao clicar em **"Aceitar Corrida"**, a corrida é atribuída exclusivamente a você.
+
+### 4.3 Rota e Retirada
+1. Siga o traçado GPS até a batedeira.
+2. Ao receber o pacote, informe a retirada no aplicativo.
+3. Inicie o deslocamento até o cliente (via mapa interativo ou atalho para Google Maps / Waze).
+
+### 4.4 ⚠️ Validação Obrigatória do PIN do Cliente
+- Ao chegar no destino e encontrar o cliente, solicite o **PIN de 4 dígitos** que está na tela do celular dele.
+- Digite os 4 dígitos no seu app e clique em **"Confirmar Entrega"**.
+- O sistema valida o código instantaneamente e credita o valor do frete no seu saldo.
+- **Importante:** São permitidas no máximo 5 tentativas antes do bloqueio por segurança. Nunca entregue o açaí sem digitar o PIN correto.
+
+### 4.5 Saque de Ganhos
+- Acompanhe seus ganhos acumulados e solicite a transferência Pix para sua conta de mesma titularidade.
 
 ---
 
-## 5. Caminhoneiro / Motorista de Caçamba
+## 5. Caminhoneiro / Motorista de Carga Pesada
 
-1. **Radar Pesado:** Chamados de frete **B2B** (frutos do fornecedor para batedeiras) e **Coleta de Caroço** (batedeiras para ecopontos).
-2. **Rotas e Navegação:** Traçado OSRM por vias compatíveis com veículos de carga e atalhos para Google Maps.
-3. **Validação de PIN:** Solicitação do PIN ao responsável no destino para homologação do frete.
-4. **Repasses:** Saldo líquido com suporte a esteira de saques auditada.
+1. **Radar de Cargas:** Visualize chamados de transporte de frutos B2B (Porto/Produtor → Batedeiras) e coletas de caroço (Batedeiras → Ecopontos).
+2. **Rotas e Pesagem:** Trajetos otimizados para veículos de transporte de carga.
+3. **Confirmação com PIN:** Na entrega da carga no destino, o encarregado fornece o PIN de recebimento para confirmação imediata do frete.
 
 ---
 
-## 6. Painel do Administrador Master (`/admin`)
+## 6. Painel Administrativo Master (`/admin`)
 
-| Módulo / Aba | Funcionalidades Principais |
-| :--- | :--- |
-| **Visão Geral** | Métricas globais de GMV (volume bruto), receita líquida da plataforma, balanços e gráficos operacionais. |
-| **Saques** | Esteira de auditoria, aprovação e rejeição de saques solicitados pelos parceiros com validação de chaves Pix e saldo em subcontas Asaas. |
-| **Usuários** | Gestão de contas (Ativar, Pausar, Bloquear, Excluir) e liquidações manuais (*"💸 Pagar e Zerar"* e *"⚡ Pagar Todos"*). |
-| **Pedidos** | Auditoria completa de status, inspeção de rotas no mapa, comprovantes fiscais e botão de contingência *"Forçar Baixa"*. |
-| **Cidades / Expansão** | Parametrização tarifária independente por município (KM rodado vs. Taxa Fixa, comissões percentuais e horário de varredura). |
-| **Ativações** | Configuração da taxa de homologação/adesão de parceiros e controle de vagas promocionais de fundadores. |
-| **Suporte ao Vivo** | Central de atendimento em tempo real por chat com clientes e parceiros, com histórico e alertas sonoros. |
-| **Anúncios & Stories** | Cadastro e moderação de banners de marketing e stories patrocinados na vitrine inicial. |
-| **Ocorrências & Auditoria** | Registro e acompanhamento de incidentes (cancelamentos, disputas, erros de PIN e contestações) com exportação em PDF A4 e CSV. |
+O acesso ao `/admin` é restrito a administradores com credenciais verificadas diretamente no banco de dados (`is_admin = true` / `role = 'admin'`) e auditado em `admin_audit_log`.
+
+| Módulo / Aba | Principais Ações e Controles |
+|---|---|
+| **Visão Geral** | Volume bruto transacionado (GMV), faturamento líquido da plataforma, quantidade de pedidos ativos e balanços. |
+| **Saques** | Esteira de autorização de saques solicitados pelos parceiros, conferindo CPF/CNPJ de destino e saldo em subcontas. |
+| **Usuários** | Listagem com filtros por perfil e cidade, ativação de novos cadastros, bloqueio/desbloqueio e exclusão de contas. |
+| **Pedidos** | Torre de controle de todos os pedidos em andamento, inspeção de comprovantes oficiais Asaas e auditoria de status. |
+| **Baixa Forçada (Contingência)** | Permite ao admin dar baixa em pedidos travados por PIN incorreto, **exigindo justificativa formal obrigatória de no mínimo 10 caracteres**, registrada com auditoria completa de IP e usuário. |
+| **Cidades / Tarifas** | Parametrização independente por município: valor por KM, frete mínimo, comissões de venda e frete. |
+| **Ativações** | Gestão da taxa de homologação de parceiros e número de vagas de fundadores isentos. |
+| **Suporte ao Vivo** | Atendimento em tempo real com clientes e parceiros via WebSocket/Realtime e atalho para o canal de ouvidoria Asaas. |
+| **Termos & LGPD** | Monitoramento dos registros de aceite de termos e conformidade com o contrato BaaS. |
+
+---
+
+## 7. Conformidade, Segurança e Suporte
+
+- **Instituição de Pagamento Parceira:** Asaas Gestão Financeira S.A.
+- **Canal de Atendimento Oficial:** Suporte integrado no app e e-mail de atendimento da plataforma.
+- **Reclamações Financeiras / Ouvidoria Asaas:** Questões relativas a transações financeiras BaaS podem ser direcionadas através do canal oficial de ouvidoria do Asaas conforme previsto no contrato de prestação de serviços.
+- **Proteção de Dados (LGPD):** Dados pessoais e PINs são criptografados e acessíveis exclusivamente aos envolvidos diretos na transação.
