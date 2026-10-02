@@ -948,14 +948,14 @@ export default function BatedeiraDashboard() {
         />
       }
       navigationBar={
-        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1.5 shadow-md flex items-center w-full">
+        <div className="bg-zinc-100/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-1.5 shadow-sm flex items-center w-full">
           <div className="flex gap-1.5 overflow-x-auto py-0.5 no-scrollbar w-full">
             <button 
               onClick={() => setActiveTab('geral')} 
               className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeTab === 'geral' 
                   ? 'bg-purple-600 text-white shadow-md' 
-                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                  : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
               <span>📊 Cardápio & Loja</span>
@@ -966,7 +966,7 @@ export default function BatedeiraDashboard() {
               className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeTab === 'abastecimento' 
                   ? 'bg-purple-600 text-white shadow-md' 
-                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                  : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
               <span>🛒 Abastecimento</span>
@@ -977,7 +977,7 @@ export default function BatedeiraDashboard() {
               className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeTab === 'pedidos' 
                   ? 'bg-purple-600 text-white shadow-md' 
-                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                  : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
               <span>📦 Pedidos Ativos</span>
@@ -993,11 +993,11 @@ export default function BatedeiraDashboard() {
               className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeTab === 'historico' 
                   ? 'bg-purple-600 text-white shadow-md' 
-                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                  : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
               <span>📋 Histórico</span>
-              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'historico' ? 'bg-purple-800 text-white' : 'bg-zinc-800 text-zinc-300'}`}>
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'historico' ? 'bg-purple-800 text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}>
                 {batedeiraHistoryOrders.length}
               </span>
             </button>
@@ -1007,11 +1007,11 @@ export default function BatedeiraDashboard() {
               className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeTab === 'carteira' 
                   ? 'bg-emerald-600 text-white shadow-md' 
-                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                  : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
               <span>💳 Carteira Digital</span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
                 {formatMoney(vendasHoje)}
               </span>
             </button>
