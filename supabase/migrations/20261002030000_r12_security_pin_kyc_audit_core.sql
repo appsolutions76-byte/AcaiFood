@@ -1,9 +1,10 @@
 -- ==============================================================================
--- AÇAÍFOOD — MIGRAÇÃO R12 CORRIGIDA: SEGURANÇA DE PIN, BANCO, KYC, AUDITORIA & ASAAS
+-- AÇAÍFOOD — MIGRAÇÃO R12 ROBUSTA & CORRIGIDA
+-- SEGURANÇA DE PIN, BANCO, KYC, AUDITORIA & ASAAS
 -- Timestamp: 20261002030000
 -- ==============================================================================
 
--- 0. GARANTIR COLUNA IS_ADMIN E CAMPOS DE KYC EM USERS
+-- 0. GARANTIR COLUNAS EM USERS E ORDERS ANTES DE QUALQUER OPERAÇÃO
 ALTER TABLE public.users
   ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false,
   ADD COLUMN IF NOT EXISTS birth_date DATE,
@@ -12,6 +13,29 @@ ALTER TABLE public.users
   ADD COLUMN IF NOT EXISTS postal_code TEXT,
   ADD COLUMN IF NOT EXISTS address_number TEXT,
   ADD COLUMN IF NOT EXISTS province TEXT;
+
+ALTER TABLE public.orders
+  ADD COLUMN IF NOT EXISTS order_type TEXT DEFAULT 'delivery',
+  ADD COLUMN IF NOT EXISTS pin_attempts INT DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS pickup_pin_attempts INT DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS last_pin_attempt_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS last_pickup_pin_attempt_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS received_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS picked_up_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS cancelled_by UUID,
+  ADD COLUMN IF NOT EXISTS cancellation_reason TEXT,
+  ADD COLUMN IF NOT EXISTS payout_driver_done BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS asaas_transfer_status TEXT,
+  ADD COLUMN IF NOT EXISTS delivery_distance_km NUMERIC(10,2),
+  ADD COLUMN IF NOT EXISTS driver_payout_amount NUMERIC(10,2),
+  ADD COLUMN IF NOT EXISTS delivery_lat NUMERIC(10,6),
+  ADD COLUMN IF NOT EXISTS delivery_lng NUMERIC(10,6),
+  ADD COLUMN IF NOT EXISTS delivery_reference TEXT,
+  ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false;
 
 -- Trava de alteração de CPF/CNPJ e Pix Key diretamente pelo cliente autenticado
 REVOKE UPDATE (cpf_cnpj, pix_key) ON public.users FROM authenticated;
@@ -76,7 +100,36 @@ GRANT SELECT ON public.terms_acceptances TO authenticated;
 GRANT ALL ON public.terms_acceptances TO service_role;
 
 
--- 3. TABELA SEGURA DE PINS ISOLADOS FORA DO SELECT DA TABELA ORDERS (R3, A9/H7)
+-- 3. TABELAS DE LOG AUXILIARES
+CREATE TABLE IF NOT EXISTS public.order_status_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID REFERENCES public.orders(id) ON DELETE CASCADE,
+  from_status TEXT,
+  to_status TEXT NOT NULL,
+  actor_id UUID,
+  actor_role TEXT,
+  reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.order_status_history ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.order_status_history TO authenticated;
+GRANT ALL ON public.order_status_history TO service_role;
+
+CREATE TABLE IF NOT EXISTS public.pin_attempt_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID REFERENCES public.orders(id) ON DELETE CASCADE,
+  actor_id UUID,
+  success BOOLEAN NOT NULL,
+  ip_device TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.pin_attempt_log ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.pin_attempt_log TO service_role;
+
+
+-- 4. TABELA SEGURA DE PINS ISOLADOS FORA DO SELECT DA TABELA ORDERS (R3, A9/H7)
 CREATE TABLE IF NOT EXISTS public.order_pins (
   order_id UUID PRIMARY KEY REFERENCES public.orders(id) ON DELETE CASCADE,
   delivery_pin TEXT,
@@ -86,14 +139,25 @@ CREATE TABLE IF NOT EXISTS public.order_pins (
 
 ALTER TABLE public.order_pins ENABLE ROW LEVEL SECURITY;
 
--- Migrar PINs existentes da tabela orders para order_pins
-INSERT INTO public.order_pins (order_id, delivery_pin, pickup_pin)
-SELECT id, delivery_pin, pickup_pin
-FROM public.orders
-WHERE delivery_pin IS NOT NULL OR pickup_pin IS NOT NULL
-ON CONFLICT (order_id) DO UPDATE
-SET delivery_pin = EXCLUDED.delivery_pin,
-    pickup_pin = EXCLUDED.pickup_pin;
+-- Migração dinâmica e segura de PINs antigos (sem falhar se colunas antigas não existirem)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'delivery_pin') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'pickup_pin') THEN
+      EXECUTE 'INSERT INTO public.order_pins (order_id, delivery_pin, pickup_pin)
+               SELECT id, delivery_pin, pickup_pin FROM public.orders
+               WHERE delivery_pin IS NOT NULL OR pickup_pin IS NOT NULL
+               ON CONFLICT (order_id) DO UPDATE
+               SET delivery_pin = EXCLUDED.delivery_pin, pickup_pin = EXCLUDED.pickup_pin';
+    ELSE
+      EXECUTE 'INSERT INTO public.order_pins (order_id, delivery_pin)
+               SELECT id, delivery_pin FROM public.orders
+               WHERE delivery_pin IS NOT NULL
+               ON CONFLICT (order_id) DO UPDATE
+               SET delivery_pin = EXCLUDED.delivery_pin';
+    END IF;
+  END IF;
+END $$;
 
 DROP POLICY IF EXISTS "Buyer can view delivery pin" ON public.order_pins;
 CREATE POLICY "Buyer can view delivery pin" ON public.order_pins
@@ -131,14 +195,21 @@ GRANT SELECT ON public.order_pins TO authenticated;
 GRANT ALL ON public.order_pins TO service_role;
 
 
--- 4. RESTRINGIR GERAÇÃO DE PINS EXCLUSIVAMENTE A SERVICE_ROLE (R3)
-REVOKE EXECUTE ON FUNCTION public.generate_delivery_pin(uuid) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.generate_pickup_pin(uuid) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.generate_delivery_pin(uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.generate_pickup_pin(uuid) TO service_role;
+-- 5. RESTRINGIR GERAÇÃO DE PINS EXCLUSIVAMENTE A SERVICE_ROLE (R3)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'generate_delivery_pin') THEN
+    REVOKE EXECUTE ON FUNCTION public.generate_delivery_pin(uuid) FROM PUBLIC, anon, authenticated;
+    GRANT EXECUTE ON FUNCTION public.generate_delivery_pin(uuid) TO service_role;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'generate_pickup_pin') THEN
+    REVOKE EXECUTE ON FUNCTION public.generate_pickup_pin(uuid) FROM PUBLIC, anon, authenticated;
+    GRANT EXECUTE ON FUNCTION public.generate_pickup_pin(uuid) TO service_role;
+  END IF;
+END $$;
 
 
--- 5. RPC SEGURA check_delivery_pin (Validação estrita de driver_id antes de tentativas)
+-- 6. RPC SEGURA check_delivery_pin (Validação estrita de driver_id antes de tentativas)
 CREATE OR REPLACE FUNCTION public.check_delivery_pin(
   p_order_id UUID,
   p_pin TEXT,
@@ -199,20 +270,9 @@ BEGIN
   END IF;
 
   SELECT delivery_pin INTO v_real_pin FROM public.order_pins WHERE order_id = p_order_id;
-  IF v_real_pin IS NULL THEN
-    v_real_pin := v_order.delivery_pin;
-  END IF;
 
   IF v_real_pin IS NOT NULL AND trim(v_real_pin) = v_clean_pin THEN
     v_is_valid := TRUE;
-  ELSIF v_order.pin_hash IS NOT NULL THEN
-    BEGIN
-      IF crypt(v_clean_pin, v_order.pin_hash) = v_order.pin_hash THEN
-        v_is_valid := TRUE;
-      END IF;
-    EXCEPTION WHEN OTHERS THEN
-      NULL;
-    END;
   END IF;
 
   BEGIN
@@ -249,7 +309,7 @@ GRANT EXECUTE ON FUNCTION public.check_delivery_pin(uuid, text, text) TO authent
 GRANT EXECUTE ON FUNCTION public.check_delivery_pin(uuid, text, text) TO service_role;
 
 
--- 6. RPC SEGURA check_pickup_pin (Validação estrita de driver_id)
+-- 7. RPC SEGURA check_pickup_pin (Validação estrita de driver_id)
 CREATE OR REPLACE FUNCTION public.check_pickup_pin(
   p_order_id UUID,
   p_pin TEXT,
@@ -304,9 +364,6 @@ BEGIN
   END IF;
 
   SELECT pickup_pin INTO v_real_pin FROM public.order_pins WHERE order_id = p_order_id;
-  IF v_real_pin IS NULL THEN
-    v_real_pin := v_order.pickup_pin;
-  END IF;
 
   IF v_real_pin IS NOT NULL AND trim(v_real_pin) = v_clean_pin THEN
     v_is_valid := TRUE;
@@ -343,7 +400,7 @@ GRANT EXECUTE ON FUNCTION public.check_pickup_pin(uuid, text, text) TO authentic
 GRANT EXECUTE ON FUNCTION public.check_pickup_pin(uuid, text, text) TO service_role;
 
 
--- 7. EXPANDIR advance_order_status (A7, R6)
+-- 8. EXPANDIR advance_order_status (A7, R6)
 CREATE OR REPLACE FUNCTION public.advance_order_status(
   p_order_id UUID,
   p_action TEXT,
@@ -498,12 +555,17 @@ GRANT EXECUTE ON FUNCTION public.advance_order_status TO authenticated;
 GRANT EXECUTE ON FUNCTION public.advance_order_status TO service_role;
 
 
--- 8. REVOGAR transition_order_status (A7)
-REVOKE EXECUTE ON FUNCTION public.transition_order_status FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.transition_order_status TO service_role;
+-- 9. REVOGAR transition_order_status (A7)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'transition_order_status') THEN
+    REVOKE EXECUTE ON FUNCTION public.transition_order_status FROM PUBLIC, anon, authenticated;
+    GRANT EXECUTE ON FUNCTION public.transition_order_status TO service_role;
+  END IF;
+END $$;
 
 
--- 9. RPC SEGURA get_my_order_pins (Lê exclusivamente de order_pins)
+-- 10. RPC SEGURA get_my_order_pins (Lê exclusivamente de order_pins)
 CREATE OR REPLACE FUNCTION public.get_my_order_pins(
   p_order_id UUID
 )
@@ -543,12 +605,10 @@ BEGIN
 
   IF v_is_buyer OR v_is_admin THEN
     SELECT delivery_pin INTO v_del_pin FROM public.order_pins WHERE order_id = p_order_id;
-    IF v_del_pin IS NULL THEN v_del_pin := v_order.delivery_pin; END IF;
   END IF;
 
   IF v_is_store_owner OR v_is_admin THEN
     SELECT pickup_pin INTO v_pick_pin FROM public.order_pins WHERE order_id = p_order_id;
-    IF v_pick_pin IS NULL THEN v_pick_pin := v_order.pickup_pin; END IF;
   END IF;
 
   RETURN jsonb_build_object(
@@ -564,7 +624,7 @@ GRANT EXECUTE ON FUNCTION public.get_my_order_pins TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_order_pins TO service_role;
 
 
--- 10. RPC SEGURA get_driver_radar (A9/H7)
+-- 11. RPC SEGURA get_driver_radar (A9/H7)
 CREATE OR REPLACE FUNCTION public.get_driver_radar()
 RETURNS TABLE (
   id UUID,
@@ -585,18 +645,18 @@ BEGIN
   RETURN QUERY
   SELECT 
     o.id,
-    o.order_type,
-    o.status,
-    o.delivery_distance_km,
-    COALESCE(o.driver_payout_amount, o.driver_amount, 0::numeric) as driver_payout_amount,
-    COALESCE(o.delivery_reference, 'Centro') as delivery_bairro,
+    COALESCE(o.order_type, 'delivery')::text as order_type,
+    o.status::text,
+    COALESCE(o.delivery_distance_km, 0)::numeric as delivery_distance_km,
+    COALESCE(o.driver_payout_amount, 0)::numeric as driver_payout_amount,
+    COALESCE(o.delivery_reference, 'Centro')::text as delivery_bairro,
     ROUND(COALESCE(o.delivery_lat, 0)::numeric, 3) as approx_lat,
     ROUND(COALESCE(o.delivery_lng, 0)::numeric, 3) as approx_lng,
     o.created_at
   FROM public.orders o
   WHERE o.driver_id IS NULL
     AND o.status IN ('READY', 'PREPARING', 'PAID', 'SEARCHING_OPERATOR')
-    AND o.is_hidden = false
+    AND COALESCE(o.is_hidden, false) = false
   ORDER BY o.created_at DESC
   LIMIT 50;
 END;
