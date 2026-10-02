@@ -34,32 +34,46 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
 
     // 1. Obter usuário e dados do Asaas
-    const { data: userProfile } = await supabase.from('users').select('cpf_cnpj, email, name').eq('id', userId).maybeSingle();
+    const { data: userProfile } = await supabase.from('users').select('cpf_cnpj, email, name, asaas_account_id').eq('id', userId).maybeSingle();
 
-    let isApproved = true;
+    let isApproved = false;
+    let accountStatus = 'PENDING';
+
     try {
       const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
       const apiKey = await getAsaasApiKey();
       if (apiKey) {
         const baseUrl = getAsaasBaseUrl(apiKey);
-        const subRes = await fetch(`${baseUrl}/accounts/${cleanWalletId}`, {
-          headers: { 'access_token': apiKey, 'Content-Type': 'application/json' }
-        });
-        if (subRes.ok) {
-          const subData = await subRes.json();
-          if (subData?.status && subData.status !== 'APPROVED') {
-            isApproved = false;
+        const cleanCpfCnpj = String(userProfile?.cpf_cnpj || '').replace(/\D/g, '');
+
+        if (cleanCpfCnpj) {
+          const accRes = await fetch(`${baseUrl}/accounts?cpfCnpj=${cleanCpfCnpj}`, {
+            headers: { 'access_token': apiKey, 'Content-Type': 'application/json' }
+          });
+          if (accRes.ok) {
+            const accData = await accRes.json();
+            if (accData?.data && accData.data.length > 0) {
+              const matchedAcc = accData.data.find((a: any) => a.walletId === cleanWalletId) || accData.data[0];
+              if (matchedAcc && matchedAcc.walletId === cleanWalletId) {
+                accountStatus = matchedAcc.status || 'PENDING';
+                if (accountStatus === 'APPROVED' || accountStatus === 'ACTIVE') {
+                  isApproved = true;
+                }
+              }
+            }
           }
         }
       }
-    } catch (_vErr) {}
+    } catch (_vErr) {
+      console.warn("Aviso ao validar subconta no Asaas em link-wallet:", _vErr);
+    }
 
     const { error } = await supabase
       .from('users')
       .update({ 
         asaas_wallet_id: cleanWalletId, 
         split_enabled: isApproved,
-        asaas_account_status: isApproved ? 'APPROVED' : 'PENDING'
+        asaas_account_status: isApproved ? 'APPROVED' : (accountStatus || 'PENDING')
       })
       .eq('id', userId);
 

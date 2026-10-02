@@ -42,7 +42,7 @@ function PaymentHandler() {
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
     if (paymentStatus === 'success') {
-      alert('Pagamento aprovado via Asaas! A loja já está preparando seu pedido com Split automático.');
+      alert('Pagamento aprovado via Asaas! A loja já está preparando seu pedido.');
       window.history.replaceState(null, '', '/');
     } else if (paymentStatus === 'failure') {
       alert('Houve um problema com o pagamento via Asaas. Tente novamente.');

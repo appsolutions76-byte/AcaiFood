@@ -1631,7 +1631,7 @@ function AdminDashboardContent() {
 
         <!-- Divisão Financeira -->
         <div style="border: 1px solid #d8b4fe; background: #faf5ff; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
-          <strong style="color: #6b21a8; font-size: 11px;">💰 DECOMPOSIÇÃO FINANCEIRA DO PEDIDO (TRIPLO SPLIT)</strong>
+          <strong style="color: #6b21a8; font-size: 11px;">💰 DECOMPOSIÇÃO FINANCEIRA DO PEDIDO</strong>
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; text-align: center;">
             <div style="padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #e9d5ff;">
               <span style="font-size: 9px; color: #666; text-transform: uppercase;">Produtos:</span><br/>

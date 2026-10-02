@@ -242,7 +242,7 @@ export async function POST(request: Request) {
         billingType: 'PIX',
         value: activationFee,
         dueDate: dueDate,
-        description: 'Taxa Única de Homologação Asaas & Ativação de Parceiro - AçaíFood',
+        description: 'Taxa de ativação da plataforma AçaíFood',
         externalReference: `ACTIVATE_${userId}`
       };
 

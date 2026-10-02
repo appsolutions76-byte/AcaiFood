@@ -17,10 +17,9 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
 
   try {
     const invalidStatuses = ['CANCELLED', 'CANCELADO', 'REFUNDED', 'RECUSADO', 'PIN_LOCKED', 'aguardando_pagamento', 'PENDING', 'pendente', 'PAID', 'paid', 'CONFIRMED', 'confirmed', 'PREPARING', 'preparing', 'preparo', 'pronto', 'PRONTO'];
-    // Saldo para saque é liberado ESTRITAMENTE após a entrega concluída via validação de PIN
+    // Saldo para saque é liberado ESTRITAMENTE após a entrega concluída via validação de PIN (RECEIVED)
     const validStatuses = [
-      'DELIVERED', 'COMPLETED', 'RECEIVED', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO',
-      'received', 'delivered', 'completed'
+      'RECEIVED', 'received', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO'
     ];
 
     const matchedOrdersMap = new Map<string, any>();

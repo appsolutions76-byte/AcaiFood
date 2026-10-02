@@ -116,7 +116,7 @@ async function handleSweep(request: Request) {
 
     const { data: pendingRequests } = await adminSupabase
       .from('withdrawal_requests')
-      .select('id, requested_amount, partner_id, partner:partner_id(city)')
+      .select('id, requested_amount, partner_id, partner:partner_id(cidade)')
       .eq('status', 'PENDENTE')
       .order('created_at', { ascending: true });
 
@@ -137,7 +137,7 @@ async function handleSweep(request: Request) {
     let skippedCount = 0;
 
     for (const req of pendingRequests) {
-      const partnerCityRaw = (req as any)?.partner?.city || '';
+      const partnerCityRaw = (req as any)?.partner?.cidade || (req as any)?.partner?.city || '';
       const normCity = partnerCityRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
       const cityRates = cityRatesMap[normCity] || {};
 
@@ -169,16 +169,18 @@ async function handleSweep(request: Request) {
       }
     }
 
-    // 4. Registrar horário da última execução em platform_settings
+    // 4. Registrar horário da última execução em platform_settings se nenhuma cidade foi pulada
     const nowIso = new Date().toISOString();
-    const { data: firstRow } = await adminSupabase
-      .from('platform_settings')
-      .select('id')
-      .limit(1)
-      .maybeSingle();
+    if (skippedCount === 0) {
+      const { data: firstRow } = await adminSupabase
+        .from('platform_settings')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
 
-    if (firstRow?.id) {
-      await adminSupabase.from('platform_settings').update({ last_auto_payout_run_at: nowIso }).eq('id', firstRow.id);
+      if (firstRow?.id) {
+        await adminSupabase.from('platform_settings').update({ last_auto_payout_run_at: nowIso }).eq('id', firstRow.id);
+      }
     }
 
     console.log(`✅ [Sweep Payout] Varredura concluída: ${successCount} pagas com sucesso, ${failCount} falhas.`);

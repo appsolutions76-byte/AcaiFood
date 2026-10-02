@@ -82,8 +82,7 @@ export async function authorizeRequest(
             if (allowedRoles && allowedRoles.length > 0) {
               const isAdminAuth = allowedRoles.includes('admin') && (
                 userRole === 'admin' || 
-                profile.is_admin === true || 
-                user.user_metadata?.role === 'admin'
+                profile.is_admin === true
               );
 
               if (!allowedRoles.includes(userRole as any) && !isAdminAuth) {

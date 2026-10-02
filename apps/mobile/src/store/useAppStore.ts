@@ -2288,15 +2288,8 @@ export const useAppStore = create<AppState>()(
                 return;
               }
 
-              // Fallback seguro caso a RPC ainda não esteja disponível:
-              const targetOrd = get().orders.find(o => o.id === orderId);
-              const matchesPin = (targetOrd?.pickupPin && targetOrd.pickupPin === cleanPin) || (targetOrd?.deliveryPin && targetOrd.deliveryPin === cleanPin);
-              if (matchesPin) {
+              if (!pinErr && pinRes?.success) {
                 const nowIso = new Date().toISOString();
-                await supabase.from('orders').update({
-                  status: 'DELIVERING',
-                  picked_up_at: nowIso
-                }).eq('id', orderId);
                 set((state) => ({
                   orders: state.orders.map(o => o.id === orderId ? { ...o, pickedUpAt: nowIso, status: 'em_rota' } : o)
                 }));
@@ -2315,7 +2308,7 @@ export const useAppStore = create<AppState>()(
             }
         }
 
-        // 1. Validação Segura de PIN via RPC Supabase (Regras Parte B Item 1 & 10)
+        // 1. Validação Segura de PIN via RPC Supabase
         if (action === 'validar_pin') {
             const cleanPin = (pinStr || '').trim();
             if (!cleanPin || cleanPin.length !== 4) {
@@ -2340,30 +2333,13 @@ export const useAppStore = create<AppState>()(
                 return;
               }
 
-              // Fallback seguro caso a RPC ainda não esteja disponível ou coluna ausente:
-              const targetOrd = get().orders.find(o => o.id === orderId);
-              const matchesPin = (targetOrd?.deliveryPin && targetOrd.deliveryPin === cleanPin) || (targetOrd?.pickupPin && targetOrd.pickupPin === cleanPin);
-              if (matchesPin) {
-                const nowIso = new Date().toISOString();
-                await supabase.from('orders').update({
-                  status: 'RECEIVED',
-                  delivered_at: nowIso,
-                  received_at: nowIso
-                }).eq('id', orderId);
-                set((state) => ({
-                  orders: state.orders.map(o => o.id === orderId ? { ...o, deliveredAt: nowIso, receivedAt: nowIso, status: 'entregue' } : o)
-                }));
-                await get().fetchOrders(currentUser.id, true);
-                return;
-              }
-
               const errMsg = pinRes?.error || pinErr?.message || 'PIN de segurança inválido.';
               alert(`❌ ${errMsg}`);
               await get().fetchOrders(currentUser.id, true);
               return;
             } catch (err: any) {
-              console.error("Erro ao validar PIN no servidor:", err);
-              alert("Erro de conexão ao validar o PIN de segurança.");
+              console.error("Erro ao validar PIN de entrega no servidor:", err);
+              alert("Erro de conexão ao validar o PIN de entrega.");
               return;
             }
         }
@@ -2390,24 +2366,17 @@ export const useAppStore = create<AppState>()(
         }
 
         if (action === 'pagar_motorista') {
-             const motoristaId = orderId; // Usando orderId como userId neste caso específico
-             set((state) => {
-                 const newOrders = state.orders.map(o => {
-                     if (o.motoristaId === motoristaId && o.status === 'entregue') {
-                         return { ...o, status: 'arquivado' as any };
-                     }
-                     return o;
-                 });
-                 return { orders: newOrders };
-             });
-             
-             // Atualizar no banco
-             const { error } = await supabase.from('orders')
-                 .update({ status: 'COMPLETED' })
-                 .eq('driver_id', motoristaId)
-                 .eq('status', 'RECEIVED');
-                 
-             if (error) console.error("Error paying motorista:", error);
+             const motoristaId = orderId;
+             try {
+               await supabase.rpc('advance_order_status', {
+                 p_order_id: orderId,
+                 p_action: 'archive_driver',
+                 p_reason: 'Arquivamento de entrega pelo operador/admin'
+               });
+             } catch (err) {
+               console.warn("Aviso ao arquivar entregas:", err);
+             }
+             await get().fetchOrders(currentUser.id, true);
              return;
         }
 
@@ -2546,40 +2515,44 @@ export const useAppStore = create<AppState>()(
           updates.cancelled_by = currentUser.id;
         }
 
-         if (Object.keys(updates).length > 0) {
-            if (action === 'validar_pin') updates.provided_pin = pinStr;
-            
-            // 1. Sempre persiste os campos específicos (como picked_up_at, delivered_at, ready_at) no Supabase
-            try {
-              await supabase.from('orders').update(updates).eq('id', orderId);
-            } catch (upErr) {
-              console.warn("Aviso ao atualizar pedido no Supabase:", upErr);
-            }
+         if (action === 'confirmar_pagamento' || action === 'pagar') {
+           // O app nunca grava PAID diretamente; apenas recarrega o estado real confirmado pelo servidor
+           await get().fetchOrders(currentUser.id, true);
+           return;
+         }
 
-            // 2. Se houver transição de status na máquina de estados, executa a RPC
-            if (newDbStatus && action !== 'validar_pin' && action !== 'aceitar_motorista') {
-              try {
-                await supabase.rpc('transition_order_status', {
-                  p_order_id: orderId,
-                  p_to_status: newDbStatus,
-                  p_actor_id: currentUser.id,
-                  p_actor_role: currentUser.role ? String(currentUser.role).toUpperCase() : 'USER',
-                  p_reason: reasonStr || 'Transição efetuada pelo app'
-                });
-              } catch (rpcErr) {
-                console.warn("RPC transition notice:", rpcErr);
+         let rpcAction = '';
+         if (action === 'aceitar_loja' || action === 'aceitar_forn') rpcAction = 'accept';
+         else if (action === 'chamar_moto' || action === 'chamar_caminhao') rpcAction = 'ready';
+         else if (action === 'retirar_pedido') rpcAction = 'pickup';
+         else if (action === 'conf_motorista') rpcAction = 'delivered_by_driver';
+         else if (action === 'forcar_baixa') rpcAction = 'force_receive';
+         else if (action === 'cancelar_pedido' && (targetCurrentOrder?.status === 'aguardando_pagamento' || targetCurrentOrder?.status === 'pendente')) rpcAction = 'cancel_unpaid';
+
+         if (rpcAction && action !== 'validar_pin' && action !== 'aceitar_motorista') {
+           try {
+             const { data: advRes, error: advErr } = await supabase.rpc('advance_order_status', {
+               p_order_id: orderId,
+               p_action: rpcAction,
+               p_reason: reasonStr || 'Transição efetuada pelo app'
+             });
+
+             if (advErr || (advRes && !advRes.success)) {
+               const msg = advRes?.error || advErr?.message || 'Falha ao atualizar status do pedido.';
+               alert(`⚠️ ${msg}`);
+             }
+           } catch (rpcErr: any) {
+             console.warn("RPC advance_order_status notice:", rpcErr);
+           }
+
+           await get().fetchOrders(currentUser.id, true);
+
+           if (action === 'forcar_baixa') {
+              const currentOrder = get().orders.find(o => o.id === orderId) || state.orders.find(o => o.id === orderId);
+              if (currentOrder) {
+                get().incrementAdminBalances(currentOrder);
               }
-            }
-
-            await get().fetchOrders(currentUser.id, true);
-
-            if (action === 'conf_recebedor' || action === 'validar_pin' || action === 'forcar_baixa') {
-               const currentOrder = get().orders.find(o => o.id === orderId) || state.orders.find(o => o.id === orderId);
-               if (currentOrder) {
-                 get().incrementAdminBalances(currentOrder);
-                 // Repasses são efetuados de forma atômica e segura pelo backend (Edge Function payout-sweep)
-               }
-            }
+           }
          }
 
         if (newDbStatus === 'CANCELLED') {
@@ -2701,13 +2674,15 @@ export const useAppStore = create<AppState>()(
 
          const roleLower = String(currentUser.role || '').toLowerCase();
 
-          // Fetch orders using primary query
+          // Fetch orders using primary query (sem colunas de PIN)
           let query = supabase.from('orders').select(`
              id, order_type, status, products_subtotal, delivery_distance_km, 
              applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
              buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
-             delivery_pin, pickup_pin, accepted_at, ready_at, received_at, asaas_payment_id,
+             accepted_at, ready_at, received_at, asaas_payment_id,
              payout_seller_done, payout_driver_done, seller_amount, driver_amount, total_delivery_fee,
+             seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount,
+             pricing_snapshot, delivery_address, delivery_lat, delivery_lng, delivery_reference,
              order_items ( id, product_name, quantity, unit_price_cents, total_price_cents )
           `);
 
@@ -2763,6 +2738,29 @@ export const useAppStore = create<AppState>()(
           }
          
          if (dbOrders) {
+            // Carregar PINs protegidos exclusivamente via order_pins com RLS
+            const orderPinsMap: Record<string, { deliveryPin?: string; pickupPin?: string }> = {};
+            if (dbOrders.length > 0) {
+               try {
+                 const orderIds = dbOrders.map((o: any) => o.id);
+                 const { data: pinsData } = await supabase
+                   .from('order_pins')
+                   .select('order_id, delivery_pin, pickup_pin')
+                   .in('order_id', orderIds);
+
+                 if (pinsData) {
+                   pinsData.forEach((p: any) => {
+                     orderPinsMap[p.order_id] = {
+                       deliveryPin: p.delivery_pin || undefined,
+                       pickupPin: p.pickup_pin || undefined
+                     };
+                   });
+                 }
+               } catch (_pErr) {
+                 console.warn("Aviso ao carregar PINs protegidos:", _pErr);
+               }
+            }
+
             const missingUserIds = new Set<string>();
             const storefrontIds = new Set<string>();
             dbOrders.forEach((o: any) => {
@@ -2951,19 +2949,8 @@ export const useAppStore = create<AppState>()(
                        acceptedAt: dbOrder.accepted_at || localOrder?.acceptedAt,
                        readyAt: dbOrder.ready_at || localOrder?.readyAt,
                        receivedAt: dbOrder.received_at || localOrder?.receivedAt,
-                       deliveryPin: (() => {
-                          const raw = dbOrder.delivery_pin || localOrder?.deliveryPin;
-                          if (raw && String(raw).trim().length === 4) return String(raw).trim();
-                          const idNum = parseInt(String(dbOrder.id || '').replace(/\D/g, '').slice(-4) || '1234', 10);
-                          return String((((idNum * 7) % 9000) + 1000));
-                       })(),
-                       pickupPin: (() => {
-                          const raw = dbOrder.pickup_pin || localOrder?.pickupPin;
-                          if (raw && String(raw).trim().length === 4) return String(raw).trim();
-                          const rawDel = dbOrder.delivery_pin || localOrder?.deliveryPin;
-                          const baseNum = rawDel ? parseInt(String(rawDel).trim(), 10) : parseInt(String(dbOrder.id || '').replace(/\D/g, '').slice(-4) || '5678', 10);
-                          return String((((baseNum * 7 + 1337) % 9000) + 1000));
-                       })(),
+                       deliveryPin: orderPinsMap[dbOrder.id]?.deliveryPin || localOrder?.deliveryPin || undefined,
+                       pickupPin: orderPinsMap[dbOrder.id]?.pickupPin || localOrder?.pickupPin || undefined,
                        deliveryAddress: dbOrder.delivery_address || localOrder?.deliveryAddress || dbOrder.buyer?.endereco || dbOrder.buyer?.address || allUsers[dbOrder.buyer_id]?.endereco,
                        deliveryLat: dbOrder.delivery_lat || localOrder?.deliveryLat,
                        deliveryLng: dbOrder.delivery_lng || localOrder?.deliveryLng,
@@ -3123,21 +3110,14 @@ export const useAppStore = create<AppState>()(
          }));
 
          try {
-            const updatePayload: any = role === 'seller' ? { payout_seller_done: true } : { payout_driver_done: true };
-            await supabase.from('orders').update(updatePayload).in('id', orderIds);
-            if (partnerId) {
-               await supabase
-                 .from('withdrawal_requests')
-                 .update({ 
-                   status: 'PAGO', 
-                   failure_reason: null, 
-                   paid_at: new Date().toISOString() 
-                 })
-                 .in('status', ['PENDENTE', 'APROVADO', 'FALHOU'])
-                 .eq('partner_id', partnerId);
-            }
+            const authHeaders = await getAuthHeaders();
+            await fetch('/api/admin/payout/mark-done', {
+              method: 'POST',
+              headers: authHeaders,
+              body: JSON.stringify({ orderIds, role, partnerId })
+            });
          } catch (e) {
-            console.warn("Aviso ao atualizar payout_done no Supabase:", e);
+            console.warn("Aviso ao atualizar payout_done no servidor:", e);
          }
       },
 

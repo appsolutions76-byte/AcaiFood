@@ -159,7 +159,13 @@ export async function POST(request: Request) {
         delivery_address: deliveryInfo?.address || null,
         delivery_lat: deliveryInfo?.lat ? Number(deliveryInfo.lat) : null,
         delivery_lng: deliveryInfo?.lng ? Number(deliveryInfo.lng) : null,
-        delivery_reference: effectiveReference
+        delivery_reference: effectiveReference,
+        seller_payout_amount: prePricing.netSellerPayout,
+        driver_payout_amount: prePricing.netDriverPayout,
+        platform_fee_amount: (prePricing.platformSalesFee || 0) + (prePricing.platformDeliveryFee || 0),
+        delivery_fee_amount: prePricing.deliveryTotal || prePricing.clientDeliveryFee || 0,
+        asaas_fee_amount: prePricing.asaasPixFeeFixed || 0,
+        pricing_snapshot: prePricing
       };
 
       const fullPayload = { ...basePayload, pickup_pin: pickupPin };
@@ -246,59 +252,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Valor total do pedido inválido para cobrança' }, { status: 400 });
     }
 
-    // Recalcular Split buscando as carteiras reais Asaas diretamente do banco
-    const isValidAsaasWalletId = (id?: string) => {
-      if (!id || typeof id !== 'string') return false;
-      const clean = id.trim();
-      if (clean.length < 10) return false;
-      if (clean.includes('@') || clean === 'loja_parceira' || clean === 'asaas_wallet_' || clean === 'wallet_master') return false;
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
-      const isAsaasAcc = /^acc_[a-zA-Z0-9_-]{8,}$/i.test(clean);
-      const isAsaasId = clean.length >= 12 && !clean.match(/^\d+$/) && !clean.endsWith('_');
-      return isUuid || isAsaasAcc || isAsaasId;
-    };
-
-    const calculatedSplits: { walletId: string; fixedValue: number }[] = [];
-
-    // Split Vendedor (Loja / Batedeira / Fornecedor)
-    const sellerSfOrUserId = order.seller_storefront_id || (order as any).loja_id || (order as any).fornecedor_id || (order as any).origem_id || targetId || null;
-    if (sellerSfOrUserId) {
-      let partnerUserId: string | null = null;
-      const { data: sf } = await supabase
-        .from('storefronts')
-        .select('partner_id')
-        .eq('id', sellerSfOrUserId)
-        .maybeSingle();
-
-      if (sf?.partner_id) {
-        partnerUserId = sf.partner_id;
-      } else {
-        partnerUserId = sellerSfOrUserId;
-      }
-
-      if (partnerUserId) {
-        const { data: uSeller } = await supabase
-          .from('users')
-          .select('asaas_wallet_id, split_enabled, asaas_account_status')
-          .eq('id', partnerUserId)
-          .maybeSingle();
-
-        const isSellerSplitActive = uSeller?.split_enabled === true || 
-                                    (uSeller?.split_enabled !== false && uSeller?.asaas_account_status === 'APPROVED') ||
-                                    Boolean(uSeller?.asaas_wallet_id && uSeller?.asaas_account_status !== 'REJECTED');
-
-        if (uSeller?.asaas_wallet_id && isSellerSplitActive && isValidAsaasWalletId(uSeller.asaas_wallet_id)) {
-          const sellerVal = pricing.netSellerPayout;
-
-          if (sellerVal > 0) {
-            calculatedSplits.push({
-              walletId: uSeller.asaas_wallet_id.trim(),
-              fixedValue: sellerVal
-            });
-          }
-        }
-      }
-    }
+    // Fase 3.1: Cobrança gerada 100% para a conta da plataforma (repasses liquidados após confirmação do PIN)
 
     const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
     const ASAAS_API_KEY = await getAsaasApiKey();
@@ -433,29 +387,7 @@ export async function POST(request: Request) {
     const dueDateObj = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
     const dueDate = dueDateObj.toISOString().split('T')[0];
 
-    // Ajustar split formatado para respeitar limites do Asaas
-    let totalSplitValue = 0;
-    let formattedSplit = calculatedSplits.map((s) => {
-      const roundedVal = Number(s.fixedValue.toFixed(2));
-      totalSplitValue += roundedVal;
-      return {
-        walletId: s.walletId,
-        fixedValue: roundedVal
-      };
-    });
-
-    const maxAllowedSplit = Number((calculatedValue - 0.05).toFixed(2));
-    if (formattedSplit.length > 0 && maxAllowedSplit > 0 && totalSplitValue >= calculatedValue) {
-      const ratio = maxAllowedSplit / totalSplitValue;
-      formattedSplit = formattedSplit.map((s) => ({
-        ...s,
-        fixedValue: Number((s.fixedValue * ratio).toFixed(2))
-      }));
-    }
-
-    const validSplit = formattedSplit.length > 0 ? formattedSplit : undefined;
-
-    // Criar Cobrança (BillingType PIX)
+    // Criar Cobrança (BillingType PIX) para a plataforma
     const paymentBody: any = {
       customer: customerId,
       billingType: 'PIX',
@@ -465,11 +397,7 @@ export async function POST(request: Request) {
       description: `Pedido AçaíFood #${String(order.id).substring(0, 8)}`
     };
 
-    if (validSplit && validSplit.length > 0) {
-      paymentBody.split = validSplit;
-    }
-
-    let payRes = await fetch(`${ASAAS_URL}/payments`, {
+    const payRes = await fetch(`${ASAAS_URL}/payments`, {
       method: 'POST',
       headers: {
         'access_token': ASAAS_API_KEY,
@@ -478,22 +406,7 @@ export async function POST(request: Request) {
       body: JSON.stringify(paymentBody)
     });
 
-    let paymentData = await payRes.json();
-
-    // Se falhar devido ao split da loja/carteira, tenta criar direto para a plataforma sem split
-    if (!paymentData.id && paymentBody.split) {
-      console.warn("Falha ao criar cobrança Asaas com split, tentando sem split...", paymentData);
-      delete paymentBody.split;
-      payRes = await fetch(`${ASAAS_URL}/payments`, {
-        method: 'POST',
-        headers: {
-          'access_token': ASAAS_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(paymentBody)
-      });
-      paymentData = await payRes.json();
-    }
+    const paymentData = await payRes.json();
 
     if (!paymentData.id) {
       const msg = paymentData.errors
@@ -517,11 +430,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Atualizar order no Supabase com o paymentId, status e charged_amount
+    // Atualizar order no Supabase com o paymentId, status, charged_amount e snapshot de precificação
     const updPayload: any = {
       asaas_payment_id: paymentData.id,
       asaas_charge_status: paymentData.status,
-      charged_amount: calculatedValue
+      charged_amount: calculatedValue,
+      seller_payout_amount: pricing.netSellerPayout,
+      driver_payout_amount: pricing.netDriverPayout,
+      platform_fee_amount: (pricing.platformSalesFee || 0) + (pricing.platformDeliveryFee || 0),
+      delivery_fee_amount: pricing.deliveryTotal || pricing.clientDeliveryFee || 0,
+      asaas_fee_amount: pricing.asaasPixFeeFixed || 0,
+      pricing_snapshot: pricing
     };
     const updRes = await supabase.from('orders').update(updPayload).eq('id', order.id);
     if (updRes.error && updRes.error.message?.includes('charged_amount')) {

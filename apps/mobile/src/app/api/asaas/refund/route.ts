@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authorizeRequest } from '@/lib/apiAuth';
+import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
@@ -10,12 +10,16 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 export async function POST(request: Request) {
   try {
     const auth = await authorizeRequest(request, ['admin', 'loja', 'cliente', 'fornecedor', 'motorista']);
+    if (!auth.authorized) {
+      return unauthorizedResponse(auth.error || 'Acesso negado: faça login para solicitar estorno ou cancelamento.');
+    }
+
     const body = await request.json().catch(() => ({}));
     const { orderId, paymentId, description, reason, value } = body;
 
     if (!orderId && !paymentId) {
       return NextResponse.json(
-        { error: 'ID do pedido ou do pagamento é obrigatório para estorno' },
+        { error: 'ID do pedido (UUID) ou ID da cobrança Asaas é obrigatório para estorno' },
         { status: 400 }
       );
     }
@@ -36,7 +40,7 @@ export async function POST(request: Request) {
     const cleanOrderId = orderId ? String(orderId).trim() : '';
     const isUUID = cleanOrderId ? UUID_REGEX.test(cleanOrderId) : false;
 
-    // 1. Buscar o pedido no banco de dados Supabase
+    // 1. Buscar o pedido no banco de dados Supabase por UUID completo
     if (cleanOrderId && isUUID) {
       try {
         const { data: orderData } = await supabase
@@ -73,36 +77,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Se cleanOrderId não é UUID completo (ex: PED-321e88f5 ou 321e88f5), buscar pedidos recentes
-    if (!targetOrder && cleanOrderId && !isUUID) {
-      try {
-        const prefix = cleanOrderId.replace(/^PED-/i, '').toLowerCase();
-        const { data: recentOrders } = await supabase
-          .from('orders')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(50);
-
-        if (Array.isArray(recentOrders)) {
-          const match = recentOrders.find(o => 
-            o.id.toLowerCase().startsWith(prefix) || 
-            o.asaas_payment_id === cleanOrderId
-          );
-          if (match) {
-            targetOrder = match;
-          }
-        }
-      } catch (err) {
-        console.warn("Aviso ao buscar pedido recente por prefixo:", err);
-      }
-    }
-
     if (targetOrder?.asaas_payment_id && !asaasPaymentId) {
       asaasPaymentId = targetOrder.asaas_payment_id;
     }
 
-    // 4. Se ainda não tem asaasPaymentId, buscar por externalReference no Asaas
-    const referenceToSearch = targetOrder?.id || cleanOrderId;
+    // 3. Se ainda não tem asaasPaymentId e é um UUID válido, buscar por externalReference no Asaas
+    const referenceToSearch = targetOrder?.id || (isUUID ? cleanOrderId : null);
     if (!asaasPaymentId && referenceToSearch) {
       try {
         const searchRes = await fetch(`${ASAAS_URL}/payments?externalReference=${encodeURIComponent(referenceToSearch)}`, {
@@ -112,7 +92,6 @@ export async function POST(request: Request) {
           const searchData = await searchRes.json();
           if (searchData?.data && searchData.data.length > 0) {
             asaasPaymentId = searchData.data[0].id;
-            // Salvar no pedido para referência futura
             if (targetOrder?.id) {
               await supabase.from('orders').update({ asaas_payment_id: asaasPaymentId }).eq('id', targetOrder.id);
             }
@@ -123,13 +102,73 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Validação de segurança: Não permitir estorno de pedidos entregues/concluídos
-    if (targetOrder) {
+    // 4. Validação de segurança e permissão de cancelamento por papel e fase (Fase 1.1 e 1.2)
+    const callerId = auth.user?.id || auth.profile?.id;
+    const userRole = String(auth.profile?.role || '').toLowerCase();
+    const isAdmin = auth.source === 'internal_secret' || auth.source === 'cron_secret' || userRole === 'admin' || auth.profile?.is_admin === true;
+
+    // 1.1 Se nenhum pedido for encontrado por UUID nem paymentId, apenas Administrador tem permissão
+    if (!targetOrder && !isAdmin) {
+      return NextResponse.json(
+        { error: 'Apenas administradores podem estornar cobranças avulsas sem pedido associado.' },
+        { status: 403 }
+      );
+    }
+
+    // Se a cobrança for taxa de ativação (ACTIVATE_), apenas admin pode estornar e desativa a subconta
+    if (referenceToSearch && referenceToSearch.startsWith('ACTIVATE_')) {
+      if (!isAdmin) {
+        return NextResponse.json({ error: 'Apenas administradores podem estornar taxa de ativação.' }, { status: 403 });
+      }
+      const targetUserId = referenceToSearch.replace('ACTIVATE_', '');
+      try {
+        await supabase.from('users').update({ 
+          asaas_account_status: 'PENDING_PAYMENT',
+          split_enabled: false 
+        }).eq('id', targetUserId);
+      } catch (_actErr) {
+        console.warn("Aviso ao desativar parceiro após estorno de ativação:", _actErr);
+      }
+    }
+
+    if (targetOrder && !isAdmin) {
+      let isStoreOwner = false;
+      if (targetOrder.seller_storefront_id && callerId) {
+        const { data: sf } = await supabase.from('storefronts').select('partner_id').eq('id', targetOrder.seller_storefront_id).maybeSingle();
+        if (sf?.partner_id === callerId) {
+          isStoreOwner = true;
+        }
+      }
+
+      const isBuyer = targetOrder.buyer_id === callerId;
       const currentStatus = String(targetOrder.status || '').toUpperCase();
-      if (['RECEIVED', 'COMPLETED', 'DELIVERED', 'ENTREGUE'].includes(currentStatus)) {
+
+      if (!isBuyer && !isStoreOwner) {
+        return NextResponse.json({ error: 'Você não tem permissão para estornar ou cancelar este pedido.' }, { status: 403 });
+      }
+
+      // 1.2 Regras de momento do cancelamento:
+      // Comprador: só em PENDING ou PAID (antes de a loja iniciar o preparo)
+      if (isBuyer && !['PENDING', 'PENDENTE', 'AGUARDANDO_PAGAMENTO', 'AWAITING_PAYMENT', 'PAID'].includes(currentStatus)) {
         return NextResponse.json(
-          { error: 'Não é permitido estorno automático após o pedido ter sido entregue e confirmado por PIN. Contate o suporte administrativo.' },
+          { error: 'O pedido já está em preparação ou rota. O cancelamento pelo cliente não é mais permitido diretamente. Contate a loja ou o suporte.' },
           { status: 400 }
+        );
+      }
+
+      // Loja: pode cancelar até READY (antes do motorista retirar em rota)
+      if (isStoreOwner && !['PENDING', 'PAID', 'PREPARING', 'PREPARO', 'READY', 'PRONTO'].includes(currentStatus)) {
+        return NextResponse.json(
+          { error: 'O pedido já saiu para entrega. O cancelamento pela loja requer intermediação do suporte administrativo.' },
+          { status: 400 }
+        );
+      }
+
+      // Em rota ou entregue: apenas Administrador
+      if (['DELIVERING', 'EM_ROTA', 'DELIVERED', 'ENTREGUE', 'RECEIVED', 'COMPLETED', 'CONCLUIDO'].includes(currentStatus)) {
+        return NextResponse.json(
+          { error: 'Pedidos em rota de entrega ou finalizados só podem ser cancelados/estornados pelo administrador.' },
+          { status: 403 }
         );
       }
     }

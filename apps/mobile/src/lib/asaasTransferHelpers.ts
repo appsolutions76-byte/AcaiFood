@@ -87,53 +87,15 @@ export function buildAsaasTransferPayload(
 ): AsaasTransferPayload | null {
   if (!partnerUser || amount <= 0) return null;
 
-  const rawPixKey = String(partnerUser.pix_key || partnerUser.pixKey || '').trim();
-  const rawPixKeyType = partnerUser.pix_key_type || partnerUser.pixKeyType;
-  const rawCpfCnpj = String(partnerUser.cpf_cnpj || partnerUser.cpfCnpj || '').replace(/\D/g, '');
-  const rawEmail = String(partnerUser.email || '').trim();
   const rawWalletId = String(partnerUser.asaas_wallet_id || partnerUser.asaasWalletId || '').trim();
+  const accountStatus = String(partnerUser.asaas_account_status || '').toUpperCase();
 
-  const desc = descriptionStr || `Repasse AçaíFood - ${partnerUser.name || 'Parceiro'}`;
-
-  // 1. Se houver chave Pix cadastrada no perfil
-  if (rawPixKey) {
-    const valResult = validateAndFormatPixKey(rawPixKey, rawPixKeyType);
-    if (valResult.valid && valResult.formattedKey && valResult.type) {
-      return {
-        value: Number(amount.toFixed(2)),
-        pixAddressKey: valResult.formattedKey,
-        pixAddressKeyType: valResult.type,
-        description: desc
-      };
-    }
-  }
-
-  // 2. Se houver CPF/CNPJ válido cadastrado
-  if (rawCpfCnpj && (rawCpfCnpj.length === 11 || rawCpfCnpj.length === 14) && validateCpfCnpjDigits(rawCpfCnpj)) {
-    return {
-      value: Number(amount.toFixed(2)),
-      pixAddressKey: rawCpfCnpj,
-      pixAddressKeyType: rawCpfCnpj.length === 11 ? 'CPF' : 'CNPJ',
-      description: desc
-    };
-  }
-
-  // 3. Se houver e-mail válido
-  if (rawEmail && rawEmail.includes('@') && rawEmail.includes('.')) {
-    return {
-      value: Number(amount.toFixed(2)),
-      pixAddressKey: rawEmail.toLowerCase(),
-      pixAddressKeyType: 'EMAIL',
-      description: desc
-    };
-  }
-
-  // 4. Se houver WalletId do Asaas
-  if (rawWalletId && rawWalletId.length >= 10) {
+  // Exclusivamente para walletId de subconta Asaas aprovada (Cláusula 6.4 e 2.1)
+  if (rawWalletId && rawWalletId.length >= 10 && (accountStatus === 'APPROVED' || partnerUser.split_enabled === true)) {
     return {
       value: Number(amount.toFixed(2)),
       walletId: rawWalletId,
-      description: desc
+      description: descriptionStr || `Repasse AçaíFood - ${partnerUser.name || 'Parceiro'}`
     };
   }
 

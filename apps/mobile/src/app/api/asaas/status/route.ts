@@ -82,19 +82,36 @@ export async function GET(request: Request) {
           if (targetOrderId) {
             try {
               const supabase = getSupabaseAdmin();
-              await supabase.from('orders').update({
-                status: 'PAID',
-                paid_at: new Date().toISOString(),
-                asaas_payment_id: data.id,
-                asaas_charge_status: status
-              }).eq('id', targetOrderId);
+              const { data: dbOrder } = await supabase
+                .from('orders')
+                .select('id, status, charged_amount')
+                .eq('id', targetOrderId)
+                .maybeSingle();
 
-              try { await supabase.rpc('generate_delivery_pin', { p_order_id: targetOrderId }); } catch (_e) {}
-              try { await supabase.rpc('generate_pickup_pin', { p_order_id: targetOrderId }); } catch (_e) {}
-              try {
-                const genPin = Math.floor(1000 + Math.random() * 9000).toString();
-                await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', targetOrderId).is('pickup_pin', null);
-              } catch (_e) {}
+              const expectedAmt = dbOrder?.charged_amount ? Number(dbOrder.charged_amount) : null;
+              const paidAmt = data.value ? Number(data.value) : null;
+              const isValueValid = (expectedAmt === null || paidAmt === null || Math.abs(expectedAmt - paidAmt) <= 0.05);
+
+              if (isValueValid && dbOrder && ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT'].includes(dbOrder.status)) {
+                await supabase.from('orders').update({
+                  status: 'PAID',
+                  paid_at: new Date().toISOString(),
+                  asaas_payment_id: data.id,
+                  asaas_charge_status: status
+                }).eq('id', targetOrderId);
+
+                try { await supabase.rpc('generate_delivery_pin', { p_order_id: targetOrderId }); } catch (_e) {}
+                try { await supabase.rpc('generate_pickup_pin', { p_order_id: targetOrderId }); } catch (_e) {}
+                try {
+                  const genPin = Math.floor(1000 + Math.random() * 9000).toString();
+                  await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', targetOrderId).is('pickup_pin', null);
+                } catch (_e) {}
+              } else if (dbOrder && isValueValid) {
+                await supabase.from('orders').update({
+                  asaas_payment_id: data.id,
+                  asaas_charge_status: status
+                }).eq('id', targetOrderId);
+              }
             } catch (updErr) {
               console.warn("Erro ao sincronizar status PAID no Supabase via API status:", updErr);
             }
@@ -129,19 +146,36 @@ export async function GET(request: Request) {
 
         if (isPaid && supabaseUrl && supabaseKey) {
           const supabase = getSupabaseAdmin();
-          await supabase.from('orders').update({
-            status: 'PAID',
-            paid_at: new Date().toISOString(),
-            asaas_payment_id: paidPayment.id,
-            asaas_charge_status: paidPayment.status
-          }).eq('id', orderId);
+          const { data: dbOrder } = await supabase
+            .from('orders')
+            .select('id, status, charged_amount')
+            .eq('id', orderId)
+            .maybeSingle();
 
-          try { await supabase.rpc('generate_delivery_pin', { p_order_id: orderId }); } catch (_e) {}
-          try { await supabase.rpc('generate_pickup_pin', { p_order_id: orderId }); } catch (_e) {}
-          try {
-            const genPin = Math.floor(1000 + Math.random() * 9000).toString();
-            await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', orderId).is('pickup_pin', null);
-          } catch (_e) {}
+          const expectedAmt = dbOrder?.charged_amount ? Number(dbOrder.charged_amount) : null;
+          const paidAmt = paidPayment.value ? Number(paidPayment.value) : null;
+          const isValueValid = (expectedAmt === null || paidAmt === null || Math.abs(expectedAmt - paidAmt) <= 0.05);
+
+          if (isValueValid && dbOrder && ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT'].includes(dbOrder.status)) {
+            await supabase.from('orders').update({
+              status: 'PAID',
+              paid_at: new Date().toISOString(),
+              asaas_payment_id: paidPayment.id,
+              asaas_charge_status: paidPayment.status
+            }).eq('id', orderId);
+
+            try { await supabase.rpc('generate_delivery_pin', { p_order_id: orderId }); } catch (_e) {}
+            try { await supabase.rpc('generate_pickup_pin', { p_order_id: orderId }); } catch (_e) {}
+            try {
+              const genPin = Math.floor(1000 + Math.random() * 9000).toString();
+              await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', orderId).is('pickup_pin', null);
+            } catch (_e) {}
+          } else if (dbOrder && isValueValid) {
+            await supabase.from('orders').update({
+              asaas_payment_id: paidPayment.id,
+              asaas_charge_status: paidPayment.status
+            }).eq('id', orderId);
+          }
         }
 
         return NextResponse.json({
@@ -151,30 +185,6 @@ export async function GET(request: Request) {
           isPaid,
           value: paidPayment.value
         });
-      }
-    }
-
-    // 4. Se a chave não estiver no ambiente da Vercel, consultar via Supabase Edge Function (onde a ASAAS_API_KEY está nos Secrets)
-    if (supabaseUrl && supabaseKey && (orderId || paymentId)) {
-      try {
-        const edgeRes = await fetch(`${supabaseUrl}/functions/v1/asaas-status`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`
-          },
-          body: JSON.stringify({ orderId, paymentId })
-        });
-
-        if (edgeRes.ok) {
-          const edgeData = await edgeRes.json();
-          if (edgeData && edgeData.isPaid) {
-            return NextResponse.json(edgeData);
-          }
-        }
-      } catch (edgeErr) {
-        console.warn("Aviso ao consultar Edge Function asaas-status:", edgeErr);
       }
     }
 
@@ -197,7 +207,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    console.log("Recebido Webhook Asaas (POST):", JSON.stringify(body));
+    console.log(`[Webhook Asaas] Evento recebido: ${body.event || 'N/A'}, ID: ${body.payment?.id || body.transfer?.id || body.id || 'N/A'}`);
 
     const event = body.event;
     const payment = body.payment || (event?.startsWith('PAYMENT_') ? body : null);
@@ -215,6 +225,20 @@ export async function POST(request: Request) {
       const supabase = getSupabaseAdmin();
       if (transferId) {
         if (transferStatus === 'DONE' || event === 'TRANSFER_DONE' || event === 'TRANSFER_COMPLETED') {
+          const nowIso = new Date().toISOString();
+
+          // Sincronizar tabela settlements (Repasses novos pós-PIN)
+          try {
+            await supabase
+              .from('settlements')
+              .update({
+                status: 'DONE',
+                transferred_at: nowIso,
+                last_error: null
+              })
+              .eq('asaas_transfer_id', transferId);
+          } catch (_sErr) {}
+
           const { data: wr } = await supabase
             .from('withdrawal_requests')
             .select('*')
@@ -222,7 +246,6 @@ export async function POST(request: Request) {
             .maybeSingle();
 
           if (wr) {
-            const nowIso = new Date().toISOString();
             await supabase
               .from('withdrawal_requests')
               .update({
@@ -240,6 +263,18 @@ export async function POST(request: Request) {
           }
         } else if (transferStatus === 'FAILED' || event === 'TRANSFER_FAILED' || event === 'TRANSFER_CANCELLED' || event === 'TRANSFER_REVERSED') {
           const failReason = transfer?.failReason || transfer?.description || `Transferência ${transferStatus.toLowerCase()} no Asaas`;
+
+          // Sincronizar tabela settlements (Repasses novos)
+          try {
+            await supabase
+              .from('settlements')
+              .update({
+                status: 'FAILED',
+                last_error: failReason
+              })
+              .eq('asaas_transfer_id', transferId);
+          } catch (_sErr) {}
+
           const { data: wr } = await supabase
             .from('withdrawal_requests')
             .select('*')
@@ -308,43 +343,102 @@ export async function POST(request: Request) {
                 created_at: new Date().toISOString()
               });
             } catch (_logErr) {}
-            return NextResponse.json({ success: false, error: 'Divergência no valor do pagamento recebido' }, { status: 400 });
+            // Responde 200 para o Asaas reconhecer o recebimento e não pausar a fila de webhooks da conta
+            return NextResponse.json({ success: true, processed: false, error: 'Divergência de valor registrada' });
           }
         }
 
-        let query = supabase.from('orders').update({
-          status: 'PAID',
-          paid_at: new Date().toISOString(),
-          asaas_payment_id: paymentId,
-          asaas_charge_status: status
-        });
+        const currentStatus = String(currentOrder?.status || '').toUpperCase();
+        const isCancelled = ['CANCELLED', 'CANCELADO', 'REFUNDED'].includes(currentStatus);
 
-        if (orderId) {
-          query = query.eq('id', orderId);
-        } else if (paymentId) {
-          query = query.eq('asaas_payment_id', paymentId);
+        // 1.3 Se o pagamento chegar para um pedido cancelado: registra incidente e estorna automaticamente
+        if (isCancelled && paymentId) {
+          console.warn(`⚠️ [Webhook Asaas] Pagamento recebido para pedido cancelado #${currentOrder?.id}. Disparando auto-estorno.`);
+          try {
+            await supabase.from('incident_logs').insert({
+              order_id: currentOrder?.id || null,
+              action_type: 'PAYMENT_AFTER_CANCEL',
+              description: `Pix recebido após cancelamento do pedido (Cobrança #${paymentId}, R$ ${payment?.value}). Auto-estorno disparado.`,
+              created_at: new Date().toISOString()
+            });
+
+            const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
+            const apiKey = await getAsaasApiKey();
+            if (apiKey) {
+              const asaasUrl = getAsaasBaseUrl(apiKey);
+              const autoRefundRes = await fetch(`${asaasUrl}/payments/${paymentId}/refund`, {
+                method: 'POST',
+                headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: 'Estorno automático: Pix recebido após cancelamento do pedido' })
+              });
+              const autoRefundData = await autoRefundRes.json().catch(() => ({}));
+
+              await supabase.from('refund_history').insert({
+                order_id: currentOrder?.id || null,
+                payment_id: paymentId,
+                requested_value: payment?.value || currentOrder?.charged_amount || 0,
+                asaas_refund_id: autoRefundData?.id || null,
+                status: autoRefundData?.status || 'REFUNDED',
+                requested_by: 'SYSTEM_WEBHOOK_AUTO_REFUND'
+              });
+            }
+          } catch (autoRefErr) {
+            console.error("Erro ao executar auto-estorno de pagamento após cancelamento:", autoRefErr);
+          }
+
+          return NextResponse.json({ success: true, processed: true, autoRefunded: true, event });
         }
 
-        const { error } = await query;
-        if (error) {
-          console.warn("Erro ao atualizar pedido no Supabase via Webhook Asaas:", error);
+        const isCurrentlyPending = !currentOrder?.status || ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT'].includes(currentOrder.status);
+
+        if (isCurrentlyPending) {
+          let query = supabase.from('orders').update({
+            status: 'PAID',
+            paid_at: new Date().toISOString(),
+            asaas_payment_id: paymentId,
+            asaas_charge_status: status
+          });
+
+          if (orderId) {
+            query = query.eq('id', orderId);
+          } else if (paymentId) {
+            query = query.eq('asaas_payment_id', paymentId);
+          }
+
+          const { error } = await query;
+          if (error) {
+            console.warn("Erro ao atualizar pedido no Supabase via Webhook Asaas:", error);
+          } else {
+            console.log(`✅ Webhook Asaas: Pedido #${orderId || paymentId} atualizado para PAID com sucesso!`);
+            
+            // Gerar PIN de entrega e PIN de retirada
+            const finalOrderId = orderId || currentOrder?.id;
+            if (finalOrderId) {
+              try {
+                await supabase.rpc('generate_delivery_pin', { p_order_id: finalOrderId });
+              } catch (_e) {}
+              try {
+                await supabase.rpc('generate_pickup_pin', { p_order_id: finalOrderId });
+              } catch (_e) {}
+              try {
+                const genPin = Math.floor(1000 + Math.random() * 9000).toString();
+                await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', finalOrderId).is('pickup_pin', null);
+              } catch (_e) {}
+            }
+          }
         } else {
-          console.log(`✅ Webhook Asaas: Pedido #${orderId || paymentId} atualizado para PAID com sucesso!`);
-          
-          // Gerar PIN de entrega e PIN de retirada
-          const finalOrderId = orderId || currentOrder?.id;
-          if (finalOrderId) {
-            try {
-              await supabase.rpc('generate_delivery_pin', { p_order_id: finalOrderId });
-            } catch (_e) {}
-            try {
-              await supabase.rpc('generate_pickup_pin', { p_order_id: finalOrderId });
-            } catch (_e) {}
-            try {
-              const genPin = Math.floor(1000 + Math.random() * 9000).toString();
-              await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', finalOrderId).is('pickup_pin', null);
-            } catch (_e) {}
+          // Pedido já foi aceito/está em preparo ou rota: apenas atualiza asaas_charge_status sem regredir o status nem regerar PINs
+          let query = supabase.from('orders').update({
+            asaas_payment_id: paymentId,
+            asaas_charge_status: status
+          });
+          if (orderId) {
+            query = query.eq('id', orderId);
+          } else if (paymentId) {
+            query = query.eq('asaas_payment_id', paymentId);
           }
+          await query;
+          console.log(`ℹ️ Webhook Asaas: Pedido #${orderId || paymentId} já em status '${currentOrder?.status}', mantendo status e atualizando flags Asaas.`);
         }
       }
     } else if (isRefunded) {

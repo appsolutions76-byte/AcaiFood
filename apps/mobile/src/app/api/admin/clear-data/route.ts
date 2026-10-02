@@ -6,6 +6,13 @@ export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin']);
   if (!auth.authorized) return unauthorizedResponse(auth.error);
 
+  if (process.env.ALLOW_DESTRUCTIVE_ADMIN !== 'true') {
+    return NextResponse.json(
+      { error: 'Operação destrutiva desativada em ambiente de produção (ALLOW_DESTRUCTIVE_ADMIN=false).' },
+      { status: 403 }
+    );
+  }
+
   try {
     const supabase = getSupabaseAdmin();
 

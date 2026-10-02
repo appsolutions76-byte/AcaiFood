@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
-import { getAsaasApiKey } from '@/lib/asaasConfig';
+import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { getFounderQuotaStatus } from '@/lib/founderQuota';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista']);
@@ -16,10 +19,17 @@ export async function POST(request: Request) {
       cpfCnpj,
       phone,
       endereco,
+      addressNumber,
       bairro,
       cidade,
       estado,
-      uf
+      uf,
+      cep,
+      postalCode,
+      birthDate,
+      monthlyIncome,
+      incomeValue,
+      companyType
     } = body;
 
     if (!userId || !name || !email || !cpfCnpj) {
@@ -29,17 +39,71 @@ export async function POST(request: Request) {
       );
     }
 
-    const userState = String(estado || uf || 'PA').trim().toUpperCase();
+    const cleanCpfCnpj = String(cpfCnpj).replace(/\D/g, '');
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    const isCpf = cleanCpfCnpj.length === 11;
+    const isCnpj = cleanCpfCnpj.length === 14;
 
-    // TRAVA DE SEGURANÇA E CUSTO:
-    // Garante que novos parceiros além da cota de vagas fundadoras não criem subcontas Asaas sem pagar a taxa de ativação
-    const { getSupabaseAdmin } = await import('@/lib/supabaseAdmin');
+    if (!isCpf && !isCnpj) {
+      return NextResponse.json({ error: 'CPF deve conter 11 dígitos ou CNPJ 14 dígitos válidos' }, { status: 400 });
+    }
+
+    // 1. Validações estritas de KYC Real (Cláusula 8.2.3 do Contrato Asaas BaaS)
+    const effectivePostalCode = String(postalCode || cep || '').replace(/\D/g, '');
+    if (!effectivePostalCode || effectivePostalCode.length !== 8) {
+      return NextResponse.json({ error: 'CEP válido com 8 dígitos é obrigatório para abertura da subconta bancária' }, { status: 400 });
+    }
+
+    let effectiveBirthDate: string | undefined = undefined;
+    let effectiveIncome: number | undefined = undefined;
+    let effectiveCompanyType: string | undefined = undefined;
+
+    if (isCpf) {
+      if (!birthDate || !String(birthDate).match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return NextResponse.json({ error: 'Data de nascimento real (AAAA-MM-DD) é obrigatória para cadastro com CPF' }, { status: 400 });
+      }
+      const bDate = new Date(birthDate);
+      const ageYears = (Date.now() - bDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+      if (isNaN(ageYears) || ageYears < 18 || ageYears > 120) {
+        return NextResponse.json({ error: 'Titular da subconta deve possuir no mínimo 18 anos completos' }, { status: 400 });
+      }
+      effectiveBirthDate = birthDate;
+
+      const inc = Number(monthlyIncome || incomeValue || 0);
+      if (isNaN(inc) || inc <= 0) {
+        return NextResponse.json({ error: 'Renda mensal declarada é obrigatória para conformidade bancária' }, { status: 400 });
+      }
+      effectiveIncome = inc;
+    } else {
+      const allowedCompanyTypes = ['MEI', 'LIMITED', 'INDIVIDUAL', 'ASSOCIATION'];
+      const cType = String(companyType || '').toUpperCase().trim();
+      if (!allowedCompanyTypes.includes(cType)) {
+        return NextResponse.json({ error: `Tipo societário inválido para CNPJ. Escolha entre: ${allowedCompanyTypes.join(', ')}` }, { status: 400 });
+      }
+      effectiveCompanyType = cType;
+    }
+
+    const userState = String(estado || uf || 'PA').trim().toUpperCase();
     const supabase = getSupabaseAdmin();
 
     const callerRole = String(auth.profile?.role || '').toUpperCase();
     const isAdmin = callerRole === 'ADMIN' || auth.profile?.role === 'admin';
+    const callerId = auth.user?.id || auth.profile?.id;
 
-    if (!isAdmin) {
+    if (!isAdmin && callerId !== userId) {
+      return NextResponse.json({ error: 'Você só pode vincular uma subconta ao seu próprio perfil de usuário.' }, { status: 403 });
+    }
+
+    // 2. Checagem de taxa de ativação da plataforma
+    const { data: platformSettings } = await supabase
+      .from('platform_settings')
+      .select('activation_fee_enabled')
+      .limit(1)
+      .maybeSingle();
+
+    const isActivationFeeRequired = platformSettings?.activation_fee_enabled !== false;
+
+    if (!isAdmin && isActivationFeeRequired) {
       const quota = await getFounderQuotaStatus(userId);
       const { activationEnabled, isUserAlreadyFounder } = quota;
 
@@ -57,7 +121,7 @@ export async function POST(request: Request) {
           const checkApiKey = await getAsaasApiKey();
           if (checkApiKey) {
             try {
-              const chkRes = await fetch(`https://www.asaas.com/api/v3/payments?externalReference=ACTIVATE_${userId}`, {
+              const chkRes = await fetch(`${getAsaasBaseUrl(checkApiKey)}/payments?externalReference=ACTIVATE_${userId}`, {
                 headers: { 'access_token': checkApiKey, 'Content-Type': 'application/json' }
               });
               const chkData = await chkRes.json();
@@ -70,7 +134,7 @@ export async function POST(request: Request) {
 
         if (!isUserAlreadyFounder && !hasWallet && !isPaidPix) {
           return NextResponse.json(
-            { error: 'Taxa de homologação Asaas pendente. As vagas de fundador foram preenchidas. Conclua o pagamento Pix da taxa de homologação bancária para vincular sua subconta Asaas.' },
+            { error: 'Taxa de ativação da plataforma AçaíFood pendente. Conclua o pagamento Pix da ativação para vincular sua subconta Asaas.' },
             { status: 402 }
           );
         }
@@ -81,18 +145,13 @@ export async function POST(request: Request) {
     if (!ASAAS_API_KEY) {
       return NextResponse.json(
         { error: 'ASAAS_API_KEY não configurada no ambiente' },
-        { status: 400 }
+        { status: 500 }
       );
     }
 
-    const ASAAS_URL = 'https://www.asaas.com/api/v3';
+    const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
 
-    // Limpar e formatar dados
-    const cleanCpfCnpj = String(cpfCnpj).replace(/\D/g, '');
-    const cleanPhone = String(phone || '').replace(/\D/g, '');
-    const isCpf = cleanCpfCnpj.length === 11;
-
-    // Se já tiver subconta criada no Asaas, tenta buscar primeiro por CPF/CNPJ
+    // Se já tiver subconta criada no Asaas, busca primeiro por CPF/CNPJ
     const accountSearchRes = await fetch(`${ASAAS_URL}/accounts?cpfCnpj=${cleanCpfCnpj}`, {
       headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
     });
@@ -110,25 +169,25 @@ export async function POST(request: Request) {
 
     if (!walletId) {
       const addressMatch = (endereco || '').match(/,?\s*(\d+[^\s,]*)/);
-      const addressNumber = addressMatch ? addressMatch[1] : 'S/N';
+      const effectiveAddressNumber = addressNumber || (addressMatch ? addressMatch[1] : 'S/N');
       const addressStreet = (endereco || '').replace(/,?\s*\d+[^\s,]*/, '').trim() || endereco || 'Centro';
 
       const accountPayload: any = {
         name: name,
         email: email,
         cpfCnpj: cleanCpfCnpj,
-        companyType: !isCpf ? 'MEI' : undefined,
+        companyType: effectiveCompanyType,
         phone: cleanPhone || undefined,
         mobilePhone: cleanPhone || undefined,
         address: addressStreet,
-        addressNumber: addressNumber,
+        addressNumber: effectiveAddressNumber,
         province: bairro || 'Centro',
         city: cidade || 'Belém',
         state: userState || 'PA',
         country: 'Brasil',
-        postalCode: '66015000',
-        birthDate: isCpf ? '1990-01-01' : undefined,
-        incomeValue: isCpf ? 3000 : undefined,
+        postalCode: effectivePostalCode,
+        birthDate: effectiveBirthDate,
+        incomeValue: effectiveIncome,
       };
 
       Object.keys(accountPayload).forEach(k => {
@@ -157,19 +216,19 @@ export async function POST(request: Request) {
       accountApiKey = accountData.apiKey || '';
     }
 
-    // Salva no banco de dados Supabase via Service Role garantindo integridade
-    const callerId = auth.user?.id || auth.profile?.id;
-
-    if (!isAdmin && callerId !== userId) {
-      return NextResponse.json({ error: 'Você só pode vincular uma subconta ao seu próprio perfil de usuário.' }, { status: 403 });
-    }
-
+    // Salvar dados no Supabase via Service Role garantindo integridade e conformidade KYC
     if (userId) {
       const updateData: any = {
         asaas_wallet_id: walletId,
         asaas_account_id: accountId,
         asaas_account_status: 'PENDING_DOCUMENTS',
-        split_enabled: Boolean(walletId)
+        split_enabled: Boolean(walletId),
+        birth_date: effectiveBirthDate || undefined,
+        monthly_income: effectiveIncome || undefined,
+        company_type: effectiveCompanyType || undefined,
+        postal_code: effectivePostalCode || undefined,
+        address_number: addressNumber || undefined,
+        province: bairro || undefined
       };
 
       if (accountApiKey) {
@@ -186,7 +245,7 @@ export async function POST(request: Request) {
       success: true,
       walletId,
       accountId,
-      isSandbox: false
+      isSandbox: ASAAS_URL.includes('sandbox')
     });
 
   } catch (error: any) {
@@ -207,19 +266,14 @@ export async function DELETE(request: Request) {
     const userId = searchParams.get('userId');
     const accountIdParam = searchParams.get('accountId');
 
-    const { getAsaasApiKey } = await import('@/lib/asaasConfig');
     const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
-      return NextResponse.json({ error: 'ASAAS_API_KEY não configurada no ambiente' }, { status: 400 });
+      return NextResponse.json({ error: 'ASAAS_API_KEY não configurada no ambiente' }, { status: 500 });
     }
 
-    const ASAAS_URL = 'https://www.asaas.com/api/v3';
-
+    const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
     let accountId = accountIdParam || '';
 
-    // Usa Service Role (Admin) para ler/gravar em users — a chave anônima não tem
-    // permissão para essas colunas após a migration de privilégios (20260912000000).
-    const { getSupabaseAdmin } = await import('@/lib/supabaseAdmin');
     const supabaseAdmin = getSupabaseAdmin();
 
     if (userId) {

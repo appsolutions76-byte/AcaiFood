@@ -89,17 +89,17 @@ export async function POST(request: Request) {
     const role = getAppRole(user.role);
     const adminSupabase = getSupabaseAdmin();
 
-    // 1. Revalidar se já existe solicitação PENDENTE ou APROVADO
+    // 1. Revalidar se já existe solicitação PENDENTE, APROVADO ou PROCESSING
     const { data: pendingRows } = await adminSupabase
       .from('withdrawal_requests')
       .select('id, status, requested_amount, created_at')
       .eq('partner_id', user.id)
-      .in('status', ['PENDENTE', 'APROVADO'])
+      .in('status', ['PENDENTE', 'APROVADO', 'PROCESSING'])
       .limit(1);
 
     if (pendingRows && pendingRows.length > 0) {
       return NextResponse.json({
-        error: 'Você já possui uma solicitação de saque em andamento. Aguarde a conclusão antes de solicitar novamente.',
+        error: 'Você já possui uma solicitação de saque em andamento (Pendente ou Em Processamento). Aguarde a conclusão antes de solicitar novamente.',
         pendingRequest: pendingRows[0]
       }, { status: 400 });
     }
@@ -132,6 +132,20 @@ export async function POST(request: Request) {
       return NextResponse.json({
         error: 'Por favor, cadastre uma Chave Pix ou CPF/CNPJ no seu perfil antes de solicitar o saque.'
       }, { status: 400 });
+    }
+
+    // 4.5. Fase 1.4: Invalidar solicitações com status FALHOU anteriores do mesmo parceiro
+    try {
+      await adminSupabase
+        .from('withdrawal_requests')
+        .update({
+          status: 'REJEITADO',
+          failure_reason: 'Substituído por nova solicitação de saque'
+        })
+        .eq('partner_id', user.id)
+        .eq('status', 'FALHOU');
+    } catch (_updFailErr) {
+      console.warn("Aviso ao arquivar saques FALHOU anteriores:", _updFailErr);
     }
 
     // 5. Inserir a solicitação de saque com status PENDENTE

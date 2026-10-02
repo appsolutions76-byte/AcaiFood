@@ -411,7 +411,7 @@ export default function LandingPage() {
                           <span className="text-xs font-black text-white group-hover:text-amber-300 transition-colors">Motoboy Express</span>
                           <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-bold">0:38</span>
                         </div>
-                        <p className="text-[11px] text-zinc-400">Radar GPS, PIN no portão e saque instantâneo.</p>
+                        <p className="text-[11px] text-zinc-400">Radar GPS, PIN no portão e repasse direto.</p>
                       </div>
                     </div>
                     <div className="w-8 h-8 rounded-full bg-amber-500 text-zinc-950 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
@@ -680,7 +680,7 @@ export default function LandingPage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 size={16} className="text-purple-400 shrink-0" />
-                    <span><strong>Saque Instantâneo via PIX:</strong> resgate seus ganhos na hora para a sua chave bancária cadastrada.</span>
+                    <span><strong>Repasse via Subconta Asaas:</strong> receba seus ganhos na sua subconta Asaas após o cliente confirmar o PIN da entrega.</span>
                   </li>
                 </ul>
                 <div className="pt-2">
@@ -835,7 +835,7 @@ export default function LandingPage() {
               <div className="w-12 h-12 bg-emerald-600/20 text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-500/30">
                 <Zap size={24} />
               </div>
-              <h3 className="font-bold text-white text-base">Split Instantâneo</h3>
+              <h3 className="font-bold text-white text-base">Repasse após o PIN</h3>
               <p className="text-xs text-zinc-400">
                 Integrado à infraestrutura do Asaas e Banco Central. O dinheiro do açaí vai para a loja e o do frete vai para o entregador.
               </p>
