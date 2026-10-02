@@ -18,36 +18,10 @@ export async function GET(request: Request) {
 
     const adminSupabase = getSupabaseAdmin();
 
-    // Auto-reconciliar solicitações pendentes/falhas cujos pedidos já foram quitados
+    // Auto-reconciliar solicitações abertas/em processamento no Asaas e banco
     try {
-      const { data: openReqs } = await adminSupabase
-        .from('withdrawal_requests')
-        .select('id, partner_id, role, order_ids')
-        .in('status', ['PENDENTE', 'FALHOU'])
-        .limit(50);
-
-      if (openReqs && openReqs.length > 0) {
-        for (const r of openReqs) {
-          if (Array.isArray(r.order_ids) && r.order_ids.length > 0) {
-            const isDriver = ['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(String(r.role || '').toLowerCase());
-            const { data: ords } = await adminSupabase
-              .from('orders')
-              .select('id, payout_seller_done, payout_driver_done')
-              .in('id', r.order_ids);
-
-            if (ords && ords.length > 0 && ords.every((o: any) => isDriver ? o.payout_driver_done : o.payout_seller_done)) {
-              await adminSupabase
-                .from('withdrawal_requests')
-                .update({
-                  status: 'PAGO',
-                  failure_reason: null,
-                  paid_at: new Date().toISOString()
-                })
-                .eq('id', r.id);
-            }
-          }
-        }
-      }
+      const { reconcilePartnerWithdrawals } = await import('@/lib/partnerBalance');
+      await reconcilePartnerWithdrawals();
     } catch (recErr) {
       console.warn("Aviso ao auto-reconciliar no admin:", recErr);
     }

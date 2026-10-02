@@ -40,12 +40,12 @@ export async function GET(request: Request) {
     // 2. Obter saldo disponível recalculado
     const balanceInfo = await getPartnerAvailableBalance(user.id, role);
 
-    // 3. Buscar se já existe solicitação PENDENTE ou APROVADO
+    // 3. Buscar se já existe solicitação PENDENTE ou PROCESSING ativa
     const { data: pendingRows } = await adminSupabase
       .from('withdrawal_requests')
       .select('*')
       .eq('partner_id', user.id)
-      .in('status', ['PENDENTE', 'APROVADO'])
+      .in('status', ['PENDENTE', 'PROCESSING'])
       .order('created_at', { ascending: false })
       .limit(1);
 

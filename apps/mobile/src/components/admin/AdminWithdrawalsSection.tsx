@@ -574,8 +574,27 @@ export function AdminWithdrawalsSection({
                             ❌ Rejeitar
                           </button>
                         </div>
+                      ) : req.status === 'APROVADO' || req.status === 'FALHOU' ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            disabled={processingId === req.id || loading}
+                            onClick={() => refreshAllData()}
+                            className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-2.5 py-1.5 rounded-lg transition text-xs flex items-center gap-1 cursor-pointer"
+                            title="Consultar status no Asaas e reconciliar"
+                          >
+                            <RefreshCw size={11} className={loading ? 'animate-spin' : ''} /> Sincronizar
+                          </button>
+                          <button
+                            disabled={processingId === req.id}
+                            onClick={() => handleReject(req)}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-lg transition text-xs cursor-pointer"
+                            title="Cancelar/Rejeitar esta solicitação e descongelar a carteira do parceiro"
+                          >
+                            ❌ Rejeitar
+                          </button>
+                        </div>
                       ) : (
-                        <span className="text-zinc-400 italic text-[11px]">Concluído</span>
+                        <span className="text-zinc-400 italic text-[11px]">{req.status === 'PAGO' ? '✓ Liquidado' : 'Concluído'}</span>
                       )}
                     </td>
                   </tr>

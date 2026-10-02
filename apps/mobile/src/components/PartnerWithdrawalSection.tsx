@@ -145,13 +145,32 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
           </div>
 
           {pendingReq ? (
-            <div className="bg-amber-950/70 border border-amber-600/50 rounded-2xl p-3.5 space-y-1 sm:max-w-xs">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
-                <Clock size={14} className="animate-spin" /> Solicitação em Andamento
+            <div className={`border rounded-2xl p-3.5 space-y-1 sm:max-w-xs ${
+              pendingReq.status === 'APROVADO' || pendingReq.status === 'PROCESSING'
+                ? 'bg-blue-950/70 border-blue-600/50'
+                : 'bg-amber-950/70 border-amber-600/50'
+            }`}>
+              <div className={`flex items-center gap-1.5 text-xs font-bold ${
+                pendingReq.status === 'APROVADO' || pendingReq.status === 'PROCESSING'
+                  ? 'text-blue-400'
+                  : 'text-amber-400'
+              }`}>
+                <Clock size={14} className="animate-spin" /> 
+                {pendingReq.status === 'APROVADO' || pendingReq.status === 'PROCESSING'
+                  ? 'Transferência em Processamento'
+                  : 'Solicitação em Andamento'}
               </div>
               <div className="text-sm font-black text-white">{formatMoney(pendingReq.requested_amount)}</div>
-              <div className="text-[10px] text-amber-200/80">
-                {formatDate(pendingReq.created_at)} • Aguardando aprovação
+              <div className={`text-[10px] ${
+                pendingReq.status === 'APROVADO' || pendingReq.status === 'PROCESSING'
+                  ? 'text-blue-200/80'
+                  : 'text-amber-200/80'
+              }`}>
+                {formatDate(pendingReq.created_at)} • {
+                  pendingReq.status === 'APROVADO' || pendingReq.status === 'PROCESSING'
+                    ? 'Transferência Pix Asaas enviada'
+                    : 'Aguardando aprovação'
+                }
               </div>
             </div>
           ) : (

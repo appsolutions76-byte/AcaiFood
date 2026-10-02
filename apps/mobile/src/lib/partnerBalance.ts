@@ -134,22 +134,54 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
   };
 }
 
-export async function reconcilePartnerWithdrawals(partnerId: string, role: string): Promise<void> {
+export async function reconcilePartnerWithdrawals(partnerId?: string, role?: string): Promise<void> {
   const adminSupabase = getSupabaseAdmin();
   try {
-    const normalizedRole = String(role || '').toLowerCase().trim();
-    const isDriver = ['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(normalizedRole);
+    const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
+    const asaasApiKey = await getAsaasApiKey();
+    const asaasUrl = getAsaasBaseUrl(asaasApiKey);
 
-    const { data: requests } = await adminSupabase
+    let query = adminSupabase
       .from('withdrawal_requests')
-      .select('id, status, order_ids, created_at')
-      .eq('partner_id', partnerId)
-      .in('status', ['FALHOU', 'PENDENTE']);
+      .select('id, partner_id, role, status, order_ids, asaas_transfer_id, created_at')
+      .in('status', ['PENDENTE', 'APROVADO', 'PROCESSING', 'FALHOU']);
 
+    if (partnerId) {
+      query = query.eq('partner_id', partnerId);
+    }
+
+    const { data: requests } = await query.limit(50);
     if (!requests || requests.length === 0) return;
 
     for (const req of requests) {
-      if (Array.isArray(req.order_ids) && req.order_ids.length > 0) {
+      const normalizedRole = String(req.role || role || '').toLowerCase().trim();
+      const isDriver = ['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(normalizedRole);
+      let updatedStatus: string | null = null;
+      let failureReason: string | null = null;
+
+      // 1. Se possui asaas_transfer_id, consultar status em tempo real na API do Asaas
+      if (req.asaas_transfer_id && asaasApiKey) {
+        try {
+          const tRes = await fetch(`${asaasUrl}/transfers/${req.asaas_transfer_id}`, {
+            headers: { 'access_token': asaasApiKey }
+          });
+          if (tRes.ok) {
+            const tData = await tRes.json();
+            const tStatus = String(tData.status || '').toUpperCase();
+            if (['DONE', 'COMPLETED', 'CONFIRMED'].includes(tStatus)) {
+              updatedStatus = 'PAGO';
+            } else if (['FAILED', 'CANCELLED', 'REJECTED', 'REFUSED'].includes(tStatus)) {
+              updatedStatus = 'FALHOU';
+              failureReason = tData.failReason || tData.description || `Transferência ${tStatus.toLowerCase()} no Asaas`;
+            }
+          }
+        } catch (tErr) {
+          console.warn(`[reconcilePartnerWithdrawals] Aviso ao consultar transferência Asaas ${req.asaas_transfer_id}:`, tErr);
+        }
+      }
+
+      // 2. Se os pedidos cobertos já foram marcados como quitados no banco
+      if (!updatedStatus && Array.isArray(req.order_ids) && req.order_ids.length > 0) {
         const { data: checkOrders } = await adminSupabase
           .from('orders')
           .select('id, payout_seller_done, payout_driver_done')
@@ -158,27 +190,41 @@ export async function reconcilePartnerWithdrawals(partnerId: string, role: strin
         if (checkOrders && checkOrders.length > 0) {
           const allPaid = checkOrders.every((o: any) => isDriver ? o.payout_driver_done : o.payout_seller_done);
           if (allPaid) {
-            await adminSupabase
-              .from('withdrawal_requests')
-              .update({
-                status: 'PAGO',
-                failure_reason: null,
-                paid_at: new Date().toISOString()
-              })
-              .eq('id', req.id);
+            updatedStatus = 'PAGO';
           }
         }
-      } else {
-        const bal = await getPartnerAvailableBalance(partnerId, role);
-        if (bal.totalDisponivel === 0) {
-          await adminSupabase
-            .from('withdrawal_requests')
-            .update({
-              status: 'PAGO',
-              failure_reason: null,
-              paid_at: new Date().toISOString()
-            })
-            .eq('id', req.id);
+      }
+
+      // 3. Se status é APROVADO mas saldo recalculado já zerou e pedidos concluídos
+      if (!updatedStatus && (req.status === 'APROVADO' || req.status === 'PROCESSING')) {
+        const bal = await getPartnerAvailableBalance(req.partner_id, req.role || 'loja');
+        if (bal.totalDisponivel === 0 && bal.orderIds.length === 0) {
+          updatedStatus = 'PAGO';
+        }
+      }
+
+      if (updatedStatus && updatedStatus !== req.status) {
+        const nowIso = new Date().toISOString();
+        const updatePayload: any = {
+          status: updatedStatus,
+          reviewed_at: nowIso
+        };
+
+        if (updatedStatus === 'PAGO') {
+          updatePayload.paid_at = nowIso;
+          updatePayload.failure_reason = null;
+        } else if (updatedStatus === 'FALHOU') {
+          updatePayload.failure_reason = failureReason || 'Transferência cancelada ou recusada no Asaas';
+        }
+
+        await adminSupabase
+          .from('withdrawal_requests')
+          .update(updatePayload)
+          .eq('id', req.id);
+
+        if (updatedStatus === 'PAGO' && Array.isArray(req.order_ids) && req.order_ids.length > 0) {
+          const updateField = isDriver ? { payout_driver_done: true } : { payout_seller_done: true };
+          await adminSupabase.from('orders').update(updateField).in('id', req.order_ids);
         }
       }
     }

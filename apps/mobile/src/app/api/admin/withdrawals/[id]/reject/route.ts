@@ -36,8 +36,8 @@ export async function POST(
       return NextResponse.json({ error: 'Solicitação de saque não encontrada.' }, { status: 404 });
     }
 
-    if (reqRow.status !== 'PENDENTE') {
-      return NextResponse.json({ error: `Apenas solicitações com status PENDENTE podem ser rejeitadas. Status atual: ${reqRow.status}` }, { status: 400 });
+    if (!['PENDENTE', 'FALHOU', 'APROVADO'].includes(reqRow.status)) {
+      return NextResponse.json({ error: `Solicitações com status ${reqRow.status} não podem ser rejeitadas.` }, { status: 400 });
     }
 
     const nowIso = new Date().toISOString();
