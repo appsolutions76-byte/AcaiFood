@@ -1,7 +1,21 @@
 -- ==============================================================================
--- AÇAÍFOOD — MIGRAÇÃO R12: SEGURANÇA DE PIN, BANCO, KYC, AUDITORIA & CONTRATO ASAAS
+-- AÇAÍFOOD — MIGRAÇÃO R12 CORRIGIDA: SEGURANÇA DE PIN, BANCO, KYC, AUDITORIA & ASAAS
 -- Timestamp: 20261002030000
 -- ==============================================================================
+
+-- 0. GARANTIR COLUNA IS_ADMIN E CAMPOS DE KYC EM USERS
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS birth_date DATE,
+  ADD COLUMN IF NOT EXISTS monthly_income NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS company_type TEXT,
+  ADD COLUMN IF NOT EXISTS postal_code TEXT,
+  ADD COLUMN IF NOT EXISTS address_number TEXT,
+  ADD COLUMN IF NOT EXISTS province TEXT;
+
+-- Trava de alteração de CPF/CNPJ e Pix Key diretamente pelo cliente autenticado
+REVOKE UPDATE (cpf_cnpj, pix_key) ON public.users FROM authenticated;
+
 
 -- 1. TABELA DE AUDITORIA ADMINISTRATIVA (Anexo I, Item 7)
 CREATE TABLE IF NOT EXISTS public.admin_audit_log (
@@ -19,14 +33,13 @@ CREATE TABLE IF NOT EXISTS public.admin_audit_log (
 
 ALTER TABLE public.admin_audit_log ENABLE ROW LEVEL SECURITY;
 
--- Apenas leitura para admins, escrita apenas por service_role
 DROP POLICY IF EXISTS "Admins can view audit logs" ON public.admin_audit_log;
 CREATE POLICY "Admins can view audit logs" ON public.admin_audit_log
   FOR SELECT TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.users
-      WHERE id = auth.uid() AND (role = 'admin' OR is_admin = true)
+      WHERE id = auth.uid() AND (lower(COALESCE(role, '')) = 'admin' OR is_admin = true)
     )
   );
 
@@ -55,7 +68,7 @@ DROP POLICY IF EXISTS "Users can view own acceptances" ON public.terms_acceptanc
 CREATE POLICY "Users can view own acceptances" ON public.terms_acceptances
   FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR EXISTS (
-    SELECT 1 FROM public.users WHERE id = auth.uid() AND (role = 'admin' OR is_admin = true)
+    SELECT 1 FROM public.users WHERE id = auth.uid() AND (lower(COALESCE(role, '')) = 'admin' OR is_admin = true)
   ));
 
 REVOKE UPDATE, DELETE, TRUNCATE ON public.terms_acceptances FROM PUBLIC, anon, authenticated;
@@ -82,8 +95,6 @@ ON CONFLICT (order_id) DO UPDATE
 SET delivery_pin = EXCLUDED.delivery_pin,
     pickup_pin = EXCLUDED.pickup_pin;
 
--- RLS para isolamento de PINs:
--- Comprador vê delivery_pin; Loja vê pickup_pin; Admin vê ambos; Motorista NUNCA vê PINs
 DROP POLICY IF EXISTS "Buyer can view delivery pin" ON public.order_pins;
 CREATE POLICY "Buyer can view delivery pin" ON public.order_pins
   FOR SELECT TO authenticated
@@ -111,7 +122,7 @@ CREATE POLICY "Admin can view all pins" ON public.order_pins
   USING (
     EXISTS (
       SELECT 1 FROM public.users u
-      WHERE u.id = auth.uid() AND (u.role = 'admin' OR u.is_admin = true)
+      WHERE u.id = auth.uid() AND (lower(COALESCE(u.role, '')) = 'admin' OR u.is_admin = true)
     )
   );
 
@@ -120,27 +131,14 @@ GRANT SELECT ON public.order_pins TO authenticated;
 GRANT ALL ON public.order_pins TO service_role;
 
 
--- 4. CAMPOS DE KYC REAL EM USERS (K1, Cláusula 8.2.3) E TRAVA DE CPF/CNPJ (K2)
-ALTER TABLE public.users
-  ADD COLUMN IF NOT EXISTS birth_date DATE,
-  ADD COLUMN IF NOT EXISTS monthly_income NUMERIC(12,2),
-  ADD COLUMN IF NOT EXISTS company_type TEXT,
-  ADD COLUMN IF NOT EXISTS postal_code TEXT,
-  ADD COLUMN IF NOT EXISTS address_number TEXT,
-  ADD COLUMN IF NOT EXISTS province TEXT;
-
--- Trava de alteração de CPF/CNPJ e Pix Key diretamente pelo cliente autenticado
-REVOKE UPDATE (cpf_cnpj, pix_key) ON public.users FROM authenticated;
-
-
--- 5. RESTRINGIR GERAÇÃO DE PINS EXCLUSIVAMENTE A SERVICE_ROLE (R3)
+-- 4. RESTRINGIR GERAÇÃO DE PINS EXCLUSIVAMENTE A SERVICE_ROLE (R3)
 REVOKE EXECUTE ON FUNCTION public.generate_delivery_pin(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.generate_pickup_pin(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.generate_delivery_pin(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.generate_pickup_pin(uuid) TO service_role;
 
 
--- 6. RPC SEGURA check_delivery_pin (Validação estrita de driver_id antes de tentativas)
+-- 5. RPC SEGURA check_delivery_pin (Validação estrita de driver_id antes de tentativas)
 CREATE OR REPLACE FUNCTION public.check_delivery_pin(
   p_order_id UUID,
   p_pin TEXT,
@@ -172,39 +170,34 @@ BEGIN
   END IF;
 
   IF v_caller_id IS NOT NULL THEN
-    SELECT COALESCE(is_admin, false) OR role = 'admin' INTO v_is_admin
+    SELECT (COALESCE(is_admin, false) OR lower(COALESCE(role, '')) = 'admin') INTO v_is_admin
     FROM public.users WHERE id = v_caller_id;
   END IF;
 
-  -- 1. VALIDAÇÃO DE IDENTIDADE: Apenas o motorista atribuído (ou service_role/admin) pode testar o PIN
+  -- Validação de identidade: apenas o motorista atribuído (ou service_role/admin) pode testar o PIN
   IF NOT v_is_service_role AND NOT v_is_admin THEN
     IF v_order.driver_id IS NULL OR v_order.driver_id != v_caller_id THEN
       RETURN jsonb_build_object('success', false, 'error', 'Apenas o entregador responsável por este pedido pode validar o PIN de entrega.');
     END IF;
   END IF;
 
-  -- Se já foi recebido
   IF v_order.status IN ('RECEIVED', 'received', 'COMPLETED', 'completed') THEN
     RETURN jsonb_build_object('success', true, 'message', 'Entrega já concluída anteriormente');
   END IF;
 
-  -- Status deve ser DELIVERING ou DELIVERED
   IF v_order.status NOT IN ('DELIVERING', 'delivering', 'DELIVERED', 'delivered', 'IN_TRANSIT', 'in_transit') THEN
     RETURN jsonb_build_object('success', false, 'error', format('Pedido em status %s não pode receber baixa de entrega', v_order.status));
   END IF;
 
-  -- Bloqueio por tentativas
   IF v_order.status = 'PIN_LOCKED' OR COALESCE(v_order.pin_attempts, 0) >= 5 THEN
     UPDATE public.orders SET status = 'PIN_LOCKED' WHERE id = p_order_id;
     RETURN jsonb_build_object('success', false, 'error', 'PIN bloqueado por excesso de tentativas incorretas. Contate o suporte.');
   END IF;
 
-  -- Rate limit de 3 segundos
   IF v_order.last_pin_attempt_at IS NOT NULL AND (v_now - v_order.last_pin_attempt_at) < interval '3 seconds' THEN
     RETURN jsonb_build_object('success', false, 'error', 'Muitas tentativas rápidas. Aguarde alguns segundos.');
   END IF;
 
-  -- Buscar PIN real na tabela order_pins ou hash
   SELECT delivery_pin INTO v_real_pin FROM public.order_pins WHERE order_id = p_order_id;
   IF v_real_pin IS NULL THEN
     v_real_pin := v_order.delivery_pin;
@@ -222,7 +215,6 @@ BEGIN
     END;
   END IF;
 
-  -- Registrar log de tentativa
   BEGIN
     INSERT INTO public.pin_attempt_log (order_id, actor_id, success, ip_device, created_at)
     VALUES (p_order_id, COALESCE(v_caller_id, v_order.driver_id), v_is_valid, p_device_info, v_now);
@@ -257,7 +249,7 @@ GRANT EXECUTE ON FUNCTION public.check_delivery_pin(uuid, text, text) TO authent
 GRANT EXECUTE ON FUNCTION public.check_delivery_pin(uuid, text, text) TO service_role;
 
 
--- 7. RPC SEGURA check_pickup_pin (Validação estrita de driver_id)
+-- 6. RPC SEGURA check_pickup_pin (Validação estrita de driver_id)
 CREATE OR REPLACE FUNCTION public.check_pickup_pin(
   p_order_id UUID,
   p_pin TEXT,
@@ -289,11 +281,10 @@ BEGIN
   END IF;
 
   IF v_caller_id IS NOT NULL THEN
-    SELECT COALESCE(is_admin, false) OR role = 'admin' INTO v_is_admin
+    SELECT (COALESCE(is_admin, false) OR lower(COALESCE(role, '')) = 'admin') INTO v_is_admin
     FROM public.users WHERE id = v_caller_id;
   END IF;
 
-  -- 1. VALIDAÇÃO DE IDENTIDADE: Apenas o motorista atribuído (ou service_role/admin) pode validar a retirada
   IF NOT v_is_service_role AND NOT v_is_admin THEN
     IF v_order.driver_id IS NULL OR v_order.driver_id != v_caller_id THEN
       RETURN jsonb_build_object('success', false, 'error', 'Apenas o entregador responsável por este pedido pode validar o PIN de retirada.');
@@ -312,7 +303,6 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Muitas tentativas rápidas. Aguarde alguns segundos.');
   END IF;
 
-  -- Buscar PIN de retirada
   SELECT pickup_pin INTO v_real_pin FROM public.order_pins WHERE order_id = p_order_id;
   IF v_real_pin IS NULL THEN
     v_real_pin := v_order.pickup_pin;
@@ -353,7 +343,7 @@ GRANT EXECUTE ON FUNCTION public.check_pickup_pin(uuid, text, text) TO authentic
 GRANT EXECUTE ON FUNCTION public.check_pickup_pin(uuid, text, text) TO service_role;
 
 
--- 8. EXPANDIR advance_order_status (A7, R6) COM CONTROLES ESTRITOS
+-- 7. EXPANDIR advance_order_status (A7, R6)
 CREATE OR REPLACE FUNCTION public.advance_order_status(
   p_order_id UUID,
   p_action TEXT,
@@ -377,7 +367,7 @@ BEGIN
     v_is_admin := TRUE;
     v_caller_role := 'admin';
   ELSIF v_caller_id IS NOT NULL THEN
-    SELECT role, COALESCE(is_admin, false) INTO v_caller_role, v_is_admin
+    SELECT role, (COALESCE(is_admin, false) OR lower(COALESCE(role, '')) = 'admin') INTO v_caller_role, v_is_admin
     FROM public.users WHERE id = v_caller_id;
     v_caller_role := lower(COALESCE(v_caller_role, 'cliente'));
   ELSE
@@ -394,7 +384,6 @@ BEGIN
   END IF;
 
   CASE lower(trim(p_action))
-    -- Ação 1: Loja aceita pedido e inicia preparo
     WHEN 'accept', 'iniciar_preparo' THEN
       IF NOT v_is_admin AND (v_store.partner_id IS NULL OR v_store.partner_id != v_caller_id) THEN
         RETURN jsonb_build_object('success', false, 'error', 'Apenas o estabelecimento responsável pode aceitar o pedido');
@@ -403,10 +392,8 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', format('Não é possível iniciar o preparo de pedido em status %s', v_order.status));
       END IF;
       v_new_status := 'PREPARING';
-
       UPDATE public.orders SET status = v_new_status, accepted_at = v_now WHERE id = p_order_id;
 
-    -- Ação 2: Loja conclui preparo e coloca como pronto
     WHEN 'ready', 'pronto' THEN
       IF NOT v_is_admin AND (v_store.partner_id IS NULL OR v_store.partner_id != v_caller_id) THEN
         RETURN jsonb_build_object('success', false, 'error', 'Apenas o estabelecimento responsável pode marcar o pedido como pronto');
@@ -415,10 +402,8 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', format('Não é possível marcar como pronto pedido em status %s', v_order.status));
       END IF;
       v_new_status := 'READY';
-
       UPDATE public.orders SET status = v_new_status, ready_at = v_now WHERE id = p_order_id;
 
-    -- Ação 3: Retirada pelo entregador atribuído
     WHEN 'pickup', 'retirada' THEN
       IF NOT v_is_admin AND (v_order.driver_id IS NULL OR v_order.driver_id != v_caller_id) THEN
         RETURN jsonb_build_object('success', false, 'error', 'Apenas o entregador responsável pode marcar a retirada do pedido');
@@ -427,10 +412,8 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', format('Não é possível retirar pedido em status %s', v_order.status));
       END IF;
       v_new_status := 'DELIVERING';
-
       UPDATE public.orders SET status = v_new_status, picked_up_at = v_now WHERE id = p_order_id;
 
-    -- Ação 4: Entregador chega ao destino
     WHEN 'delivered_by_driver', 'entregue_motorista' THEN
       IF NOT v_is_admin AND (v_order.driver_id IS NULL OR v_order.driver_id != v_caller_id) THEN
         RETURN jsonb_build_object('success', false, 'error', 'Apenas o entregador responsável pode atualizar a chegada no destino');
@@ -439,10 +422,8 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', format('Status inválido para entrega: %s', v_order.status));
       END IF;
       v_new_status := 'DELIVERED';
-
       UPDATE public.orders SET status = v_new_status, delivered_at = v_now WHERE id = p_order_id;
 
-    -- Ação 5: Cancelamento de pedido não pago (comprador ou loja)
     WHEN 'cancel_unpaid', 'cancelar_pendente' THEN
       IF NOT v_is_admin AND v_order.buyer_id != v_caller_id AND (v_store.partner_id IS NULL OR v_store.partner_id != v_caller_id) THEN
         RETURN jsonb_build_object('success', false, 'error', 'Sem permissão para cancelar este pedido');
@@ -451,7 +432,6 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Cancelamento direto permitido apenas para pedidos pendentes de pagamento');
       END IF;
       v_new_status := 'CANCELLED';
-
       UPDATE public.orders
       SET status = v_new_status,
           cancelled_at = v_now,
@@ -459,7 +439,6 @@ BEGIN
           cancellation_reason = COALESCE(p_reason, 'Cancelado pelo usuário antes do pagamento')
       WHERE id = p_order_id;
 
-    -- Ação 6: Arquivamento de entrega pelo operador/admin
     WHEN 'archive_driver', 'pagar_motorista' THEN
       IF NOT v_is_admin AND (v_order.driver_id IS NULL OR v_order.driver_id != v_caller_id) THEN
         RETURN jsonb_build_object('success', false, 'error', 'Ação restrita ao motorista ou administradores');
@@ -468,15 +447,12 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', format('Pedido em status %s não pode ser arquivado', v_order.status));
       END IF;
       v_new_status := 'COMPLETED';
-
       UPDATE public.orders SET status = v_new_status, payout_driver_done = true WHERE id = p_order_id;
 
-    -- Ação 7: Baixa forçada administrativa estrita (R6)
     WHEN 'force_receive', 'forcar_baixa' THEN
       IF NOT v_is_admin THEN
         RETURN jsonb_build_object('success', false, 'error', 'Baixa forçada é restrita a administradores');
       END IF;
-      -- Aceita APENAS a partir de DELIVERING, DELIVERED ou PIN_LOCKED. NUNCA CANCELLED/REFUNDED/PENDING/PAID
       IF v_order.status NOT IN ('DELIVERING', 'delivering', 'DELIVERED', 'delivered', 'PIN_LOCKED', 'pin_locked') THEN
         RETURN jsonb_build_object('success', false, 'error', format('Baixa forçada não permitida a partir do status %s', v_order.status));
       END IF;
@@ -491,7 +467,6 @@ BEGIN
           cancellation_reason = 'Baixa forçada admin: ' || p_reason
       WHERE id = p_order_id;
 
-      -- Registrar em admin_audit_log
       INSERT INTO public.admin_audit_log (actor_id, action, target_type, target_id, before_state, after_state)
       VALUES (
         v_caller_id,
@@ -506,7 +481,6 @@ BEGIN
       RETURN jsonb_build_object('success', false, 'error', format('Ação desconhecida: %s', p_action));
   END CASE;
 
-  -- Auditoria de status do pedido
   INSERT INTO public.order_status_history (order_id, from_status, to_status, actor_id, actor_role, reason, created_at)
   VALUES (p_order_id, v_order.status, v_new_status, v_caller_id, v_caller_role, p_reason, v_now);
 
@@ -524,12 +498,12 @@ GRANT EXECUTE ON FUNCTION public.advance_order_status TO authenticated;
 GRANT EXECUTE ON FUNCTION public.advance_order_status TO service_role;
 
 
--- 9. REVOGAR transition_order_status DE USUÁRIOS PÚBLICOS E AUTENTICADOS (A7)
+-- 8. REVOGAR transition_order_status (A7)
 REVOKE EXECUTE ON FUNCTION public.transition_order_status FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.transition_order_status TO service_role;
 
 
--- 10. RPC SEGURA get_my_order_pins (Lê exclusivamente de order_pins)
+-- 9. RPC SEGURA get_my_order_pins (Lê exclusivamente de order_pins)
 CREATE OR REPLACE FUNCTION public.get_my_order_pins(
   p_order_id UUID
 )
@@ -550,7 +524,7 @@ BEGIN
   IF auth.role() = 'service_role' THEN
     v_is_admin := TRUE;
   ELSIF v_caller_id IS NOT NULL THEN
-    SELECT COALESCE(is_admin, false) OR role = 'admin' INTO v_is_admin
+    SELECT (COALESCE(is_admin, false) OR lower(COALESCE(role, '')) = 'admin') INTO v_is_admin
     FROM public.users WHERE id = v_caller_id;
   END IF;
 
@@ -567,13 +541,11 @@ BEGIN
   v_is_buyer := (v_order.buyer_id = v_caller_id);
   v_is_store_owner := (v_order.store_partner_id = v_caller_id);
 
-  -- Comprador acessa delivery_pin
   IF v_is_buyer OR v_is_admin THEN
     SELECT delivery_pin INTO v_del_pin FROM public.order_pins WHERE order_id = p_order_id;
     IF v_del_pin IS NULL THEN v_del_pin := v_order.delivery_pin; END IF;
   END IF;
 
-  -- Estabelecimento acessa pickup_pin
   IF v_is_store_owner OR v_is_admin THEN
     SELECT pickup_pin INTO v_pick_pin FROM public.order_pins WHERE order_id = p_order_id;
     IF v_pick_pin IS NULL THEN v_pick_pin := v_order.pickup_pin; END IF;
@@ -592,7 +564,7 @@ GRANT EXECUTE ON FUNCTION public.get_my_order_pins TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_order_pins TO service_role;
 
 
--- 11. RPC SEGURA get_driver_radar (Sem dados pessoais, coordenadas aproximadas) (A9/H7)
+-- 10. RPC SEGURA get_driver_radar (A9/H7)
 CREATE OR REPLACE FUNCTION public.get_driver_radar()
 RETURNS TABLE (
   id UUID,
