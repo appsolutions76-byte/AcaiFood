@@ -153,28 +153,39 @@ export async function POST(request: Request) {
       } else {
         const payObj = await payRes.json();
         const asaasChargeStatus = String(payObj?.status || '').toUpperCase();
-        const origValue = Number(payObj?.value || targetOrder?.charged_amount || targetOrder?.total_amount || targetOrder?.products_subtotal || 0);
-        const refundValue = (value && Number(value) > 0) ? Number(value) : origValue;
+        const origValue = Number(payObj?.value || targetOrder?.charged_amount || targetOrder?.total_amount || 0);
 
         // CASO A: Cobrança Paga / Recebida -> Executar Estorno Pix
         if (['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH', 'DUNNING_RECEIVED'].includes(asaasChargeStatus)) {
-          // Checar histórico para não ultrapassar o valor original
+          // Checar histórico de estornos anteriores da mesma cobrança
+          let totalRefundedSoFar = 0;
           try {
             const { data: existingRefunds } = await supabase
               .from('refund_history')
               .select('requested_value')
               .eq('payment_id', asaasPaymentId);
 
-            const totalRefundedSoFar = (existingRefunds || []).reduce((acc: number, r: any) => acc + Number(r.requested_value || 0), 0);
-
-            if (origValue > 0 && (totalRefundedSoFar + refundValue > origValue + 0.05)) {
-              return NextResponse.json(
-                { error: `Estorno recusado: a soma dos estornos (R$ ${totalRefundedSoFar.toFixed(2)} + R$ ${refundValue.toFixed(2)}) ultrapassa o valor pago do pedido (R$ ${origValue.toFixed(2)}).` },
-                { status: 400 }
-              );
-            }
+            totalRefundedSoFar = (existingRefunds || []).reduce((acc: number, r: any) => acc + Number(r.requested_value || 0), 0);
           } catch (chkErr) {
             console.warn("Aviso ao checar limite em refund_history:", chkErr);
+          }
+
+          // Se já houve estorno parcial anterior, estornar apenas o saldo restante
+          const remainingToRefund = Math.max(0, origValue - totalRefundedSoFar);
+          
+          if (origValue > 0 && totalRefundedSoFar >= origValue - 0.01) {
+            return NextResponse.json({
+              success: true,
+              message: `Esta cobrança já foi integralmente estornada no Asaas (Total: R$ ${totalRefundedSoFar.toFixed(2)}).`,
+              status: 'REFUNDED'
+            });
+          }
+
+          // O valor de estorno é SEMPRE o valor total cobrado no Asaas (produtos + frete) ou o saldo restante
+          let refundValue = origValue > 0 ? (totalRefundedSoFar > 0 ? remainingToRefund : origValue) : (value ? Number(value) : 0);
+
+          if (origValue > 0 && (totalRefundedSoFar + refundValue > origValue + 0.05)) {
+            refundValue = remainingToRefund;
           }
 
           console.log(`[Asaas Refund] Executando estorno Pix para ${asaasPaymentId} (R$ ${refundValue})...`);

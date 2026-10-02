@@ -2594,7 +2594,7 @@ export const useAppStore = create<AppState>()(
                   body: JSON.stringify({ 
                     orderId: orderId,
                     paymentId: paymentIdToUse,
-                    value: targetOrder?.valor || (targetOrder as any)?.totalValue,
+                    value: targetOrder?.totalValue || (targetOrder ? (Number(targetOrder.valor || 0) + Number(targetOrder.taxas?.entregaTotal || 0)) : undefined),
                     reason: reasonStr || 'Cancelamento solicitado pelo usuário antes do PIN'
                   })
                 });
