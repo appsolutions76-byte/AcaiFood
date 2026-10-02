@@ -1043,23 +1043,18 @@ export default function BatedeiraDashboard() {
           role="loja" 
         />
 
-        {/* Alerta de Pedidos Ativos da Batedeira (Sempre Visível no Topo) */}
-        {batedeiraActiveOrders.length > 0 && (
-          <div className="bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-400 dark:border-amber-600 p-5 rounded-2xl shadow-lg space-y-4 animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center justify-between border-b border-amber-200 dark:border-amber-800 pb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xl animate-bounce">🚨</span>
-                <h3 className="font-extrabold text-base text-amber-900 dark:text-amber-200 uppercase tracking-wider">
-                  Pedidos Ativos em Andamento ({batedeiraActiveOrders.length})
-                </h3>
-              </div>
-              <span className="text-xs bg-amber-200 text-amber-900 font-bold px-2.5 py-1 rounded-full uppercase">Ação Necessária</span>
+        {/* Aviso de Pedidos Ativos quando fora da aba Pedidos */}
+        {batedeiraActiveOrders.length > 0 && activeTab !== 'pedidos' && (
+          <button 
+            onClick={() => setActiveTab('pedidos')}
+            className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold p-3.5 rounded-2xl shadow-md flex items-center justify-between transition cursor-pointer active:scale-98 animate-pulse"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">🚨</span>
+              <span className="text-sm">Você tem {batedeiraActiveOrders.length} pedido(s) ativo(s) aguardando atendimento!</span>
             </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {batedeiraActiveOrders.map(renderOrderCard)}
-            </div>
-          </div>
+            <span className="bg-white text-amber-900 text-xs px-3 py-1.5 rounded-xl font-extrabold uppercase shadow-sm">Ver Pedidos →</span>
+          </button>
         )}
 
         {activeTab === 'geral' && (
