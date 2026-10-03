@@ -13,6 +13,7 @@ import { SupportChatButton } from "@/components/SupportChatButton";
 import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { supabase } from "@/lib/supabase";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
+import { initAudioUnlock, playDeliveryAlertTone } from "@/lib/soundAlerts";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
@@ -40,6 +41,7 @@ export default function MotoboyDashboard() {
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
   const [serverBalance, setServerBalance] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const lastAvailableCountRef = React.useRef(0);
 
   const mounted = useSyncExternalStore(
     emptySubscribe,
@@ -48,6 +50,7 @@ export default function MotoboyDashboard() {
   );
 
   useEffect(() => {
+    initAudioUnlock();
     const s = useAppStore.getState();
     s.fetchAllUsers();
     if (typeof s.fetchCities === 'function') s.fetchCities();
@@ -131,6 +134,13 @@ export default function MotoboyDashboard() {
     if (!isReady) return false;
     return true;
   });
+
+  useEffect(() => {
+    if (corridasDisponiveis.length > lastAvailableCountRef.current) {
+      playDeliveryAlertTone();
+    }
+    lastAvailableCountRef.current = corridasDisponiveis.length;
+  }, [corridasDisponiveis.length]);
   const minhasCorridasAll = (store.orders || []).filter((o: any) => o && currentUser?.id && o.motoristaId === currentUser.id);
   const ganhosHoje = serverBalance !== null ? serverBalance : minhasCorridasAll.filter((o: any) => o && isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + (curr ? getMotoboyFee(curr) : 0), 0);
   const saquesHoje = currentUser?.id ? getDailyWithdrawalCount(currentUser.id) : 0;

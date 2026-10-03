@@ -938,8 +938,8 @@ export const useAppStore = create<AppState>()(
                         // 2. Sinal sonoro de Nova Chamada de Frete/Entrega para Motoboy, Caminhão e Caçamba
                         else if (
                           (userRole === 'motorista' || userRole === 'motoboy' || userRole === 'caminhao') &&
-                          (newOrder.status === 'pronto' || newOrder.status === 'preparo' || (newOrder.type === 'COLETA' && newOrder.status === 'aguardando_motorista')) &&
-                          (!newOrder.motorista_id || newOrder.motorista_id === u.id)
+                          (newOrder.status === 'pronto' || newOrder.status === 'preparo' || newOrder.status === 'READY' || newOrder.status === 'SEARCHING_OPERATOR' || newOrder.status === 'PAID' || (newOrder.type === 'COLETA' && newOrder.status === 'aguardando_motorista')) &&
+                          (!newOrder.driver_id && !newOrder.motorista_id || newOrder.driver_id === u.id || newOrder.motorista_id === u.id)
                         ) {
                           playDeliveryAlertTone();
                         }
