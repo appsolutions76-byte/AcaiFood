@@ -538,9 +538,20 @@ export function buildOrderEscPosBuffer(
     addLine(divider('=', width));
   }
 
-  // --- RODAPÉ ENXUTO DE 1 LINHA ---
+  // --- RODAPÉ OFICIAL COMPLETO (ASAAS + AÇAÍFOOD) ---
   addBytes(0x1B, 0x61, 0x01); // Centralizado
-  addLine('AçaíFood Delivery • www.acaifood.app.br');
+  if (width < 38) {
+    addBytes(0x1B, 0x4D, 0x01); // Fonte condensada para caber todo o texto legal sem quebrar colchetes
+  }
+  addBytes(0x1B, 0x45, 0x01); // Negrito ON
+  addLine('[ PAGAMENTO PROCESSADO VIA ASAAS ]');
+  addBytes(0x1B, 0x45, 0x00); // Negrito OFF
+  addLine('Asaas Gestao Financeira Inst. de Pagamento S.A.');
+  addLine('--- AcaiFood Delivery Oficial ---');
+  addLine('www.acaifood.app.br');
+  if (width < 38) {
+    addBytes(0x1B, 0x4D, 0x00); // Retorna Fonte A
+  }
 
   // Avanço mínimo de papel
   for (let f = 0; f < feedCount; f++) {

@@ -361,9 +361,12 @@ export function generateSingleTicketHTML(
         </div>
       ` : ''}
 
-      <!-- RODAPÉ ENXUTO -->
-      <div style="text-align: center; font-size: ${is58 ? '8px' : '9px'}; padding-top: 2px;">
-        <span>AçaíFood Delivery • www.acaifood.app.br</span>
+      <!-- RODAPÉ OFICIAL (ASAAS + AÇAÍFOOD) -->
+      <div style="text-align: center; font-size: ${is58 ? '8.5px' : '9.5px'}; padding-top: 3px; border-top: 1px dashed #000; margin-top: 3px;">
+        <p style="margin: 0; font-weight: bold; font-size: ${is58 ? '8.5px' : '9.5px'};">[ PAGAMENTO PROCESSADO VIA ASAAS ]</p>
+        <p style="margin: 1px 0 0 0; font-size: 7.5px;">Asaas Gestão Financeira Inst. de Pagamento S.A.</p>
+        <p style="margin: 2px 0 0 0; font-weight: bold;">--- AçaíFood Delivery Oficial ---</p>
+        <p style="margin: 1px 0 0 0;">www.acaifood.app.br</p>
       </div>
     </div>
   `;
