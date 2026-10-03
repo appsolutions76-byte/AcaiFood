@@ -13,11 +13,13 @@ import {
   Sparkles,
   Info,
   Sliders,
-  Smartphone
+  Smartphone,
+  Leaf
 } from 'lucide-react';
 import { 
   PrinterConfig, 
   PrinterProfile,
+  PaperSavingMode,
   getPrinterConfig, 
   savePrinterConfig, 
   printTestTicket 
@@ -261,10 +263,73 @@ export const ThermalPrinterModal: React.FC<ThermalPrinterModalProps> = ({
             </div>
           )}
 
+          {/* NOVO: Economia de Papel & Altura do Cupom */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs uppercase text-zinc-500 dark:text-zinc-400 font-bold flex items-center gap-1">
+                <Leaf size={14} className="text-emerald-600 dark:text-emerald-400" />
+                Economia de Papel & Altura do Cupom
+              </label>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
+                {config.paperSavingMode === 'ultra' ? '🍃 Reduz 60% do papel' : config.paperSavingMode === 'standard' ? '⚡ Padrão (~13cm)' : '🔍 Espaçoso'}
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleUpdateConfig({ paperSavingMode: 'ultra', feedLines: 2 })}
+                className={`p-2.5 rounded-xl border text-xs font-bold text-left transition flex flex-col justify-between cursor-pointer ${
+                  config.paperSavingMode === 'ultra'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span>🍃 Ultra Econômico</span>
+                  {config.paperSavingMode === 'ultra' && <Check size={13} />}
+                </div>
+                <p className="text-[9px] font-normal opacity-85">~9 a 11 cm (Fonte compacta e sem sobras)</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleUpdateConfig({ paperSavingMode: 'standard', feedLines: 2 })}
+                className={`p-2.5 rounded-xl border text-xs font-bold text-left transition flex flex-col justify-between cursor-pointer ${
+                  config.paperSavingMode === 'standard'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span>⚡ Equilibrado</span>
+                  {config.paperSavingMode === 'standard' && <Check size={13} />}
+                </div>
+                <p className="text-[9px] font-normal opacity-85">~13 a 14 cm (Fonte padrão enxuta)</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleUpdateConfig({ paperSavingMode: 'spacious', feedLines: 4 })}
+                className={`p-2.5 rounded-xl border text-xs font-bold text-left transition flex flex-col justify-between cursor-pointer ${
+                  config.paperSavingMode === 'spacious'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span>🔍 Espaçoso</span>
+                  {config.paperSavingMode === 'spacious' && <Check size={13} />}
+                </div>
+                <p className="text-[9px] font-normal opacity-85">~18 a 22 cm (Espaçamento tradicional)</p>
+              </button>
+            </div>
+          </div>
+
           {/* Perfis de Compatibilidade Universal */}
           <div>
             <label className="text-xs uppercase text-zinc-500 dark:text-zinc-400 font-bold block mb-1.5">
-              Perfil da Impressora (Universal)
+              Perfil da Impressora
             </label>
             <div className="grid grid-cols-2 gap-2">
               
@@ -497,14 +562,14 @@ export const ThermalPrinterModal: React.FC<ThermalPrinterModalProps> = ({
                       Avanço de Papel Final:
                     </label>
                     <select
-                      value={config.feedLines ?? 4}
+                      value={config.feedLines ?? 2}
                       onChange={(e) => handleUpdateConfig({ feedLines: Number(e.target.value) })}
                       className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2 font-bold"
                     >
-                      <option value={2}>2 Linhas</option>
+                      <option value={1}>1 Linha (Mínimo absoluto)</option>
+                      <option value={2}>2 Linhas (Econômico Recomendado)</option>
                       <option value={3}>3 Linhas</option>
                       <option value={4}>4 Linhas (Padrão)</option>
-                      <option value={6}>6 Linhas (Fácil Destaque)</option>
                     </select>
                   </div>
                 </div>

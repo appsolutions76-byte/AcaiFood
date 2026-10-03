@@ -19,10 +19,13 @@ export type PrinterProfile =
   | 'large-80mm' 
   | 'custom';
 
+export type PaperSavingMode = 'ultra' | 'standard' | 'spacious';
+
 export interface PrinterConfig {
   connectionType: ConnectionType;
   paperWidth: '58mm' | '80mm';
   profile: PrinterProfile;
+  paperSavingMode: PaperSavingMode;
   printMode: 'manual' | 'auto'; // 'manual' = botão sob demanda, 'auto' = impressão automática em transições de status
   copies: 1 | 2;
   customColumns?: number; // 32, 40, 42, 48
@@ -35,11 +38,12 @@ export const DEFAULT_PRINTER_CONFIG: PrinterConfig = {
   connectionType: 'bluetooth',
   paperWidth: '58mm',
   profile: 'generic-58mm',
+  paperSavingMode: 'ultra', // Padrão agora é ultra econômico (~10 a 12 cm de papel)
   printMode: 'auto',
   copies: 1,
   customColumns: 32,
   hasCutter: false,
-  feedLines: 4,
+  feedLines: 2,
   enabled: true,
 };
 
@@ -83,23 +87,52 @@ export async function logPrintAudit(orderId: string, printType: PrintType, trigg
 }
 
 export function resolveFormattingOptions(config: PrinterConfig): EscPosFormattingOptions {
+  const isUltra = config.paperSavingMode === 'ultra';
+  const isSpacious = config.paperSavingMode === 'spacious';
+  const feedCount = config.feedLines ?? (isUltra ? 2 : (isSpacious ? 4 : 2));
+
   if (config.profile === 'generic-58mm') {
-    return { columns: 32, hasCutter: false, feedLines: 4, condensedFont: false };
+    return { 
+      columns: isUltra ? 42 : 32, 
+      hasCutter: false, 
+      feedLines: feedCount, 
+      condensedFont: isUltra,
+      paperSavingMode: config.paperSavingMode 
+    };
   }
   if (config.profile === 'compact-58mm') {
-    return { columns: 42, hasCutter: false, feedLines: 4, condensedFont: true };
+    return { 
+      columns: 42, 
+      hasCutter: false, 
+      feedLines: feedCount, 
+      condensedFont: true,
+      paperSavingMode: config.paperSavingMode 
+    };
   }
   if (config.profile === 'generic-80mm') {
-    return { columns: 48, hasCutter: true, feedLines: 4, condensedFont: false };
+    return { 
+      columns: 48, 
+      hasCutter: true, 
+      feedLines: feedCount, 
+      condensedFont: false,
+      paperSavingMode: config.paperSavingMode 
+    };
   }
   if (config.profile === 'large-80mm') {
-    return { columns: 42, hasCutter: true, feedLines: 4, condensedFont: false };
+    return { 
+      columns: 42, 
+      hasCutter: true, 
+      feedLines: feedCount, 
+      condensedFont: false,
+      paperSavingMode: config.paperSavingMode 
+    };
   }
   return {
     columns: config.customColumns || (config.paperWidth === '58mm' ? 32 : 48),
     hasCutter: config.hasCutter ?? (config.paperWidth === '80mm'),
-    feedLines: config.feedLines ?? 4,
-    condensedFont: (config.customColumns || 32) > 40 && config.paperWidth === '58mm'
+    feedLines: feedCount,
+    condensedFont: (config.customColumns || 32) > 40 && config.paperWidth === '58mm',
+    paperSavingMode: config.paperSavingMode
   };
 }
 
@@ -115,7 +148,7 @@ export function generateSingleTicketHTML(
 ): string {
   const is58 = paperWidth === '58mm';
   const widthPx = is58 ? '48mm' : '72mm';
-  const fontSize = is58 ? '11px' : '13px';
+  const fontSize = is58 ? '10px' : '12px';
 
   const orderNum = order.id.slice(-6).toUpperCase();
   const dateStr = order.createdAt
@@ -181,7 +214,6 @@ export function generateSingleTicketHTML(
 
   const itemsList = rawItems;
 
-  // 1. Subtotal exato dos itens
   let itemsSubtotal = itemsList.reduce((acc, i) => acc + (Number(i.price || 0) * Number(i.quantity || 1)), 0);
   if (itemsSubtotal === 0 && (order as any).products_subtotal) {
     itemsSubtotal = Number((order as any).products_subtotal);
@@ -190,7 +222,6 @@ export function generateSingleTicketHTML(
     itemsSubtotal = Number(order.valor);
   }
 
-  // 2. Taxa de Entrega / Frete & Subsídio da Loja
   const totalDeliveryFee = Number(
     order.taxas?.entregaTotal ?? 
     order.taxas?.entregaCliente ?? 
@@ -201,22 +232,14 @@ export function generateSingleTicketHTML(
     order.taxas?.entregaCliente ?? totalDeliveryFee
   );
 
-  const storeDeliveryFee = Number(
-    order.taxas?.entregaLoja ?? 0
-  );
-
-  // 3. Valor Total do Pedido cobrado do Comprador
   const totalFinal = order.totalValue !== undefined && Number(order.totalValue) > 0
     ? Number(order.totalValue)
     : Number((itemsSubtotal + clientDeliveryFee).toFixed(2));
 
   const formattedItemsSubtotal = itemsSubtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const formattedTotalDelivery = totalDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const formattedStoreDelivery = storeDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formattedClientDelivery = clientDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formattedTotal = totalFinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  // Resolução do comprador (Loja/Batedeira no B2B, Cliente no B2C)
   const buyerUser = clientUser 
     || (allUsers && (order as any).buyerId ? allUsers[(order as any).buyerId] : undefined)
     || (allUsers && isB2B && order.lojaId ? allUsers[order.lojaId] : undefined)
@@ -232,39 +255,30 @@ export function generateSingleTicketHTML(
     || buyerUser?.telefone 
     || (buyerUser as any)?.phone 
     || buyerUser?.email 
-    || 'Não Informado';
+    || '';
 
   const buyerAddress = order.deliveryAddress 
     || buyerUser?.endereco 
     || (buyerUser?.bairro ? `${buyerUser.bairro}, ${buyerUser.cidade || 'Belém'}` : '') 
-    || 'Retirada no Balcão / Entrega Local';
+    || 'Retirada no Balcão';
 
-  const deliveryRef = order.deliveryReference || (buyerUser as any)?.referencia || '';
+  let deliveryRef = order.deliveryReference || (buyerUser as any)?.referencia || '';
+  if (deliveryRef.includes('Distancia estimada') || deliveryRef.includes('Valor Fixo da Moto')) {
+    deliveryRef = '';
+  }
 
-  // Resolução do Motoboy / Condutor
   const driverUser = order.motoristaId && allUsers ? allUsers[order.motoristaId] : null;
   const driverName = order.motoristaNome || driverUser?.name || (order.motoristaId ? `Entregador #${order.motoristaId.substring(0, 5)}` : null);
-  const driverPhone = driverUser?.telefone || (driverUser as any)?.phone || 'Disponível no App';
+  const driverPhone = driverUser?.telefone || (driverUser as any)?.phone || '';
 
-  let motoboyStatusLabel = 'Aguardando aceite';
-  if (printType === 'ENTREGA' && !driverName) {
-    motoboyStatusLabel = 'Aguardando motoboy';
-  } else if (driverName) {
-    motoboyStatusLabel = `${driverName} (${driverPhone})`;
+  let motoboyStatusLabel = 'Aguardando';
+  if (driverName) {
+    motoboyStatusLabel = driverPhone ? `${driverName} (${driverPhone})` : driverName;
   }
 
-  // Título da Via conforme o Tipo de Cupom
-  let ticketHeaderTitle = '*** CUPOM DE PREPARO ***';
-  if (printType === 'ENTREGA') {
-    ticketHeaderTitle = '*** CUPOM DE ENTREGA ***';
-  } else if (printType === 'ENTREGA_ATUALIZADO') {
-    ticketHeaderTitle = '*** CUPOM DE ENTREGA (MOTOBOY ATRIBUÍDO) ***';
-  }
-
+  let ticketHeaderTitle = printType === 'ENTREGA' ? 'CUPOM DE ENTREGA' : 'CUPOM DE PREPARO';
   if (totalVias > 1) {
-    ticketHeaderTitle = viaNumber === 1 
-      ? `*** VIA 1: PREPARO / COZINHA (${ticketHeaderTitle.replace(/\*/g, '').trim()}) ***`
-      : `*** VIA 2: ENTREGA / MOTOBOY (${ticketHeaderTitle.replace(/\*/g, '').trim()}) ***`;
+    ticketHeaderTitle = viaNumber === 1 ? `VIA 1: COZINHA` : `VIA 2: ENTREGA`;
   }
 
   return `
@@ -272,77 +286,52 @@ export function generateSingleTicketHTML(
       width: ${widthPx};
       font-family: 'Courier New', Courier, monospace;
       font-size: ${fontSize};
-      line-height: 1.25;
+      line-height: 1.15;
       color: #000;
       background: #fff;
-      padding: 4px;
+      padding: 2px;
       margin: 0 auto;
       text-align: left;
       box-sizing: border-box;
     ">
-      <!-- CABEÇALHO -->
-      <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <h2 style="margin: 0; font-size: ${is58 ? '14px' : '16px'}; font-weight: bold; text-transform: uppercase;">AÇAÍFOOD DELIVERY</h2>
-        <p style="margin: 2px 0 0 0; font-size: ${is58 ? '10px' : '11px'}; font-weight: bold;">${storeName}</p>
-        <p style="margin: 4px 0 0 0; font-weight: bold; font-size: ${is58 ? '11px' : '12px'};">${ticketHeaderTitle}</p>
+      <!-- CABEÇALHO COMPACTO -->
+      <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 3px; margin-bottom: 3px;">
+        <h2 style="margin: 0; font-size: ${is58 ? '13px' : '15px'}; font-weight: bold;">AÇAÍFOOD DELIVERY</h2>
+        <p style="margin: 1px 0 0 0; font-size: ${is58 ? '10px' : '11px'}; font-weight: bold;">${storeName}</p>
+        <p style="margin: 2px 0 0 0; font-weight: bold; font-size: ${is58 ? '10px' : '11px'};">*** ${ticketHeaderTitle} ***</p>
       </div>
 
       <!-- DETALHES DO PEDIDO -->
-      <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58 ? '12px' : '14px'};">
+      <div style="border-bottom: 1px dashed #000; padding-bottom: 3px; margin-bottom: 3px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
           <span>PEDIDO: #${orderNum}</span>
           <span>${order.type || 'B2C'}</span>
         </div>
-        <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 2px;">📅 Data/Hora: ${dateStr}</div>
-        <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 2px;">
-          Status: ${(order.status || '').toUpperCase()}
-        </div>
-        <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 2px; font-weight: bold; color: #111;">
-          🛵 Motoboy: ${motoboyStatusLabel}
-        </div>
-        ${order.distancia ? `
-          <div style="font-size: ${is58 ? '9px' : '10px'}; margin-top: 2px;">📏 Distância Estimada: ${order.distancia.toFixed(1)} km</div>
-        ` : ''}
+        <div style="font-size: ${is58 ? '9px' : '10px'};">📅 ${dateStr} [${(order.status || '').toUpperCase()}]</div>
+        <div style="font-size: ${is58 ? '9px' : '10px'}; font-weight: bold;">🛵 Motoboy: ${motoboyStatusLabel}</div>
       </div>
 
       <!-- CLIENTE & DADOS DE ENTREGA -->
-      <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <div style="font-weight: bold; font-size: ${is58 ? '11px' : '12px'}; text-decoration: underline; margin-bottom: 4px; text-transform: uppercase;">
-          --- DADOS DO CLIENTE ---
-        </div>
-        <div style="font-weight: bold; font-size: ${is58 ? '11px' : '13px'}; margin-top: 2px;">
-          👤 NOME: ${buyerName}
-        </div>
-        <div style="font-size: ${is58 ? '11px' : '12px'}; font-weight: bold; margin-top: 3px;">
-          📞 TEL: ${buyerPhone}
-        </div>
-        <div style="font-size: ${is58 ? '10px' : '11px'}; margin-top: 3px; font-weight: bold;">
-          📍 ENDEREÇO: ${buyerAddress}
-        </div>
-        ${deliveryRef ? `
-          <div style="font-size: ${is58 ? '9px' : '10px'}; font-style: italic; margin-top: 2px;">
-            🏢 REF: ${deliveryRef}
-          </div>
-        ` : ''}
+      <div style="border-bottom: 1px dashed #000; padding-bottom: 3px; margin-bottom: 3px;">
+        <div style="font-weight: bold;">👤 ${buyerName} ${buyerPhone ? `(${buyerPhone})` : ''}</div>
+        <div style="font-size: ${is58 ? '9px' : '10px'};">📍 ${buyerAddress}</div>
+        ${deliveryRef ? `<div style="font-size: ${is58 ? '9px' : '10px'};">🏢 ${deliveryRef.substring(0, 32)}</div>` : ''}
       </div>
 
       <!-- ITENS / PRODUTOS -->
-      <div style="border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <div style="font-weight: bold; text-decoration: underline; margin-bottom: 4px; font-size: ${is58 ? '10px' : '12px'};">--- ITENS DO PEDIDO ---</div>
-        <table style="width: 100%; border-collapse: collapse; font-size: ${is58 ? '10px' : '12px'};">
+      <div style="border-bottom: 1px dashed #000; padding-bottom: 3px; margin-bottom: 3px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: ${is58 ? '9px' : '11px'};">
           <thead>
             <tr style="border-bottom: 1px solid #000; text-align: left;">
-              <th style="padding: 2px 0;">Qtd</th>
-              <th style="padding: 2px 0;">Item</th>
-              <th style="padding: 2px 0; text-align: right;">Total</th>
+              <th style="padding: 1px 0;">Qtd Item</th>
+              <th style="padding: 1px 0; text-align: right;">Total</th>
             </tr>
           </thead>
           <tbody>
             ${itemsList.map(item => `
               <tr style="vertical-align: top;">
-                <td style="padding: 3px 0; font-weight: bold; width: 15%;">${item.quantity}x</td>
-                <td style="padding: 3px 0; font-weight: bold; width: 60%;">${(item.name || 'Produto').replace(/^\d+x\s*/i, '').trim()}</td>
-                <td style="padding: 3px 0; text-align: right; width: 25%;">R$ ${(item.price * item.quantity).toFixed(2)}</td>
+                <td style="padding: 1px 0; font-weight: bold;">${item.quantity}x ${(item.name || 'Produto').replace(/^\d+x\s*/i, '').trim()}</td>
+                <td style="padding: 1px 0; text-align: right; font-weight: bold;">R$ ${(item.price * item.quantity).toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -350,61 +339,31 @@ export function generateSingleTicketHTML(
       </div>
 
       <!-- TOTAL & PAGAMENTO -->
-      <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '12px'}; margin-bottom: 2px;">
-          <span>Subtotal Produtos:</span>
-          <span style="font-weight: bold;">${formattedItemsSubtotal}</span>
+      <div style="border-bottom: 1px dashed #000; padding-bottom: 3px; margin-bottom: 3px;">
+        <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '10px'};">
+          <span>Subtotal: ${formattedItemsSubtotal}</span>
+          <span>Frete: ${clientDeliveryFee > 0 ? formattedClientDelivery : 'Grátis'}</span>
         </div>
-        ${storeDeliveryFee > 0 ? `
-          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '11px'}; color: #222; margin-bottom: 1px;">
-            <span>Frete Total da Entrega:</span>
-            <span>${formattedTotalDelivery}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '11px'}; color: #000; font-weight: bold; margin-bottom: 2px;">
-            <span>Desc. Loja / Pago p/ Loja:</span>
-            <span>- ${formattedStoreDelivery}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '12px'}; margin-bottom: 2px;">
-            <span>Frete Pago p/ Cliente:</span>
-            <span style="font-weight: bold;">${clientDeliveryFee > 0 ? formattedClientDelivery : 'R$ 0,00 (Grátis)'}</span>
-          </div>
-        ` : `
-          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '10px' : '12px'}; margin-bottom: 2px;">
-            <span>Frete / Entrega:</span>
-            <span style="font-weight: bold;">${clientDeliveryFee > 0 ? formattedClientDelivery : 'R$ 0,00 (Grátis)'}</span>
-          </div>
-        `}
-        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58 ? '12px' : '14px'}; border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px;">
-          <span>TOTAL DO PEDIDO:</span>
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58 ? '11px' : '13px'}; border-top: 1px dashed #000; padding-top: 2px; margin-top: 2px;">
+          <span>TOTAL:</span>
           <span>${formattedTotal}</span>
         </div>
-        <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; margin-top: 4px; text-align: right; color: #000;">
-          💳 Pagamento: PIX (Confirmado ✅)
-        </div>
-        <div style="font-size: ${is58 ? '9px' : '10px'}; margin-top: 2px; text-align: right; color: #222;">
-          🏦 Intermediação: <strong>ASAAS IP S.A.</strong>
+        <div style="font-size: ${is58 ? '9px' : '10px'}; text-align: right;">
+          💳 Pagamento: PIX (Asaas IP S.A.)
         </div>
       </div>
 
-      <!-- PIN DE RETIRADA / BALCÃO (DUPLO PIN) -->
+      <!-- PIN DE RETIRADA / BALCÃO (COMPACTO) -->
       ${(order.pickupPin || (order as any).pickup_pin) ? `
-        <div style="border: 2px solid #000; padding: 6px 4px; margin-top: 6px; margin-bottom: 6px; text-align: center; background: #f0f0f0;">
-          <div style="font-size: ${is58 ? '10px' : '11px'}; font-weight: bold; text-transform: uppercase;">🔑 PIN DE RETIRADA (BALCÃO):</div>
-          <div style="font-size: ${is58 ? '18px' : '22px'}; font-weight: 900; letter-spacing: 4px; margin-top: 2px; color: #000;">${order.pickupPin || (order as any).pickup_pin}</div>
-          <div style="font-size: 8px; margin-top: 2px; font-weight: bold;">Informe este PIN ao entregador na retirada</div>
+        <div style="border: 1px solid #000; padding: 3px; margin-top: 3px; margin-bottom: 3px; text-align: center;">
+          <span style="font-size: ${is58 ? '9px' : '10px'}; font-weight: bold;">PIN RETIRADA: </span>
+          <span style="font-size: ${is58 ? '14px' : '16px'}; font-weight: 900; letter-spacing: 2px;">${order.pickupPin || (order as any).pickup_pin}</span>
         </div>
       ` : ''}
 
-      <!-- RODAPÉ & SELO ASAAS -->
-      <div style="text-align: center; font-size: ${is58 ? '9px' : '10px'}; padding-top: 4px;">
-        <div style="border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px;">
-          <p style="margin: 0; font-weight: bold; font-size: ${is58 ? '9px' : '10px'};">[ PAGAMENTO PROCESSADO VIA ASAAS ]</p>
-          <p style="margin: 1px 0 0 0; font-size: 8px;">Asaas Gestão Financeira Inst. de Pagamento S.A.</p>
-        </div>
-        <p style="margin: 4px 0 0 0; font-weight: bold;">--- AçaíFood Delivery Oficial ---</p>
-        <p style="margin: 2px 0 0 0;">www.acaifood.app.br</p>
-        <br />
-        <p style="margin: 0; font-size: 8px;">.</p>
+      <!-- RODAPÉ ENXUTO -->
+      <div style="text-align: center; font-size: ${is58 ? '8px' : '9px'}; padding-top: 2px;">
+        <span>AçaíFood Delivery • www.acaifood.app.br</span>
       </div>
     </div>
   `;
@@ -412,12 +371,6 @@ export function generateSingleTicketHTML(
 
 const recentPrints = new Set<string>();
 
-/**
- * Dispara a impressão do pedido de forma híbrida e universal:
- * 1. Bluetooth Direto (ESC/POS)
- * 2. RawBT App (Android)
- * 3. Driver do Sistema / Navegador (HTML/CSS)
- */
 export async function printOrderTicket(
   order: Order,
   storeName: string = 'Loja/Batedeira AçaíFood',
@@ -483,7 +436,7 @@ export async function printOrderTicket(
       if (res.success) {
         return;
       }
-      console.warn('Fallback para impressão do navegador devido a aviso no Bluetooth:', res.error);
+      console.warn('Fallback para impressão do navegador:', res.error);
     } catch (e) {
       console.error('Erro na impressão Bluetooth direta, recorrendo ao navegador:', e);
     }
@@ -501,7 +454,7 @@ export async function printOrderTicket(
   for (let via = 1; via <= copies; via++) {
     fullHTML += generateSingleTicketHTML(order, storeName, config.paperWidth, via, copies, allUsers, clientUser, printType);
     if (via < copies) {
-      fullHTML += `<div style="page-break-after: always; height: 15px; border-bottom: 2px dashed #000; margin: 15px 0;"></div>`;
+      fullHTML += `<div style="page-break-after: always; height: 10px; border-bottom: 1px dashed #000; margin: 10px 0;"></div>`;
     }
   }
 
@@ -556,11 +509,11 @@ export async function printTestTicket(
         repasse: 53.00
       },
       createdAt: new Date().toISOString(),
-      pickupPin: '4829',
-      deliveryPin: '4829',
-      deliveryAddress: 'Av. Nazaré, 1050 - Apt 302, Belém/PA',
-      deliveryReference: 'Próximo à Basílica de Nazaré',
-      clienteNome: 'Gabriel (Teste RawBT)',
+      pickupPin: '6838',
+      deliveryPin: '6838',
+      deliveryAddress: 'Av. Nazaré, 1050, Belém/PA',
+      deliveryReference: 'Próximo à Basílica',
+      clienteNome: 'Gabriel (Teste Econômico)',
       clienteTelefone: '(91) 98877-6655',
       lojaNome: storeName
     };
@@ -604,11 +557,11 @@ export async function printTestTicket(
       repasse: 53.00
     },
     createdAt: new Date().toISOString(),
-    pickupPin: '4829',
-    deliveryPin: '4829',
-    deliveryAddress: 'Av. Nazaré, 1050 - Apt 302, Belém/PA',
-    deliveryReference: 'Próximo à Basílica de Nazaré',
-    clienteNome: 'Gabriel (Teste Universal)',
+    pickupPin: '6838',
+    deliveryPin: '6838',
+    deliveryAddress: 'Av. Nazaré, 1050, Belém/PA',
+    deliveryReference: 'Próximo à Basílica',
+    clienteNome: 'Gabriel (Teste Econômico)',
     clienteTelefone: '(91) 98877-6655',
     lojaNome: storeName
   };

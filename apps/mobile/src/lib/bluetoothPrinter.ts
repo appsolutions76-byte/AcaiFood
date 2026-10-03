@@ -1,35 +1,24 @@
 /**
  * Módulo Universal de Impressão ESC/POS e Web Bluetooth para AçaíFood
- * Compatível com QUALQUER modelo térmico de 58mm ou 80mm do mercado:
- * - TOUSEI TECH DIR-E58V
- * - GOLDENSKY GS-MTP265 / PT-265
- * - ELGIN (i7, i8, i9, Elgin Mini, Bambini)
- * - EPSON (TM-T20, TM-T88, Mobilink)
- * - BEMATECH (MP-4200 TH, MP-2800, MP-100 S)
- * - DARUMA (DR-700, DR-800)
- * - XPRINTER / POS-58 / POS-80 / GOOJPRT / NETUM / MILESTONE / SUNMI / ZEBRA
+ * Com Modo de Alta Economia de Papel e Ajuste de Tamanho de Fonte
+ * Otimizado para bobinas térmicas de 58mm (DIR-E58V, GoldenSky PT-265) e 80mm
  */
 
 import { Order, User } from '@/store/useAppStore';
 
 // Lista exaustiva de UUIDs de Serviços BLE padrão usados por todos os fabricantes mundiais
 export const KNOWN_PRINTER_SERVICES = [
-  // Padrão Bluetooth SIG e POS Universal
   '000018f0-0000-1000-8000-00805f9b34fb', // Standard POS BLE
   '000018f1-0000-1000-8000-00805f9b34fb', 
-  
-  // Fabricantes Chineses e Genéricas (Tousei, GoldenSky, Xprinter, Goojprt, Milestone, Netum)
-  '0000ff00-0000-1000-8000-00805f9b34fb', 
+  '0000ff00-0000-1000-8000-00805f9b34fb', // Generic POS / Tousei / GoldenSky
   '0000fff0-0000-1000-8000-00805f9b34fb', 
   '0000ffe0-0000-1000-8000-00805f9b34fb', 
   '0000ffe5-0000-1000-8000-00805f9b34fb', 
-  '0000ae00-0000-1000-8000-00805f9b34fb', 
+  '0000ae00-0000-1000-8000-00805f9b34fb', // Xprinter / Tousei
   '0000af30-0000-1000-8000-00805f9b34fb', 
   '0000fee7-0000-1000-8000-00805f9b34fb', 
   '0000abf0-0000-1000-8000-00805f9b34fb',
   '0000de00-0000-1000-8000-00805f9b34fb',
-
-  // Protocolos Seriais Transparentes (SPP over BLE / ISSC / Nordic / TI)
   '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC Microchip SPP
   'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // Bluetooth POS
   '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic UART Service (Zebra, Elgin, Sunmi)
@@ -53,8 +42,10 @@ export type BluetoothPrintResult = {
 export interface EscPosFormattingOptions {
   columns?: number; // 32 para 58mm padrão, 42 ou 48 para 80mm
   hasCutter?: boolean; // guilhotina automática
-  feedLines?: number; // linhas de avanço final (padrão: 4)
+  feedLines?: number; // linhas de avanço final (padrão econômico: 2)
   condensedFont?: boolean; // Fonte B compacta
+  paperSavingMode?: 'ultra' | 'standard' | 'spacious';
+  fontSize?: 'compact' | 'normal' | 'large';
   codePage?: 'ASCII' | 'CP860' | 'CP850';
 }
 
@@ -63,9 +54,6 @@ let activeBluetoothDevice: any = null;
 let activeCharacteristic: any = null;
 let connectionListeners: ((status: boolean, deviceName?: string) => void)[] = [];
 
-/**
- * Inscreve ouvintes para mudanças no status da conexão Bluetooth
- */
 export function subscribeBluetoothStatus(callback: (status: boolean, deviceName?: string) => void) {
   connectionListeners.push(callback);
   const isConn = isBluetoothPrinterConnected();
@@ -87,24 +75,15 @@ function notifyBluetoothStatus(status: boolean, deviceName?: string) {
   });
 }
 
-/**
- * Verifica se a API Web Bluetooth é suportada no navegador atual
- */
 export function isWebBluetoothSupported(): boolean {
   if (typeof window === 'undefined') return false;
   return typeof navigator !== 'undefined' && 'bluetooth' in navigator;
 }
 
-/**
- * Verifica se há uma impressora Bluetooth conectada no momento
- */
 export function isBluetoothPrinterConnected(): boolean {
   return !!(activeBluetoothDevice && activeBluetoothDevice.gatt && activeBluetoothDevice.gatt.connected && activeCharacteristic);
 }
 
-/**
- * Retorna o nome da impressora conectada ou salva no cache local
- */
 export function getConnectedBluetoothDeviceName(): string | undefined {
   if (activeBluetoothDevice && activeBluetoothDevice.name) {
     return activeBluetoothDevice.name;
@@ -115,9 +94,6 @@ export function getConnectedBluetoothDeviceName(): string | undefined {
   return undefined;
 }
 
-/**
- * Busca e conecta a qualquer impressora Bluetooth (genérica ou de marca)
- */
 export async function connectBluetoothPrinter(): Promise<{ success: boolean; name?: string; error?: string }> {
   if (!isWebBluetoothSupported()) {
     return {
@@ -127,7 +103,6 @@ export async function connectBluetoothPrinter(): Promise<{ success: boolean; nam
   }
 
   try {
-    // Abre a busca do navegador com suporte universal a todos os dispositivos
     const device = await (navigator as any).bluetooth.requestDevice({
       acceptAllDevices: true,
       optionalServices: KNOWN_PRINTER_SERVICES
@@ -139,18 +114,14 @@ export async function connectBluetoothPrinter(): Promise<{ success: boolean; nam
 
     const deviceName = device.name || 'Impressora Bluetooth Térmica';
 
-    // Ouvinte de desconexão acidental ou manual
     device.addEventListener('gattserverdisconnected', () => {
       activeCharacteristic = null;
       notifyBluetoothStatus(false, deviceName);
     });
 
-    // Conecta ao servidor GATT
     const server = await device.gatt.connect();
-
     let foundCharacteristic: any = null;
 
-    // 1. Tenta encontrar serviço conhecido na lista de fabricantes
     for (const serviceUuid of KNOWN_PRINTER_SERVICES) {
       try {
         const service = await server.getPrimaryService(serviceUuid);
@@ -163,13 +134,10 @@ export async function connectBluetoothPrinter(): Promise<{ success: boolean; nam
             }
           }
         }
-      } catch {
-        // Continua
-      }
+      } catch {}
       if (foundCharacteristic) break;
     }
 
-    // 2. Se for um modelo não catalogado, varre dinamicamente todos os serviços do dispositivo
     if (!foundCharacteristic) {
       try {
         const services = await server.getPrimaryServices();
@@ -224,9 +192,6 @@ export async function connectBluetoothPrinter(): Promise<{ success: boolean; nam
   }
 }
 
-/**
- * Desconecta a impressora Bluetooth ativa
- */
 export async function disconnectBluetoothPrinter(): Promise<void> {
   if (activeBluetoothDevice && activeBluetoothDevice.gatt && activeBluetoothDevice.gatt.connected) {
     try {
@@ -246,9 +211,6 @@ export async function disconnectBluetoothPrinter(): Promise<void> {
   notifyBluetoothStatus(false);
 }
 
-/**
- * Envia bytes ESC/POS em pacotes para a característica Bluetooth
- */
 export async function sendEscPosToBluetooth(data: Uint8Array): Promise<BluetoothPrintResult> {
   if (!isBluetoothPrinterConnected()) {
     return {
@@ -258,7 +220,6 @@ export async function sendEscPosToBluetooth(data: Uint8Array): Promise<Bluetooth
   }
 
   try {
-    // Chunks de 100 bytes para máxima estabilidade em microcontroladores de impressoras térmicas
     const chunkSize = 100;
     const totalChunks = Math.ceil(data.length / chunkSize);
 
@@ -273,7 +234,7 @@ export async function sendEscPosToBluetooth(data: Uint8Array): Promise<Bluetooth
         await activeCharacteristic.writeValue(chunk);
       }
 
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise(resolve => setTimeout(resolve, 15));
     }
 
     return {
@@ -289,9 +250,6 @@ export async function sendEscPosToBluetooth(data: Uint8Array): Promise<Bluetooth
   }
 }
 
-/**
- * Dispara comando para o aplicativo RawBT Print Service no Android (Fallback para USB/Bluetooth Clássico)
- */
 export function sendViaRawBT(bytes: Uint8Array): boolean {
   if (typeof window === 'undefined') return false;
   try {
@@ -309,20 +267,14 @@ export function sendViaRawBT(bytes: Uint8Array): boolean {
   }
 }
 
-/**
- * Sanitiza texto em português para compatibilidade total com 100% dos chipsets térmicos mundiais
- */
 export function sanitizeTextForEscPos(text: string): string {
   if (!text) return '';
   return text
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Converte caracteres acentuados para suas bases (ã->a, é->e, ç->c)
-    .replace(/[^\x20-\x7E\n\r\t]/g, ''); // Garante apenas caracteres ASCII imprimíveis
+    .replace(/[\u0300-\u036f]/g, '') // Converte acentos para letras base
+    .replace(/[^\x20-\x7E\n\r\t]/g, '');
 }
 
-/**
- * Alinha e formata linha com texto à esquerda e texto à direita respeitando a largura de colunas
- */
 export function formatCols2(left: string, right: string, width: number = 32): string {
   const cleanLeft = sanitizeTextForEscPos(left);
   const cleanRight = sanitizeTextForEscPos(right);
@@ -334,15 +286,12 @@ export function formatCols2(left: string, right: string, width: number = 32): st
   return cleanLeft + ' '.repeat(spaces) + cleanRight;
 }
 
-/**
- * Cria linha divisória com caractere especificado
- */
 export function divider(char: string = '-', width: number = 32): string {
   return char.repeat(width) + '\n';
 }
 
 /**
- * Constrói os bytes binários ESC/POS genéricos para qualquer impressora térmica (58mm ou 80mm)
+ * Constrói os bytes ESC/POS com ALTA ECONOMIA DE PAPEL (~10 a 12cm em vez de 25cm)
  */
 export function buildOrderEscPosBuffer(
   order: Order,
@@ -355,9 +304,14 @@ export function buildOrderEscPosBuffer(
   printType: 'PREPARO' | 'ENTREGA' | 'ENTREGA_ATUALIZADO' = 'PREPARO',
   options?: EscPosFormattingOptions
 ): Uint8Array {
-  const defaultCols = paperWidth === '58mm' ? 32 : 48;
+  const savingMode = options?.paperSavingMode || 'standard';
+  const isUltra = savingMode === 'ultra';
+  const isSpacious = savingMode === 'spacious';
+
+  // Largura de colunas
+  const defaultCols = paperWidth === '58mm' ? (isUltra ? 42 : 32) : 48;
   const width = options?.columns || defaultCols;
-  const feedCount = options?.feedLines ?? 4;
+  const feedCount = options?.feedLines ?? (isUltra ? 2 : (isSpacious ? 4 : 2));
   const hasCutter = options?.hasCutter ?? (paperWidth === '80mm');
   const bytes: number[] = [];
 
@@ -376,34 +330,43 @@ export function buildOrderEscPosBuffer(
   // 1. Inicializa Impressora (ESC @)
   addBytes(0x1B, 0x40);
 
-  // 2. Modo de Fonte Normal / Condensada
-  if (options?.condensedFont) {
-    addBytes(0x1B, 0x4D, 0x01); // Fonte B
-  } else {
-    addBytes(0x1B, 0x4D, 0x00); // Fonte A
+  // 2. Entrelinhas Reduzido para Economia de Papel (ESC 3 20)
+  if (isUltra) {
+    addBytes(0x1B, 0x33, 0x14); // 20 dots spacing (ultra compacto)
+  } else if (!isSpacious) {
+    addBytes(0x1B, 0x33, 0x18); // 24 dots spacing (econômico equilibrado)
   }
 
-  // --- CABEÇALHO CENTRALIZADO ---
-  addBytes(0x1B, 0x61, 0x01); // Alinhamento Central
+  // 3. Seleção de Fonte (Normal ou Condensada B)
+  if (options?.condensedFont || isUltra || width >= 40) {
+    addBytes(0x1B, 0x4D, 0x01); // Fonte B (condensada / econômica)
+  } else {
+    addBytes(0x1B, 0x4D, 0x00); // Fonte A (padrão)
+  }
+
+  // --- CABEÇALHO COMPACTO (Sem quebra de linha de palavras) ---
+  addBytes(0x1B, 0x61, 0x01); // Centralizado
   addBytes(0x1B, 0x45, 0x01); // Negrito ON
-  addBytes(0x1D, 0x21, 0x11); // Tamanho Duplo (Altura + Largura)
-  addLine('ACAIFOOD DELIVERY');
+  
+  // Double-Height APENAS (0x01) para nunca quebrar a palavra "DELIVERY" em 58mm
+  addBytes(0x1D, 0x21, 0x01); 
+  addLine('AÇAIFOOD DELIVERY');
   
   addBytes(0x1D, 0x21, 0x00); // Tamanho Normal
   addBytes(0x1B, 0x45, 0x01); // Negrito ON
   addLine(storeName);
 
-  // Título do Cupom
+  // Título da Via
   let viaLabel = printType === 'ENTREGA' ? 'CUPOM DE ENTREGA' : 'CUPOM DE PREPARO';
   if (totalVias > 1) {
-    viaLabel = viaNumber === 1 ? `VIA 1: COZINHA/PREPARO` : `VIA 2: ENTREGA/MOTOBOY`;
+    viaLabel = viaNumber === 1 ? `VIA 1: COZINHA` : `VIA 2: ENTREGA`;
   }
   addBytes(0x1B, 0x45, 0x00); // Negrito OFF
   addLine(`*** ${viaLabel} ***`);
   addLine(divider('=', width));
 
   // --- DETALHES DO PEDIDO ---
-  addBytes(0x1B, 0x61, 0x00); // Alinhamento à Esquerda
+  addBytes(0x1B, 0x61, 0x00); // Esquerda
   addBytes(0x1B, 0x45, 0x01); // Negrito ON
   const orderNum = order.id.slice(-6).toUpperCase();
   addLine(formatCols2(`PEDIDO: #${orderNum}`, (order.type || 'B2C').toUpperCase(), width));
@@ -422,24 +385,19 @@ export function buildOrderEscPosBuffer(
         hour: '2-digit',
         minute: '2-digit',
       });
-  addLine(`Data/Hora: ${dateStr}`);
-  addLine(`Status: ${(order.status || '').toUpperCase()}`);
+  
+  // Condensa data e status na mesma linha quando possível
+  addLine(`Data: ${dateStr} [${(order.status || '').toUpperCase()}]`);
 
   // Motoboy / Entregador
   const driverUser = order.motoristaId && allUsers ? allUsers[order.motoristaId] : null;
   const driverName = order.motoristaNome || driverUser?.name || (order.motoristaId ? `Motoboy #${order.motoristaId.substring(0, 5)}` : null);
   const driverPhone = driverUser?.telefone || (driverUser as any)?.phone || '';
-  let driverLabel = 'Aguardando aceite';
+  let driverLabel = 'Aguardando';
   if (driverName) {
     driverLabel = driverPhone ? `${driverName} (${driverPhone})` : driverName;
   }
   addLine(`Motoboy: ${driverLabel}`);
-
-  if (order.distancia) {
-    addLine(`Distancia Estimada: ${order.distancia.toFixed(1)} km`);
-  }
-
-  addLine(divider('-', width));
 
   // --- DADOS DO CLIENTE & ENTREGA ---
   const isB2B = order.type === 'B2B';
@@ -458,33 +416,36 @@ export function buildOrderEscPosBuffer(
     || buyerUser?.telefone 
     || (buyerUser as any)?.phone 
     || buyerUser?.email 
-    || 'Nao Informado';
+    || '';
 
   const buyerAddress = order.deliveryAddress 
     || buyerUser?.endereco 
     || (buyerUser?.bairro ? `${buyerUser.bairro}, ${buyerUser.cidade || 'Belem'}` : '') 
-    || 'Retirada no Balcao / Local';
+    || 'Retirada no Balcao';
 
-  const deliveryRef = order.deliveryReference || (buyerUser as any)?.referencia || '';
-
-  addBytes(0x1B, 0x45, 0x01); // Negrito ON
-  addLine('--- DADOS DO CLIENTE ---');
-  addLine(`CLIENTE: ${buyerName}`);
-  addLine(`TEL: ${buyerPhone}`);
-  addBytes(0x1B, 0x45, 0x00); // Negrito OFF
-  addLine(`END: ${buyerAddress}`);
-  if (deliveryRef) {
-    addLine(`REF: ${deliveryRef}`);
+  // Sanitiza a referência para ignorar cálculos de depuração que ocupavam várias linhas
+  let deliveryRef = order.deliveryReference || (buyerUser as any)?.referencia || '';
+  if (deliveryRef.includes('Distancia estimada') || deliveryRef.includes('Valor Fixo da Moto')) {
+    deliveryRef = ''; // Descarta logs automáticos de frete da referência
   }
 
   addLine(divider('-', width));
+  addBytes(0x1B, 0x45, 0x01); // Negrito ON
+  addLine(`CLIENTE: ${buyerName}`);
+  addBytes(0x1B, 0x45, 0x00); // Negrito OFF
+  if (buyerPhone) {
+    addLine(`TEL: ${buyerPhone}`);
+  }
+  addLine(`END: ${buyerAddress}`);
+  if (deliveryRef) {
+    addLine(`REF: ${deliveryRef.substring(0, 32)}`);
+  }
 
   // --- ITENS DO PEDIDO ---
+  addLine(divider('-', width));
   addBytes(0x1B, 0x45, 0x01); // Negrito ON
-  addLine('--- ITENS DO PEDIDO ---');
   addLine(formatCols2('QTD ITEM', 'VALOR', width));
   addBytes(0x1B, 0x45, 0x00); // Negrito OFF
-  addLine(divider('-', width));
 
   let rawItems: { id: string; name: string; quantity: number; price: number }[] = [];
   if (order.items && order.items.length > 0) {
@@ -552,59 +513,47 @@ export function buildOrderEscPosBuffer(
 
   addLine(divider('-', width));
 
-  // --- VALORES E PAGAMENTO ---
-  addLine(formatCols2('Subtotal Itens:', `R$ ${itemsSubtotal.toFixed(2)}`, width));
-  addLine(formatCols2('Taxa Entrega:', clientDeliveryFee > 0 ? `R$ ${clientDeliveryFee.toFixed(2)}` : 'Gratis', width));
+  // --- VALORES E PAGAMENTO COMPACTOS ---
+  if (clientDeliveryFee > 0) {
+    addLine(formatCols2(`Itens: R$ ${itemsSubtotal.toFixed(2)}`, `Frete: R$ ${clientDeliveryFee.toFixed(2)}`, width));
+  }
   
   addBytes(0x1B, 0x45, 0x01); // Negrito ON
-  addLine(divider('-', width));
   addLine(formatCols2('TOTAL DO PEDIDO:', `R$ ${totalFinal.toFixed(2)}`, width));
-  addLine(divider('=', width));
-
   addBytes(0x1B, 0x45, 0x00); // Negrito OFF
-  addLine('Pagamento: PIX (Confirmado)');
-  addLine('Intermediacao: ASAAS IP S.A.');
+  addLine('Pagamento: PIX (Asaas IP S.A.)');
 
-  // --- PIN DE RETIRADA / BALCAO ---
+  // --- PIN DE RETIRADA / BALCÃO (Compacto e Direto) ---
   const pickupPin = order.pickupPin || (order as any).pickup_pin;
   if (pickupPin) {
-    addLine('');
+    addLine(divider('=', width));
     addBytes(0x1B, 0x61, 0x01); // Centralizado
-    addLine(divider('=', width));
     addBytes(0x1B, 0x45, 0x01); // Negrito ON
-    addLine('*** PIN DE RETIRADA (BALCAO) ***');
-    addBytes(0x1D, 0x21, 0x11); // Tamanho Duplo
-    addLine(`  ${pickupPin}  `);
-    addBytes(0x1D, 0x21, 0x00); // Tamanho Normal
-    addLine('Informe ao entregador na retirada');
+    addBytes(0x1D, 0x21, 0x01); // Altura Dupla
+    addLine(`PIN RETIRADA: ${pickupPin}`);
+    addBytes(0x1D, 0x21, 0x00); // Normal
+    addBytes(0x1B, 0x45, 0x00); // Negrito OFF
     addLine(divider('=', width));
-    addBytes(0x1B, 0x61, 0x00); // Esquerda
+  } else {
+    addLine(divider('=', width));
   }
 
-  // --- RODAPÉ OFICIAL ---
+  // --- RODAPÉ ENXUTO DE 1 LINHA ---
   addBytes(0x1B, 0x61, 0x01); // Centralizado
-  addLine('');
-  addLine('[ PAGAMENTO PROCESSADO VIA ASAAS ]');
-  addLine('Asaas Gestao Financeira Inst. de Pagamento S.A.');
-  addLine('--- AcaiFood Delivery Oficial ---');
-  addLine('www.acaifood.app.br');
+  addLine('AçaíFood Delivery • www.acaifood.app.br');
 
-  // Linhas de avanço de papel
+  // Avanço mínimo de papel
   for (let f = 0; f < feedCount; f++) {
     addBytes(0x0A);
   }
 
-  // Comando de corte de papel (se tiver guilhotina ou modelo 80mm)
   if (hasCutter) {
-    addBytes(0x1D, 0x56, 0x42, 0x00); // Partial cut (GS V 66 0)
+    addBytes(0x1D, 0x56, 0x42, 0x00); // Autocut
   }
 
   return new Uint8Array(bytes);
 }
 
-/**
- * Imprime um pedido diretamente via Bluetooth ESC/POS
- */
 export async function printOrderBluetooth(
   order: Order,
   storeName: string = 'Loja/Batedeira AçaíFood',
@@ -640,7 +589,7 @@ export async function printOrderBluetooth(
         return res;
       }
       if (via < copies) {
-        await new Promise(resolve => setTimeout(resolve, 350));
+        await new Promise(resolve => setTimeout(resolve, 250));
       }
     }
     return { success: true, message: 'Pedido impresso com sucesso via Bluetooth!' };
@@ -650,9 +599,6 @@ export async function printOrderBluetooth(
   }
 }
 
-/**
- * Imprime uma comanda de teste via Bluetooth
- */
 export async function printTestTicketBluetooth(
   storeName: string = 'Loja/Batedeira AçaíFood',
   paperWidth: '58mm' | '80mm' = '58mm',
@@ -689,11 +635,11 @@ export async function printTestTicketBluetooth(
       repasse: 53.00
     },
     createdAt: new Date().toISOString(),
-    pickupPin: '4829',
-    deliveryPin: '4829',
-    deliveryAddress: 'Av. Nazaré, 1050 - Apt 302, Belém/PA',
-    deliveryReference: 'Próximo à Basílica de Nazaré',
-    clienteNome: 'Gabriel (Teste Impressora Genérica)',
+    pickupPin: '6838',
+    deliveryPin: '6838',
+    deliveryAddress: 'Av. Nazaré, 1050, Belém/PA',
+    deliveryReference: 'Próximo à Basílica',
+    clienteNome: 'Gabriel (Teste Econômico)',
     clienteTelefone: '(91) 98877-6655',
     lojaNome: storeName
   };
