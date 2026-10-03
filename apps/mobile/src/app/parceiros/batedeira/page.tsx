@@ -39,6 +39,7 @@ import {
   savePrinterConfig,
   printOrderTicket,
   printTestTicket,
+  autoReconnectBluetoothPrinter,
   DEFAULT_PRINTER_CONFIG,
   PrinterConfig,
 } from "@/lib/thermalPrinter";
@@ -192,6 +193,9 @@ export default function BatedeiraDashboard() {
     if (typeof s.fetchCities === 'function') s.fetchCities();
     if (typeof s.fetchRates === 'function') s.fetchRates(true);
     s.startRealtime();
+
+    // Tenta reconectar automaticamente à impressora térmica Bluetooth salva
+    autoReconnectBluetoothPrinter();
 
     const interval = setInterval(() => {
       s.fetchAllUsers(true);

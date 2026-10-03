@@ -30,7 +30,8 @@ import {
   getConnectedBluetoothDeviceName, 
   connectBluetoothPrinter, 
   disconnectBluetoothPrinter,
-  subscribeBluetoothStatus
+  subscribeBluetoothStatus,
+  autoReconnectBluetoothPrinter
 } from '@/lib/bluetoothPrinter';
 
 interface ThermalPrinterModalProps {
@@ -56,6 +57,10 @@ export const ThermalPrinterModal: React.FC<ThermalPrinterModalProps> = ({
     if (typeof window !== 'undefined') {
       setBtSupported(isWebBluetoothSupported());
       setConfig(getPrinterConfig());
+    }
+
+    if (isOpen) {
+      autoReconnectBluetoothPrinter();
     }
 
     const unsubscribe = subscribeBluetoothStatus((connected, name) => {

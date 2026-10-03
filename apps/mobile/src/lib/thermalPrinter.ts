@@ -6,8 +6,24 @@ import {
   printTestTicketBluetooth,
   buildOrderEscPosBuffer,
   sendViaRawBT,
-  EscPosFormattingOptions
+  EscPosFormattingOptions,
+  autoReconnectBluetoothPrinter,
+  getConnectedBluetoothDeviceName,
+  connectBluetoothPrinter,
+  disconnectBluetoothPrinter,
+  subscribeBluetoothStatus,
+  isWebBluetoothSupported
 } from '@/lib/bluetoothPrinter';
+
+export {
+  autoReconnectBluetoothPrinter,
+  isBluetoothPrinterConnected,
+  getConnectedBluetoothDeviceName,
+  connectBluetoothPrinter,
+  disconnectBluetoothPrinter,
+  subscribeBluetoothStatus,
+  isWebBluetoothSupported
+};
 
 export type PrintType = 'PREPARO' | 'ENTREGA' | 'ENTREGA_ATUALIZADO';
 export type PrintTrigger = 'SYSTEM' | 'MANUAL';

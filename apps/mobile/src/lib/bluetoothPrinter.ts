@@ -212,12 +212,117 @@ export async function disconnectBluetoothPrinter(): Promise<void> {
   notifyBluetoothStatus(false);
 }
 
+let isReconnecting = false;
+
+/**
+ * Reconexão automática silenciosa para impressoras já pareadas previamente
+ * Usa a Web Bluetooth getDevices() API para restabelecer a conexão sem intervenção do usuário
+ */
+export async function autoReconnectBluetoothPrinter(): Promise<boolean> {
+  if (isBluetoothPrinterConnected()) return true;
+  if (!isWebBluetoothSupported() || typeof window === 'undefined') return false;
+  if (isReconnecting) return false;
+
+  const savedName = localStorage.getItem('acaifood_bt_printer_name');
+  const savedId = localStorage.getItem('acaifood_bt_printer_id');
+  if (!savedName && !savedId) return false;
+
+  isReconnecting = true;
+  try {
+    const navBt = (navigator as any).bluetooth;
+    if (!navBt || typeof navBt.getDevices !== 'function') {
+      isReconnecting = false;
+      return false;
+    }
+
+    const devices: any[] = await navBt.getDevices();
+    if (!devices || devices.length === 0) {
+      isReconnecting = false;
+      return false;
+    }
+
+    // Procura o dispositivo salvo pelo ID ou nome
+    const device = devices.find((d: any) => (savedId && d.id === savedId) || (savedName && d.name === savedName)) || devices[0];
+    if (!device) {
+      isReconnecting = false;
+      return false;
+    }
+
+    const deviceName = device.name || savedName || 'Impressora Bluetooth Térmica';
+
+    device.addEventListener('gattserverdisconnected', () => {
+      activeCharacteristic = null;
+      notifyBluetoothStatus(false, deviceName);
+    });
+
+    const server = await device.gatt.connect();
+    let foundCharacteristic: any = null;
+
+    for (const serviceUuid of KNOWN_PRINTER_SERVICES) {
+      try {
+        const service = await server.getPrimaryService(serviceUuid);
+        if (service) {
+          const characteristics = await service.getCharacteristics();
+          for (const char of characteristics) {
+            if (char.properties.write || char.properties.writeWithoutResponse) {
+              foundCharacteristic = char;
+              break;
+            }
+          }
+        }
+      } catch {}
+      if (foundCharacteristic) break;
+    }
+
+    if (!foundCharacteristic) {
+      try {
+        const services = await server.getPrimaryServices();
+        for (const service of services) {
+          try {
+            const characteristics = await service.getCharacteristics();
+            for (const char of characteristics) {
+              if (char.properties.write || char.properties.writeWithoutResponse) {
+                foundCharacteristic = char;
+                break;
+              }
+            }
+          } catch {}
+          if (foundCharacteristic) break;
+        }
+      } catch {}
+    }
+
+    if (!foundCharacteristic) {
+      if (server.connected) device.gatt.disconnect();
+      isReconnecting = false;
+      return false;
+    }
+
+    activeBluetoothDevice = device;
+    activeCharacteristic = foundCharacteristic;
+
+    localStorage.setItem('acaifood_bt_printer_name', deviceName);
+    localStorage.setItem('acaifood_bt_printer_id', device.id || '');
+
+    notifyBluetoothStatus(true, deviceName);
+    isReconnecting = false;
+    return true;
+  } catch (err) {
+    console.warn('[BluetoothPrinter] Reconexão automática:', err);
+    isReconnecting = false;
+    return false;
+  }
+}
+
 export async function sendEscPosToBluetooth(data: Uint8Array): Promise<BluetoothPrintResult> {
   if (!isBluetoothPrinterConnected()) {
-    return {
-      success: false,
-      error: 'Nenhuma impressora Bluetooth conectada.'
-    };
+    const reconnected = await autoReconnectBluetoothPrinter();
+    if (!reconnected || !isBluetoothPrinterConnected()) {
+      return {
+        success: false,
+        error: 'Nenhuma impressora Bluetooth conectada. Clique no botão da impressora para conectar.'
+      };
+    }
   }
 
   try {
