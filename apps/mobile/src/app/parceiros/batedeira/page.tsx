@@ -42,6 +42,7 @@ import {
   DEFAULT_PRINTER_CONFIG,
   PrinterConfig,
 } from "@/lib/thermalPrinter";
+import { ThermalPrinterModal } from "@/components/ThermalPrinterModal";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
@@ -2554,157 +2555,12 @@ export default function BatedeiraDashboard() {
         </div>
       )}
 
-      {/* Modal de Configuração de Impressora Térmica */}
-      {printerModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in fade-in zoom-in-95">
-            <div className="bg-purple-900 text-white p-5 flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-2">
-                <Printer className="text-purple-300" />
-                <h3 className="font-bold text-lg">🖨️ Impressora Térmica</h3>
-              </div>
-              <button onClick={() => setPrinterModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
-            </div>
-
-            <div className="p-6 space-y-5">
-              <div>
-                <label className="text-xs uppercase text-zinc-500 font-bold block mb-1">Modo de Impressão</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = { ...printerConfig, printMode: 'manual' as const };
-                      setPrinterConfig(updated);
-                      savePrinterConfig(updated);
-                    }}
-                    className={`p-3 rounded-lg border text-xs font-bold text-center transition ${
-                      printerConfig.printMode === 'manual'
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
-                    }`}
-                  >
-                    👆 Manual
-                    <p className="text-[9px] font-normal opacity-80 mt-1">Imprimir ao clicar no botão do pedido</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = { ...printerConfig, printMode: 'auto' as const };
-                      setPrinterConfig(updated);
-                      savePrinterConfig(updated);
-                    }}
-                    className={`p-3 rounded-lg border text-xs font-bold text-center transition ${
-                      printerConfig.printMode === 'auto'
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
-                    }`}
-                  >
-                    ⚡ Automático
-                    <p className="text-[9px] font-normal opacity-80 mt-1">Imprimir comanda ao receber/confirmar</p>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs uppercase text-zinc-500 font-bold block mb-1">Largura da Bobina / Papel</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = { ...printerConfig, paperWidth: '80mm' as const };
-                      setPrinterConfig(updated);
-                      savePrinterConfig(updated);
-                    }}
-                    className={`p-3 rounded-lg border text-xs font-bold text-center transition ${
-                      printerConfig.paperWidth === '80mm'
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
-                    }`}
-                  >
-                    📄 80mm (Padrão)
-                    <p className="text-[9px] font-normal opacity-80 mt-1">Elgin, Bematech, Epson, Daruma</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = { ...printerConfig, paperWidth: '58mm' as const };
-                      setPrinterConfig(updated);
-                      savePrinterConfig(updated);
-                    }}
-                    className={`p-3 rounded-lg border text-xs font-bold text-center transition ${
-                      printerConfig.paperWidth === '58mm'
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
-                    }`}
-                  >
-                    📜 58mm (Menor)
-                    <p className="text-[9px] font-normal opacity-80 mt-1">Mini impressoras / Bluetooth</p>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs uppercase text-zinc-500 font-bold block mb-1">Quantidade de Vias por Pedido</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = { ...printerConfig, copies: 1 as const };
-                      setPrinterConfig(updated);
-                      savePrinterConfig(updated);
-                    }}
-                    className={`p-2.5 rounded-lg border text-xs font-bold text-center transition ${
-                      printerConfig.copies === 1
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
-                    }`}
-                  >
-                    1 Via (Batedeira)
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = { ...printerConfig, copies: 2 as const };
-                      setPrinterConfig(updated);
-                      savePrinterConfig(updated);
-                    }}
-                    className={`p-2.5 rounded-lg border text-xs font-bold text-center transition ${
-                      printerConfig.copies === 2
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
-                    }`}
-                  >
-                    2 Vias (Cozinha + Entrega)
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => printTestTicket(currentUser?.name || 'Batedeira AçaíFood', printerConfig)}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm"
-                >
-                  🧪 Testar Impressão Agora
-                </button>
-              </div>
-            </div>
-
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end border-t border-zinc-200 dark:border-zinc-800">
-              <button
-                type="button"
-                onClick={() => setPrinterModalOpen(false)}
-                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs transition"
-              >
-                Salvar e Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal de Configuração de Impressora Térmica & Bluetooth */}
+      <ThermalPrinterModal
+        isOpen={printerModalOpen}
+        onClose={() => setPrinterModalOpen(false)}
+        storeName={currentUser?.name || 'Batedeira AçaíFood'}
+      />
       {/* Modal de Edição de Produto Extra */}
       {editingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">

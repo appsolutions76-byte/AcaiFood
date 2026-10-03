@@ -1,20 +1,45 @@
 import { Order, User } from '@/store/useAppStore';
 import { supabase } from '@/lib/supabase';
+import { 
+  isBluetoothPrinterConnected, 
+  printOrderBluetooth, 
+  printTestTicketBluetooth,
+  buildOrderEscPosBuffer,
+  sendViaRawBT,
+  EscPosFormattingOptions
+} from '@/lib/bluetoothPrinter';
 
 export type PrintType = 'PREPARO' | 'ENTREGA' | 'ENTREGA_ATUALIZADO';
 export type PrintTrigger = 'SYSTEM' | 'MANUAL';
+export type ConnectionType = 'bluetooth' | 'browser' | 'rawbt';
+export type PrinterProfile = 
+  | 'generic-58mm' 
+  | 'generic-80mm' 
+  | 'compact-58mm' 
+  | 'large-80mm' 
+  | 'custom';
 
 export interface PrinterConfig {
+  connectionType: ConnectionType;
   paperWidth: '58mm' | '80mm';
+  profile: PrinterProfile;
   printMode: 'manual' | 'auto'; // 'manual' = botão sob demanda, 'auto' = impressão automática em transições de status
   copies: 1 | 2;
+  customColumns?: number; // 32, 40, 42, 48
+  hasCutter?: boolean;
+  feedLines?: number;
   enabled: boolean;
 }
 
 export const DEFAULT_PRINTER_CONFIG: PrinterConfig = {
-  paperWidth: '80mm',
+  connectionType: 'bluetooth',
+  paperWidth: '58mm',
+  profile: 'generic-58mm',
   printMode: 'auto',
   copies: 1,
+  customColumns: 32,
+  hasCutter: false,
+  feedLines: 4,
   enabled: true,
 };
 
@@ -57,10 +82,31 @@ export async function logPrintAudit(orderId: string, printType: PrintType, trigg
   }
 }
 
+export function resolveFormattingOptions(config: PrinterConfig): EscPosFormattingOptions {
+  if (config.profile === 'generic-58mm') {
+    return { columns: 32, hasCutter: false, feedLines: 4, condensedFont: false };
+  }
+  if (config.profile === 'compact-58mm') {
+    return { columns: 42, hasCutter: false, feedLines: 4, condensedFont: true };
+  }
+  if (config.profile === 'generic-80mm') {
+    return { columns: 48, hasCutter: true, feedLines: 4, condensedFont: false };
+  }
+  if (config.profile === 'large-80mm') {
+    return { columns: 42, hasCutter: true, feedLines: 4, condensedFont: false };
+  }
+  return {
+    columns: config.customColumns || (config.paperWidth === '58mm' ? 32 : 48),
+    hasCutter: config.hasCutter ?? (config.paperWidth === '80mm'),
+    feedLines: config.feedLines ?? 4,
+    condensedFont: (config.customColumns || 32) > 40 && config.paperWidth === '58mm'
+  };
+}
+
 export function generateSingleTicketHTML(
   order: Order,
   storeName: string = 'Loja/Batedeira AçaíFood',
-  paperWidth: '58mm' | '80mm' = '80mm',
+  paperWidth: '58mm' | '80mm' = '58mm',
   viaNumber: number = 1,
   totalVias: number = 1,
   allUsers?: Record<string, User> | null,
@@ -87,7 +133,6 @@ export function generateSingleTicketHTML(
       });
 
   const isB2B = order.type === 'B2B';
-  const isColeta = order.type === 'COLETA';
 
   // Itens e Cálculo do Subtotal dos Produtos
   let rawItems: { id: string; name: string; quantity: number; price: number }[] = [];
@@ -145,7 +190,7 @@ export function generateSingleTicketHTML(
     itemsSubtotal = Number(order.valor);
   }
 
-  // 2. Taxa de Entrega / Frete & Subsídio da Loja (Leitura autoritativa dos campos do pedido)
+  // 2. Taxa de Entrega / Frete & Subsídio da Loja
   const totalDeliveryFee = Number(
     order.taxas?.entregaTotal ?? 
     order.taxas?.entregaCliente ?? 
@@ -170,6 +215,7 @@ export function generateSingleTicketHTML(
   const formattedStoreDelivery = storeDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formattedClientDelivery = clientDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formattedTotal = totalFinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
   // Resolução do comprador (Loja/Batedeira no B2B, Cliente no B2C)
   const buyerUser = clientUser 
     || (allUsers && (order as any).buyerId ? allUsers[(order as any).buyerId] : undefined)
@@ -207,7 +253,7 @@ export function generateSingleTicketHTML(
     motoboyStatusLabel = `${driverName} (${driverPhone})`;
   }
 
-  // Título da Via conforme o Tipo de Cupom (Regras Parte A e B)
+  // Título da Via conforme o Tipo de Cupom
   let ticketHeaderTitle = '*** CUPOM DE PREPARO ***';
   if (printType === 'ENTREGA') {
     ticketHeaderTitle = '*** CUPOM DE ENTREGA ***';
@@ -366,7 +412,13 @@ export function generateSingleTicketHTML(
 
 const recentPrints = new Set<string>();
 
-export function printOrderTicket(
+/**
+ * Dispara a impressão do pedido de forma híbrida e universal:
+ * 1. Bluetooth Direto (ESC/POS)
+ * 2. RawBT App (Android)
+ * 3. Driver do Sistema / Navegador (HTML/CSS)
+ */
+export async function printOrderTicket(
   order: Order,
   storeName: string = 'Loja/Batedeira AçaíFood',
   customConfig?: PrinterConfig,
@@ -374,13 +426,12 @@ export function printOrderTicket(
   clientUser?: User | null,
   printType: PrintType = 'PREPARO',
   triggeredBy: PrintTrigger = 'MANUAL'
-): void {
+): Promise<void> {
   if (typeof window === 'undefined') return;
 
   const config = customConfig || getPrinterConfig();
   if (!config.enabled) return;
 
-  // Evita disparos repetidos ou concorrentes para o mesmo pedido em sistema automático
   const dedupeKey = `${order.id}-${printType}`;
   if (triggeredBy === 'SYSTEM') {
     if (recentPrints.has(dedupeKey)) {
@@ -392,8 +443,53 @@ export function printOrderTicket(
     }, 15000);
   }
 
-  const copies = Math.max(1, Math.min(2, config.copies || 1));
+  const copies = Math.max(1, Math.min(2, config.copies || 1)) as 1 | 2;
+  const formattingOptions = resolveFormattingOptions(config);
 
+  // 1. Modo RawBT (App Android)
+  if (config.connectionType === 'rawbt') {
+    for (let via = 1; via <= copies; via++) {
+      const buffer = buildOrderEscPosBuffer(
+        order,
+        storeName,
+        config.paperWidth,
+        via,
+        copies,
+        allUsers,
+        clientUser,
+        printType,
+        formattingOptions
+      );
+      sendViaRawBT(buffer);
+    }
+    logPrintAudit(order.id, printType, triggeredBy, true);
+    return;
+  }
+
+  // 2. Modo Bluetooth Direto (ESC/POS)
+  if (isBluetoothPrinterConnected() && config.connectionType !== 'browser') {
+    try {
+      const res = await printOrderBluetooth(
+        order,
+        storeName,
+        config.paperWidth,
+        copies,
+        allUsers,
+        clientUser,
+        printType,
+        formattingOptions
+      );
+      logPrintAudit(order.id, printType, triggeredBy, res.success);
+      if (res.success) {
+        return;
+      }
+      console.warn('Fallback para impressão do navegador devido a aviso no Bluetooth:', res.error);
+    } catch (e) {
+      console.error('Erro na impressão Bluetooth direta, recorrendo ao navegador:', e);
+    }
+  }
+
+  // 3. Modo Navegador / Sistema via CSS térmico
   let container = document.getElementById('thermal-print-container');
   if (!container) {
     container = document.createElement('div');
@@ -410,24 +506,74 @@ export function printOrderTicket(
   }
 
   container.innerHTML = fullHTML;
-
-  // Registrar auditoria no Supabase sem bloquear a impressão
   logPrintAudit(order.id, printType, triggeredBy, true);
 
   setTimeout(() => {
     try {
       window.print();
     } catch (e) {
-      console.error('Erro ao disparar impressão:', e);
+      console.error('Erro ao disparar impressão do navegador:', e);
       logPrintAudit(order.id, printType, triggeredBy, false);
     }
   }, 150);
 }
 
-export function printTestTicket(
+export async function printTestTicket(
   storeName: string = 'Loja/Batedeira AçaíFood',
   config?: PrinterConfig
-): void {
+): Promise<{ success: boolean; message?: string }> {
+  const activeConfig = config || getPrinterConfig();
+  const formattingOptions = resolveFormattingOptions(activeConfig);
+
+  if (activeConfig.connectionType === 'rawbt') {
+    const testOrder: Order = {
+      id: `TEST-${Math.floor(1000 + Math.random() * 9000)}`,
+      type: 'B2C',
+      title: 'Açaí 500ml Grosso Especial',
+      quantity: 2,
+      items: [
+        { id: '1', name: 'Açaí Grosso 500ml', quantity: 2, price: 25.00 },
+        { id: '2', name: 'Adicional: Leite em Pó', quantity: 2, price: 3.00 },
+        { id: '3', name: 'Adicional: Bananas fatiadas', quantity: 1, price: 2.00 }
+      ],
+      status: 'PREPARING' as any,
+      criadoPor: 'cliente_teste',
+      origemId: 'loja_teste',
+      destinoId: 'cliente_teste',
+      distancia: 2.5,
+      confirmacao: { entregador: false, recebedor: false },
+      motoristaId: null,
+      valor: 58.00,
+      taxas: {
+        entregaTotal: 5.00,
+        entregaMotorista: 4.00,
+        entregaCliente: 5.00,
+        entregaLoja: 0,
+        entregaFornecedor: 0,
+        plataformaVenda: 2.00,
+        plataformaEntrega: 1.00,
+        plataformaTotal: 3.00,
+        repasse: 53.00
+      },
+      createdAt: new Date().toISOString(),
+      pickupPin: '4829',
+      deliveryPin: '4829',
+      deliveryAddress: 'Av. Nazaré, 1050 - Apt 302, Belém/PA',
+      deliveryReference: 'Próximo à Basílica de Nazaré',
+      clienteNome: 'Gabriel (Teste RawBT)',
+      clienteTelefone: '(91) 98877-6655',
+      lojaNome: storeName
+    };
+    const buffer = buildOrderEscPosBuffer(testOrder, storeName, activeConfig.paperWidth, 1, 1, null, null, 'PREPARO', formattingOptions);
+    sendViaRawBT(buffer);
+    return { success: true, message: 'Enviado para o aplicativo RawBT.' };
+  }
+
+  if (isBluetoothPrinterConnected() && activeConfig.connectionType !== 'browser') {
+    const res = await printTestTicketBluetooth(storeName, activeConfig.paperWidth, activeConfig.copies, formattingOptions);
+    return res;
+  }
+
   const testOrder: Order = {
     id: `TEST-${Math.floor(1000 + Math.random() * 9000)}`,
     type: 'B2C',
@@ -458,13 +604,15 @@ export function printTestTicket(
       repasse: 53.00
     },
     createdAt: new Date().toISOString(),
+    pickupPin: '4829',
     deliveryPin: '4829',
     deliveryAddress: 'Av. Nazaré, 1050 - Apt 302, Belém/PA',
     deliveryReference: 'Próximo à Basílica de Nazaré',
-    clienteNome: 'Gabriel (Teste Impressora)',
+    clienteNome: 'Gabriel (Teste Universal)',
     clienteTelefone: '(91) 98877-6655',
     lojaNome: storeName
   };
 
-  printOrderTicket(testOrder, storeName, config, null, null, 'PREPARO', 'MANUAL');
+  printOrderTicket(testOrder, storeName, activeConfig, null, null, 'PREPARO', 'MANUAL');
+  return { success: true, message: 'Janela de impressão aberta.' };
 }
