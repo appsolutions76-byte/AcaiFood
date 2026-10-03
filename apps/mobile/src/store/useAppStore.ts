@@ -3033,10 +3033,26 @@ export const useAppStore = create<AppState>()(
 
              if (isDriverRole) {
                try {
-                 const { data: radarData } = await supabase.rpc('get_driver_radar');
-                 if (Array.isArray(radarData) && radarData.length > 0) {
-                   const radarOrders: any[] = radarData.map((item: any) => {
-                     const isReady = item.status === 'READY' || item.status === 'SEARCHING_OPERATOR' || item.status === 'PREPARING' || item.status === 'PAID';
+                 const { data: radarData, error: radarErr } = await supabase.rpc('get_driver_radar');
+                 let finalRadarList = radarData;
+
+                 if (radarErr || !Array.isArray(finalRadarList) || finalRadarList.length === 0) {
+                   const { data: directRadar } = await supabase
+                     .from('orders')
+                     .select('id, order_type, status, delivery_distance_km, driver_payout_amount, delivery_bairro, delivery_lat, delivery_lng, created_at')
+                     .is('driver_id', null)
+                     .in('status', ['READY', 'SEARCHING_OPERATOR', 'PAID', 'PREPARING', 'ready', 'paid', 'preparing'])
+                     .eq('is_hidden', false)
+                     .order('created_at', { ascending: false })
+                     .limit(50);
+                   if (Array.isArray(directRadar) && directRadar.length > 0) {
+                     finalRadarList = directRadar;
+                   }
+                 }
+
+                 if (Array.isArray(finalRadarList) && finalRadarList.length > 0) {
+                   const radarOrders: any[] = finalRadarList.map((item: any) => {
+                     const isReady = item.status === 'READY' || item.status === 'SEARCHING_OPERATOR' || item.status === 'PREPARING' || item.status === 'PAID' || item.status === 'ready' || item.status === 'paid' || item.status === 'preparing';
                      return {
                        id: item.id,
                        title: item.order_type === 'COLETA' ? 'Coleta de Caçamba' : (item.order_type === 'B2B' ? 'Carga B2B' : 'Corrida B2C'),

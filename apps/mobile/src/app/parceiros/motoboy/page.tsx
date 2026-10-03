@@ -58,10 +58,20 @@ export default function MotoboyDashboard() {
     s.startRealtime();
   }, []);
 
+  // Polling contínuo do radar de entregas a cada 3.5 segundos para garantir que chamadas toquem e apareçam instantaneamente
   useEffect(() => {
-    if (!currentUser?.id) return;
+    if (!mounted || !currentUser?.id || currentUser.status === 'paused') return;
     store.fetchOrders(currentUser.id, true);
-  }, [currentUser?.id]);
+
+    const intervalId = setInterval(() => {
+      const s = useAppStore.getState();
+      if (s.currentUser?.id && s.currentUser.status !== 'paused') {
+        s.fetchOrders(s.currentUser.id, false);
+      }
+    }, 3500);
+
+    return () => clearInterval(intervalId);
+  }, [mounted, currentUser?.id, currentUser?.status]);
 
   // Captura contínua do GPS em tempo real quando Online
   useEffect(() => {
@@ -130,7 +140,8 @@ export default function MotoboyDashboard() {
 
   const corridasDisponiveis = (store.orders || []).filter((o: any) => {
     if (!o) return false;
-    const isReady = (o.status === 'pronto' || (o.status as string) === 'READY' || (o.status as string) === 'SEARCHING_OPERATOR') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
+    const st = String(o.status || '').toLowerCase().trim();
+    const isReady = (st === 'pronto' || st === 'ready' || st === 'searching_operator' || st === 'pendente' || st === 'paid' || st === 'preparo' || st === 'preparing') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
     if (!isReady) return false;
     return true;
   });

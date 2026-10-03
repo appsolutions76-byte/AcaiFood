@@ -57,6 +57,21 @@ export default function CaminhaoDashboard() {
     s.startRealtime();
   }, []);
 
+  // Polling contínuo do radar de entregas a cada 3.5 segundos para garantir que chamadas toquem e apareçam instantaneamente
+  useEffect(() => {
+    if (!mounted || !currentUser?.id || currentUser.status === 'paused') return;
+    store.fetchOrders(currentUser.id, true);
+
+    const intervalId = setInterval(() => {
+      const s = useAppStore.getState();
+      if (s.currentUser?.id && s.currentUser.status !== 'paused') {
+        s.fetchOrders(s.currentUser.id, false);
+      }
+    }, 3500);
+
+    return () => clearInterval(intervalId);
+  }, [mounted, currentUser?.id, currentUser?.status]);
+
   // Captura contínua do GPS em tempo real quando Online
   useEffect(() => {
     if (!mounted || !currentUser || currentUser.status === 'paused' || typeof window === 'undefined' || !navigator.geolocation) return;
