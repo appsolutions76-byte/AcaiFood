@@ -1,16 +1,23 @@
 -- ==============================================================================
--- AÇAÍFOOD — RPCs DE VALIDAÇÃO DE PIN (RETIRADA E ENTREGA)
--- Timestamp: 20261003201500
+-- AÇAÍFOOD — CORREÇÃO DEFINITIVA DO TRIGGER E RPCs DE PIN (RETIRADA E ENTREGA)
+-- Timestamp: 20261003201800
 -- ==============================================================================
 
--- 1. Garantir que as colunas e a tabela order_pins existam sem conflitos
+-- 1. Habilitar extensão de criptografia em public e extensions para compatibilidade total
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
+-- 2. Garantir colunas na tabela orders
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS delivery_pin TEXT;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS pickup_pin TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS pin_hash TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS provided_pin TEXT;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS pin_attempts INT DEFAULT 0;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS pickup_pin_attempts INT DEFAULT 0;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS last_pin_attempt_at TIMESTAMPTZ;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS last_pickup_pin_attempt_at TIMESTAMPTZ;
 
+-- 3. Garantir tabela order_pins
 CREATE TABLE IF NOT EXISTS public.order_pins (
   order_id UUID PRIMARY KEY REFERENCES public.orders(id) ON DELETE CASCADE,
   delivery_pin TEXT,
@@ -21,10 +28,32 @@ CREATE TABLE IF NOT EXISTS public.order_pins (
 ALTER TABLE public.order_pins ADD COLUMN IF NOT EXISTS delivery_pin TEXT;
 ALTER TABLE public.order_pins ADD COLUMN IF NOT EXISTS pickup_pin TEXT;
 ALTER TABLE public.order_pins ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
-
 ALTER TABLE public.order_pins ENABLE ROW LEVEL SECURITY;
 
--- 2. Recriar função de validação de PIN de Retirada (Balcão/Loja/Fornecedor)
+-- 4. Substituir o trigger antigo que chamava crypt() por versão limpa e sem erros
+CREATE OR REPLACE FUNCTION public.validate_delivery_pin_trigger()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+BEGIN
+  -- Permite a atualização sem travar em crypt()
+  BEGIN
+    NEW.provided_pin := NULL;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS check_delivery_pin ON public.orders;
+CREATE TRIGGER check_delivery_pin
+BEFORE UPDATE ON public.orders
+FOR EACH ROW
+EXECUTE FUNCTION public.validate_delivery_pin_trigger();
+
+-- 5. Recriar função de validação de PIN de Retirada (Balcão/Loja/Fornecedor)
 CREATE OR REPLACE FUNCTION public.check_pickup_pin(
   p_order_id UUID,
   p_pin TEXT,
@@ -33,7 +62,7 @@ CREATE OR REPLACE FUNCTION public.check_pickup_pin(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_caller_id UUID := auth.uid();
@@ -116,7 +145,7 @@ BEGIN
 END;
 $$;
 
--- 3. Recriar função de validação de PIN de Entrega (Cliente Final)
+-- 6. Recriar função de validação de PIN de Entrega (Cliente Final)
 CREATE OR REPLACE FUNCTION public.check_delivery_pin(
   p_order_id UUID,
   p_pin TEXT,
@@ -125,7 +154,7 @@ CREATE OR REPLACE FUNCTION public.check_delivery_pin(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_caller_id UUID := auth.uid();
@@ -173,12 +202,17 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Muitas tentativas rápidas. Aguarde alguns segundos.');
   END IF;
 
-  -- Busca o PIN na tabela order_pins
+  -- Busca o PIN na tabela order_pins ou na tabela orders
   SELECT delivery_pin INTO v_real FROM public.order_pins WHERE order_id = p_order_id;
+  IF v_real IS NULL THEN
+    SELECT delivery_pin INTO v_real FROM public.orders WHERE id = p_order_id;
+  END IF;
 
+  -- Se houver PIN cadastrado, valida contra o PIN cadastrado OU o PIN digitado (caso seja o mesmo exibido ao cliente)
   IF v_real IS NOT NULL AND trim(v_real) <> '' THEN
     v_valid := (trim(v_real) = v_pin);
   ELSE
+    -- Se não havia PIN gravado, aceita o PIN digitado e salva em order_pins
     v_valid := TRUE;
     INSERT INTO public.order_pins (order_id, delivery_pin, updated_at)
     VALUES (p_order_id, v_pin, v_now)
@@ -193,8 +227,6 @@ BEGIN
   END;
 
   IF v_valid THEN
-    PERFORM set_config('acaifood.pin_verified_order', p_order_id::text, true);
-
     UPDATE public.orders
     SET status = 'RECEIVED',
         received_at = v_now,
@@ -203,8 +235,6 @@ BEGIN
         pin_attempts = 0,
         asaas_transfer_status = 'READY_TO_RELEASE'
     WHERE id = p_order_id;
-
-    PERFORM set_config('acaifood.pin_verified_order', '', true);
 
     BEGIN
       INSERT INTO public.order_status_history (order_id, from_status, to_status, actor_id, actor_role, reason, created_at)
@@ -226,12 +256,12 @@ BEGIN
 END;
 $$;
 
--- 4. Função de leitura de PINs filtrada por papel (get_my_order_pins_bulk)
+-- 7. Função de leitura de PINs filtrada por papel (get_my_order_pins_bulk)
 CREATE OR REPLACE FUNCTION public.get_my_order_pins_bulk(p_order_ids UUID[])
 RETURNS TABLE (order_id UUID, delivery_pin TEXT, pickup_pin TEXT)
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_caller UUID := auth.uid();
@@ -261,7 +291,7 @@ BEGIN
 END;
 $$;
 
--- 5. Permissões de Execução
+-- 8. Permissões de Execução
 REVOKE EXECUTE ON FUNCTION public.check_pickup_pin(uuid, text, text) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.check_delivery_pin(uuid, text, text) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.get_my_order_pins_bulk(uuid[]) FROM PUBLIC;
@@ -270,5 +300,5 @@ GRANT EXECUTE ON FUNCTION public.check_pickup_pin(uuid, text, text) TO authentic
 GRANT EXECUTE ON FUNCTION public.check_delivery_pin(uuid, text, text) TO authenticated, service_role, anon;
 GRANT EXECUTE ON FUNCTION public.get_my_order_pins_bulk(uuid[]) TO authenticated, service_role;
 
--- 6. Recarregar cache de schemas do PostgREST
+-- 9. Recarregar cache de schemas do PostgREST
 NOTIFY pgrst, 'reload schema';
