@@ -205,11 +205,11 @@ export function PartnerDashboardLayout({
                   {onOpenPrinter && (
                     <button 
                       onClick={onOpenPrinter} 
-                      className="bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 dark:hover:bg-purple-900/80 text-purple-900 dark:text-white border border-purple-300 dark:border-purple-700/60 font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm shrink-0"
-                      title="Configurar Impressora Térmica"
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold px-3 py-1.5 sm:py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-md shrink-0 ring-2 ring-purple-400/40"
+                      title="Configurar e Parear Impressora Bluetooth"
                     >
-                      <Printer size={13} className="text-purple-600 dark:text-purple-300" />
-                      <span className="font-bold">Impressora</span>
+                      <Printer size={15} className="text-white shrink-0" />
+                      <span>🖨️ Impressora</span>
                     </button>
                   )}
 
