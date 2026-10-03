@@ -47,14 +47,23 @@ export async function POST(request: Request) {
 
     // 1. Se orderId foi passado e é válido, tentar buscar pedido existente
     if (orderId && typeof orderId === 'string' && orderId.length >= 10 && !orderId.startsWith('PED-')) {
-      const { data: existingOrder } = await supabase
+      const resExisting = await supabase
         .from('orders')
         .select('id, status, buyer_id, seller_storefront_id, order_type, products_subtotal, delivery_distance_km, asaas_payment_id, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro, seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount, pricing_snapshot')
         .eq('id', orderId)
         .maybeSingle();
 
-      if (existingOrder) {
-        order = existingOrder;
+      if (resExisting.data) {
+        order = resExisting.data;
+      } else if (resExisting.error) {
+        const resLegacy = await supabase
+          .from('orders')
+          .select('id, status, buyer_id, seller_storefront_id, order_type, products_subtotal, delivery_distance_km, asaas_payment_id, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro')
+          .eq('id', orderId)
+          .maybeSingle();
+        if (resLegacy.data) {
+          order = resLegacy.data;
+        }
       }
     }
 
@@ -187,17 +196,39 @@ export async function POST(request: Request) {
 
       const fullPayload = { ...basePayload, pickup_pin: pickupPin };
       const ORDER_RETURN_COLS = 'id, buyer_id, seller_storefront_id, status, order_type, products_subtotal, delivery_distance_km, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro, seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount, pricing_snapshot, created_at';
+      const ORDER_RETURN_COLS_LEGACY = 'id, buyer_id, seller_storefront_id, status, order_type, products_subtotal, delivery_distance_km, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro, created_at';
 
+      // 1. Tentar inserção completa com snapshot e pickup_pin
       const resFull = await supabase.from('orders').insert(fullPayload).select(ORDER_RETURN_COLS).single();
       if (resFull.data && !resFull.error) {
         newOrder = resFull.data;
       } else {
-        // Fallback resiliente: se o banco de produção não tiver a coluna pickup_pin no cache, grava com basePayload
+        // 2. Fallback: tentar sem pickup_pin mas com snapshot
         const resBase = await supabase.from('orders').insert(basePayload).select(ORDER_RETURN_COLS).single();
         if (resBase.data && !resBase.error) {
           newOrder = resBase.data;
         } else {
-          createOrderErr = resBase.error || resFull.error;
+          // 3. Fallback resiliente: se o banco ainda não tiver as colunas de snapshot (ex: asaas_fee_amount)
+          const legacyPayload: any = {
+            buyer_id: validBuyerId,
+            seller_storefront_id: sellerStorefrontId,
+            order_type: orderType,
+            status: 'PENDING',
+            products_subtotal: Number(productsSubtotal || 0),
+            delivery_distance_km: effectiveDbDistance,
+            delivery_pin: deliveryPin,
+            delivery_address: deliveryInfo?.address || null,
+            delivery_lat: deliveryInfo?.lat ? Number(deliveryInfo.lat) : null,
+            delivery_lng: deliveryInfo?.lng ? Number(deliveryInfo.lng) : null,
+            delivery_reference: effectiveReference,
+            delivery_bairro: deliveryInfo?.bairro || auth.user?.bairro || null
+          };
+          const resLegacy = await supabase.from('orders').insert(legacyPayload).select(ORDER_RETURN_COLS_LEGACY).single();
+          if (resLegacy.data && !resLegacy.error) {
+            newOrder = resLegacy.data;
+          } else {
+            createOrderErr = resLegacy.error || resBase.error || resFull.error;
+          }
         }
       }
 
@@ -460,9 +491,14 @@ export async function POST(request: Request) {
       pricing_snapshot: pricing
     };
     const updRes = await supabase.from('orders').update(updPayload).eq('id', order.id);
-    if (updRes.error && updRes.error.message?.includes('charged_amount')) {
-      delete updPayload.charged_amount;
-      await supabase.from('orders').update(updPayload).eq('id', order.id);
+    if (updRes.error) {
+      // Fallback seguro: se falhar por colunas inexistentes, atualizar apenas os dados de pagamento do Asaas
+      console.warn("Aviso ao salvar snapshot no update, tentando payload básico de pagamento:", updRes.error.message);
+      const safeUpd: any = {
+        asaas_payment_id: paymentData.id,
+        asaas_charge_status: paymentData.status
+      };
+      await supabase.from('orders').update(safeUpd).eq('id', order.id);
     }
 
     // PIN de entrega lido de order_pins (fonte única). O PIN de retirada é da loja e não vai ao comprador.

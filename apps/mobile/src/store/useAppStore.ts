@@ -2746,7 +2746,16 @@ export const useAppStore = create<AppState>()(
 
           if (error || !dbOrders) {
              console.warn("Primary fetchOrders query notice (executing safe fallback):", error);
-             let fallbackQuery = supabase.from('orders').select(ORDER_SELECT_FIELDS);
+             const ORDER_SELECT_FIELDS_LEGACY = `
+                id, order_type, status, products_subtotal, delivery_distance_km, 
+                applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
+                buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
+                accepted_at, ready_at, received_at, asaas_payment_id,
+                payout_seller_done, payout_driver_done, seller_amount, driver_amount, total_delivery_fee,
+                delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro,
+                order_items ( id, product_name, quantity, unit_price_cents, total_price_cents )
+             `;
+             let fallbackQuery = supabase.from('orders').select(ORDER_SELECT_FIELDS_LEGACY);
              if (roleLower === 'loja' || roleLower === 'partner' || roleLower === 'batedeira' || roleLower === 'partner_admin') {
                 const { data: sfList } = await supabase.from('storefronts').select('id').eq('partner_id', currentUser.id);
                 const sfIds = (sfList || []).map((s: any) => s.id);
