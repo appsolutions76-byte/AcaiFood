@@ -141,7 +141,7 @@ export default function MotoboyDashboard() {
   const corridasDisponiveis = (store.orders || []).filter((o: any) => {
     if (!o) return false;
     const st = String(o.status || '').toLowerCase().trim();
-    const isReady = (st === 'pronto' || st === 'ready' || st === 'searching_operator' || st === 'pendente' || st === 'paid' || st === 'preparo' || st === 'preparing') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
+    const isReady = (st === 'pronto' || st === 'ready' || st === 'searching_operator') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
     if (!isReady) return false;
     return true;
   });

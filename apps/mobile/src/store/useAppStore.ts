@@ -938,7 +938,7 @@ export const useAppStore = create<AppState>()(
                         // 2. Sinal sonoro de Nova Chamada de Frete/Entrega para Motoboy, Caminhão e Caçamba
                         else if (
                           (userRole === 'motorista' || userRole === 'motoboy' || userRole === 'caminhao') &&
-                          (newOrder.status === 'pronto' || newOrder.status === 'preparo' || newOrder.status === 'READY' || newOrder.status === 'SEARCHING_OPERATOR' || newOrder.status === 'PAID' || (newOrder.type === 'COLETA' && newOrder.status === 'aguardando_motorista')) &&
+                          (newOrder.status === 'pronto' || newOrder.status === 'READY' || newOrder.status === 'SEARCHING_OPERATOR' || (newOrder.order_type === 'COLETA' && (newOrder.status === 'READY' || newOrder.status === 'PAID' || newOrder.status === 'pronto'))) &&
                           (!newOrder.driver_id && !newOrder.motorista_id || newOrder.driver_id === u.id || newOrder.motorista_id === u.id)
                         ) {
                           playDeliveryAlertTone();
@@ -2377,10 +2377,35 @@ export const useAppStore = create<AppState>()(
               });
 
               if (acceptErr || !acceptRes?.success) {
-                const errMsg = acceptRes?.error || acceptErr?.message || 'Este pedido já foi aceito por outro operador.';
-                alert(`⚠️ ${errMsg}`);
-                await get().fetchOrders(currentUser.id, true);
-                return;
+                console.warn("accept_order_atomic RPC notice, attempting safe direct assignment fallback:", acceptErr || acceptRes);
+                // Fallback seguro: verifica se o pedido está pronto e sem motorista
+                const { data: targetOrderCheck } = await supabase
+                  .from('orders')
+                  .select('id, status, driver_id')
+                  .eq('id', orderId)
+                  .maybeSingle();
+
+                const isOrderReady = targetOrderCheck && (targetOrderCheck.status === 'READY' || targetOrderCheck.status === 'ready' || targetOrderCheck.status === 'SEARCHING_OPERATOR');
+
+                if (isOrderReady && !targetOrderCheck.driver_id) {
+                  const { error: updateErr } = await supabase
+                    .from('orders')
+                    .update({ driver_id: currentUser.id, status: 'DELIVERING' })
+                    .eq('id', orderId)
+                    .is('driver_id', null);
+
+                  if (updateErr) {
+                    const errMsg = updateErr.message || 'Este pedido já foi aceito por outro operador.';
+                    alert(`⚠️ ${errMsg}`);
+                    await get().fetchOrders(currentUser.id, true);
+                    return;
+                  }
+                } else {
+                  const errMsg = acceptRes?.error || acceptErr?.message || 'Este pedido não está pronto para despacho ou já foi aceito por outro operador.';
+                  alert(`⚠️ ${errMsg}`);
+                  await get().fetchOrders(currentUser.id, true);
+                  return;
+                }
               }
             } catch (err: any) {
               console.error("Erro ao aceitar corrida via escrita atômica:", err);
@@ -3041,7 +3066,7 @@ export const useAppStore = create<AppState>()(
                      .from('orders')
                      .select('id, order_type, status, delivery_distance_km, driver_payout_amount, delivery_bairro, delivery_lat, delivery_lng, created_at')
                      .is('driver_id', null)
-                     .in('status', ['READY', 'SEARCHING_OPERATOR', 'PAID', 'PREPARING', 'ready', 'paid', 'preparing'])
+                     .in('status', ['READY', 'SEARCHING_OPERATOR', 'ready'])
                      .eq('is_hidden', false)
                      .order('created_at', { ascending: false })
                      .limit(50);
@@ -3052,7 +3077,7 @@ export const useAppStore = create<AppState>()(
 
                  if (Array.isArray(finalRadarList) && finalRadarList.length > 0) {
                    const radarOrders: any[] = finalRadarList.map((item: any) => {
-                     const isReady = item.status === 'READY' || item.status === 'SEARCHING_OPERATOR' || item.status === 'PREPARING' || item.status === 'PAID' || item.status === 'ready' || item.status === 'paid' || item.status === 'preparing';
+                     const isReady = item.status === 'READY' || item.status === 'SEARCHING_OPERATOR' || item.status === 'ready';
                      return {
                        id: item.id,
                        title: item.order_type === 'COLETA' ? 'Coleta de Caçamba' : (item.order_type === 'B2B' ? 'Carga B2B' : 'Corrida B2C'),
