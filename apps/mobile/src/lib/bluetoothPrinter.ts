@@ -45,6 +45,7 @@ export interface EscPosFormattingOptions {
   feedLines?: number; // linhas de avanço final (padrão econômico: 2)
   condensedFont?: boolean; // Fonte B compacta
   paperSavingMode?: 'ultra' | 'standard' | 'spacious';
+  ticketLayout?: 'compact' | 'detailed'; // Layout ultra compacto ou completo com distância e taxas
   fontSize?: 'compact' | 'normal' | 'large';
   codePage?: 'ASCII' | 'CP860' | 'CP850';
 }
@@ -305,6 +306,7 @@ export function buildOrderEscPosBuffer(
   options?: EscPosFormattingOptions
 ): Uint8Array {
   const savingMode = options?.paperSavingMode || 'standard';
+  const layout = options?.ticketLayout || (savingMode === 'ultra' ? 'compact' : 'detailed');
   const isUltra = savingMode === 'ultra';
   const isSpacious = savingMode === 'spacious';
 
@@ -330,11 +332,11 @@ export function buildOrderEscPosBuffer(
   // 1. Inicializa Impressora (ESC @)
   addBytes(0x1B, 0x40);
 
-  // 2. Entrelinhas Reduzido para Economia de Papel (ESC 3 20)
-  if (isUltra) {
+  // 2. Entrelinhas Reduzido para Economia de Papel (ESC 3 20/24)
+  if (isUltra || layout === 'compact') {
     addBytes(0x1B, 0x33, 0x14); // 20 dots spacing (ultra compacto)
   } else if (!isSpacious) {
-    addBytes(0x1B, 0x33, 0x18); // 24 dots spacing (econômico equilibrado)
+    addBytes(0x1B, 0x33, 0x18); // 24 dots spacing (equilibrado)
   }
 
   // 3. Seleção de Fonte (Normal ou Condensada B)
@@ -344,7 +346,7 @@ export function buildOrderEscPosBuffer(
     addBytes(0x1B, 0x4D, 0x00); // Fonte A (padrão)
   }
 
-  // --- CABEÇALHO COMPACTO (Sem quebra de linha de palavras) ---
+  // --- CABEÇALHO (Sem quebra indevida de palavras) ---
   addBytes(0x1B, 0x61, 0x01); // Centralizado
   addBytes(0x1B, 0x45, 0x01); // Negrito ON
   
@@ -386,8 +388,12 @@ export function buildOrderEscPosBuffer(
         minute: '2-digit',
       });
   
-  // Condensa data e status na mesma linha quando possível
   addLine(`Data: ${dateStr} [${(order.status || '').toUpperCase()}]`);
+
+  // Distância estimada no modo detalhado
+  if (layout === 'detailed' && order.distancia && Number(order.distancia) > 0) {
+    addLine(`Distancia Estimada: ${Number(order.distancia).toFixed(1)} km`);
+  }
 
   // Motoboy / Entregador
   const driverUser = order.motoristaId && allUsers ? allUsers[order.motoristaId] : null;
@@ -506,24 +512,52 @@ export function buildOrderEscPosBuffer(
     itemsSubtotal = Number(order.valor);
   }
 
-  const clientDeliveryFee = Number(order.taxas?.entregaCliente ?? order.taxas?.entregaTotal ?? 0);
+  const totalDeliveryFee = Number(
+    order.taxas?.entregaTotal ?? 
+    order.taxas?.entregaCliente ?? 
+    0
+  );
+  const clientDeliveryFee = Number(
+    order.taxas?.entregaCliente ?? totalDeliveryFee
+  );
+  const storeDeliveryDiscount = Math.max(0, totalDeliveryFee - clientDeliveryFee);
+
   const totalFinal = order.totalValue !== undefined && Number(order.totalValue) > 0
     ? Number(order.totalValue)
     : Number((itemsSubtotal + clientDeliveryFee).toFixed(2));
 
   addLine(divider('-', width));
 
-  // --- VALORES E PAGAMENTO COMPACTOS ---
-  if (clientDeliveryFee > 0) {
-    addLine(formatCols2(`Itens: R$ ${itemsSubtotal.toFixed(2)}`, `Frete: R$ ${clientDeliveryFee.toFixed(2)}`, width));
-  }
-  
-  addBytes(0x1B, 0x45, 0x01); // Negrito ON
-  addLine(formatCols2('TOTAL DO PEDIDO:', `R$ ${totalFinal.toFixed(2)}`, width));
-  addBytes(0x1B, 0x45, 0x00); // Negrito OFF
-  addLine('Pagamento: PIX (Asaas IP S.A.)');
+  // --- VALORES E PAGAMENTO ---
+  if (layout === 'detailed') {
+    addLine(formatCols2('Subtotal Itens:', `R$ ${itemsSubtotal.toFixed(2)}`, width));
+    
+    if (storeDeliveryDiscount > 0) {
+      addLine(formatCols2('Frete Total:', `R$ ${totalDeliveryFee.toFixed(2)}`, width));
+      addLine(formatCols2('Desc. Frete Loja:', `- R$ ${storeDeliveryDiscount.toFixed(2)}`, width));
+      addLine(formatCols2('Frete Pago Cliente:', `R$ ${clientDeliveryFee.toFixed(2)}`, width));
+    } else if (clientDeliveryFee > 0) {
+      addLine(formatCols2('Taxa de Entrega:', `R$ ${clientDeliveryFee.toFixed(2)}`, width));
+    } else {
+      addLine(formatCols2('Taxa de Entrega:', 'GRATIS', width));
+    }
 
-  // --- PIN DE RETIRADA / BALCÃO (Compacto e Direto) ---
+    addBytes(0x1B, 0x45, 0x01); // Negrito ON
+    addLine(formatCols2('TOTAL DO PEDIDO:', `R$ ${totalFinal.toFixed(2)}`, width));
+    addBytes(0x1B, 0x45, 0x00); // Negrito OFF
+    addLine('Pagamento: PIX (Asaas IP S.A.)');
+  } else {
+    // Formato Ultra Compacto
+    if (clientDeliveryFee > 0) {
+      addLine(formatCols2(`Itens: R$ ${itemsSubtotal.toFixed(2)}`, `Frete: R$ ${clientDeliveryFee.toFixed(2)}`, width));
+    }
+    addBytes(0x1B, 0x45, 0x01); // Negrito ON
+    addLine(formatCols2('TOTAL DO PEDIDO:', `R$ ${totalFinal.toFixed(2)}`, width));
+    addBytes(0x1B, 0x45, 0x00); // Negrito OFF
+    addLine('Pagamento: PIX (Asaas IP S.A.)');
+  }
+
+  // --- PIN DE RETIRADA / BALCÃO ---
   const pickupPin = order.pickupPin || (order as any).pickup_pin;
   if (pickupPin) {
     addLine(divider('=', width));
@@ -533,6 +567,10 @@ export function buildOrderEscPosBuffer(
     addLine(`PIN RETIRADA: ${pickupPin}`);
     addBytes(0x1D, 0x21, 0x00); // Normal
     addBytes(0x1B, 0x45, 0x00); // Negrito OFF
+
+    if (layout === 'detailed') {
+      addLine('(Informe ao entregador no balcao)');
+    }
     addLine(divider('=', width));
   } else {
     addLine(divider('=', width));
@@ -553,7 +591,7 @@ export function buildOrderEscPosBuffer(
     addBytes(0x1B, 0x4D, 0x00); // Retorna Fonte A
   }
 
-  // Avanço mínimo de papel
+  // Avanço de papel
   for (let f = 0; f < feedCount; f++) {
     addBytes(0x0A);
   }

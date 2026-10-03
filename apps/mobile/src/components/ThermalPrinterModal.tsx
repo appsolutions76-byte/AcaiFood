@@ -20,6 +20,7 @@ import {
   PrinterConfig, 
   PrinterProfile,
   PaperSavingMode,
+  TicketLayout,
   getPrinterConfig, 
   savePrinterConfig, 
   printTestTicket 
@@ -263,15 +264,66 @@ export const ThermalPrinterModal: React.FC<ThermalPrinterModalProps> = ({
             </div>
           )}
 
-          {/* NOVO: Economia de Papel & Altura do Cupom */}
+          {/* SELETOR DE FORMATO DO CUPOM */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs uppercase text-zinc-500 dark:text-zinc-400 font-bold flex items-center gap-1">
+                <Sparkles size={14} className="text-purple-600 dark:text-purple-400" />
+                Formato do Cupom
+              </label>
+              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-md">
+                {config.ticketLayout === 'detailed' ? '⚡ Completo (~13 a 14 cm)' : '🍃 Ultra Compacto (~9 a 11 cm)'}
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleUpdateConfig({ ticketLayout: 'detailed' })}
+                className={`p-3 rounded-xl border text-xs font-bold text-left transition flex flex-col justify-between cursor-pointer ${
+                  config.ticketLayout === 'detailed'
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                    : 'bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span>⚡ Completo & Operacional</span>
+                  {config.ticketLayout === 'detailed' && <Check size={14} />}
+                </div>
+                <p className="text-[10px] font-normal opacity-85">
+                  Distância (km), frete detalhado com subsídio da loja, PIN com instruções e rodapé legal Asaas.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleUpdateConfig({ ticketLayout: 'compact', paperSavingMode: 'ultra', feedLines: 2 })}
+                className={`p-3 rounded-xl border text-xs font-bold text-left transition flex flex-col justify-between cursor-pointer ${
+                  config.ticketLayout === 'compact'
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                    : 'bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span>🍃 Ultra Compacto</span>
+                  {config.ticketLayout === 'compact' && <Check size={14} />}
+                </div>
+                <p className="text-[10px] font-normal opacity-85">
+                  Economia máxima de bobina (~9 a 11 cm), linhas reduzidas e rodapé direto.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* Economia de Papel & Altura do Cupom */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs uppercase text-zinc-500 dark:text-zinc-400 font-bold flex items-center gap-1">
                 <Leaf size={14} className="text-emerald-600 dark:text-emerald-400" />
-                Economia de Papel & Altura do Cupom
+                Espaçamento & Entrelinhas
               </label>
               <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
-                {config.paperSavingMode === 'ultra' ? '🍃 Reduz 60% do papel' : config.paperSavingMode === 'standard' ? '⚡ Padrão (~13cm)' : '🔍 Espaçoso'}
+                {config.paperSavingMode === 'ultra' ? '🍃 Reduz 60% do papel' : config.paperSavingMode === 'standard' ? '⚡ Padrão' : '🔍 Espaçoso'}
               </span>
             </div>
             
@@ -289,7 +341,7 @@ export const ThermalPrinterModal: React.FC<ThermalPrinterModalProps> = ({
                   <span>🍃 Ultra Econômico</span>
                   {config.paperSavingMode === 'ultra' && <Check size={13} />}
                 </div>
-                <p className="text-[9px] font-normal opacity-85">~9 a 11 cm (Fonte compacta e sem sobras)</p>
+                <p className="text-[9px] font-normal opacity-85">Entrelinhas reduzido (20 dots)</p>
               </button>
 
               <button
@@ -305,7 +357,7 @@ export const ThermalPrinterModal: React.FC<ThermalPrinterModalProps> = ({
                   <span>⚡ Equilibrado</span>
                   {config.paperSavingMode === 'standard' && <Check size={13} />}
                 </div>
-                <p className="text-[9px] font-normal opacity-85">~13 a 14 cm (Fonte padrão enxuta)</p>
+                <p className="text-[9px] font-normal opacity-85">Entrelinhas padrão (24 dots)</p>
               </button>
 
               <button
@@ -321,7 +373,7 @@ export const ThermalPrinterModal: React.FC<ThermalPrinterModalProps> = ({
                   <span>🔍 Espaçoso</span>
                   {config.paperSavingMode === 'spacious' && <Check size={13} />}
                 </div>
-                <p className="text-[9px] font-normal opacity-85">~18 a 22 cm (Espaçamento tradicional)</p>
+                <p className="text-[9px] font-normal opacity-85">Espaçamento tradicional</p>
               </button>
             </div>
           </div>

@@ -20,12 +20,14 @@ export type PrinterProfile =
   | 'custom';
 
 export type PaperSavingMode = 'ultra' | 'standard' | 'spacious';
+export type TicketLayout = 'detailed' | 'compact';
 
 export interface PrinterConfig {
   connectionType: ConnectionType;
   paperWidth: '58mm' | '80mm';
   profile: PrinterProfile;
   paperSavingMode: PaperSavingMode;
+  ticketLayout: TicketLayout; // 'detailed' = completo e operacional; 'compact' = ultra compacto econômico
   printMode: 'manual' | 'auto'; // 'manual' = botão sob demanda, 'auto' = impressão automática em transições de status
   copies: 1 | 2;
   customColumns?: number; // 32, 40, 42, 48
@@ -38,7 +40,8 @@ export const DEFAULT_PRINTER_CONFIG: PrinterConfig = {
   connectionType: 'bluetooth',
   paperWidth: '58mm',
   profile: 'generic-58mm',
-  paperSavingMode: 'ultra', // Padrão agora é ultra econômico (~10 a 12 cm de papel)
+  paperSavingMode: 'standard',
+  ticketLayout: 'detailed', // Padrão completo e operacional
   printMode: 'auto',
   copies: 1,
   customColumns: 32,
@@ -90,6 +93,7 @@ export function resolveFormattingOptions(config: PrinterConfig): EscPosFormattin
   const isUltra = config.paperSavingMode === 'ultra';
   const isSpacious = config.paperSavingMode === 'spacious';
   const feedCount = config.feedLines ?? (isUltra ? 2 : (isSpacious ? 4 : 2));
+  const layout = config.ticketLayout || (isUltra ? 'compact' : 'detailed');
 
   if (config.profile === 'generic-58mm') {
     return { 
@@ -97,7 +101,8 @@ export function resolveFormattingOptions(config: PrinterConfig): EscPosFormattin
       hasCutter: false, 
       feedLines: feedCount, 
       condensedFont: isUltra,
-      paperSavingMode: config.paperSavingMode 
+      paperSavingMode: config.paperSavingMode,
+      ticketLayout: layout
     };
   }
   if (config.profile === 'compact-58mm') {
@@ -106,7 +111,8 @@ export function resolveFormattingOptions(config: PrinterConfig): EscPosFormattin
       hasCutter: false, 
       feedLines: feedCount, 
       condensedFont: true,
-      paperSavingMode: config.paperSavingMode 
+      paperSavingMode: config.paperSavingMode,
+      ticketLayout: layout
     };
   }
   if (config.profile === 'generic-80mm') {
@@ -115,7 +121,8 @@ export function resolveFormattingOptions(config: PrinterConfig): EscPosFormattin
       hasCutter: true, 
       feedLines: feedCount, 
       condensedFont: false,
-      paperSavingMode: config.paperSavingMode 
+      paperSavingMode: config.paperSavingMode,
+      ticketLayout: layout
     };
   }
   if (config.profile === 'large-80mm') {
@@ -124,7 +131,8 @@ export function resolveFormattingOptions(config: PrinterConfig): EscPosFormattin
       hasCutter: true, 
       feedLines: feedCount, 
       condensedFont: false,
-      paperSavingMode: config.paperSavingMode 
+      paperSavingMode: config.paperSavingMode,
+      ticketLayout: layout
     };
   }
   return {
@@ -132,7 +140,8 @@ export function resolveFormattingOptions(config: PrinterConfig): EscPosFormattin
     hasCutter: config.hasCutter ?? (config.paperWidth === '80mm'),
     feedLines: feedCount,
     condensedFont: (config.customColumns || 32) > 40 && config.paperWidth === '58mm',
-    paperSavingMode: config.paperSavingMode
+    paperSavingMode: config.paperSavingMode,
+    ticketLayout: layout
   };
 }
 
@@ -144,11 +153,13 @@ export function generateSingleTicketHTML(
   totalVias: number = 1,
   allUsers?: Record<string, User> | null,
   clientUser?: User | null,
-  printType: PrintType = 'PREPARO'
+  printType: PrintType = 'PREPARO',
+  ticketLayout: TicketLayout = 'detailed'
 ): string {
   const is58 = paperWidth === '58mm';
   const widthPx = is58 ? '48mm' : '72mm';
   const fontSize = is58 ? '10px' : '12px';
+  const isDetailed = ticketLayout === 'detailed';
 
   const orderNum = order.id.slice(-6).toUpperCase();
   const dateStr = order.createdAt
@@ -232,11 +243,15 @@ export function generateSingleTicketHTML(
     order.taxas?.entregaCliente ?? totalDeliveryFee
   );
 
+  const storeDeliveryDiscount = Math.max(0, totalDeliveryFee - clientDeliveryFee);
+
   const totalFinal = order.totalValue !== undefined && Number(order.totalValue) > 0
     ? Number(order.totalValue)
     : Number((itemsSubtotal + clientDeliveryFee).toFixed(2));
 
   const formattedItemsSubtotal = itemsSubtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formattedTotalDelivery = totalDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formattedStoreDiscount = storeDeliveryDiscount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formattedClientDelivery = clientDeliveryFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formattedTotal = totalFinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -294,7 +309,7 @@ export function generateSingleTicketHTML(
       text-align: left;
       box-sizing: border-box;
     ">
-      <!-- CABEÇALHO COMPACTO -->
+      <!-- CABEÇALHO -->
       <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 3px; margin-bottom: 3px;">
         <h2 style="margin: 0; font-size: ${is58 ? '13px' : '15px'}; font-weight: bold;">AÇAÍFOOD DELIVERY</h2>
         <p style="margin: 1px 0 0 0; font-size: ${is58 ? '10px' : '11px'}; font-weight: bold;">${storeName}</p>
@@ -308,6 +323,7 @@ export function generateSingleTicketHTML(
           <span>${order.type || 'B2C'}</span>
         </div>
         <div style="font-size: ${is58 ? '9px' : '10px'};">📅 ${dateStr} [${(order.status || '').toUpperCase()}]</div>
+        ${isDetailed && order.distancia && Number(order.distancia) > 0 ? `<div style="font-size: ${is58 ? '9px' : '10px'};">📏 Distância Estimada: ${Number(order.distancia).toFixed(1)} km</div>` : ''}
         <div style="font-size: ${is58 ? '9px' : '10px'}; font-weight: bold;">🛵 Motoboy: ${motoboyStatusLabel}</div>
       </div>
 
@@ -340,10 +356,36 @@ export function generateSingleTicketHTML(
 
       <!-- TOTAL & PAGAMENTO -->
       <div style="border-bottom: 1px dashed #000; padding-bottom: 3px; margin-bottom: 3px;">
-        <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '10px'};">
-          <span>Subtotal: ${formattedItemsSubtotal}</span>
-          <span>Frete: ${clientDeliveryFee > 0 ? formattedClientDelivery : 'Grátis'}</span>
-        </div>
+        ${isDetailed ? `
+          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '10px'};">
+            <span>Subtotal Itens:</span>
+            <span>${formattedItemsSubtotal}</span>
+          </div>
+          ${storeDeliveryDiscount > 0 ? `
+            <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '10px'};">
+              <span>Frete Total:</span>
+              <span>${formattedTotalDelivery}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '10px'}; color: #047857;">
+              <span>Desc. Frete Loja:</span>
+              <span>- ${formattedStoreDiscount}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '10px'};">
+              <span>Frete Pago Cliente:</span>
+              <span>${formattedClientDelivery}</span>
+            </div>
+          ` : `
+            <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '10px'};">
+              <span>Taxa de Entrega:</span>
+              <span>${clientDeliveryFee > 0 ? formattedClientDelivery : 'Grátis'}</span>
+            </div>
+          `}
+        ` : `
+          <div style="display: flex; justify-content: space-between; font-size: ${is58 ? '9px' : '10px'};">
+            <span>Subtotal: ${formattedItemsSubtotal}</span>
+            <span>Frete: ${clientDeliveryFee > 0 ? formattedClientDelivery : 'Grátis'}</span>
+          </div>
+        `}
         <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58 ? '11px' : '13px'}; border-top: 1px dashed #000; padding-top: 2px; margin-top: 2px;">
           <span>TOTAL:</span>
           <span>${formattedTotal}</span>
@@ -353,11 +395,12 @@ export function generateSingleTicketHTML(
         </div>
       </div>
 
-      <!-- PIN DE RETIRADA / BALCÃO (COMPACTO) -->
+      <!-- PIN DE RETIRADA / BALCÃO -->
       ${(order.pickupPin || (order as any).pickup_pin) ? `
         <div style="border: 1px solid #000; padding: 3px; margin-top: 3px; margin-bottom: 3px; text-align: center;">
           <span style="font-size: ${is58 ? '9px' : '10px'}; font-weight: bold;">PIN RETIRADA: </span>
           <span style="font-size: ${is58 ? '14px' : '16px'}; font-weight: 900; letter-spacing: 2px;">${order.pickupPin || (order as any).pickup_pin}</span>
+          ${isDetailed ? `<div style="font-size: 8px; margin-top: 1px;">(Informe ao entregador no balcão)</div>` : ''}
         </div>
       ` : ''}
 
@@ -455,7 +498,7 @@ export async function printOrderTicket(
 
   let fullHTML = '';
   for (let via = 1; via <= copies; via++) {
-    fullHTML += generateSingleTicketHTML(order, storeName, config.paperWidth, via, copies, allUsers, clientUser, printType);
+    fullHTML += generateSingleTicketHTML(order, storeName, config.paperWidth, via, copies, allUsers, clientUser, printType, config.ticketLayout);
     if (via < copies) {
       fullHTML += `<div style="page-break-after: always; height: 10px; border-bottom: 1px dashed #000; margin: 10px 0;"></div>`;
     }
