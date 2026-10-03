@@ -845,6 +845,18 @@ export default function BatedeiraDashboard() {
                     <button onClick={() => store.acaoPedido(o.id, 'chamar_moto')} className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition">🏍️ Chamar Moto</button>
                 </div>
               )}
+
+              {!isCanceled && o.type === 'B2C' && o.status === 'pronto' && !o.motoristaId && (
+                <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                    <button onClick={() => {
+                      const reason = prompt("Informe o motivo do cancelamento do pedido:", "Cliente solicitou cancelamento / Motoboy indisponível");
+                      if (reason !== null && reason.trim() !== "") {
+                        store.acaoPedido(o.id, 'cancelar_pedido', undefined, reason.trim());
+                        alert("❌ Pedido cancelado e estorno solicitado no Asaas.");
+                      }
+                    }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm">❌ Cancelar Pedido</button>
+                </div>
+              )}
               
               {!isCanceled && (o.type === 'B2B' || o.type === 'COLETA') && (o.status === 'pendente' || (o.type === 'COLETA' && o.status === 'preparo' && !o.motoristaId)) && (
                 <button onClick={() => {
