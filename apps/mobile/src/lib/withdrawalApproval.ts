@@ -49,11 +49,14 @@ export async function processWithdrawalApproval(
   // 2. Buscar dados atualizados do parceiro em users
   const { data: partnerUser, error: pErr } = await adminSupabase
     .from('users')
-    .select('id, name, email, role, cpf_cnpj, pix_key, pix_key_type, asaas_wallet_id, asaas_account_status, split_enabled')
+    .select('*')
     .eq('id', requestRow.partner_id)
-    .single();
+    .maybeSingle();
 
   if (pErr || !partnerUser) {
+    if (pErr) {
+      console.error('[processWithdrawalApproval] Erro ao buscar parceiro em users:', pErr);
+    }
     await adminSupabase
       .from('withdrawal_requests')
       .update({
@@ -66,14 +69,16 @@ export async function processWithdrawalApproval(
     return { success: false, status: 'FALHOU', error: 'Parceiro não encontrado.' };
   }
 
-  // 3. Revalidar subconta/status Asaas do parceiro (H2 / Cláusula 8.2.3)
-  // Exige estritamente asaas_account_status = 'APPROVED' e asaas_wallet_id
-  const isAccountActive = partnerUser.asaas_account_status === 'APPROVED' && Boolean(partnerUser.asaas_wallet_id);
-  if (!isAccountActive) {
-    const failMsg = partnerUser.asaas_account_status === 'REJECTED'
-      ? 'A subconta do parceiro no Asaas foi rejeitada pela instituição financeira.'
-      : 'A subconta do parceiro no Asaas ainda não está homologada e aprovada (asaas_account_status deve ser APPROVED).';
+  // 3. Validar se o parceiro possui destino válido (Subconta Asaas ou Chave Pix / CPF / Email)
+  const rawPixKey = String(partnerUser.pix_key || requestRow.pix_key_used || '').trim();
+  const rawCpfCnpj = String(partnerUser.cpf_cnpj || '').replace(/\D/g, '');
+  const rawEmail = String(partnerUser.email || '').trim();
+  const rawWalletId = String(partnerUser.asaas_wallet_id || '').trim();
+  const isAccountActive = partnerUser.asaas_account_status === 'APPROVED' && Boolean(rawWalletId);
+  const hasPixDestination = Boolean(rawPixKey) || Boolean(rawCpfCnpj) || (rawEmail.includes('@') && rawEmail.includes('.'));
 
+  if (!isAccountActive && !hasPixDestination && !rawWalletId) {
+    const failMsg = 'O parceiro não possui Chave Pix, CPF/CNPJ ou subconta Asaas configurada para recebimento.';
     await adminSupabase
       .from('withdrawal_requests')
       .update({
@@ -86,7 +91,7 @@ export async function processWithdrawalApproval(
 
     await logAdminAction({
       actorId,
-      action: 'WITHDRAWAL_FAILED_UNAPPROVED_ACCOUNT',
+      action: 'WITHDRAWAL_FAILED_NO_PAYOUT_DESTINATION',
       targetType: 'WITHDRAWAL_REQUEST',
       targetId: requestId,
       beforeState: { status: requestRow.status, requested_amount: requestRow.requested_amount },
@@ -95,6 +100,7 @@ export async function processWithdrawalApproval(
 
     return { success: false, status: 'FALHOU', error: failMsg };
   }
+
 
   // 4. Determinar o valor do saque e ordens vinculadas
   const requestedAmount = Number(requestRow.requested_amount || 0);
@@ -246,8 +252,12 @@ export async function processWithdrawalApproval(
   }
 
   // 7. Resolver payload de transferência Asaas com externalReference
+  const partnerUserToUse = {
+    ...partnerUser,
+    pix_key: partnerUser.pix_key || requestRow.pix_key_used
+  };
   const transferPayload: any = buildAsaasTransferPayload(
-    partnerUser,
+    partnerUserToUse,
     finalAmount,
     `Saque AçaíFood - #${requestId.substring(0, 8)}`
   );
