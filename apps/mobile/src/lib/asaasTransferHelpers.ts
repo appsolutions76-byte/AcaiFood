@@ -96,16 +96,7 @@ export function buildAsaasTransferPayload(
 
   const desc = descriptionStr || `Repasse AçaíFood - ${partnerUser.name || 'Parceiro'}`;
 
-  // 1. Se houver subconta Asaas homologada com walletId
-  if (rawWalletId && rawWalletId.length >= 10 && (accountStatus === 'APPROVED' || partnerUser.split_enabled === true)) {
-    return {
-      value: Number(amount.toFixed(2)),
-      walletId: rawWalletId,
-      description: desc
-    };
-  }
-
-  // 2. Se houver chave Pix cadastrada no perfil
+  // 1. Prioridade Máxima: Chave Pix cadastrada no perfil
   if (rawPixKey) {
     const valResult = validateAndFormatPixKey(rawPixKey, rawPixKeyType);
     if (valResult.valid && valResult.formattedKey && valResult.type) {
@@ -118,7 +109,7 @@ export function buildAsaasTransferPayload(
     }
   }
 
-  // 3. Fallback: CPF/CNPJ como chave Pix
+  // 2. Fallback: CPF/CNPJ como chave Pix
   if (rawCpfCnpj && (rawCpfCnpj.length === 11 || rawCpfCnpj.length === 14) && validateCpfCnpjDigits(rawCpfCnpj)) {
     return {
       value: Number(amount.toFixed(2)),
@@ -128,7 +119,7 @@ export function buildAsaasTransferPayload(
     };
   }
 
-  // 4. Fallback: E-mail como chave Pix
+  // 3. Fallback: E-mail como chave Pix
   if (rawEmail && rawEmail.includes('@') && rawEmail.includes('.')) {
     return {
       value: Number(amount.toFixed(2)),
@@ -138,7 +129,7 @@ export function buildAsaasTransferPayload(
     };
   }
 
-  // 5. Fallback: Se houver apenas walletId
+  // 4. Se não houver chave Pix, mas houver subconta Asaas com walletId
   if (rawWalletId && rawWalletId.length >= 10) {
     return {
       value: Number(amount.toFixed(2)),

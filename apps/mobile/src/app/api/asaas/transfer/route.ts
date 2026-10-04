@@ -40,8 +40,10 @@ export async function POST(request: Request) {
     const keySuffix = ASAAS_API_KEY.length >= 4 ? ASAAS_API_KEY.slice(-4) : 'none';
     console.log(`[Transfer API] Transferência admin | Ambiente: ${isSandbox ? 'Sandbox' : 'Produção'} | Chave: ***${keySuffix} | Valor: R$ ${transferValue.toFixed(2)}`);
 
-    const targetKey = String(walletId || pixKey || '').trim();
-    if (!targetKey) {
+    const rawPixKey = String(pixKey || '').trim();
+    const rawWalletId = String(walletId || '').trim();
+
+    if (!rawPixKey && !rawWalletId) {
       return NextResponse.json(
         { error: 'Chave Pix ou WalletId de destino não informada.' },
         { status: 400 }
@@ -53,10 +55,9 @@ export async function POST(request: Request) {
       description: description || `Repasse AçaíFood Pix`
     };
 
-    if (walletId && String(walletId).trim().length >= 10) {
-      transferBody.walletId = String(walletId).trim();
-    } else {
-      const valResult = validateAndFormatPixKey(targetKey, body.pixKeyType || body.pixAddressKeyType);
+    // 1. Se houver Chave Pix informada, priorizar transferência Pix direta
+    if (rawPixKey) {
+      const valResult = validateAndFormatPixKey(rawPixKey, body.pixKeyType || body.pixAddressKeyType);
       if (!valResult.valid || !valResult.formattedKey || !valResult.type) {
         return NextResponse.json(
           { error: `Chave Pix inválida: ${valResult.error || 'Formato incorreto'}` },
@@ -65,7 +66,16 @@ export async function POST(request: Request) {
       }
       transferBody.pixAddressKey = valResult.formattedKey;
       transferBody.pixAddressKeyType = valResult.type;
+    } else if (rawWalletId && rawWalletId.length >= 10) {
+      // 2. Se não houver chave Pix, transferir para a subconta Asaas (walletId)
+      transferBody.walletId = rawWalletId;
+    } else {
+      return NextResponse.json(
+        { error: 'Destino de transferência inválido.' },
+        { status: 400 }
+      );
     }
+
 
     const res = await fetch(`${ASAAS_URL}/transfers`, {
       method: 'POST',
