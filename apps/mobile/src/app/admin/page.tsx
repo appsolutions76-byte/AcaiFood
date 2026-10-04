@@ -422,6 +422,35 @@ function AdminDashboardContent() {
     }
   };
 
+  // Função para reabrir repasses que não foram pagos no Asaas
+  const reabrirRepasse = async (u: any) => {
+    if (!confirm(`Deseja reabrir os repasses de ${u.name}? O saldo voltará para a Carteira Digital do parceiro e para a fila de pagamento do Admin.`)) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch('/api/admin/payout/reopen', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ partnerId: u.id, role: u.role })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✅ Repasses de ${u.name} reabertos com sucesso!`);
+        if (store.currentUser?.id && typeof store.fetchOrders === 'function') await store.fetchOrders(store.currentUser.id, true);
+        if (typeof store.fetchAllUsers === 'function') await store.fetchAllUsers(true);
+        await fetchAdminBalances();
+      } else {
+        showToast(`❌ Erro ao reabrir: ${data.error || 'Falha no servidor'}`);
+      }
+    } catch (e: any) {
+      showToast(`❌ Erro de conexão: ${e.message}`);
+    }
+  };
+
   // Função de Liquidação em Lote para Todos os Parceiros (Geral ou por Cidade)
   const pagarTodosParceiros = async (
     partnersWithOwed: Array<{ user: any; pendingOrders: Order[]; amountOwed: number }>,
@@ -2741,7 +2770,7 @@ function AdminDashboardContent() {
                                             🔑 PIX: {pixKey || 'Não cadastrado'}
                                           </span>
                                         </div>
-                                        {amountOwed > 0 && (
+                                        {amountOwed > 0 ? (
                                           <button
                                             disabled={isPaying}
                                             onClick={() => pagarParceiro(u, pendingOrders, amountOwed)}
@@ -2749,6 +2778,16 @@ function AdminDashboardContent() {
                                           >
                                             {isPaying ? '⏳ Pagando...' : '💸 Pagar e Zerar'}
                                           </button>
+                                        ) : (
+                                          (u.role === 'loja' || u.role === 'fornecedor' || u.role === 'motorista' || u.role === 'courier' || u.role === 'motoboy' || u.role === 'caminhao') && (
+                                            <button
+                                              onClick={() => reabrirRepasse(u)}
+                                              title="Reabrir repasses anteriores que não chegaram no Asaas"
+                                              className="bg-zinc-200 hover:bg-amber-100 text-zinc-700 hover:text-amber-800 dark:bg-zinc-700 dark:hover:bg-amber-950/60 dark:text-zinc-300 dark:hover:text-amber-300 text-[10px] font-bold px-2 py-1 rounded transition flex items-center gap-1"
+                                            >
+                                              🔄 Reabrir Saldo
+                                            </button>
+                                          )
                                         )}
                                       </div>
                                     );
