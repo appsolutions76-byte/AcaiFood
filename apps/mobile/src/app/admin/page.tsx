@@ -355,11 +355,14 @@ function AdminDashboardContent() {
 
   // Função de pagamento individual de parceiro via Pix
   const pagarParceiro = async (u: any, pendingOrders: Order[], amountOwed: number) => {
-    let pixKey = (u.cpfCnpj || (u as any).cpf_cnpj || u.pixKey || (u as any).pix_key || '').replace(/\D/g, '').trim();
-    if (!pixKey) {
-      const inputPix = prompt(`Informe o CPF/CNPJ do titular ${u.name} para a Chave Pix:`);
+    const rawPix = String(u.pix_key || u.pixKey || u.cpf_cnpj || u.cpfCnpj || u.phone || u.email || '').trim();
+    let pixKey = rawPix.includes('@') || rawPix.includes('-') ? rawPix : (rawPix.replace(/\D/g, '') || rawPix);
+    const walletId = u.asaas_wallet_id || (u as any).asaasWalletId || null;
+
+    if (!pixKey && !walletId) {
+      const inputPix = prompt(`Informe a Chave Pix (CPF, Telefone ou E-mail) do titular ${u.name}:`);
       if (inputPix && inputPix.trim()) {
-        pixKey = inputPix.replace(/\D/g, '').trim();
+        pixKey = inputPix.trim();
         try {
           await supabase.from('users').update({ pix_key: pixKey }).eq('id', u.id);
           u.pixKey = pixKey;
@@ -370,7 +373,7 @@ function AdminDashboardContent() {
       }
     }
 
-    if (!confirm(`Confirmar pagamento de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} via Pix para ${u.name}?\n\nChave Pix: ${pixKey}\nPedidos a liquidar: ${pendingOrders.length}`)) return;
+    if (!confirm(`Confirmar pagamento de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} via Pix para ${u.name}?\n\nChave Pix: ${pixKey || walletId}\nPedidos a liquidar: ${pendingOrders.length}`)) return;
     setPayingPartnerId(u.id);
 
     try {
@@ -387,6 +390,9 @@ function AdminDashboardContent() {
         headers: authHeaders,
         body: JSON.stringify({ 
           pixKey, 
+          walletId,
+          partnerId: u.id,
+          role: u.role,
           value: amountOwed, 
           description: `Repasse Manual AçaíFood – ${u.name}` 
         })
@@ -452,13 +458,15 @@ function AdminDashboardContent() {
     for (let i = 0; i < partnersWithOwed.length; i++) {
       const p = partnersWithOwed[i];
       const u = p.user;
-      const pixKey = (u.cpfCnpj || (u as any).cpf_cnpj || u.pixKey || (u as any).pix_key || '').replace(/\D/g, '').trim();
+      const rawPix = String(u.pix_key || u.pixKey || u.cpf_cnpj || u.cpfCnpj || u.phone || u.email || '').trim();
+      const pixKey = rawPix.includes('@') || rawPix.includes('-') ? rawPix : (rawPix.replace(/\D/g, '') || rawPix);
+      const walletId = u.asaas_wallet_id || (u as any).asaasWalletId || null;
 
       setPayAllProgress({ current: i + 1, total: partnersWithOwed.length, name: u.name });
 
-      if (!pixKey) {
+      if (!pixKey && !walletId) {
         failCount++;
-        failureDetails.push(`${u.name}: Sem Chave Pix cadastrada`);
+        failureDetails.push(`${u.name}: Sem Chave Pix ou Subconta cadastrada`);
         continue;
       }
 
@@ -468,6 +476,9 @@ function AdminDashboardContent() {
           headers: authHeaders,
           body: JSON.stringify({ 
             pixKey, 
+            walletId,
+            partnerId: u.id,
+            role: u.role,
             value: p.amountOwed, 
             description: `Liquidação AçaíFood (${cidadeNome || 'Geral'}) – ${u.name}` 
           })
