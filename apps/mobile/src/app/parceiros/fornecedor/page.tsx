@@ -461,7 +461,7 @@ export default function FornecedorDashboard() {
                   <p className="text-[10px] text-amber-50 leading-tight">Informe ao caminhoneiro no carregamento</p>
                 </div>
                 <div className="text-xl font-black tracking-widest text-zinc-900 bg-white px-3 py-1 rounded-lg border border-amber-200 shadow-sm">
-                  {o.pickupPin || (o as any).pickup_pin || (o.deliveryPin ? String((((Number(o.deliveryPin) * 7 + 1337) % 9000) + 1000)) : '9354')}
+                  {o.pickupPin || (o as any).pickup_pin || 'Indisponível'}
                 </div>
               </div>
             )}

@@ -48,15 +48,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'CPF deve conter 11 dígitos ou CNPJ 14 dígitos válidos' }, { status: 400 });
     }
 
-    // 1. Validações estritas de KYC Real (Cláusula 8.2.3 do Contrato Asaas BaaS)
     const effectivePostalCode = String(postalCode || cep || '').replace(/\D/g, '');
     if (!effectivePostalCode || effectivePostalCode.length !== 8) {
       return NextResponse.json({ error: 'CEP válido com 8 dígitos é obrigatório para abertura da subconta bancária' }, { status: 400 });
     }
 
     let effectiveBirthDate: string | undefined = undefined;
-    let effectiveIncome: number | undefined = undefined;
+    let effectiveIncome: number = Number(incomeValue || monthlyIncome || 0);
     let effectiveCompanyType: string | undefined = undefined;
+
+    if (effectiveIncome <= 0 || isNaN(effectiveIncome)) {
+      return NextResponse.json({ error: 'Renda/Faturamento mensal declarado é obrigatório para conformidade bancária (Asaas BaaS)' }, { status: 400 });
+    }
 
     if (isCpf) {
       if (!birthDate || !String(birthDate).match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -68,12 +71,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Titular da subconta deve possuir no mínimo 18 anos completos' }, { status: 400 });
       }
       effectiveBirthDate = birthDate;
-
-      const inc = Number(monthlyIncome || incomeValue || 0);
-      if (isNaN(inc) || inc <= 0) {
-        return NextResponse.json({ error: 'Renda mensal declarada é obrigatória para conformidade bancária' }, { status: 400 });
-      }
-      effectiveIncome = inc;
     } else {
       const allowedCompanyTypes = ['MEI', 'LIMITED', 'INDIVIDUAL', 'ASSOCIATION'];
       const cType = String(companyType || '').toUpperCase().trim();
@@ -94,70 +91,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Você só pode vincular uma subconta ao seu próprio perfil de usuário.' }, { status: 403 });
     }
 
-    // 1.1 Checagem obrigatória dos termos Asaas, Mandato e Chave Pix (Cláusula 8.2.4)
+    // 1. Checagem obrigatória dos termos Asaas na versão atual (2026-10-06)
     const { data: acceptedTerms } = await supabase
       .from('terms_acceptances')
-      .select('document')
+      .select('document, version')
       .eq('user_id', userId);
 
-    const acceptedDocs = new Set((acceptedTerms || []).map((t: any) => t.document));
-    const requiredDocs = ['asaas_terms', 'subaccount_mandate', 'pix_random_key_consent'];
+    const acceptedDocs = new Set((acceptedTerms || []).map((t: any) => `${t.document}:${t.version}`));
+    const requiredDocs = ['asaas_terms:2026-10-06', 'subaccount_mandate:2026-10-06', 'pix_random_key_consent:2026-10-06'];
     const missingDocs = requiredDocs.filter(d => !acceptedDocs.has(d));
 
     if (missingDocs.length > 0) {
       return NextResponse.json(
         { 
-          error: `Aceites regulatórios Asaas pendentes (${missingDocs.join(', ')}). É obrigatório aceitar os Termos do Asaas, o Mandato de Subconta e o Consentimento de Chave Pix para abrir a subconta bancária.` 
+          error: `Aceites regulatórios Asaas pendentes na versão atual (${missingDocs.join(', ')}). É obrigatório aceitar os Termos do Asaas, o Mandato de Subconta e o Consentimento de Chave Pix para abrir a subconta bancária.` 
         }, 
         { status: 400 }
       );
-    }
-
-    // 2. Checagem de taxa de ativação da plataforma
-    const { data: platformSettings } = await supabase
-      .from('platform_settings')
-      .select('activation_fee_enabled')
-      .limit(1)
-      .maybeSingle();
-
-    const isActivationFeeRequired = platformSettings?.activation_fee_enabled !== false;
-
-    if (!isAdmin && isActivationFeeRequired) {
-      const quota = await getFounderQuotaStatus(userId);
-      const { activationEnabled, isUserAlreadyFounder } = quota;
-
-      if (activationEnabled) {
-        const { data: targetUser } = await supabase
-          .from('users')
-          .select('asaas_wallet_id')
-          .eq('id', userId)
-          .maybeSingle();
-
-        const hasWallet = Boolean(targetUser?.asaas_wallet_id);
-
-        let isPaidPix = false;
-        if (!isUserAlreadyFounder && !hasWallet) {
-          const checkApiKey = await getAsaasApiKey();
-          if (checkApiKey) {
-            try {
-              const chkRes = await fetch(`${getAsaasBaseUrl(checkApiKey)}/payments?externalReference=ACTIVATE_${userId}`, {
-                headers: { 'access_token': checkApiKey, 'Content-Type': 'application/json' }
-              });
-              const chkData = await chkRes.json();
-              if (chkData?.data?.some((p: any) => p.status === 'RECEIVED' || p.status === 'CONFIRMED')) {
-                isPaidPix = true;
-              }
-            } catch (_err) {}
-          }
-        }
-
-        if (!isUserAlreadyFounder && !hasWallet && !isPaidPix) {
-          return NextResponse.json(
-            { error: 'Taxa de ativação da plataforma AçaíFood pendente. Conclua o pagamento Pix da ativação para vincular sua subconta Asaas.' },
-            { status: 402 }
-          );
-        }
-      }
     }
 
     const ASAAS_API_KEY = await getAsaasApiKey();
@@ -170,7 +120,7 @@ export async function POST(request: Request) {
 
     const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
 
-    // Se já tiver subconta criada no Asaas, busca primeiro por CPF/CNPJ
+    // Buscar por subconta existente por CPF/CNPJ
     const accountSearchRes = await fetch(`${ASAAS_URL}/accounts?cpfCnpj=${cleanCpfCnpj}`, {
       headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
     });
@@ -235,35 +185,41 @@ export async function POST(request: Request) {
       accountApiKey = accountData.apiKey || '';
     }
 
-    // Salvar dados no Supabase via Service Role garantindo integridade e conformidade KYC
+    // Gravação segura no Supabase
     if (userId) {
-      const updateData: any = {
-        asaas_wallet_id: walletId,
-        asaas_account_id: accountId,
-        asaas_account_status: 'PENDING_DOCUMENTS',
-        split_enabled: Boolean(walletId),
-        birth_date: effectiveBirthDate || undefined,
-        monthly_income: effectiveIncome || undefined,
-        company_type: effectiveCompanyType || undefined,
-        postal_code: effectivePostalCode || undefined,
-        address_number: addressNumber || undefined,
-        province: bairro || undefined
-      };
-
-      if (accountApiKey) {
-        updateData.asaas_account_api_key = accountApiKey;
-      }
-
       await supabase
         .from('users')
-        .update(updateData)
+        .update({
+          asaas_wallet_id: walletId,
+          asaas_account_id: accountId,
+          asaas_account_status: 'PENDING_DOCUMENTS',
+          split_enabled: false, // split_enabled nasce FALSE até o status virar APPROVED via Webhook
+          birth_date: effectiveBirthDate || undefined,
+          monthly_income: effectiveIncome || undefined,
+          company_type: effectiveCompanyType || undefined,
+          postal_code: effectivePostalCode || undefined,
+          address_number: addressNumber || undefined,
+          province: bairro || undefined
+        })
         .eq('id', userId);
+
+      if (accountApiKey) {
+        await supabase
+          .from('partner_secrets')
+          .upsert({
+            user_id: userId,
+            asaas_account_api_key: accountApiKey,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+      }
     }
 
     return NextResponse.json({
       success: true,
       walletId,
       accountId,
+      status: 'PENDING_DOCUMENTS',
+      splitEnabled: false,
       isSandbox: ASAAS_URL.includes('sandbox')
     });
 
@@ -344,6 +300,11 @@ export async function DELETE(request: Request) {
           split_enabled: false
         })
         .eq('id', userId);
+
+      await supabaseAdmin
+        .from('partner_secrets')
+        .delete()
+        .eq('user_id', userId);
     }
 
     return NextResponse.json({

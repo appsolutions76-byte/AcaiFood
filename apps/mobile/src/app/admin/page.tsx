@@ -385,7 +385,7 @@ function AdminDashboardContent() {
         authHeaders['Authorization'] = `Bearer ${session.access_token}`;
       }
 
-      const res = await fetch('/api/asaas/transfer', {
+      const res = await fetch('/api/admin/payout/pay-partner', {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({ 
@@ -471,7 +471,7 @@ function AdminDashboardContent() {
       }
 
       try {
-        const res = await fetch('/api/asaas/transfer', {
+        const res = await fetch('/api/admin/payout/pay-partner', {
           method: 'POST',
           headers: authHeaders,
           body: JSON.stringify({ 

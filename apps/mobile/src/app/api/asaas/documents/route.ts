@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     const supabase = getSupabaseAdmin();
     const { data: user } = await supabase
       .from('users')
-      .select('id, asaas_account_id, asaas_wallet_id, asaas_account_api_key, asaas_account_status, split_enabled')
+      .select('id, asaas_account_id, asaas_wallet_id, asaas_account_status, split_enabled')
       .eq('id', targetUserId)
       .maybeSingle();
 
@@ -39,58 +40,54 @@ export async function GET(request: Request) {
       });
     }
 
-    const apiKey = user.asaas_account_api_key;
-    if (!apiKey) {
-      return NextResponse.json({
-        success: true,
-        hasAccount: true,
-        status: user.asaas_account_status || 'PENDING_DOCUMENTS',
-        documents: [],
-        onboardingUrl: null,
-        message: 'Subconta vinculada, mas chave de API individual indisponível para consulta direta.'
-      });
-    }
+    // Buscar API key da subconta na tabela protegida partner_secrets
+    const { data: secretRow } = await supabase
+      .from('partner_secrets')
+      .select('asaas_account_api_key')
+      .eq('user_id', targetUserId)
+      .maybeSingle();
 
-    const ASAAS_URL = 'https://www.asaas.com/api/v3';
+    const apiKey = secretRow?.asaas_account_api_key;
+    const mainApiKey = await getAsaasApiKey();
+    const ASAAS_URL = getAsaasBaseUrl(apiKey || mainApiKey);
 
-    // 1. Consultar lista de documentos exigidos pela subconta
     let documents: any[] = [];
     let onboardingUrl: string | null = null;
     let accountStatus: any = null;
 
-    try {
-      const docRes = await fetch(`${ASAAS_URL}/myAccount/documents`, {
-        headers: { 'access_token': apiKey, 'Content-Type': 'application/json' }
-      });
-      if (docRes.ok) {
-        const docData = await docRes.json();
-        documents = Array.isArray(docData?.data) ? docData.data : [];
+    if (apiKey) {
+      try {
+        const docRes = await fetch(`${ASAAS_URL}/myAccount/documents`, {
+          headers: { 'access_token': apiKey, 'Content-Type': 'application/json' }
+        });
+        if (docRes.ok) {
+          const docData = await docRes.json();
+          documents = Array.isArray(docData?.data) ? docData.data : [];
 
-        // Procurar se algum documento ou resposta geral contém onboardingUrl
-        for (const doc of documents) {
-          if (doc?.onboardingUrl) {
-            onboardingUrl = doc.onboardingUrl;
-            break;
+          for (const doc of documents) {
+            if (doc?.onboardingUrl) {
+              onboardingUrl = doc.onboardingUrl;
+              break;
+            }
           }
         }
+      } catch (docErr) {
+        console.warn("Aviso ao buscar documentos em /myAccount/documents:", docErr);
       }
-    } catch (docErr) {
-      console.warn("Aviso ao buscar documentos em /myAccount/documents:", docErr);
-    }
 
-    // 2. Consultar status detalhado da conta
-    try {
-      const statusRes = await fetch(`${ASAAS_URL}/myAccount/status`, {
-        headers: { 'access_token': apiKey, 'Content-Type': 'application/json' }
-      });
-      if (statusRes.ok) {
-        accountStatus = await statusRes.json();
-        if (accountStatus?.onboardingUrl && !onboardingUrl) {
-          onboardingUrl = accountStatus.onboardingUrl;
+      try {
+        const statusRes = await fetch(`${ASAAS_URL}/myAccount/status`, {
+          headers: { 'access_token': apiKey, 'Content-Type': 'application/json' }
+        });
+        if (statusRes.ok) {
+          accountStatus = await statusRes.json();
+          if (accountStatus?.onboardingUrl && !onboardingUrl) {
+            onboardingUrl = accountStatus.onboardingUrl;
+          }
         }
+      } catch (stErr) {
+        console.warn("Aviso ao buscar status em /myAccount/status:", stErr);
       }
-    } catch (stErr) {
-      console.warn("Aviso ao buscar status em /myAccount/status:", stErr);
     }
 
     return NextResponse.json({
@@ -117,7 +114,8 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const targetUserId = (formData.get('userId') as string) || auth.user?.id || auth.profile?.id;
     const documentId = formData.get('documentId') as string;
-    const file = formData.get('file') as Blob | null;
+    const docType = (formData.get('type') as string) || 'IDENTIFICATION';
+    const file = (formData.get('documentFile') as Blob) || (formData.get('file') as Blob | null);
 
     const isAdmin = auth.source === 'internal_secret' || String(auth.profile?.role || '').toLowerCase() === 'admin';
     const callerId = auth.user?.id || auth.profile?.id;
@@ -126,30 +124,34 @@ export async function POST(request: Request) {
     }
 
     if (!documentId || !file) {
-      return NextResponse.json({ error: 'documentId e arquivo são obrigatórios' }, { status: 400 });
+      return NextResponse.json({ error: 'documentId e arquivo (documentFile) são obrigatórios' }, { status: 400 });
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Arquivo excede o tamanho máximo de 10 MB' }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
-    const { data: user } = await supabase
-      .from('users')
+    const { data: secretRow } = await supabase
+      .from('partner_secrets')
       .select('asaas_account_api_key')
-      .eq('id', targetUserId)
+      .eq('user_id', targetUserId)
       .maybeSingle();
 
-    if (!user?.asaas_account_api_key) {
-      return NextResponse.json({ error: 'Chave de API da subconta indisponível' }, { status: 400 });
+    if (!secretRow?.asaas_account_api_key) {
+      return NextResponse.json({ error: 'Chave de API da subconta indisponível na tabela de segredos' }, { status: 400 });
     }
 
-    const ASAAS_URL = 'https://www.asaas.com/api/v3';
+    const ASAAS_URL = getAsaasBaseUrl(secretRow.asaas_account_api_key);
 
-    // Repassar o upload multipart para a API do Asaas
     const asaasFormData = new FormData();
-    asaasFormData.append('file', file);
+    asaasFormData.append('documentFile', file);
+    asaasFormData.append('type', docType);
 
     const uploadRes = await fetch(`${ASAAS_URL}/myAccount/documents/${documentId}`, {
       method: 'POST',
       headers: {
-        'access_token': user.asaas_account_api_key
+        'access_token': secretRow.asaas_account_api_key
       },
       body: asaasFormData
     });

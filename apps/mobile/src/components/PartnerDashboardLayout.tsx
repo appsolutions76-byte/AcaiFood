@@ -20,6 +20,7 @@ import { AsaasPartnerBadge } from '@/components/AsaasPartnerBadge';
 import { PartnerWithdrawalSection } from '@/components/PartnerWithdrawalSection';
 import { PartnerManualModal, PartnerRole } from '@/components/PartnerManualModal';
 import PartnerActivationGuard from '@/components/PartnerActivationGuard';
+import { AsaasAccountStatusCard } from '@/components/AsaasAccountStatusCard';
 
 export interface PartnerDashboardLayoutProps {
   role: 'loja' | 'fornecedor' | 'motorista' | 'caminhao';
@@ -267,6 +268,7 @@ export function PartnerDashboardLayout({
 
         {/* Main Dashboard Container */}
         <main className="max-w-6xl mx-auto p-4 sm:p-6 space-y-4">
+          <AsaasAccountStatusCard />
           {children}
         </main>
 
