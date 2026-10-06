@@ -90,11 +90,25 @@ export async function GET(request: Request) {
       }
     }
 
+    let effectiveStatus = user.asaas_account_status || 'PENDING_DOCUMENTS';
+    if (accountStatus) {
+      const genStatus = String(accountStatus.general || accountStatus.status || accountStatus.commercialInfo || '').toUpperCase();
+      if (genStatus === 'APPROVED' || genStatus === 'ACTIVE') {
+        effectiveStatus = 'APPROVED';
+        if (user.asaas_account_status !== 'APPROVED') {
+          await supabase
+            .from('users')
+            .update({ asaas_account_status: 'APPROVED', split_enabled: true })
+            .eq('id', targetUserId);
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       hasAccount: true,
-      status: user.asaas_account_status || 'PENDING_DOCUMENTS',
-      splitEnabled: Boolean(user.split_enabled),
+      status: effectiveStatus,
+      splitEnabled: Boolean(user.split_enabled || effectiveStatus === 'APPROVED'),
       documents,
       onboardingUrl,
       accountStatus

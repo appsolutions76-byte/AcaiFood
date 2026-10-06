@@ -26,6 +26,11 @@ export function AsaasAccountStatusCard() {
       const data = await res.json();
       if (data && data.success) {
         setDocData(data);
+        if (data.status && currentUser?.asaas_account_status !== data.status) {
+          useAppStore.setState((state: any) => ({
+            currentUser: state.currentUser ? { ...state.currentUser, asaas_account_status: data.status } : state.currentUser
+          }));
+        }
       }
     } catch (err) {
       console.warn('[AsaasAccountStatusCard] Erro ao consultar documentos:', err);
