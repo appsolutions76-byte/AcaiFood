@@ -96,6 +96,7 @@ GRANT EXECUTE ON FUNCTION public.accept_order_atomic(UUID) TO service_role;
 
 
 -- 2. Atualizar RPC get_driver_radar para retornar APENAS pedidos prontos (READY / SEARCHING_OPERATOR)
+DROP FUNCTION IF EXISTS public.get_driver_radar();
 CREATE OR REPLACE FUNCTION public.get_driver_radar()
 RETURNS TABLE (
   id UUID,

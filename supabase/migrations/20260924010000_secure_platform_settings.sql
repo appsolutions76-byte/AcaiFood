@@ -11,6 +11,10 @@ SET asaas_api_key = NULL
 WHERE asaas_api_key IS NOT NULL;
 
 -- 3. Revogar permissão ampla de SELECT em platform_settings de roles públicas
+ALTER TABLE public.platform_settings
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 REVOKE SELECT ON public.platform_settings FROM anon, authenticated;
 
 -- 4. Conceder SELECT apenas para colunas públicas de taxas de entrega e plataforma

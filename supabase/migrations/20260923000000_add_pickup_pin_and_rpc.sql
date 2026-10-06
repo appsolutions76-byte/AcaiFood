@@ -102,7 +102,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.check_pickup_pin TO authenticated;
-GRANT EXECUTE ON FUNCTION public.check_pickup_pin TO service_role;
+GRANT EXECUTE ON FUNCTION public.check_pickup_pin(uuid, text, uuid, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.check_pickup_pin(uuid, text, uuid, text) TO service_role;
 
 NOTIFY pgrst, 'reload schema';

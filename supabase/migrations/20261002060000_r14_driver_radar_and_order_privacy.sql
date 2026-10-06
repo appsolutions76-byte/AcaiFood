@@ -21,6 +21,7 @@
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS delivery_bairro TEXT;
 
 -- 2. Atualizar a RPC pública get_driver_radar()
+DROP FUNCTION IF EXISTS public.get_driver_radar();
 CREATE OR REPLACE FUNCTION public.get_driver_radar()
 RETURNS TABLE (
   id UUID,

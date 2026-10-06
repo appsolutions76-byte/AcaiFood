@@ -275,7 +275,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.advance_order_status TO authenticated;
-GRANT EXECUTE ON FUNCTION public.advance_order_status TO service_role;
+GRANT EXECUTE ON FUNCTION public.advance_order_status(uuid, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.advance_order_status(uuid, text, text) TO service_role;
 
 NOTIFY pgrst, 'reload schema';

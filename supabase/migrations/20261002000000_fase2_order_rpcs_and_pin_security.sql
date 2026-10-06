@@ -137,8 +137,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.advance_order_status TO authenticated;
-GRANT EXECUTE ON FUNCTION public.advance_order_status TO service_role;
+GRANT EXECUTE ON FUNCTION public.advance_order_status(uuid, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.advance_order_status(uuid, text, text) TO service_role;
 
 -- 2. RPC Atômica para Motorista Aceitar Corrida no Radar
 CREATE OR REPLACE FUNCTION public.accept_order_atomic(
@@ -210,8 +210,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.accept_order_atomic TO authenticated;
-GRANT EXECUTE ON FUNCTION public.accept_order_atomic TO service_role;
+GRANT EXECUTE ON FUNCTION public.accept_order_atomic(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.accept_order_atomic(uuid, uuid) TO service_role;
 
 -- 3. RPC para Consulta Segura de PINs de Pedidos (Apenas Comprador / Loja / Admin)
 CREATE OR REPLACE FUNCTION public.get_my_order_pins(
@@ -270,7 +270,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_my_order_pins TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_my_order_pins TO service_role;
+GRANT EXECUTE ON FUNCTION public.get_my_order_pins(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_order_pins(uuid) TO service_role;
 
 NOTIFY pgrst, 'reload schema';

@@ -551,8 +551,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.advance_order_status TO authenticated;
-GRANT EXECUTE ON FUNCTION public.advance_order_status TO service_role;
+GRANT EXECUTE ON FUNCTION public.advance_order_status(uuid, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.advance_order_status(uuid, text, text) TO service_role;
 
 
 -- 9. REVOGAR transition_order_status (A7)
@@ -620,11 +620,12 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_my_order_pins TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_my_order_pins TO service_role;
+GRANT EXECUTE ON FUNCTION public.get_my_order_pins(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_order_pins(uuid) TO service_role;
 
 
 -- 11. RPC SEGURA get_driver_radar (A9/H7)
+DROP FUNCTION IF EXISTS public.get_driver_radar();
 CREATE OR REPLACE FUNCTION public.get_driver_radar()
 RETURNS TABLE (
   id UUID,
@@ -662,7 +663,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_driver_radar TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_driver_radar TO service_role;
+GRANT EXECUTE ON FUNCTION public.get_driver_radar() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_driver_radar() TO service_role;
 
 NOTIFY pgrst, 'reload schema';
