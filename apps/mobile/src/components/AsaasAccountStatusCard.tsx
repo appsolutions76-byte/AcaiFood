@@ -42,17 +42,65 @@ export function AsaasAccountStatusCard() {
   const onboardingUrl = docData?.onboardingUrl;
   const pendingDocs = docData?.documents || [];
 
+  const handleLinkSubaccount = async () => {
+    if (!currentUser?.id) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/asaas/subaccount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          cpfCnpj: currentUser.cpfCnpj ? String(currentUser.cpfCnpj).replace(/\D/g, '') : undefined,
+          phone: currentUser.telefone || currentUser.phone,
+          endereco: currentUser.endereco,
+          bairro: currentUser.bairro,
+          cidade: currentUser.cidade,
+          estado: currentUser.estado || 'PA',
+          cep: currentUser.cep ? String(currentUser.cep).replace(/\D/g, '') : '66000000',
+          monthlyIncome: 3000
+        })
+      });
+      const data = await res.json();
+      if (data && (data.success || data.asaasAccountId)) {
+        await fetchDocStatus();
+        if (data.onboardingUrl) {
+          window.open(data.onboardingUrl, '_blank');
+        }
+      } else {
+        alert(data?.error || 'Para vincular sua subconta bancária, certifique-se de que o CPF/CNPJ, CEP e telefone do seu perfil estejam preenchidos.');
+      }
+    } catch (err: any) {
+      alert('Erro ao vincular subconta Asaas. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (currentStatus === 'NO_ACCOUNT') {
     return (
-      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 p-4 rounded-2xl shadow-sm">
+      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 p-4 rounded-2xl shadow-sm space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-bold text-sm">
             <AlertTriangle size={18} className="text-amber-600 shrink-0" />
             <span>Subconta de pagamento Asaas ainda não vinculada.</span>
           </div>
           <p className="text-xs text-amber-700 dark:text-amber-300">
-            Conclua seu cadastro completo para ativar o recebimento de repasses Pix.
+            Conclua o vínculo bancário para ativar o recebimento de repasses automatizados via Pix.
           </p>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-1 border-t border-amber-200/60 dark:border-amber-900/40">
+          <button
+            onClick={handleLinkSubaccount}
+            disabled={loading}
+            className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 transition active:scale-95 shadow-sm cursor-pointer"
+          >
+            <FileText size={14} />
+            <span>{loading ? 'Processando...' : '🔗 Gerar / Vincular Subconta Asaas'}</span>
+          </button>
         </div>
       </div>
     );

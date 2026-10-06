@@ -13,6 +13,7 @@ import {
   Key, 
   Power,
   ShieldCheck,
+  AlertTriangle,
   Wallet
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -166,9 +167,15 @@ export function PartnerDashboardLayout({
                         </button>
                       )}
 
-                      <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                        <ShieldCheck size={12} /> Asaas Ativo ✓
-                      </span>
+                      {currentUser?.asaas_account_status === 'APPROVED' ? (
+                        <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                          <ShieldCheck size={12} /> Asaas Ativo ✓
+                        </span>
+                      ) : (
+                        <span className="bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                          <AlertTriangle size={12} /> Asaas Pendente ⚠️
+                        </span>
+                      )}
                     </div>
 
                     {/* Informações de Localização, Chave PIX, GPS e Parceira Financeira */}
