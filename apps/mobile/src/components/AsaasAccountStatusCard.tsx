@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { ExternalLink, FileText, CheckCircle2, Clock, AlertTriangle, ShieldCheck } from 'lucide-react';
 
+import { getAuthHeaders } from '@/lib/supabase';
+
 export function AsaasAccountStatusCard() {
   const currentUser = useAppStore((state: any) => state.currentUser);
   const [loading, setLoading] = useState(false);
@@ -19,7 +21,8 @@ export function AsaasAccountStatusCard() {
     if (!currentUser?.id) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/asaas/documents?userId=${currentUser.id}`);
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/asaas/documents?userId=${currentUser.id}`, { headers });
       const data = await res.json();
       if (data && data.success) {
         setDocData(data);
@@ -46,9 +49,10 @@ export function AsaasAccountStatusCard() {
     if (!currentUser?.id) return;
     setLoading(true);
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch('/api/asaas/subaccount', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           userId: currentUser.id,
           name: currentUser.name,
