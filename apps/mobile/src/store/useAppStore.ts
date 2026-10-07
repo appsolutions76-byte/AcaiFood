@@ -1355,11 +1355,14 @@ export const useAppStore = create<AppState>()(
 
         // 1. Atualização Otimista no Zustand State
         set((state) => {
-          const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           const isCurrent = state.currentUser?.id === userId;
-          if (!user && !isCurrent) return state;
+          const userInDict = state.users[userId];
+          const baseUser = isCurrent
+            ? { ...(userInDict || {}), ...(state.currentUser || {}) }
+            : (userInDict || state.currentUser || {});
 
-          const baseUser = user || state.currentUser;
+          if (!baseUser.id) return state;
+
           const updatedUser: User = { ...(baseUser as User), status };
           return { 
             users: { ...state.users, [userId]: updatedUser },
