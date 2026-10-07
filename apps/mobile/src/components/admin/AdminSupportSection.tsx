@@ -391,16 +391,44 @@ export function AdminSupportSection({
     }
   };
 
+  // Download com o token no header Authorization (nunca na URL)
+  const downloadWithAuth = async (url: string, fallbackName: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(url, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err?.error || `Erro ${res.status} ao gerar o arquivo.`);
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const fileName = match?.[1] || fallbackName;
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 1000);
+    } catch (e: any) {
+      alert('Erro ao baixar: ' + (e?.message || 'falha de rede'));
+    }
+  };
+
   const handleDownloadMonthlyReport = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || '';
-    window.open(`/api/admin/monthly-report?format=csv&token=${token}`, '_blank');
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+    const month = window.prompt('Mês do relatório (AAAA-MM):', d.toISOString().slice(0, 7));
+    if (!month) return;
+    await downloadWithAuth(`/api/admin/monthly-report?format=csv&month=${encodeURIComponent(month.trim())}`, `relatorio_mensal_${month.trim()}.csv`);
   };
 
   const handleDownloadLegacyKyc = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || '';
-    window.open(`/api/admin/kyc-legacy-export?token=${token}`, '_blank');
+    await downloadWithAuth('/api/admin/kyc-legacy-export', `kyc_legado_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   const getRoleBadge = (role: string) => {

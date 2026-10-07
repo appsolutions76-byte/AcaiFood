@@ -361,7 +361,7 @@ export function AdminWithdrawalsSection({
             </div>
 
             <p className="text-[11px] text-zinc-500">
-              Transfere instantaneamente o saldo líquido dos pedidos entregues direto para a chave Pix dos parceiros no Asaas.
+              Cada repasse vira um pedido de saque analisado e pago na subconta Asaas aprovada do parceiro (parceiros sem conta aprovada ficam de fora).
             </p>
           </div>
 

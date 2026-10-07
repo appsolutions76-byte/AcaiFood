@@ -1,4 +1,4 @@
-# Documentação Oficial do AçaíFood (Atualizado Outubro/2026)
+# Documentação Oficial do AçaíFood (Atualizado em 06/10/2026, pós-R16)
 
 Esta pasta `docs/` é a **fonte oficial de verdade** sobre o app e a arquitetura técnica da plataforma AçaíFood.
 
@@ -10,7 +10,10 @@ Esta pasta `docs/` é a **fonte oficial de verdade** sobre o app e a arquitetura
 |---|---|
 | [`01_OPERACAO_DO_APP.md`](01_OPERACAO_DO_APP.md) | **Como o app funciona:** Perfis de usuário, três fluxos de pedidos (B2C, B2B, Coleta), ciclo de status, regras de dinheiro e contingência. |
 | [`02_ARQUITETURA_TECNICA.md`](02_ARQUITETURA_TECNICA.md) | **Arquitetura técnica:** Stack, organização de pastas, rotas de API Next.js, modelo de banco Supabase, RLS, RPCs e auditoria. |
-| [`04_MANUAIS_DE_USO.md`](04_MANUAIS_DE_USO.md) | **Manuais de uso detalhados por perfil:** Cliente, Batedeira/Loja, Fornecedor B2B, Motoboy, Caminhoneiro e Administrador Master (`/admin`). |
+| [`04_MANUAIS_DE_USO.md`](04_MANUAIS_DE_USO.md) | **Manuais de uso detalhados por perfil:** Cliente, Batedeira/Loja, Fornecedor B2B, Motoboy, Caminhoneiro, Administrador Master (`/admin`) e **"Como abrir sua conta Asaas"**. |
+| [`13_CONFORMIDADE_CONTRATO_ASAAS_BAAS.md`](13_CONFORMIDADE_CONTRATO_ASAAS_BAAS.md) | **Contrato BaaS Asaas:** cláusulas e Anexo I aplicados ao app. |
+| [`20_PROMPT_CORRECOES_R16.md`](20_PROMPT_CORRECOES_R16.md) | **Rodada de correções R16** (itens e regras). |
+| [`21_RELATORIO_FINAL_R16_2026-10-06.md`](21_RELATORIO_FINAL_R16_2026-10-06.md) | **Relatório final do R16:** o que foi corrigido, como foi testado e o checklist antes de publicar. |
 
 ---
 
@@ -43,3 +46,8 @@ Esta pasta `docs/` é a **fonte oficial de verdade** sobre o app e a arquitetura
 - `14_PROMPT_CORRECOES_R12.md`: Especificação R12 consolidada (PINs isolados em `order_pins` e auditoria).
 - `15_REAUDITORIA_POS_R12_2026-10-02.md`: Reauditoria pós-R12.
 - `16_PROMPT_CORRECOES_R13.md`: Especificações do ciclo R13/R14.
+- `17_AUDITORIA_POS_R13_R14_2026-10-06.md`: Auditoria pós-R13/R14 (PIN mestre, leitura ampla de `users`, saque por chave Pix).
+- `18_PROMPT_CORRECOES_R15.md`: Correções R15 com o contrato BaaS, migration do PIN e orientações de cadastro/documentos Asaas.
+- `19_AUDITORIA_POS_R15_2026-10-06.md`: Auditoria pós-R15.
+- `21_RELATORIO_FINAL_R16_2026-10-06.md`: Fechamento do R16 (itens 1–8) e checklist de publicação.
+- `20_PROMPT_CORRECOES_R16.md`: Correções R16 (aceites, subconta com KYC real, situação da conta, saque só por subconta aprovada, MFA, privacidade de `users`, log de admin, tela de Conformidade, SLA, testes no CI).

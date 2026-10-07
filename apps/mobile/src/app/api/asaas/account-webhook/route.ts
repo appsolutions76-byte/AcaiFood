@@ -1,80 +1,60 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { isValidAsaasWebhook } from '@/lib/apiAuth';
+import { saveAccountStatus, AsaasAccountStatusDetail } from '@/lib/asaasAccountStatus';
 
 export const dynamic = 'force-dynamic';
 
+// Webhook de "situação da conta" das subcontas Asaas (eventos ACCOUNT_STATUS_*).
+// Payload: { id, event, dateCreated, account: { id }, accountStatus: { commercialInfo,
+// bankAccountInfo, documentation, general } }.
+// A conta só é aprovada quando accountStatus.general === 'APPROVED'; eventos parciais
+// (ex.: ACCOUNT_STATUS_DOCUMENT_APPROVED) apenas atualizam o detalhe.
 export async function POST(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const whToken = searchParams.get('wh_token') || request.headers.get('asaas-access-token');
+  // Mesmo token do webhook de pagamentos (ASAAS_WEBHOOK_TOKEN). Sem token válido: 401.
+  if (!isValidAsaasWebhook(request)) {
+    return NextResponse.json({ error: 'Token de webhook não autorizado' }, { status: 401 });
+  }
 
-    // Validar token de webhook se configurado
-    const expectedToken = process.env.ASAAS_WEBHOOK_SECRET || process.env.NEXT_PUBLIC_ASAAS_WEBHOOK_SECRET;
-    if (expectedToken && whToken !== expectedToken) {
-      console.warn('[Asaas Account Webhook] Token de webhook inválido recebido.');
-      return NextResponse.json({ error: 'Token de webhook não autorizado' }, { status: 401 });
+  try {
+    const eventData = await request.json().catch(() => null);
+    if (!eventData) {
+      return NextResponse.json({ error: 'Corpo inválido' }, { status: 400 });
     }
 
-    const eventData = await request.json();
     const event = String(eventData.event || '').toUpperCase();
-    const account = eventData.account || eventData.subAccount || {};
-    const accountId = account.id || eventData.account_id || eventData.id;
+    const accountId = eventData.account?.id ? String(eventData.account.id) : '';
+    const detail: AsaasAccountStatusDetail | undefined = eventData.accountStatus;
 
-    console.log(`[Asaas Account Webhook] Evento: ${event} | AccountId: ${accountId || 'não informado'}`);
+    if (!event.startsWith('ACCOUNT_STATUS_')) {
+      return NextResponse.json({ success: true, message: 'Evento ignorado' });
+    }
 
-    if (!accountId) {
-      return NextResponse.json({ success: true, message: 'Evento sem accountId processado (no-op)' });
+    if (!accountId || !detail) {
+      console.warn(`[Asaas Account Webhook] ${event} sem account.id ou accountStatus`);
+      return NextResponse.json({ success: true, message: 'Evento sem dados de conta (ignorado)' });
     }
 
     const supabase = getSupabaseAdmin();
-
-    // Achar parceiro pela subconta
     const { data: user } = await supabase
       .from('users')
-      .select('id, name, role, asaas_account_status')
+      .select('id')
       .eq('asaas_account_id', accountId)
       .maybeSingle();
 
     if (!user) {
-      console.warn(`[Asaas Account Webhook] Nenhuma conta de usuário associada ao asaas_account_id: ${accountId}`);
+      console.warn(`[Asaas Account Webhook] ${event}: subconta sem usuário vinculado`);
       return NextResponse.json({ success: true, message: 'Conta de usuário não encontrada' });
     }
 
-    let newStatus: string | null = null;
+    const result = await saveAccountStatus(user.id, detail, `webhook:${event}`);
+    console.log(`[Asaas Account Webhook] ${event} → status ${result.status || 'inalterado'}`);
 
-    if (event.includes('APPROVED')) {
-      newStatus = 'APPROVED';
-    } else if (event.includes('REJECTED')) {
-      newStatus = 'REJECTED';
-    } else if (event.includes('PENDING') || event.includes('AWAITING')) {
-      newStatus = 'AWAITING_APPROVAL';
-    }
-
-    if (newStatus) {
-      const isApproved = newStatus === 'APPROVED';
-      await supabase
-        .from('users')
-        .update({
-          asaas_account_status: newStatus,
-          split_enabled: isApproved
-        })
-        .eq('id', user.id);
-
-      // Registrar evento de log
-      await supabase.from('admin_audit_log').insert({
-        actor_id: user.id,
-        action: 'ASAAS_ACCOUNT_STATUS_CHANGE',
-        target_type: 'USER',
-        target_id: user.id,
-        before_state: { status: user.asaas_account_status },
-        after_state: { status: newStatus, split_enabled: isApproved, event }
-      });
-    }
-
-    return NextResponse.json({ success: true, status: newStatus || 'UNCHANGED' });
+    return NextResponse.json({ success: true, status: result.status || 'UNCHANGED' });
 
   } catch (error: any) {
-    console.error('[Asaas Account Webhook] Erro ao processar evento:', error);
-    return NextResponse.json({ error: error.message || 'Erro interno no webhook' }, { status: 500 });
+    console.error('[Asaas Account Webhook] Erro ao processar evento:', error?.message);
+    // 500 faz o Asaas reenviar o evento
+    return NextResponse.json({ error: 'Erro interno no webhook' }, { status: 500 });
   }
 }

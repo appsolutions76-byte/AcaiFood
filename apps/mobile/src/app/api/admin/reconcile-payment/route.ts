@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
+import { logAdminAction } from '@/lib/adminAudit';
 
 export const dynamic = 'force-dynamic';
 
@@ -189,6 +190,18 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Valor confirmado inválido.' }, { status: 400 });
       }
 
+      const pendingStatuses = ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT', 'pending'];
+      if (!pendingStatuses.includes(String(order.status))) {
+        return NextResponse.json({ error: `Pedido não está aguardando pagamento (status atual: ${order.status}).` }, { status: 409 });
+      }
+
+      const expectedAmount = Number(order.charged_amount || 0);
+      if (expectedAmount > 0 && numAmount + 0.01 < expectedAmount) {
+        return NextResponse.json({
+          error: `Valor recebido (R$ ${numAmount.toFixed(2)}) é menor que o valor do pedido (R$ ${expectedAmount.toFixed(2)}).`
+        }, { status: 400 });
+      }
+
       // Cancelar cobrança pendente no Asaas para não ser paga duas vezes
       if (order.asaas_payment_id && ASAAS_API_KEY) {
         try {
@@ -203,9 +216,6 @@ export async function POST(request: Request) {
         }
       }
 
-      const deliveryPin = order.delivery_pin || Math.floor(1000 + Math.random() * 9000).toString();
-      const pickupPin = order.pickup_pin || (order.order_type !== 'COLETA' ? Math.floor(1000 + Math.random() * 9000).toString() : null);
-
       // Atualizar pedido para PAID com travas de conciliação manual
       const { error: updErr } = await supabase
         .from('orders')
@@ -214,14 +224,13 @@ export async function POST(request: Request) {
           paid_at: new Date().toISOString(),
           payment_reconciled_manually: true,
           pix_end_to_end_id: pixEndToEndId.trim(),
-          charged_amount: numAmount,
-          delivery_pin: deliveryPin,
-          pickup_pin: pickupPin,
+          charged_amount: expectedAmount > 0 ? expectedAmount : numAmount,
           reconciled_by: adminUser?.id || null,
           reconciled_at: new Date().toISOString(),
           asaas_charge_status: 'RECEIVED'
         })
-        .eq('id', order.id);
+        .eq('id', order.id)
+        .in('status', pendingStatuses);
 
       if (updErr) {
         console.error("Erro ao atualizar status do pedido para PAID:", updErr);
@@ -245,6 +254,20 @@ export async function POST(request: Request) {
       } catch (logErr) {
         console.warn("Aviso ao salvar incident_log:", logErr);
       }
+
+      // PINs gerados pelo banco (gravados só em order_pins)
+      try { await supabase.rpc('generate_delivery_pin', { p_order_id: order.id }); } catch (_e) {}
+      try { await supabase.rpc('generate_pickup_pin', { p_order_id: order.id }); } catch (_e) {}
+
+      await logAdminAction({
+        actorId: adminUser?.id || null,
+        action: 'PAYMENT_RECONCILED_MANUALLY',
+        targetType: 'ORDER',
+        targetId: order.id,
+        beforeState: { status: order.status, charged_amount: order.charged_amount, asaas_payment_id: order.asaas_payment_id || null },
+        afterState: { status: 'PAID', confirmed_amount: numAmount, pix_end_to_end_id: pixEndToEndId.trim() },
+        request
+      });
 
       return NextResponse.json({
         success: true,
@@ -355,6 +378,16 @@ export async function POST(request: Request) {
       } catch (logErr) {
         console.warn("Aviso ao salvar incident_log:", logErr);
       }
+
+      await logAdminAction({
+        actorId: adminUser?.id || null,
+        action: finalStatus === 'REFUNDED' ? 'ORDER_REFUNDED_BY_ADMIN' : 'ORDER_CANCELLED_BY_ADMIN',
+        targetType: 'ORDER',
+        targetId: order.id,
+        beforeState: { status: order.status, charged_amount: order.charged_amount },
+        afterState: { status: finalStatus, reason: reason || null, asaas: asaasRefundMessage || null },
+        request
+      });
 
       return NextResponse.json({
         success: true,

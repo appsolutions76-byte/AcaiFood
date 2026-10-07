@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { Copy, Clock, LogOut, RefreshCw, ShieldAlert } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, getAuthHeaders } from '@/lib/supabase';
 import { SeloAsaas } from '@/components/SeloAsaas';
 
 interface PartnerActivationGuardProps {
@@ -121,32 +121,12 @@ export default function PartnerActivationGuard({ children, roleName }: PartnerAc
   const handleManualCheck = async () => {
     setIsChecking(true);
     try {
-      const res = await fetch('/api/asaas/activation?userId=' + currentUser?.id + (pixData?.paymentId ? '&paymentId=' + pixData.paymentId : ''));
+      const res = await fetch('/api/asaas/activation?userId=' + currentUser?.id + (pixData?.paymentId ? '&paymentId=' + pixData.paymentId : ''), { headers: await getAuthHeaders() });
       const data = await res.json();
       if (data?.userStatus?.isPaid) {
         setIsPaidSuccess(true);
         setIsBlocked(false);
-        try {
-          const { data: sessData } = await supabase.auth.getSession();
-          const authHeaders: any = { 'Content-Type': 'application/json' };
-          if (sessData?.session?.access_token) {
-            authHeaders['Authorization'] = 'Bearer ' + sessData.session.access_token;
-          }
-          fetch('/api/asaas/subaccount', {
-            method: 'POST',
-            headers: authHeaders,
-            body: JSON.stringify({
-              userId: currentUser?.id,
-              name: currentUser?.name,
-              email: currentUser?.email,
-              cpfCnpj: currentUser?.cpfCnpj ? currentUser.cpfCnpj.replace(/\D/g, '') : undefined,
-              phone: currentUser?.telefone,
-              endereco: currentUser?.endereco,
-              bairro: currentUser?.bairro,
-              cidade: currentUser?.cidade
-            })
-          }).catch(_err => console.warn('Aviso ao vincular subconta:', _err));
-        } catch (_sErr) {}
+        // A abertura da subconta (com os dados de KYC) é feita no cartão "Minha conta Asaas".
       } else {
         alert('Pagamento ainda em processamento. Conclua o Pix no seu banco e tente novamente.');
       }

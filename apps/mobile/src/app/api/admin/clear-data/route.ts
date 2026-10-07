@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { logAdminAction } from '@/lib/adminAudit';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin']);
@@ -8,11 +9,27 @@ export async function POST(request: Request) {
 
   try {
     const supabase = getSupabaseAdmin();
+    const actorId = auth.user?.id || auth.profile?.id || null;
+
+    // Apagar todos os pedidos destrói registros financeiros que precisam ser guardados.
+    // Só funciona com ALLOW_DESTRUCTIVE_ADMIN_RESET=true (ambiente de teste).
+    if (process.env.ALLOW_DESTRUCTIVE_ADMIN_RESET !== 'true') {
+      await logAdminAction({ actorId, action: 'SYSTEM_DATA_CLEAR_BLOCKED', targetType: 'SYSTEM', targetId: 'all', request });
+      return NextResponse.json({
+        error: 'Limpeza geral desativada neste ambiente. Os registros de pedidos e pagamentos precisam ser guardados.'
+      }, { status: 403 });
+    }
+
+    const { count: ordersBefore } = await supabase.from('orders').select('id', { count: 'exact', head: true });
 
     // 1. Tentar executar a RPC nativa do banco de dados para garantia atômica total
     try {
       const { data: rpcData, error: rpcError } = await supabase.rpc('reset_admin_system_data');
       if (!rpcError && rpcData && rpcData.success) {
+        await logAdminAction({
+          actorId, action: 'SYSTEM_DATA_CLEARED', targetType: 'SYSTEM', targetId: 'all',
+          beforeState: { orders: ordersBefore || 0 }, afterState: { via: 'rpc' }, request
+        });
         return NextResponse.json(rpcData);
       }
     } catch (rpcEx) {
@@ -59,6 +76,11 @@ export async function POST(request: Request) {
         console.warn("Aviso ao zerar admin_balances para " + bId + ":", bErr);
       }
     }
+
+    await logAdminAction({
+      actorId, action: 'SYSTEM_DATA_CLEARED', targetType: 'SYSTEM', targetId: 'all',
+      beforeState: { orders: ordersBefore || 0 }, afterState: { via: 'service_role' }, request
+    });
 
     return NextResponse.json({ 
       success: true, 

@@ -87,50 +87,14 @@ export function buildAsaasTransferPayload(
 ): AsaasTransferPayload | null {
   if (!partnerUser || amount <= 0) return null;
 
-  const rawPixKey = String(partnerUser.pix_key || partnerUser.pixKey || '').trim();
-  const rawPixKeyType = partnerUser.pix_key_type || partnerUser.pixKeyType;
-  const rawCpfCnpj = String(partnerUser.cpf_cnpj || partnerUser.cpfCnpj || '').replace(/\D/g, '');
-  const rawEmail = String(partnerUser.email || '').trim();
+  // Repasse/saque SOMENTE para a subconta Asaas aprovada do parceiro (transferência entre
+  // Contas Asaas por walletId — cl. 2.1, 6.3 e 6.4 do contrato BaaS). Chave Pix digitada,
+  // CPF/CNPJ ou e-mail NUNCA são usados como destino.
   const rawWalletId = String(partnerUser.asaas_wallet_id || partnerUser.asaasWalletId || '').trim();
   const accountStatus = String(partnerUser.asaas_account_status || '').toUpperCase();
-
   const desc = descriptionStr || `Repasse AçaíFood - ${partnerUser.name || 'Parceiro'}`;
 
-  // 1. Prioridade Máxima: Chave Pix cadastrada no perfil
-  if (rawPixKey) {
-    const valResult = validateAndFormatPixKey(rawPixKey, rawPixKeyType);
-    if (valResult.valid && valResult.formattedKey && valResult.type) {
-      return {
-        value: Number(amount.toFixed(2)),
-        pixAddressKey: valResult.formattedKey,
-        pixAddressKeyType: valResult.type,
-        description: desc
-      };
-    }
-  }
-
-  // 2. Fallback: CPF/CNPJ como chave Pix
-  if (rawCpfCnpj && (rawCpfCnpj.length === 11 || rawCpfCnpj.length === 14) && validateCpfCnpjDigits(rawCpfCnpj)) {
-    return {
-      value: Number(amount.toFixed(2)),
-      pixAddressKey: rawCpfCnpj,
-      pixAddressKeyType: rawCpfCnpj.length === 11 ? 'CPF' : 'CNPJ',
-      description: desc
-    };
-  }
-
-  // 3. Fallback: E-mail como chave Pix
-  if (rawEmail && rawEmail.includes('@') && rawEmail.includes('.')) {
-    return {
-      value: Number(amount.toFixed(2)),
-      pixAddressKey: rawEmail.toLowerCase(),
-      pixAddressKeyType: 'EMAIL',
-      description: desc
-    };
-  }
-
-  // 4. Se não houver chave Pix, mas houver subconta Asaas com walletId
-  if (rawWalletId && rawWalletId.length >= 10) {
+  if (accountStatus === 'APPROVED' && rawWalletId && rawWalletId.length >= 10) {
     return {
       value: Number(amount.toFixed(2)),
       walletId: rawWalletId,

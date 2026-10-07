@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getPlatformConfig, setPlatformConfig } from '@/lib/platformConfig';
+import { logAdminAction } from '@/lib/adminAudit';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 
@@ -61,26 +63,10 @@ export async function GET(request: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    const { data: row } = await supabase
-      .from('platform_settings')
-      .select('asaas_platform_wallet_id')
-      .limit(1)
-      .maybeSingle();
-
-    let supportConfig: SupportConfig = DEFAULT_SUPPORT_CONFIG;
-    let fallbackMessages: SupportMessageItem[] = [];
-
-    if (row?.asaas_platform_wallet_id) {
-      try {
-        const parsed = JSON.parse(row.asaas_platform_wallet_id);
-        if (parsed?.support_config) {
-          supportConfig = { ...DEFAULT_SUPPORT_CONFIG, ...parsed.support_config };
-        }
-        if (parsed?.support_messages && Array.isArray(parsed.support_messages)) {
-          fallbackMessages = parsed.support_messages;
-        }
-      } catch (_e) {}
-    }
+    const savedSupportConfig = await getPlatformConfig<Partial<SupportConfig>>('support');
+    const supportConfig: SupportConfig = { ...DEFAULT_SUPPORT_CONFIG, ...(savedSupportConfig || {}) };
+    // Mensagens ficam só em support_messages (não mais em JSON de platform_settings)
+    const fallbackMessages: SupportMessageItem[] = [];
 
     if (configOnly) {
       return NextResponse.json({ success: true, config: supportConfig });
@@ -148,43 +134,33 @@ export async function POST(request: Request) {
     const { action = 'send', message, userId, status, config } = body;
 
     // Proteção de segurança: Modificações de configuração do suporte e resolução de chamados requerem autorização
-    if (action === 'save_config' || action === 'resolve') {
+    let adminActorId: string | null = null;
+    if (action === 'save_config' || action === 'resolve' || action === 'forward_asaas') {
       const auth = await authorizeRequest(request, ['admin']);
       if (!auth.authorized) {
         return unauthorizedResponse(auth.error || 'Apenas administradores podem alterar configurações do canal de suporte.');
       }
+      adminActorId = auth.user?.id || auth.profile?.id || null;
     }
 
     const supabase = getSupabaseAdmin();
 
     // AÇÃO 1: SALVAR CONFIGURAÇÕES DE HORÁRIO / CHAVE LIGA-DESLIGA
     if (action === 'save_config' && config) {
-      const { data: firstRow } = await supabase
-        .from('platform_settings')
-        .select('id, asaas_platform_wallet_id')
-        .limit(1)
-        .maybeSingle();
-
-      let currentCfg: any = {};
-      if (firstRow?.asaas_platform_wallet_id) {
-        try {
-          currentCfg = JSON.parse(firstRow.asaas_platform_wallet_id) || {};
-        } catch (_e) {}
+      const newSupportConfig = { ...DEFAULT_SUPPORT_CONFIG, ...config };
+      const saved = await setPlatformConfig('support', newSupportConfig);
+      if (!saved.ok) {
+        return NextResponse.json({ error: saved.error }, { status: 500 });
       }
-
-      currentCfg.support_config = {
-        ...DEFAULT_SUPPORT_CONFIG,
-        ...config
-      };
-
-      if (firstRow?.id) {
-        await supabase
-          .from('platform_settings')
-          .update({ asaas_platform_wallet_id: JSON.stringify(currentCfg) })
-          .eq('id', firstRow.id);
-      }
-
-      return NextResponse.json({ success: true, config: currentCfg.support_config });
+      await logAdminAction({
+        actorId: adminActorId,
+        action: 'SUPPORT_CONFIG_UPDATED',
+        targetType: 'PLATFORM_CONFIG',
+        targetId: 'support',
+        afterState: newSupportConfig,
+        request
+      });
+      return NextResponse.json({ success: true, config: newSupportConfig });
     }
 
     // AÇÃO 2: ENVIAR MENSAGEM (SOMENTE USUÁRIOS CADASTRADOS)
@@ -244,35 +220,8 @@ export async function POST(request: Request) {
         }
       } catch (_err) {}
 
-      // 2. Fallback via platform_settings
-      const { data: firstRow } = await supabase
-        .from('platform_settings')
-        .select('id, asaas_platform_wallet_id')
-        .limit(1)
-        .maybeSingle();
-
-      let currentCfg: any = {};
-      if (firstRow?.asaas_platform_wallet_id) {
-        try {
-          currentCfg = JSON.parse(firstRow.asaas_platform_wallet_id) || {};
-        } catch (_e) {}
-      }
-
-      const existingMessages: SupportMessageItem[] = Array.isArray(currentCfg.support_messages) ? currentCfg.support_messages : [];
-      const updatedMessages = [...existingMessages, msgItem];
-
-      // Mantém os últimos 500 registros
-      const trimmed = updatedMessages.slice(-500);
-      currentCfg.support_messages = trimmed;
-
-      if (firstRow?.id) {
-        await supabase
-          .from('platform_settings')
-          .update({ asaas_platform_wallet_id: JSON.stringify(currentCfg) })
-          .eq('id', firstRow.id);
-      }
-
-      return NextResponse.json({ success: true, message: msgItem });
+      // Sem gravação de mensagens em JSON de platform_settings (dados pessoais fora da tabela própria)
+      return NextResponse.json({ error: 'Não foi possível registrar a mensagem agora. Tente novamente.' }, { status: 500 });
     }
 
     // AÇÃO 3: ENCAMINHAR AO ASAAS (CLÁUSULA 7.1)
@@ -296,6 +245,15 @@ export async function POST(request: Request) {
           })
           .eq('user_id', userId);
       } catch (_err) {}
+
+      await logAdminAction({
+        actorId: adminActorId,
+        action: 'SUPPORT_FORWARDED_TO_ASAAS',
+        targetType: 'SUPPORT_TICKET',
+        targetId: String(userId),
+        afterState: { asaas_protocol: protocol, forwarded_at: nowIso },
+        request
+      });
 
       return NextResponse.json({
         success: true,
@@ -325,26 +283,14 @@ export async function POST(request: Request) {
           .eq('user_id', userId);
       } catch (_err) {}
 
-      const { data: firstRow } = await supabase
-        .from('platform_settings')
-        .select('id, asaas_platform_wallet_id')
-        .limit(1)
-        .maybeSingle();
-
-      if (firstRow?.asaas_platform_wallet_id) {
-        try {
-          const currentCfg = JSON.parse(firstRow.asaas_platform_wallet_id) || {};
-          if (Array.isArray(currentCfg.support_messages)) {
-            currentCfg.support_messages = currentCfg.support_messages.map((m: SupportMessageItem) => 
-              m.user_id === userId ? { ...m, status: status || 'resolvido', is_read: true, is_merited: isMerited, resolved_at: nowIso } : m
-            );
-            await supabase
-              .from('platform_settings')
-              .update({ asaas_platform_wallet_id: JSON.stringify(currentCfg) })
-              .eq('id', firstRow.id);
-          }
-        } catch (_e) {}
-      }
+      await logAdminAction({
+        actorId: adminActorId,
+        action: 'SUPPORT_TICKET_RESOLVED',
+        targetType: 'SUPPORT_TICKET',
+        targetId: String(userId),
+        afterState: { status: status || 'resolvido', is_merited: isMerited, resolved_at: nowIso },
+        request
+      });
 
       return NextResponse.json({ success: true, resolved_at: nowIso, is_merited: isMerited });
     }

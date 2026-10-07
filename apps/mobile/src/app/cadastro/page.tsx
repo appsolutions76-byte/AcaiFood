@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, Role, User } from "@/store/useAppStore";
-import { supabase } from "@/lib/supabase";
+import { supabase, getAuthHeaders } from "@/lib/supabase";
 import { ShieldCheck, BookOpen, Sparkles, CheckCircle2, QrCode, Copy, ArrowRight, Clock, AlertCircle, Store, Truck, Bike, PackageOpen, User as UserIcon, Recycle, ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerManualModal } from "@/components/PartnerManualModal";
@@ -126,11 +126,11 @@ function CadastroForm() {
         });
       }
 
-      fetch('/api/asaas/activation', {
+      getAuthHeaders().then(h => fetch('/api/asaas/activation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: h,
         body: JSON.stringify({ userId: pendingId })
-      })
+      }))
       .then(r => r.json())
       .then(actData => {
         if (actData?.isFounderSubsidized || actData?.isPaid) {
@@ -186,6 +186,25 @@ function CadastroForm() {
         return;
       }
 
+      const cleanPhone = telefone.replace(/\D/g, "");
+      if (cleanPhone.length !== 10 && cleanPhone.length !== 11) {
+        alert("Informe seu celular com DDD (ex.: 91 98888-7777). Ele é obrigatório para abrir a sua conta de pagamento Asaas.");
+        return;
+      }
+
+      if (!endereco.trim() || !addressNumber.trim() || !bairro.trim()) {
+        alert("Informe rua, número e bairro. Esses dados vão para a abertura da sua conta de pagamento Asaas e precisam ser verdadeiros.");
+        return;
+      }
+
+      const incomeValueCheck = Number(String(monthlyIncome).replace(',', '.'));
+      if (isNaN(incomeValueCheck) || incomeValueCheck < 100) {
+        alert(cleanCpf.length === 14
+          ? "Informe o faturamento mensal da empresa (mínimo R$ 100). Ele é exigido pelo Asaas/Banco Central."
+          : "Informe sua renda mensal (mínimo R$ 100). Ela é exigida pelo Asaas/Banco Central.");
+        return;
+      }
+
       if (cleanCpf.length === 11) {
         if (!birthDate) {
           alert("Data de nascimento é obrigatória para cadastro de parceiro com CPF.");
@@ -195,11 +214,6 @@ function CadastroForm() {
         const ageYears = (Date.now() - bDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
         if (isNaN(ageYears) || ageYears < 18 || ageYears > 120) {
           alert("O titular da conta deve ter no mínimo 18 anos completos para operar na plataforma.");
-          return;
-        }
-        const inc = Number(String(monthlyIncome).replace(/\D/g, '')) / 100 || Number(monthlyIncome);
-        if (isNaN(inc) || inc <= 0) {
-          alert("Informe sua renda mensal estimada para conformidade bancária (Asaas/BACEN).");
           return;
         }
       } else if (cleanCpf.length === 14) {
@@ -230,7 +244,8 @@ function CadastroForm() {
     }
 
     try {
-      const parsedIncome = monthlyIncome ? (Number(String(monthlyIncome).replace(/\D/g, '')) / 100 || Number(monthlyIncome)) : undefined;
+      // O campo é type="number" em reais (ex.: 2500 = R$ 2.500,00). Não dividir por 100.
+      const parsedIncome = monthlyIncome ? Number(String(monthlyIncome).replace(',', '.')) : undefined;
 
       const data: any = {
         role,
@@ -271,27 +286,28 @@ function CadastroForm() {
       setIsLocating(false);
       
       if (newUser) {
-        // Registrar os aceites oficiais no backend
-        try {
-          const { data: sessData } = await supabase.auth.getSession();
-          const authHeaders: any = { 'Content-Type': 'application/json' };
-          if (sessData?.session?.access_token) {
-            authHeaders['Authorization'] = `Bearer ${sessData.session.access_token}`;
+        const authHeaders = await getAuthHeaders();
+
+        // 1) Registrar os aceites (cl. 8.2.4). A versão é definida pelo servidor.
+        const documentsToAccept = role === 'cliente'
+          ? ['acaifood_terms', 'acaifood_privacy', 'asaas_terms', 'asaas_privacy']
+          : ['acaifood_terms', 'acaifood_privacy', 'asaas_terms', 'asaas_privacy', 'subaccount_mandate', 'pix_random_key_consent'];
+
+        let termsOk = false;
+        for (let attempt = 0; attempt < 2 && !termsOk; attempt++) {
+          try {
+            const termsRes = await fetch('/api/terms/accept', {
+              method: 'POST',
+              headers: authHeaders,
+              body: JSON.stringify({ documents: documentsToAccept })
+            });
+            termsOk = termsRes.ok;
+          } catch (_tErr) {
+            termsOk = false;
           }
-
-          const documentsToAccept = role === 'cliente' 
-            ? ['acaifood_terms', 'acaifood_privacy', 'asaas_terms', 'asaas_privacy']
-            : ['acaifood_terms', 'acaifood_privacy', 'asaas_terms', 'asaas_privacy', 'subaccount_mandate', 'pix_random_key_consent'];
-
-          await fetch('/api/terms/accept', {
-            method: 'POST',
-            headers: authHeaders,
-            body: JSON.stringify({
-              documents: documentsToAccept.map(doc => ({ document: doc, version: '2026-10-02' }))
-            })
-          });
-        } catch (_tErr) {
-          console.warn("Aviso ao registrar aceites:", _tErr);
+        }
+        if (!termsOk) {
+          alert("Sua conta foi criada, mas não conseguimos registrar o aceite dos termos. Entre novamente no app para concluir o aceite.");
         }
 
         if (role === 'cliente') {
@@ -302,11 +318,43 @@ function CadastroForm() {
           }
         } else {
           setNewUserId(newUser.id);
-          
+
+          // 2) Abrir a subconta Asaas com os dados reais de cadastro (cl. 8.2.3)
+          if (termsOk) {
+            try {
+              const subRes = await fetch('/api/asaas/subaccount', {
+                method: 'POST',
+                headers: authHeaders,
+                body: JSON.stringify({
+                  userId: newUser.id,
+                  name,
+                  email,
+                  cpfCnpj: cleanCpf,
+                  phone: telefone,
+                  endereco,
+                  addressNumber,
+                  bairro,
+                  cidade,
+                  postalCode: cleanCep,
+                  birthDate: cleanCpf.length === 11 ? birthDate : undefined,
+                  monthlyIncome: parsedIncome,
+                  companyType: cleanCpf.length === 14 ? companyType : undefined
+                })
+              });
+              const subData = await subRes.json().catch(() => ({}));
+              if (!subRes.ok) {
+                alert(`Cadastro criado, mas a conta de pagamento Asaas ainda não foi aberta: ${subData?.error || 'erro desconhecido'}. Você pode concluir depois em "Minha conta Asaas", no seu painel.`);
+              }
+            } catch (_sErr) {
+              console.warn("Aviso ao abrir subconta Asaas no cadastro");
+            }
+          }
+
+          // 3) Taxa de ativação da plataforma (respeita a flag no servidor)
           try {
             const actRes = await fetch('/api/asaas/activation', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: authHeaders,
               body: JSON.stringify({
                 userId: newUser.id,
                 name,
@@ -316,10 +364,10 @@ function CadastroForm() {
               })
             });
             const actData = await actRes.json();
-            if (actData.isFounderSubsidized) {
-              setPixData({ isFreeGranted: true });
+            if (actData.isFounderSubsidized || actData.isPaid) {
+              setPixData({ isFreeGranted: Boolean(actData.isFounderSubsidized) });
               setIsPaymentConfirmed(true);
-            } else {
+            } else if (actData.paymentId) {
               setPixData({
                 paymentId: actData.paymentId,
                 pixQrCode: actData.pixQrCode,
@@ -328,7 +376,7 @@ function CadastroForm() {
               });
             }
           } catch (_e) {
-            console.warn("Aviso ao inicializar ativação:", _e);
+            console.warn("Aviso ao inicializar ativação");
           }
 
           setStep(2);
@@ -346,32 +394,10 @@ function CadastroForm() {
     if (!newUserId) return;
     if (!silent) setIsCheckingPayment(true);
     try {
-      const res = await fetch(`/api/asaas/activation?userId=${newUserId}${pixData?.paymentId ? `&paymentId=${pixData.paymentId}` : ''}`);
+      const res = await fetch(`/api/asaas/activation?userId=${newUserId}${pixData?.paymentId ? `&paymentId=${pixData.paymentId}` : ''}`, { headers: await getAuthHeaders() });
       const data = await res.json();
       if (data?.userStatus?.isPaid) {
         setIsPaymentConfirmed(true);
-        // Tenta vincular subconta Asaas oficial agora que o pagamento da homologação foi verificado
-        try {
-          const { data: sessData } = await supabase.auth.getSession();
-          const authHeaders: any = { 'Content-Type': 'application/json' };
-          if (sessData?.session?.access_token) {
-            authHeaders['Authorization'] = `Bearer ${sessData.session.access_token}`;
-          }
-          fetch('/api/asaas/subaccount', {
-            method: 'POST',
-            headers: authHeaders,
-            body: JSON.stringify({
-              userId: newUserId,
-              name: name || undefined,
-              email: email || undefined,
-              cpfCnpj: cpfCnpj ? cpfCnpj.replace(/\D/g, '') : undefined,
-              phone: telefone || undefined,
-              endereco: endereco || undefined,
-              bairro: bairro || undefined,
-              cidade: cidade || undefined
-            })
-          }).catch(_err => console.warn("Aviso ao vincular subconta após Pix:", _err));
-        } catch (_sErr) {}
       } else if (!silent) {
         alert("Pagamento ainda em processamento. Aguarde alguns segundos após pagar no seu banco e tente novamente.");
       }

@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { getPlatformConfig } from '@/lib/platformConfig';
 
 export interface FounderQuotaStatus {
   activationFee: number;
@@ -20,9 +21,10 @@ export async function getFounderQuotaStatus(userId?: string): Promise<FounderQuo
   let activationEnabled = true;
 
   try {
+    // A flag que vale é a coluna activation_fee_enabled; taxa e cota ficam em platform_config
     const { data: row } = await supabase
       .from('platform_settings')
-      .select('activation_fee_enabled, asaas_platform_wallet_id')
+      .select('activation_fee_enabled')
       .limit(1)
       .maybeSingle();
 
@@ -30,18 +32,9 @@ export async function getFounderQuotaStatus(userId?: string): Promise<FounderQuo
       activationEnabled = Boolean(row.activation_fee_enabled);
     }
 
-    if (row?.asaas_platform_wallet_id) {
-      try {
-        const parsed = JSON.parse(row.asaas_platform_wallet_id);
-        if (parsed && typeof parsed === 'object') {
-          if (parsed.activationFee !== undefined) activationFee = Number(parsed.activationFee);
-          if (parsed.freeQuota !== undefined) freeQuota = Number(parsed.freeQuota);
-          if (row.activation_fee_enabled === undefined && parsed.activationEnabled !== undefined) {
-            activationEnabled = Boolean(parsed.activationEnabled);
-          }
-        }
-      } catch (_e) {}
-    }
+    const cfg: any = await getPlatformConfig('activation');
+    if (cfg?.activationFee !== undefined) activationFee = Number(cfg.activationFee);
+    if (cfg?.freeQuota !== undefined) freeQuota = Number(cfg.freeQuota);
   } catch (_e) {}
 
   let subsidizedCount = 0;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { logAdminAction } from '@/lib/adminAudit';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,13 @@ export async function POST(request: Request) {
           { status: 403 }
         );
       }
+    }
+
+    const adminActingOnOther = isAdmin && callerId !== userId;
+    let previousStatus: string | null = null;
+    if (adminActingOnOther) {
+      const { data: prev } = await adminSupabase.from('users').select('status').eq('id', userId).maybeSingle();
+      previousStatus = prev?.status ?? null;
     }
 
     const cleanStatus = status === 'blocked' ? 'blocked' : (status === 'paused' ? 'paused' : 'active');
@@ -108,6 +116,18 @@ export async function POST(request: Request) {
         })
         .eq('id', userId);
     } catch (_sf2) {}
+
+    if (adminActingOnOther) {
+      await logAdminAction({
+        actorId: callerId || null,
+        action: cleanStatus === 'blocked' ? 'USER_BLOCKED' : (previousStatus === 'blocked' ? 'USER_UNBLOCKED' : 'USER_STATUS_CHANGED'),
+        targetType: 'USER',
+        targetId: String(userId),
+        beforeState: { status: previousStatus },
+        afterState: { status: cleanStatus, updated },
+        request
+      });
+    }
 
     return NextResponse.json({
       success: true,

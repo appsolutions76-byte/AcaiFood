@@ -102,10 +102,6 @@ export async function GET(request: Request) {
 
                 try { await supabase.rpc('generate_delivery_pin', { p_order_id: targetOrderId }); } catch (_e) {}
                 try { await supabase.rpc('generate_pickup_pin', { p_order_id: targetOrderId }); } catch (_e) {}
-                try {
-                  const genPin = Math.floor(1000 + Math.random() * 9000).toString();
-                  await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', targetOrderId).is('pickup_pin', null);
-                } catch (_e) {}
               } else if (dbOrder && isValueValid) {
                 await supabase.from('orders').update({
                   asaas_payment_id: data.id,
@@ -166,10 +162,6 @@ export async function GET(request: Request) {
 
             try { await supabase.rpc('generate_delivery_pin', { p_order_id: orderId }); } catch (_e) {}
             try { await supabase.rpc('generate_pickup_pin', { p_order_id: orderId }); } catch (_e) {}
-            try {
-              const genPin = Math.floor(1000 + Math.random() * 9000).toString();
-              await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', orderId).is('pickup_pin', null);
-            } catch (_e) {}
           } else if (dbOrder && isValueValid) {
             await supabase.from('orders').update({
               asaas_payment_id: paidPayment.id,
@@ -239,11 +231,23 @@ export async function POST(request: Request) {
               .eq('asaas_transfer_id', transferId);
           } catch (_sErr) {}
 
-          const { data: wr } = await supabase
+          let { data: wr } = await supabase
             .from('withdrawal_requests')
             .select('*')
             .eq('asaas_transfer_id', transferId)
             .maybeSingle();
+          // Saque que ficou "a confirmar" (timeout na criação): casa pelo externalReference da tentativa
+          if (!wr && transfer?.externalReference) {
+            const byRef = await supabase
+              .from('withdrawal_requests')
+              .select('*')
+              .eq('transfer_attempt_id', String(transfer.externalReference))
+              .maybeSingle();
+            wr = byRef.data;
+            if (wr) {
+              await supabase.from('withdrawal_requests').update({ asaas_transfer_id: transferId }).eq('id', wr.id);
+            }
+          }
 
           if (wr) {
             await supabase
@@ -275,11 +279,23 @@ export async function POST(request: Request) {
               .eq('asaas_transfer_id', transferId);
           } catch (_sErr) {}
 
-          const { data: wr } = await supabase
+          let { data: wr } = await supabase
             .from('withdrawal_requests')
             .select('*')
             .eq('asaas_transfer_id', transferId)
             .maybeSingle();
+          // Saque que ficou "a confirmar" (timeout na criação): casa pelo externalReference da tentativa
+          if (!wr && transfer?.externalReference) {
+            const byRef = await supabase
+              .from('withdrawal_requests')
+              .select('*')
+              .eq('transfer_attempt_id', String(transfer.externalReference))
+              .maybeSingle();
+            wr = byRef.data;
+            if (wr) {
+              await supabase.from('withdrawal_requests').update({ asaas_transfer_id: transferId }).eq('id', wr.id);
+            }
+          }
 
           if (wr) {
             await supabase
@@ -397,7 +413,7 @@ export async function POST(request: Request) {
             paid_at: new Date().toISOString(),
             asaas_payment_id: paymentId,
             asaas_charge_status: status
-          });
+          }).in('status', ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT']);
 
           if (orderId) {
             query = query.eq('id', orderId);
@@ -405,7 +421,11 @@ export async function POST(request: Request) {
             query = query.eq('asaas_payment_id', paymentId);
           }
 
-          const { error } = await query;
+          // Só gera PIN se ESTA chamada mudou o pedido para PAID (evita PIN novo em webhook repetido)
+          const { data: transitioned, error } = await query.select('id');
+          if (!error && (!transitioned || transitioned.length === 0)) {
+            return NextResponse.json({ success: true, processed: false, alreadyPaid: true, event });
+          }
           if (error) {
             console.warn("Erro ao atualizar pedido no Supabase via Webhook Asaas:", error);
           } else {
@@ -419,10 +439,6 @@ export async function POST(request: Request) {
               } catch (_e) {}
               try {
                 await supabase.rpc('generate_pickup_pin', { p_order_id: finalOrderId });
-              } catch (_e) {}
-              try {
-                const genPin = Math.floor(1000 + Math.random() * 9000).toString();
-                await supabase.from('orders').update({ pickup_pin: genPin }).eq('id', finalOrderId).is('pickup_pin', null);
               } catch (_e) {}
             }
           }

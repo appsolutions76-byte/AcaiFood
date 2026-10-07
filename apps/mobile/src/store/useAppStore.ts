@@ -408,6 +408,14 @@ let lastFetchLojasTime = 0;
 let lastFetchRatesTime = 0;
 const lastFetchOrdersTime: Record<string, number> = {};
 
+// Mescla só os campos definidos (listas públicas não trazem CPF, chave Pix, e-mail etc.;
+// não podem apagar esses dados do perfil do próprio usuário logado)
+function definedOnly<T extends Record<string, any>>(obj: T): Partial<T> {
+  const out: Record<string, any> = {};
+  Object.keys(obj).forEach(k => { if (obj[k] !== undefined) out[k] = obj[k]; });
+  return out as Partial<T>;
+}
+
 export async function getAuthHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {
@@ -417,30 +425,6 @@ export async function getAuthHeaders() {
     headers['Authorization'] = `Bearer ${session.access_token}`;
   }
   return headers;
-}
-
-// Controle de Limite de Saques Diários (Máximo 2 por dia por parceiro)
-export function getDailyWithdrawalCount(userId: string): number {
-  if (typeof window === 'undefined' || !userId) return 0;
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const stored = localStorage.getItem(`acaifood_withdrawals_${userId}_${today}`);
-    return stored ? parseInt(stored, 10) || 0 : 0;
-  } catch (_e) {
-    return 0;
-  }
-}
-
-export function incrementDailyWithdrawalCount(userId: string): number {
-  if (typeof window === 'undefined' || !userId) return 1;
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const count = getDailyWithdrawalCount(userId) + 1;
-    localStorage.setItem(`acaifood_withdrawals_${userId}_${today}`, String(count));
-    return count;
-  } catch (_e) {
-    return 1;
-  }
 }
 
 const DB_DEFAULTS = {
@@ -491,7 +475,8 @@ export const useAppStore = create<AppState>()(
           return false;
         }
 
-        const { data: userProfile } = await supabase.from('users').select('*, storefronts(*, products(*))').eq('id', authData.user.id).single();
+        // Perfil completo só do próprio usuário (users tem SELECT por coluna desde a migration 20261006030000)
+        const { data: userProfile } = await supabase.rpc('get_my_profile_json');
         if (userProfile) {
           if (userProfile.status === 'blocked') {
             alert('Conta bloqueada pelo administrador.');
@@ -719,123 +704,11 @@ export const useAppStore = create<AppState>()(
                 price_b2c_grosso: newUser.priceB2C?.grosso
             });
 
-            // Cria sub-conta Asaas para receber splits (somente para parceiros fundadores gratuitos)
-            if (isFreePartner) {
-              try {
-                let walletId = '';
-                try {
-                  const { data: asaasData } = await supabase.functions.invoke('asaas-create-subaccount', {
-                    body: {
-                      userId:   newUser.id,
-                      name:     newUser.name,
-                      email:    newUser.email,
-                      cpfCnpj:  newUser.cpfCnpj,
-                      phone:    newUser.telefone,
-                      endereco: newUser.endereco,
-                      bairro:   newUser.bairro,
-                      cidade:   newUser.cidade,
-                      role:     dbRole,
-                    }
-                  });
-                  if (asaasData?.walletId) walletId = asaasData.walletId;
-                } catch (e) {
-                  console.warn('Edge Function asaas-create-subaccount indisponível, usando API nativa:', e);
-                }
-
-                // Fallback para API nativa Next.js se a Edge Function não retornou walletId
-                if (!walletId && newUser.cpfCnpj && data.postalCode) {
-                  const subHeaders = await getAuthHeaders();
-                  const subRes = await fetch('/api/asaas/subaccount', {
-                    method: 'POST',
-                    headers: subHeaders,
-                    body: JSON.stringify({
-                      userId:        newUser.id,
-                      name:          newUser.name,
-                      email:         newUser.email,
-                      cpfCnpj:       newUser.cpfCnpj,
-                      phone:         newUser.telefone,
-                      endereco:      newUser.endereco,
-                      addressNumber: (data as any).addressNumber,
-                      bairro:        newUser.bairro,
-                      cidade:        newUser.cidade,
-                      postalCode:    (data as any).postalCode,
-                      birthDate:     (data as any).birthDate,
-                      monthlyIncome: (data as any).monthlyIncome,
-                      companyType:   (data as any).companyType,
-                      role:          dbRole,
-                    })
-                  });
-                  const subData = await subRes.json();
-                  if (subData?.walletId) walletId = subData.walletId;
-                }
-
-                if (walletId) {
-                  newUser.asaasWalletId = walletId;
-                  newUser.asaasLinked = true;
-                  console.log(`✅ Sub-conta Asaas criada com sucesso! walletId: ${walletId}`);
-                }
-              } catch (asaasErr) {
-                console.warn('Erro ao criar sub-conta Asaas (não bloqueante):', asaasErr);
-              }
-            }
+            // A subconta Asaas NÃO é criada aqui: o cadastro registra primeiro os aceites
+            // (cl. 8.2.4) e só então chama /api/asaas/subaccount com os dados de KYC.
         }
 
-        // Motoristas também têm conta Asaas para receber repasse de entrega (se gratuito)
-        if (dbRole === 'COURIER' && newUser.cpfCnpj && isFreePartner) {
-            try {
-              let walletId = '';
-              try {
-                const { data: asaasData } = await supabase.functions.invoke('asaas-create-subaccount', {
-                  body: {
-                    userId:   newUser.id,
-                    name:     newUser.name,
-                    email:    newUser.email,
-                    cpfCnpj:  newUser.cpfCnpj,
-                    phone:    newUser.telefone,
-                    endereco: newUser.endereco || 'Centro',
-                    bairro:   newUser.bairro,
-                    cidade:   newUser.cidade,
-                    role:     dbRole,
-                  }
-                });
-                if (asaasData?.walletId) walletId = asaasData.walletId;
-              } catch (_e) {}
-
-              if (!walletId && (data as any).postalCode) {
-                const subHeaders = await getAuthHeaders();
-                const subRes = await fetch('/api/asaas/subaccount', {
-                  method: 'POST',
-                  headers: subHeaders,
-                  body: JSON.stringify({
-                    userId:        newUser.id,
-                    name:          newUser.name,
-                    email:         newUser.email,
-                    cpfCnpj:       newUser.cpfCnpj,
-                    phone:         newUser.telefone,
-                    endereco:      newUser.endereco || 'Centro',
-                    addressNumber: (data as any).addressNumber,
-                    bairro:        newUser.bairro,
-                    cidade:        newUser.cidade,
-                    postalCode:    (data as any).postalCode,
-                    birthDate:     (data as any).birthDate,
-                    monthlyIncome: (data as any).monthlyIncome,
-                    companyType:   (data as any).companyType,
-                    role:          dbRole,
-                  })
-                });
-                const subData = await subRes.json();
-                if (subData?.walletId) walletId = subData.walletId;
-              }
-
-              if (walletId) {
-                newUser.asaasWalletId = walletId;
-                newUser.asaasLinked = true;
-                console.log(`✅ Sub-conta Asaas criada para motorista! walletId: ${walletId}`);
-              }
-            } catch (e) {
-              console.warn('Erro ao criar sub-conta Asaas para motorista:', e);
-            }
-        }
+        void isFreePartner;
 
         newUser.status = 'active';
 
@@ -999,7 +872,7 @@ export const useAppStore = create<AppState>()(
 
         const { data: dbLojas, error } = await supabase
             .from('users')
-            .select('*, storefronts(*, products(*))')
+            .select('id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, created_at, storefronts(*, products(*))')
             .or('role.eq.PARTNER,role.eq.loja');
             
         if (error) {
@@ -1015,7 +888,18 @@ export const useAppStore = create<AppState>()(
                     if (newUsers[id].role === 'loja') delete newUsers[id];
                 });
                 let updatedCurrentUser = state.currentUser;
-                dbLojas.forEach(dbUser => {
+                dbLojas.forEach(rawUser => {
+                    // Columns below are no longer selected (R16 privacy) and arrive as undefined;
+                    // typed as optional only so the existing mapping compiles unchanged.
+                    const dbUser = rawUser as typeof rawUser & Partial<{
+                        email: string;
+                        pix_key: string;
+                        cpf_cnpj: string;
+                        is_founder_subsidized: boolean;
+                        activation_paid: boolean;
+                        activation_payment_id: string;
+                        asaas_account_id: string;
+                    }>;
                     const sf = extractStorefront(dbUser.storefronts);
                     const sfMeta = parseStorefrontMeta(sf?.logo_url);
                     const rawStatus = String(dbUser.status || '').toLowerCase().trim();
@@ -1069,7 +953,7 @@ export const useAppStore = create<AppState>()(
                     };
                     newUsers[dbUser.id] = userObj;
                     if (state.currentUser && state.currentUser.id === dbUser.id) {
-                        updatedCurrentUser = { ...state.currentUser, ...userObj, status: storeStatus };
+                        updatedCurrentUser = { ...state.currentUser, ...definedOnly(userObj), status: storeStatus };
                     }
                 });
                 return { users: newUsers, currentUser: updatedCurrentUser };
@@ -1084,9 +968,26 @@ export const useAppStore = create<AppState>()(
         }
         lastFetchAllUsersTime = now;
 
-        const { data: dbUsers, error } = await supabase
-            .from('users')
-            .select('*, storefronts(*, products(*))');
+        // Admin lê a lista completa pelo servidor (service_role + MFA); demais perfis só colunas públicas
+        const isAdminViewer = String(get().currentUser?.role || '').toLowerCase() === 'admin';
+        let dbUsers: any[] | null = null;
+        let error: any = null;
+        if (isAdminViewer) {
+            try {
+                const res = await fetch('/api/admin/users', { headers: await getAuthHeaders() });
+                const json = await res.json().catch(() => ({}));
+                if (res.ok && Array.isArray(json?.users)) dbUsers = json.users;
+                else error = json?.error || `HTTP ${res.status}`;
+            } catch (e) {
+                error = e;
+            }
+        } else {
+            const res = await supabase
+                .from('users')
+                .select('id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, created_at, storefronts(*, products(*))');
+            dbUsers = res.data;
+            error = res.error;
+        }
             
         if (error) {
             console.error("Erro ao buscar todos os usuários:", error);
@@ -1174,7 +1075,7 @@ export const useAppStore = create<AppState>()(
                     };
                     newUsers[dbUser.id] = userObj;
                     if (state.currentUser && state.currentUser.id === dbUser.id) {
-                        updatedCurrentUser = { ...state.currentUser, ...userObj, status: storeStatus };
+                        updatedCurrentUser = { ...state.currentUser, ...definedOnly(userObj), status: storeStatus };
                     }
                 });
                 return { users: newUsers, currentUser: updatedCurrentUser };
@@ -1185,10 +1086,15 @@ export const useAppStore = create<AppState>()(
       linkAsaasAccount: async (userId, walletId) => {
         let isRealWallet = isValidAsaasWalletId(walletId);
         let finalWalletId = walletId;
+        // Quando a subconta é criada por /api/asaas/subaccount, a própria rota já grava
+        // walletId/accountId no banco; link-wallet só é usado para vincular manualmente (admin).
+        let walletSavedByServer = false;
 
         let targetUser = get().users[userId];
         if (!targetUser) {
-          const { data: dbU } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+          const { data: dbU } = (get().currentUser?.id === userId)
+            ? await supabase.rpc('get_my_profile_json')
+            : await supabase.from('users').select('id, name, role, phone, endereco, bairro, cidade').eq('id', userId).maybeSingle();
           if (dbU) {
             targetUser = {
               id: dbU.id,
@@ -1216,14 +1122,14 @@ export const useAppStore = create<AppState>()(
                 headers: await getAuthHeaders(),
                 body: JSON.stringify({
                   userId,
-                  name:          uAny?.name || 'Parceiro AçaíFood',
-                  email:         uAny?.email || `parceiro_${userId}@acaifood.app.br`,
+                  name:          uAny?.name,
+                  email:         uAny?.email,
                   cpfCnpj:       cpfCnpjToUse,
-                  phone:         uAny?.telefone || uAny?.phone || '',
-                  endereco:      uAny?.endereco || '',
+                  phone:         uAny?.telefone || uAny?.phone,
+                  endereco:      uAny?.endereco,
                   addressNumber: uAny?.addressNumber || uAny?.address_number,
-                  bairro:        uAny?.bairro || '',
-                  cidade:        uAny?.cidade || 'Belém',
+                  bairro:        uAny?.bairro,
+                  cidade:        uAny?.cidade,
                   postalCode:    postalCodeToUse,
                   birthDate:     uAny?.birthDate || uAny?.birth_date,
                   monthlyIncome: uAny?.monthlyIncome || uAny?.monthly_income,
@@ -1236,6 +1142,7 @@ export const useAppStore = create<AppState>()(
                 if (subData.walletId) {
                   finalWalletId = subData.walletId;
                   isRealWallet = true;
+                  walletSavedByServer = true;
                 }
               }
             }
@@ -1247,7 +1154,7 @@ export const useAppStore = create<AppState>()(
         // asaas_wallet_id e split_enabled não são colunas liberadas para UPDATE direto
         // pelo cliente (migration 20260912000000_fix_users_privilege_escalation.sql) —
         // a gravação precisa passar por uma rota de servidor com Service Role.
-        if (isRealWallet && finalWalletId) {
+        if (isRealWallet && finalWalletId && !walletSavedByServer) {
           try {
             const linkRes = await fetch('/api/asaas/link-wallet', {
               method: 'POST',
@@ -2173,7 +2080,7 @@ export const useAppStore = create<AppState>()(
           let userCpfCnpj = overrideCpf ? String(overrideCpf).replace(/\D/g, '') : (currentUser.cpfCnpj || get().users[currentUser.id]?.cpfCnpj);
           if (!userCpfCnpj && currentUser.id) {
             try {
-              const { data: dbUser } = await supabase.from('users').select('cpf_cnpj').eq('id', currentUser.id).maybeSingle();
+              const { data: dbUser } = await supabase.rpc('get_my_profile_json');
               if (dbUser && dbUser.cpf_cnpj) {
                 userCpfCnpj = dbUser.cpf_cnpj;
               }
@@ -2367,36 +2274,12 @@ export const useAppStore = create<AppState>()(
                 p_order_id: orderId
               });
 
+              // Sem gravação direta em orders: só a RPC atômica aceita a corrida
               if (acceptErr || !acceptRes?.success) {
-                console.warn("accept_order_atomic RPC notice, attempting safe direct assignment fallback:", acceptErr || acceptRes);
-                // Fallback seguro: verifica se o pedido está pronto e sem motorista
-                const { data: targetOrderCheck } = await supabase
-                  .from('orders')
-                  .select('id, status, driver_id')
-                  .eq('id', orderId)
-                  .maybeSingle();
-
-                const isOrderReady = targetOrderCheck && (targetOrderCheck.status === 'READY' || targetOrderCheck.status === 'ready' || targetOrderCheck.status === 'SEARCHING_OPERATOR');
-
-                if (isOrderReady && !targetOrderCheck.driver_id) {
-                  const { error: updateErr } = await supabase
-                    .from('orders')
-                    .update({ driver_id: currentUser.id, status: 'DELIVERING' })
-                    .eq('id', orderId)
-                    .is('driver_id', null);
-
-                  if (updateErr) {
-                    const errMsg = updateErr.message || 'Este pedido já foi aceito por outro operador.';
-                    alert(`⚠️ ${errMsg}`);
-                    await get().fetchOrders(currentUser.id, true);
-                    return;
-                  }
-                } else {
-                  const errMsg = acceptRes?.error || acceptErr?.message || 'Este pedido não está pronto para despacho ou já foi aceito por outro operador.';
-                  alert(`⚠️ ${errMsg}`);
-                  await get().fetchOrders(currentUser.id, true);
-                  return;
-                }
+                const errMsg = acceptRes?.error || acceptErr?.message || 'Este pedido não está pronto para despacho ou já foi aceito por outro operador.';
+                alert(`⚠️ ${errMsg}`);
+                await get().fetchOrders(currentUser.id, true);
+                return;
               }
             } catch (err: any) {
               console.error("Erro ao aceitar corrida via escrita atômica:", err);
@@ -2720,7 +2603,7 @@ export const useAppStore = create<AppState>()(
              applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
              buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
              accepted_at, ready_at, received_at, asaas_payment_id,
-             payout_seller_done, payout_driver_done, seller_amount, driver_amount, total_delivery_fee,
+             payout_seller_done, payout_driver_done,
              seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount,
              pricing_snapshot, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro,
              order_items ( id, product_name, quantity, unit_price_cents, total_price_cents )
@@ -2767,7 +2650,7 @@ export const useAppStore = create<AppState>()(
                 applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
                 buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
                 accepted_at, ready_at, received_at, asaas_payment_id,
-                payout_seller_done, payout_driver_done, seller_amount, driver_amount, total_delivery_fee,
+                payout_seller_done, payout_driver_done,
                 delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro,
                 order_items ( id, product_name, quantity, unit_price_cents, total_price_cents )
              `;
@@ -2839,7 +2722,7 @@ export const useAppStore = create<AppState>()(
 
             const fetchedUsersMap: Record<string, any> = {};
             if (missingUserIds.size > 0) {
-               const { data: uData } = await supabase.from('users').select('id, name, email, phone, telefone, endereco, address, bairro, cidade, role, frete_subsidy_pct').in('id', Array.from(missingUserIds));
+               const { data: uData } = await supabase.from('users').select('id, name, phone, telefone, endereco, address, bairro, cidade, role').in('id', Array.from(missingUserIds));
                if (uData && uData.length > 0) {
                   uData.forEach((u: any) => { 
                     fetchedUsersMap[u.id] = {
@@ -2967,7 +2850,18 @@ export const useAppStore = create<AppState>()(
                     calculatedEntregaCliente = itemsTotal;
                 }
 
-                const platformTotal = Number((finalPlatVenda + finalPlatEntrega).toFixed(2));
+                let platformTotal = Number((finalPlatVenda + finalPlatEntrega).toFixed(2));
+
+                // Valores gravados pelo servidor no pagamento (snapshot) têm prioridade sobre o cálculo local
+                const snap = (v: any) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Number(v);
+                const snapSeller = snap(dbOrder.seller_payout_amount);
+                const snapDriver = snap(dbOrder.driver_payout_amount);
+                const snapPlatform = snap(dbOrder.platform_fee_amount);
+                const snapDelivery = snap(dbOrder.delivery_fee_amount);
+                if (snapDriver !== null) finalEntregaMotorista = snapDriver;
+                if (snapSeller !== null && dbOrder.order_type !== 'COLETA') finalRepasse = snapSeller;
+                if (snapPlatform !== null) platformTotal = snapPlatform;
+                if (snapDelivery !== null && dbOrder.order_type !== 'COLETA') finalEntregaTotal = snapDelivery;
 
                 const orderTotalValue = dbOrder.order_type === 'COLETA'
                   ? itemsTotal

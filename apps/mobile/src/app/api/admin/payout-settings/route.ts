@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest } from '@/lib/apiAuth';
+import { logAdminAction } from '@/lib/adminAudit';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,10 @@ export async function POST(request: Request) {
 
     const updates: any = {};
     if (typeof auto_payout_enabled === 'boolean') {
+      // Pagamento automático continua DESLIGADO até a aprovação escrita do Asaas (docs/18, regra 4)
+      if (auto_payout_enabled === true && process.env.ALLOW_AUTO_PAYOUT !== 'true') {
+        return NextResponse.json({ error: 'O pagamento automático está bloqueado até a aprovação formal do Asaas.' }, { status: 403 });
+      }
       updates.auto_payout_enabled = auto_payout_enabled;
     }
 
@@ -73,7 +78,7 @@ export async function POST(request: Request) {
     const adminSupabase = getSupabaseAdmin();
     const { data: firstRow } = await adminSupabase
       .from('platform_settings')
-      .select('id')
+      .select('id, auto_payout_enabled, auto_payout_time, min_withdrawal_value')
       .limit(1)
       .maybeSingle();
 
@@ -82,6 +87,16 @@ export async function POST(request: Request) {
     } else {
       await adminSupabase.from('platform_settings').insert(updates);
     }
+
+    await logAdminAction({
+      actorId: admin.id,
+      action: 'PAYOUT_SETTINGS_UPDATED',
+      targetType: 'PLATFORM_SETTINGS',
+      targetId: firstRow?.id ? String(firstRow.id) : undefined,
+      beforeState: firstRow ? { auto_payout_enabled: (firstRow as any).auto_payout_enabled, auto_payout_time: (firstRow as any).auto_payout_time, min_withdrawal_value: (firstRow as any).min_withdrawal_value } : null,
+      afterState: updates,
+      request
+    });
 
     return NextResponse.json({
       success: true,

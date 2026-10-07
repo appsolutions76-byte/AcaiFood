@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
+import { saveAccountStatus } from '@/lib/asaasAccountStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,17 +92,10 @@ export async function GET(request: Request) {
     }
 
     let effectiveStatus = user.asaas_account_status || 'PENDING_DOCUMENTS';
-    if (accountStatus) {
-      const genStatus = String(accountStatus.general || accountStatus.status || accountStatus.commercialInfo || '').toUpperCase();
-      if (genStatus === 'APPROVED' || genStatus === 'ACTIVE') {
-        effectiveStatus = 'APPROVED';
-        if (user.asaas_account_status !== 'APPROVED') {
-          await supabase
-            .from('users')
-            .update({ asaas_account_status: 'APPROVED', split_enabled: true })
-            .eq('id', targetUserId);
-        }
-      }
+    if (accountStatus && accountStatus.general) {
+      // Aprovação só com general === 'APPROVED' (etapas parciais não aprovam a conta)
+      const saved = await saveAccountStatus(targetUserId, accountStatus, 'documents:get');
+      if (saved.status) effectiveStatus = saved.status;
     }
 
     return NextResponse.json({

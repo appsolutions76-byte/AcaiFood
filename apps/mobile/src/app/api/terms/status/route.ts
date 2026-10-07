@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { CURRENT_TERMS_VERSION, CLIENT_REQUIRED_DOCS, PARTNER_REQUIRED_DOCS, isPartnerDbRole } from '@/lib/legalVersions';
 
 export const dynamic = 'force-dynamic';
 
-export const CURRENT_TERMS_VERSION = '2026-10-06';
-
+// Diz quais textos legais o usuário logado ainda precisa aceitar na versão vigente.
+// Obs.: arquivos route.ts do Next só podem exportar handlers e configs de rota;
+// a constante de versão fica em '@/lib/legalVersions'.
 export async function GET(request: Request) {
   const auth = await authorizeRequest(request);
   if (!auth.authorized) {
@@ -27,21 +29,17 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     const userRole = String(userProfile?.role || 'CLIENT').toUpperCase();
-    const isPartner = userRole !== 'CLIENT';
-
-    // Documentos exigidos
-    const requiredDocs = isPartner
-      ? ['acaifood_terms', 'acaifood_privacy', 'asaas_terms', 'asaas_privacy', 'subaccount_mandate', 'pix_random_key_consent']
-      : ['acaifood_terms', 'acaifood_privacy', 'asaas_terms', 'asaas_privacy'];
+    const isPartner = isPartnerDbRole(userRole);
+    const requiredDocs = isPartner ? PARTNER_REQUIRED_DOCS : CLIENT_REQUIRED_DOCS;
 
     const { data: acceptances } = await supabase
       .from('terms_acceptances')
-      .select('document, version')
-      .eq('user_id', userId);
+      .select('document')
+      .eq('user_id', userId)
+      .eq('version', CURRENT_TERMS_VERSION);
 
-    const acceptedMap = new Set((acceptances || []).map((a: any) => `${a.document}:${a.version}`));
-
-    const missingDocs = requiredDocs.filter(doc => !acceptedMap.has(`${doc}:${CURRENT_TERMS_VERSION}`));
+    const accepted = new Set((acceptances || []).map((a: any) => a.document));
+    const missingDocs = requiredDocs.filter(doc => !accepted.has(doc));
 
     return NextResponse.json({
       success: true,
@@ -49,12 +47,11 @@ export async function GET(request: Request) {
       role: userRole,
       isPartner,
       allAccepted: missingDocs.length === 0,
-      missingDocs,
-      acceptedCount: (acceptances || []).length
+      missingDocs
     });
 
   } catch (error: any) {
-    console.error('[Terms Status API] Erro ao verificar aceites:', error);
-    return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 });
+    console.error('[Terms Status API] Erro ao verificar aceites:', error?.message);
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }

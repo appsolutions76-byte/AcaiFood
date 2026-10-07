@@ -12,6 +12,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'json';
     const month = searchParams.get('month') || new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      return NextResponse.json({ error: 'Mês no formato AAAA-MM' }, { status: 400 });
+    }
 
     const supabase = getSupabaseAdmin();
 
@@ -64,8 +67,18 @@ export async function GET(request: Request) {
     const avgFirstResponseHours = countedFirstResponse > 0 ? (totalFirstResponseMinutes / countedFirstResponse / 60).toFixed(1) : 'N/A';
     const avgResolutionHours = countedResolution > 0 ? (totalResolutionMinutes / countedResolution / 60).toFixed(1) : 'N/A';
 
-    // 2. Estatísticas de saúde e disponibilidade (SLA base 99.9%)
-    const uptimeEstimate = '99.98%';
+    // 2. Disponibilidade medida (tabela monthly_sla, informada no admin). Sem valor: "não medido".
+    let uptimeEstimate = 'não medido';
+    try {
+      const { data: slaRow } = await supabase
+        .from('monthly_sla')
+        .select('uptime_percent, source')
+        .eq('month', String(month).slice(0, 7))
+        .maybeSingle();
+      if (slaRow && slaRow.uptime_percent !== null && slaRow.uptime_percent !== undefined) {
+        uptimeEstimate = `${Number(slaRow.uptime_percent).toFixed(3).replace('.', ',')}% (fonte: ${slaRow.source})`;
+      }
+    } catch (_e) {}
 
     const reportData = {
       period: month,

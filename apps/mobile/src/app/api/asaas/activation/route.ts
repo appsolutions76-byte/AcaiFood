@@ -111,7 +111,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { userId, name, email, cpfCnpj, phone, forceFounder } = body;
+    const { userId, forceFounder } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 });
@@ -160,14 +160,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ASAAS_API_KEY não configurada' }, { status: 400 });
     }
 
-    const cleanCpf = String(cpfCnpj || '').replace(/\D/g, '');
-    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    // Dados do pagador vêm do cadastro no banco (nada inventado, nada do navegador)
+    const { data: payer } = await supabase
+      .from('users')
+      .select('name, email, cpf_cnpj, phone, telefone')
+      .eq('id', userId)
+      .maybeSingle();
+    let payerEmail = String(payer?.email || '').trim();
+    if (!payerEmail && !isAdmin) payerEmail = String(auth.user?.email || '').trim();
+    const cleanCpf = String(payer?.cpf_cnpj || '').replace(/\D/g, '');
+    const cleanPhone = String(payer?.phone || payer?.telefone || '').replace(/\D/g, '');
+    const payerName = String(payer?.name || '').trim();
+
+    if (!payerName || !payerEmail || !(cleanCpf.length === 11 || cleanCpf.length === 14)) {
+      return NextResponse.json({
+        error: 'Complete nome, e-mail e CPF/CNPJ no seu cadastro antes de pagar a ativação.'
+      }, { status: 400 });
+    }
 
     let customerId = '';
-    const emailToSearch = email || `user_${userId.slice(0, 8)}@acaifood.app.br`;
 
     try {
-      const custSearchRes = await fetch(`${ASAAS_URL}/customers?email=${encodeURIComponent(emailToSearch)}`, {
+      const custSearchRes = await fetch(`${ASAAS_URL}/customers?cpfCnpj=${encodeURIComponent(cleanCpf)}`, {
         headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
       });
       const custSearchData = await custSearchRes.json();
@@ -178,9 +192,9 @@ export async function POST(request: Request) {
           method: 'POST',
           headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: name || 'Parceiro AçaíFood',
-            email: emailToSearch,
-            cpfCnpj: cleanCpf.length === 11 || cleanCpf.length === 14 ? cleanCpf : undefined,
+            name: payerName,
+            email: payerEmail,
+            cpfCnpj: cleanCpf,
             mobilePhone: cleanPhone || undefined
           })
         });
@@ -188,17 +202,8 @@ export async function POST(request: Request) {
         if (newCustData?.id) {
           customerId = newCustData.id;
         } else {
-          // Fallback de resiliência: se o Asaas recusou por CPF/CNPJ ou telefone inválido, tenta criar apenas com nome e email
-          const retryCustRes = await fetch(`${ASAAS_URL}/customers`, {
-            method: 'POST',
-            headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: name || 'Parceiro AçaíFood',
-              email: emailToSearch
-            })
-          });
-          const retryData = await retryCustRes.json();
-          customerId = retryData?.id || '';
+          const msg = Array.isArray(newCustData?.errors) ? newCustData.errors.map((e: any) => e.description).join(', ') : '';
+          return NextResponse.json({ error: `O Asaas recusou o cadastro do pagador${msg ? `: ${msg}` : ''}. Confira seus dados.` }, { status: 400 });
         }
       }
     } catch (_err) {

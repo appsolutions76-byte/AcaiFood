@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { processWithdrawalApproval } from '@/lib/withdrawalApproval';
 import { authorizeRequest } from '@/lib/apiAuth';
+import { logAdminAction } from '@/lib/adminAudit';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,32 @@ export async function POST(
       return NextResponse.json({ error: 'ID da solicitação de saque é obrigatório.' }, { status: 400 });
     }
 
+    // Estado anterior apenas para o log (a aprovação em si é toda de processWithdrawalApproval)
+    const { data: before } = await getSupabaseAdmin()
+      .from('withdrawal_requests')
+      .select('id, partner_id, status, requested_amount')
+      .eq('id', id)
+      .maybeSingle();
+
     const result = await processWithdrawalApproval(id, admin.id);
+
+    await logAdminAction({
+      actorId: admin.id,
+      action: 'WITHDRAWAL_APPROVE',
+      targetType: 'WITHDRAWAL_REQUEST',
+      targetId: id,
+      beforeState: before
+        ? { status: before.status, requested_amount: before.requested_amount, partner_id: before.partner_id }
+        : null,
+      afterState: {
+        status: result.status,
+        success: result.success,
+        amount: result.amount ?? null,
+        transferId: result.transferId ?? null,
+        error: result.error ?? null
+      },
+      request
+    });
 
     if (!result.success) {
       return NextResponse.json({

@@ -7,12 +7,26 @@ export function isAuthorizedRequest(request: Request): boolean {
   const headerToken = request.headers.get('x-internal-secret');
   if (headerToken && internalSecret && headerToken === internalSecret) return true;
 
-  // Verificar cron jobs da Vercel
+  // Cron da Vercel: envia `Authorization: Bearer <CRON_SECRET>`
   const cronSecret = process.env.CRON_SECRET || '';
-  const cronHeader = request.headers.get('x-vercel-cron');
-  if (cronHeader === '1' && cronSecret && request.headers.get('authorization') === `Bearer ${cronSecret}`) return true;
+  if (cronSecret && request.headers.get('authorization') === `Bearer ${cronSecret}`) return true;
 
   return false;
+}
+
+function getJwtAal(token: string): string | null {
+  try {
+    const payload = token.split('.')[1] || '';
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    const json = typeof atob === 'function'
+      ? atob(padded)
+      : Buffer.from(padded, 'base64').toString('utf8');
+    const claims = JSON.parse(json);
+    return typeof claims?.aal === 'string' ? claims.aal : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface AuthResult {
@@ -40,8 +54,7 @@ export async function authorizeRequest(
   }
 
   const cronSecret = process.env.CRON_SECRET || '';
-  const cronHeader = request.headers.get('x-vercel-cron');
-  if (cronHeader === '1' && cronSecret && request.headers.get('authorization') === `Bearer ${cronSecret}`) {
+  if (cronSecret && request.headers.get('authorization') === `Bearer ${cronSecret}`) {
     return { authorized: true, source: 'cron_secret' };
   }
 
@@ -64,9 +77,10 @@ export async function authorizeRequest(
 
         const { data: { user }, error } = await supabase.auth.getUser();
         if (!error && user) {
+          // Só colunas não sensíveis (users tem GRANT por coluna desde a migration 20261006030000)
           const { data: profile } = await supabase
             .from('users')
-            .select('*')
+            .select('id, name, role, is_admin, status')
             .eq('id', user.id)
             .maybeSingle();
 
@@ -89,18 +103,19 @@ export async function authorizeRequest(
                 return { authorized: false, error: 'Acesso negado para este perfil de usuário' };
               }
 
-              // Verificação de MFA para administradores (Supabase Auth MFA - TOTP)
-              if (isAdminAuth) {
-                try {
-                  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-                  if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel !== 'aal2') {
-                    return {
-                      authorized: false,
-                      error: 'MFA_REQUIRED: Autenticação de segundo fator (MFA TOTP) é obrigatória para operações de administração.'
-                    };
-                  }
-                } catch (_mfaErr) {
-                  // Prossegue com fallback seguro
+              // MFA obrigatório para administradores (Anexo I, item 3 do contrato BaaS):
+              // toda operação de admin exige sessão aal2 (TOTP verificado). Sem fator
+              // cadastrado ou com erro na checagem, a requisição é recusada.
+              // Conta de admin (role admin ou is_admin) sempre exige aal2 quando a rota aceita admin
+              const actingAsAdmin = isAdminAuth;
+              if (actingAsAdmin) {
+                // O JWT já foi validado por getUser(); o nível de garantia vem no claim `aal`.
+                const aal2 = getJwtAal(token) === 'aal2';
+                if (!aal2) {
+                  return {
+                    authorized: false,
+                    error: 'MFA_REQUIRED: Autenticação de segundo fator (MFA TOTP) é obrigatória para operações de administração.'
+                  };
                 }
               }
             }

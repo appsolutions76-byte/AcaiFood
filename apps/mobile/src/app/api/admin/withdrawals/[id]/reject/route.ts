@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest } from '@/lib/apiAuth';
+import { logAdminAction } from '@/lib/adminAudit';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export async function POST(
 
     const { data: reqRow } = await adminSupabase
       .from('withdrawal_requests')
-      .select('id, status')
+      .select('id, status, requested_amount, partner_id')
       .eq('id', id)
       .single();
 
@@ -56,6 +57,16 @@ export async function POST(
       console.error('Erro ao rejeitar solicitação:', updErr);
       return NextResponse.json({ error: 'Erro ao atualizar o banco de dados.' }, { status: 500 });
     }
+
+    await logAdminAction({
+      actorId: admin.id,
+      action: 'WITHDRAWAL_REJECT',
+      targetType: 'WITHDRAWAL_REQUEST',
+      targetId: id,
+      beforeState: { status: reqRow.status, requested_amount: reqRow.requested_amount, partner_id: reqRow.partner_id },
+      afterState: { status: 'REJEITADO', rejection_reason: reason.trim(), reviewed_at: nowIso },
+      request
+    });
 
     return NextResponse.json({
       success: true,

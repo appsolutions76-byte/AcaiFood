@@ -1,4 +1,4 @@
-# AçaíFood — Como o app funciona (Atualizado Pós-R12 / Outubro 2026)
+# AçaíFood — Como o app funciona (Atualizado Pós-R16 / 06 de outubro de 2026)
 
 > **Documentação oficial de operação e fluxos de negócio da plataforma AçaíFood.**  
 > **Produção:** https://www.acaifood.app.br (espelho: https://acai-food-mobile.vercel.app)  
@@ -37,12 +37,17 @@ Todos os pagamentos são feitos por **Pix dinâmico da cobrança Asaas**, que ca
 
 ---
 
-## 4. Ativação e Homologação de Parceiros
+## 4. Cadastro, Subconta Asaas e Ativação de Parceiros
 
-1. Ao criar a conta, o parceiro é direcionado para ativação.
-2. Os primeiros 50 parceiros cadastrados são contemplados como **Fundadores** (isenção de taxa).
-3. Para os demais parceiros, é gerada a cobrança Pix de homologação (R$ 12,90) via Asaas.
-4. É criada a subconta Asaas do parceiro (com os dados reais de cadastro exigidos pelo Asaas), para onde vão os repasses.
+A ordem é sempre esta:
+
+1. **Aceites:** o parceiro aceita Termos de Uso, Política de Privacidade e os documentos do Asaas da versão atual (`CURRENT_TERMS_VERSION`). Se a versão mudar, o app pede o aceite de novo no próximo login.
+2. **Subconta Asaas (KYC real):** o servidor cria a subconta com os dados que o parceiro digitou (nome, e-mail, CPF/CNPJ, celular, renda/faturamento, endereço com CEP, número e bairro). Nada é preenchido por padrão. Se o Asaas já tiver uma subconta com o mesmo CPF/CNPJ, o cadastro fica como **"Precisa do admin"**.
+3. **Documentos:** no cartão **"Minha conta Asaas"** o parceiro envia os documentos que o Asaas pedir (link do Asaas ou envio pelo app).
+4. **Aprovação:** a subconta só conta como aprovada quando o Asaas informa `general = APPROVED` (webhook de situação da conta, consulta diária às 11h30 UTC e botão "Reconsultar").
+5. **Ativação:** fundadores (cota definida pelo admin) não pagam. Os demais pagam a taxa de ativação definida pelo admin, por Pix Asaas, com os dados do próprio cadastro.
+
+Enquanto a subconta não está aprovada, o parceiro usa o painel normalmente, mas **não consegue pedir saque**.
 
 ---
 
@@ -70,4 +75,20 @@ Todos os pagamentos são feitos por **Pix dinâmico da cobrança Asaas**, que ca
 - **Segurança de PINs:** os PINs ficam só em `order_pins` (a tabela `orders` não guarda PIN nem hash). A leitura é feita pela função `get_my_order_pins_bulk`: o comprador recebe só o PIN de entrega, a loja só o de retirada, o motorista nenhum. Só o motorista atribuído consegue validar o PIN (`check_delivery_pin` / `check_pickup_pin`).
 - **Avanço de Status Seguro:** Todas as transições de status são intermediadas pela RPC `advance_order_status` ou `check_delivery_pin`, impedindo alterações arbitrárias pelo navegador.
 - **Baixa Forçada Auditada:** Admins podem dar baixa de contingência apenas em pedidos em rota ou travados por excesso de tentativas, exigindo justificativa obrigatória registrada em `admin_audit_log`.
+- **Saque:** o parceiro pede o saque do saldo calculado no servidor; o admin aprova; o valor vai **só para o `walletId` da subconta Asaas aprovada** do parceiro (nunca para chave Pix, CPF ou e-mail digitado). Não existe mais limite de "2 saques por dia" nem contador no navegador: só pode haver um saque em aberto por vez.
+- **Ações do admin com registro:** pagar parceiro, aprovar/recusar saque, regerar PIN, conciliar ou estornar pagamento, bloquear/desbloquear, excluir usuário, zerar balanços, mudar configurações de saque, ativação e suporte ficam em `admin_audit_log` (só inclusão).
+- **Exclusão e limpeza:** usuário com pedido pago ou saque não pode ser excluído (bloqueie a conta). A limpeza geral de pedidos só funciona com `ALLOW_DESTRUCTIVE_ADMIN_RESET=true` (ambiente de teste).
 - **Prevenção de Pagamento em Duplicidade:** não há split no checkout. Enquanto o repasse automático estiver desligado, o único caminho é o saque aprovado pelo admin; ao ligar, o pedido que gera repasse é marcado como pago (`payout_*_done`) e sai do saldo de saque.
+
+---
+
+## 7. Configurações que valem hoje
+
+| Item | Onde fica | Valor/regra |
+|---|---|---|
+| Repasse automático (`settlements_enabled`) | `platform_settings` | desligado |
+| Saque automático (`auto_payout_enabled`) | `platform_settings` | desligado; o servidor recusa ligar sem `ALLOW_AUTO_PAYOUT=true` |
+| Taxa de ativação e cota de fundadores | `platform_config` (`activation`) + coluna `activation_fee_enabled` | definidas no admin |
+| Horário e WhatsApp do suporte | `platform_config` (`support`) | definidos no admin |
+| Disponibilidade mensal (SLA) | `monthly_sla` | informada no admin (aba Conformidade); sem valor, o relatório diz "não medido" |
+

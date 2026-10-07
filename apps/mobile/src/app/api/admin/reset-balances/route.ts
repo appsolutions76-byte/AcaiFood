@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { logAdminAction } from '@/lib/adminAudit';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin']);
@@ -10,6 +11,10 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
     const body = await request.json().catch(() => ({}));
     const targetPeriod = body.period || 'all'; // 'historical' | 'monthly' | 'daily' | 'all'
+
+    if (!['historical', 'monthly', 'daily', 'all'].includes(targetPeriod)) {
+      return NextResponse.json({ error: 'Período inválido' }, { status: 400 });
+    }
 
     const targetIds = targetPeriod === 'all' 
       ? ['historical', 'monthly', 'daily'] 
@@ -30,9 +35,21 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString()
     };
 
+    const { data: before } = await supabase.from('admin_balances').select('*').in('id', targetIds);
+
     for (const bId of targetIds) {
       await supabase.from('admin_balances').upsert({ id: bId, ...zeroPayload });
     }
+
+    await logAdminAction({
+      actorId: auth.user?.id || auth.profile?.id || null,
+      action: 'ADMIN_BALANCES_RESET',
+      targetType: 'ADMIN_BALANCES',
+      targetId: targetPeriod,
+      beforeState: before || null,
+      afterState: { zeroed: targetIds },
+      request
+    });
 
     return NextResponse.json({ 
       success: true, 

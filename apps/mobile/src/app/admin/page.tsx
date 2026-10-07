@@ -16,6 +16,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminManualModal } from "@/components/AdminManualModal";
 import { IncidentReportSection } from "@/components/IncidentReportSection";
 import { AdminSupportSection } from "@/components/admin/AdminSupportSection";
+import { AdminComplianceSection } from "@/components/admin/AdminComplianceSection";
 import { AdminWithdrawalsSection } from "@/components/admin/AdminWithdrawalsSection";
 import { AdminReconciliationSection } from "@/components/admin/AdminReconciliationSection";
 import { ShareLandingModal } from "@/components/ShareLandingModal";
@@ -110,7 +111,7 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState<CityRates>(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'conformidade'>('dashboard');
   const [selectedSupportUserId, setSelectedSupportUserId] = useState<string | null>(null);
   const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
   const [activationConfig, setActivationConfig] = useState<{
@@ -353,32 +354,14 @@ function AdminDashboardContent() {
   };
 
 
-  // Função de pagamento individual de parceiro via Pix
+  // Pagamento individual de parceiro: o servidor calcula valor, pedidos e destino (subconta Asaas aprovada)
   const pagarParceiro = async (u: any, pendingOrders: Order[], amountOwed: number) => {
-    const rawPix = String(u.pix_key || u.pixKey || u.cpf_cnpj || u.cpfCnpj || u.phone || u.email || '').trim();
-    let pixKey = rawPix.includes('@') || rawPix.includes('-') ? rawPix : (rawPix.replace(/\D/g, '') || rawPix);
-    const walletId = u.asaas_wallet_id || (u as any).asaasWalletId || null;
-
-    if (!pixKey && !walletId) {
-      const inputPix = prompt(`Informe a Chave Pix (CPF, Telefone ou E-mail) do titular ${u.name}:`);
-      if (inputPix && inputPix.trim()) {
-        pixKey = inputPix.trim();
-        try {
-          await supabase.from('users').update({ pix_key: pixKey }).eq('id', u.id);
-          u.pixKey = pixKey;
-        } catch (_e) {}
-      } else {
-        showToast(`❌ Operação cancelada: ${u.name} não possui Chave Pix cadastrada.`);
-        return;
-      }
-    }
-
-    if (!confirm(`Confirmar pagamento de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} via Pix para ${u.name}?\n\nChave Pix: ${pixKey || walletId}\nPedidos a liquidar: ${pendingOrders.length}`)) return;
+    if (!confirm(`Confirmar repasse para ${u.name}?\n\nValor estimado: ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${pendingOrders.length} pedido(s)).\nO valor final é calculado no servidor e pago na subconta Asaas do parceiro.`)) return;
     setPayingPartnerId(u.id);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const authHeaders: any = { 
+      const authHeaders: Record<string, string> = {
         'Content-Type': 'application/json'
       };
       if (session?.access_token) {
@@ -388,34 +371,28 @@ function AdminDashboardContent() {
       const res = await fetch('/api/admin/payout/pay-partner', {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ 
-          pixKey, 
-          walletId,
-          partnerId: u.id,
-          role: u.role,
-          value: amountOwed, 
-          description: `Repasse Manual AçaíFood – ${u.name}` 
-        })
+        body: JSON.stringify({ partnerId: u.id })
       });
-      const data = await res.json();
-      if (data.success || data.transferId) {
-        const isDriver = u.role === 'motorista' || u.role === 'courier' || u.role === 'motoboy' || u.role === 'caminhao' || u.role === 'driver';
-        const roleType = isDriver ? 'driver' : 'seller';
-        const orderIds = pendingOrders.map(o => o.id);
-
-        await store.markPayoutDone(orderIds, roleType, u.id);
-
-        showToast(`✅ Pix de ${(amountOwed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} enviado para ${u.name}! (ID Asaas: ${data.transferId})`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        showToast(`✅ ${data.message || `Repasse enviado para ${u.name}.`}`);
         if (store.currentUser?.id && typeof store.fetchOrders === 'function') await store.fetchOrders(store.currentUser.id, true);
         if (typeof store.fetchAllUsers === 'function') await store.fetchAllUsers(true);
         await fetchAdminBalances();
+      } else if (data.code === 'ASAAS_ACCOUNT_NOT_APPROVED') {
+        alert(`⚠️ ${u.name}: conta Asaas não aprovada.\n\n${data.error}`);
+        showToast(`⚠️ ${u.name}: conta Asaas não aprovada.`);
+      } else if (data.status === 'PROCESSING') {
+        alert(`⏳ Repasse para ${u.name} em processamento no Asaas.\n\n${data.error || ''}`);
+        showToast(`⏳ Repasse para ${u.name} em processamento.`);
+        await fetchAdminBalances();
       } else {
-        const errorMsg = data.error || 'Erro desconhecido retornado pelo gateway';
-        alert(`❌ Falha no pagamento Asaas para ${u.name}:\n\n${errorMsg}`);
-        showToast(`❌ Falha no Pix: ${errorMsg}`);
+        const errorMsg = data.error || 'Erro desconhecido retornado pelo servidor';
+        alert(`❌ Falha no repasse para ${u.name}:\n\n${errorMsg}`);
+        showToast(`❌ Falha no repasse: ${errorMsg}`);
       }
     } catch (e: any) {
-      alert(`❌ Erro de conexão ao disparar Pix para ${u.name}:\n\n${e.message}`);
+      alert(`❌ Erro de conexão ao repassar para ${u.name}:\n\n${e.message}`);
       showToast(`❌ Erro ao pagar: ${e.message}`);
     } finally {
       setPayingPartnerId(null);
@@ -438,13 +415,13 @@ function AdminDashboardContent() {
       `Escopo: ${escopoDesc}\n` +
       `Total a Liquidar: ${formatMoney(totalOwedAll)}\n` +
       `Quantidade de Parceiros: ${partnersWithOwed.length}\n\n` +
-      `O sistema enviará os pagamentos Pix via Asaas para cada parceiro e quitará todos os pedidos correspondentes. Deseja prosseguir?`;
+      `O servidor recalcula o saldo de cada parceiro e paga na subconta Asaas aprovada. Parceiros sem conta aprovada são ignorados. Deseja prosseguir?`;
 
     if (!confirm(confirmMsg)) return;
 
     setIsPayingAll(true);
     const { data: { session } } = await supabase.auth.getSession();
-    const authHeaders: any = { 
+    const authHeaders: Record<string, string> = {
       'Content-Type': 'application/json'
     };
     if (session?.access_token) {
@@ -452,48 +429,34 @@ function AdminDashboardContent() {
     }
 
     let successCount = 0;
+    let processingCount = 0;
     let failCount = 0;
     const failureDetails: string[] = [];
 
     for (let i = 0; i < partnersWithOwed.length; i++) {
       const p = partnersWithOwed[i];
       const u = p.user;
-      const rawPix = String(u.pix_key || u.pixKey || u.cpf_cnpj || u.cpfCnpj || u.phone || u.email || '').trim();
-      const pixKey = rawPix.includes('@') || rawPix.includes('-') ? rawPix : (rawPix.replace(/\D/g, '') || rawPix);
-      const walletId = u.asaas_wallet_id || (u as any).asaasWalletId || null;
 
       setPayAllProgress({ current: i + 1, total: partnersWithOwed.length, name: u.name });
-
-      if (!pixKey && !walletId) {
-        failCount++;
-        failureDetails.push(`${u.name}: Sem Chave Pix ou Subconta cadastrada`);
-        continue;
-      }
 
       try {
         const res = await fetch('/api/admin/payout/pay-partner', {
           method: 'POST',
           headers: authHeaders,
-          body: JSON.stringify({ 
-            pixKey, 
-            walletId,
-            partnerId: u.id,
-            role: u.role,
-            value: p.amountOwed, 
-            description: `Liquidação AçaíFood (${cidadeNome || 'Geral'}) – ${u.name}` 
-          })
+          body: JSON.stringify({ partnerId: u.id })
         });
-        const data = await res.json();
-        if (data.success || data.transferId) {
-          const isDriver = u.role === 'motorista' || u.role === 'courier' || u.role === 'motoboy' || u.role === 'caminhao' || u.role === 'driver';
-          const roleType = isDriver ? 'driver' : 'seller';
-          const orderIds = p.pendingOrders.map(o => o.id);
-
-          await store.markPayoutDone(orderIds, roleType, u.id);
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
           successCount++;
+        } else if (data.status === 'PROCESSING') {
+          processingCount++;
+          failureDetails.push(`${u.name}: em processamento no Asaas`);
+        } else if (data.code === 'ASAAS_ACCOUNT_NOT_APPROVED') {
+          failCount++;
+          failureDetails.push(`${u.name}: conta Asaas não aprovada`);
         } else {
           failCount++;
-          failureDetails.push(`${u.name}: ${data.error || 'Recusado pelo Asaas'}`);
+          failureDetails.push(`${u.name}: ${data.error || 'Recusado pelo servidor'}`);
         }
       } catch (_err: any) {
         failCount++;
@@ -504,11 +467,11 @@ function AdminDashboardContent() {
     setIsPayingAll(false);
     setPayAllProgress(null);
 
-    if (failCount > 0) {
-      alert(`Relatório de Liquidação (${cidadeNome || 'Geral'}):\n\n✅ Sucessos: ${successCount}\n❌ Falhas: ${failCount}\n\nDetalhes:\n${failureDetails.join('\n')}`);
+    if (failCount > 0 || processingCount > 0) {
+      alert(`Relatório de Liquidação (${cidadeNome || 'Geral'}):\n\n✅ Sucessos: ${successCount}\n⏳ Em processamento: ${processingCount}\n❌ Falhas: ${failCount}\n\nDetalhes:\n${failureDetails.join('\n')}`);
     }
 
-    showToast(`✅ Liquidação concluída (${cidadeNome || 'Geral'}): ${successCount} parceiro(s) pago(s) com sucesso! ${failCount > 0 ? `(${failCount} falha/sem pix)` : ''}`);
+    showToast(`✅ Liquidação concluída (${cidadeNome || 'Geral'}): ${successCount} parceiro(s) pago(s). ${processingCount > 0 ? `(${processingCount} em processamento) ` : ''}${failCount > 0 ? `(${failCount} falha(s))` : ''}`);
     if (store.currentUser?.id && typeof store.fetchOrders === 'function') await store.fetchOrders(store.currentUser.id, true);
     if (typeof store.fetchAllUsers === 'function') await store.fetchAllUsers(true);
     await fetchAdminBalances();
@@ -1893,6 +1856,9 @@ function AdminDashboardContent() {
             <button onClick={() => setActiveTab('conciliacao')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'conciliacao' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
               <span>⚖️ Conciliação Pix</span>
             </button>
+            <button onClick={() => setActiveTab('conformidade')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'conformidade' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
+              <span>🛡️ Conformidade</span>
+            </button>
             <button onClick={() => setActiveTab('pedidos')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🛒 Histórico de Pedidos</button>
             <button onClick={() => setActiveTab('ocorrencias')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>📋 Ocorrências & Auditoria</button>
             <button onClick={() => setActiveTab('cidades')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'cidades' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🌍 Cidades / Expansão</button>
@@ -2392,14 +2358,23 @@ function AdminDashboardContent() {
                                 <span className="bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 px-2 py-1 rounded-md text-[10px] font-bold uppercase inline-block">🔒 PIN Bloqueado</span>
                                 <button
                                   onClick={async () => {
-                                    if (confirm('Deseja resetar o PIN deste pedido e gerar um novo código?')) {
+                                    if (confirm('Gerar um novo PIN para este pedido e destravá-lo? O novo código aparece só no painel do cliente e da loja.')) {
                                       try {
-                                        const { data: newPin, error } = await supabase.rpc('generate_delivery_pin', { p_order_id: o.id });
-                                        if (!error) {
-                                          alert(`✅ Novo PIN de 4 dígitos gerado: ${newPin}`);
+                                        const { data: { session } } = await supabase.auth.getSession();
+                                        const res = await fetch('/api/admin/orders/regenerate-pin', {
+                                          method: 'POST',
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {})
+                                          },
+                                          body: JSON.stringify({ orderId: o.id, pinType: 'delivery' })
+                                        });
+                                        const data = await res.json().catch(() => ({}));
+                                        if (res.ok && data.success) {
+                                          alert(`✅ ${data.message}`);
                                           store.fetchOrders(store.currentUser?.id || 'admin', true);
                                         } else {
-                                          alert(`Erro ao resetar PIN: ${error.message}`);
+                                          alert(`Erro ao resetar PIN: ${data.error || `HTTP ${res.status}`}`);
                                         }
                                       } catch (e: any) {
                                         alert(`Exceção: ${e.message}`);
@@ -3679,6 +3654,10 @@ function AdminDashboardContent() {
 
         {activeTab === 'conciliacao' && (
           <AdminReconciliationSection />
+        )}
+
+        {activeTab === 'conformidade' && (
+          <AdminComplianceSection showToast={showToast} />
         )}
 
       </main>

@@ -7,6 +7,10 @@
     {
       "path": "/api/settlements/process",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/asaas/account-status-sync",
+      "schedule": "30 11 * * *"
     }
   ]
 }

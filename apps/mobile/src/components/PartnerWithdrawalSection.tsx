@@ -19,6 +19,8 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
     totalDisponivel: number;
     minWithdrawalValue: number;
     canRequest: boolean;
+    accountStatus?: string;
+    accountApproved?: boolean;
     pendingRequest: any;
     recentRequests: any[];
   } | null>(null);
@@ -105,6 +107,7 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
   const minVal = balanceData?.minWithdrawalValue || 20;
   const pendingReq = balanceData?.pendingRequest;
   const recentList = balanceData?.recentRequests || [];
+  const accountApproved = balanceData?.accountApproved === true;
 
   return (
     <div className="space-y-4">
@@ -121,7 +124,7 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
             </div>
             <div>
               <h3 className="font-bold text-sm text-zinc-300">Saldo Disponível para Saque</h3>
-              <p className="text-[11px] text-zinc-400">Repasses acumulados de pedidos concluídos</p>
+              <p className="text-[11px] text-zinc-400">Seu saque é analisado e pago na sua subconta Asaas</p>
             </div>
           </div>
           <button
@@ -168,10 +171,14 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
               }`}>
                 {formatDate(pendingReq.created_at)} • {
                   pendingReq.status === 'APROVADO' || pendingReq.status === 'PROCESSING'
-                    ? 'Transferência Pix Asaas enviada'
+                    ? 'Pagamento na subconta Asaas em andamento'
                     : 'Aguardando aprovação'
                 }
               </div>
+            </div>
+          ) : !accountApproved ? (
+            <div className="text-xs text-amber-200 bg-amber-950/60 border border-amber-700/50 rounded-2xl p-3 sm:max-w-xs">
+              Saque liberado depois que sua conta Asaas for aprovada. Veja no cartão "Minha conta Asaas", no topo da página, o que falta.
             </div>
           ) : (
             <div>
@@ -191,7 +198,7 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
           )}
         </div>
 
-        {!pendingReq && totalDisponivel > 0 && totalDisponivel < minVal && (
+        {accountApproved && !pendingReq && totalDisponivel > 0 && totalDisponivel < minVal && (
           <div className="mt-4 text-xs text-amber-300 bg-amber-950/40 border border-amber-900/50 rounded-xl p-2.5 flex items-center gap-2">
             <AlertCircle size={15} className="shrink-0" />
             <span>Faltam {formatMoney(minVal - totalDisponivel)} de repasses para atingir o valor mínimo de saque de {formatMoney(minVal)}.</span>
@@ -247,7 +254,7 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
                   )}
                   {req.status === 'PAGO' && (
                     <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-2.5 py-1 rounded-full font-bold uppercase text-[10px] flex items-center gap-1">
-                      <CheckCircle2 size={11} /> Pago Pix
+                      <CheckCircle2 size={11} /> Pago
                     </span>
                   )}
                   {req.status === 'REJEITADO' && (

@@ -1,10 +1,38 @@
 import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
-import { getFounderQuotaStatus } from '@/lib/founderQuota';
+import { CURRENT_TERMS_VERSION, SUBACCOUNT_REQUIRED_DOCS } from '@/lib/legalVersions';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
+
+// Eventos de situação da conta (docs.asaas.com → "Eventos para verificar situação da conta")
+const ACCOUNT_STATUS_EVENTS = [
+  'ACCOUNT_STATUS_BANK_ACCOUNT_INFO_APPROVED',
+  'ACCOUNT_STATUS_BANK_ACCOUNT_INFO_AWAITING_APPROVAL',
+  'ACCOUNT_STATUS_BANK_ACCOUNT_INFO_PENDING',
+  'ACCOUNT_STATUS_BANK_ACCOUNT_INFO_REJECTED',
+  'ACCOUNT_STATUS_COMMERCIAL_INFO_APPROVED',
+  'ACCOUNT_STATUS_COMMERCIAL_INFO_AWAITING_APPROVAL',
+  'ACCOUNT_STATUS_COMMERCIAL_INFO_PENDING',
+  'ACCOUNT_STATUS_COMMERCIAL_INFO_REJECTED',
+  'ACCOUNT_STATUS_COMMERCIAL_INFO_EXPIRING_SOON',
+  'ACCOUNT_STATUS_COMMERCIAL_INFO_EXPIRED',
+  'ACCOUNT_STATUS_DOCUMENT_APPROVED',
+  'ACCOUNT_STATUS_DOCUMENT_AWAITING_APPROVAL',
+  'ACCOUNT_STATUS_DOCUMENT_PENDING',
+  'ACCOUNT_STATUS_DOCUMENT_REJECTED',
+  'ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED',
+  'ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL',
+  'ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING',
+  'ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED'
+];
+
+function getAppBaseUrl(request: Request): string {
+  const fromEnv = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || '';
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
+  return new URL(request.url).origin;
+}
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista']);
@@ -48,6 +76,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'CPF deve conter 11 dígitos ou CNPJ 14 dígitos válidos' }, { status: 400 });
     }
 
+    // Celular obrigatório no POST /v3/accounts (DDD + número)
+    const mobileDigits = cleanPhone.startsWith('55') && cleanPhone.length >= 12 ? cleanPhone.slice(2) : cleanPhone;
+    if (mobileDigits.length !== 10 && mobileDigits.length !== 11) {
+      return NextResponse.json({ error: 'Celular com DDD é obrigatório para abrir a subconta (ex.: 91 98888-7777)' }, { status: 400 });
+    }
+
     const effectivePostalCode = String(postalCode || cep || '').replace(/\D/g, '');
     if (!effectivePostalCode || effectivePostalCode.length !== 8) {
       return NextResponse.json({ error: 'CEP válido com 8 dígitos é obrigatório para abertura da subconta bancária' }, { status: 400 });
@@ -80,7 +114,21 @@ export async function POST(request: Request) {
       effectiveCompanyType = cType;
     }
 
-    const userState = String(estado || uf || 'PA').trim().toUpperCase();
+    // Endereço: nada de valores inventados (cl. 8.2.3). O Asaas exige rua, número,
+    // bairro e CEP; cidade e UF são deduzidas do CEP pelo próprio Asaas.
+    const rawStreet = String(endereco || '').trim();
+    const addressMatch = rawStreet.match(/,?\s*(\d+[^\s,]*)/);
+    const effectiveAddressNumber = String(addressNumber || (addressMatch ? addressMatch[1] : '') || '').trim();
+    const addressStreet = rawStreet.replace(/,?\s*\d+[^\s,]*/, '').trim() || rawStreet;
+    const effectiveProvince = String(bairro || '').trim();
+    const userState = String(estado || uf || '').trim().toUpperCase();
+    const missingAddress: string[] = [];
+    if (!addressStreet) missingAddress.push('endereço (rua)');
+    if (!effectiveAddressNumber) missingAddress.push('número');
+    if (!effectiveProvince) missingAddress.push('bairro');
+    if (missingAddress.length > 0) {
+      return NextResponse.json({ error: `Dados de endereço obrigatórios para a subconta: ${missingAddress.join(', ')}` }, { status: 400 });
+    }
     const supabase = getSupabaseAdmin();
 
     const callerRole = String(auth.profile?.role || '').toUpperCase();
@@ -91,15 +139,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Você só pode vincular uma subconta ao seu próprio perfil de usuário.' }, { status: 403 });
     }
 
-    // 1. Checagem obrigatória dos termos Asaas na versão atual (2026-10-06)
+    // 1. Aceites obrigatórios na versão vigente (cl. 8.2.4)
     const { data: acceptedTerms } = await supabase
       .from('terms_acceptances')
-      .select('document, version')
-      .eq('user_id', userId);
+      .select('document')
+      .eq('user_id', userId)
+      .eq('version', CURRENT_TERMS_VERSION);
 
-    const acceptedDocs = new Set((acceptedTerms || []).map((t: any) => `${t.document}:${t.version}`));
-    const requiredDocs = ['asaas_terms:2026-10-06', 'subaccount_mandate:2026-10-06', 'pix_random_key_consent:2026-10-06'];
-    const missingDocs = requiredDocs.filter(d => !acceptedDocs.has(d));
+    const acceptedDocs = new Set((acceptedTerms || []).map((t: any) => t.document));
+    const missingDocs = SUBACCOUNT_REQUIRED_DOCS.filter(d => !acceptedDocs.has(d));
 
     if (missingDocs.length > 0) {
       return NextResponse.json(
@@ -131,33 +179,76 @@ export async function POST(request: Request) {
     let accountApiKey = '';
 
     if (searchData && searchData.data && searchData.data.length > 0) {
-      walletId = searchData.data[0].walletId;
-      accountId = searchData.data[0].id;
-      accountApiKey = searchData.data[0].apiKey || '';
+      // A apiKey da subconta só é devolvida na criação. Subconta já existente:
+      // só reaproveita se já for deste usuário e a chave estiver guardada.
+      const found = searchData.data[0];
+      const { data: currentUser } = await supabase
+        .from('users')
+        .select('asaas_account_id')
+        .eq('id', userId)
+        .maybeSingle();
+      const { data: secretRow } = await supabase
+        .from('partner_secrets')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (currentUser?.asaas_account_id === found.id && secretRow) {
+        return NextResponse.json({
+          success: true,
+          walletId: found.walletId,
+          accountId: found.id,
+          status: 'EXISTING',
+          isSandbox: ASAAS_URL.includes('sandbox')
+        });
+      }
+
+      await supabase
+        .from('users')
+        .update({ asaas_account_status: 'NEEDS_ADMIN' })
+        .eq('id', userId);
+
+      return NextResponse.json({
+        error: 'Já existe uma subconta Asaas com este CPF/CNPJ. Nossa equipe vai concluir a vinculação; fale com o suporte.',
+        status: 'NEEDS_ADMIN'
+      }, { status: 409 });
     }
 
     if (!walletId) {
-      const addressMatch = (endereco || '').match(/,?\s*(\d+[^\s,]*)/);
-      const effectiveAddressNumber = addressNumber || (addressMatch ? addressMatch[1] : 'S/N');
-      const addressStreet = (endereco || '').replace(/,?\s*\d+[^\s,]*/, '').trim() || endereco || 'Centro';
-
       const accountPayload: any = {
         name: name,
         email: email,
         cpfCnpj: cleanCpfCnpj,
         companyType: effectiveCompanyType,
-        phone: cleanPhone || undefined,
-        mobilePhone: cleanPhone || undefined,
+        mobilePhone: mobileDigits,
         address: addressStreet,
         addressNumber: effectiveAddressNumber,
-        province: bairro || 'Centro',
-        city: cidade || 'Belém',
-        state: userState || 'PA',
-        country: 'Brasil',
+        province: effectiveProvince,
+        city: String(cidade || '').trim() || undefined,
+        state: userState || undefined,
         postalCode: effectivePostalCode,
         birthDate: effectiveBirthDate,
         incomeValue: effectiveIncome,
       };
+
+      // Webhook de situação da conta da subconta → /api/asaas/account-webhook
+      const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN || '';
+      const webhookEmail = process.env.ASAAS_WEBHOOK_EMAIL || '';
+      if (webhookToken && webhookEmail) {
+        accountPayload.webhooks = [{
+          name: 'AcaiFood - situacao da conta',
+          url: `${getAppBaseUrl(request)}/api/asaas/account-webhook`,
+          email: webhookEmail,
+          enabled: true,
+          interrupted: false,
+          apiVersion: 3,
+          authToken: webhookToken,
+          sendType: 'SEQUENTIALLY',
+          events: ACCOUNT_STATUS_EVENTS
+        }];
+      } else {
+        console.warn('[Subaccount] ASAAS_WEBHOOK_TOKEN/ASAAS_WEBHOOK_EMAIL ausentes: webhook de situação da conta não cadastrado (o cron de reserva sincroniza o status).');
+      }
 
       Object.keys(accountPayload).forEach(k => {
         if (accountPayload[k] === undefined) delete accountPayload[k];
@@ -198,8 +289,8 @@ export async function POST(request: Request) {
           monthly_income: effectiveIncome || undefined,
           company_type: effectiveCompanyType || undefined,
           postal_code: effectivePostalCode || undefined,
-          address_number: addressNumber || undefined,
-          province: bairro || undefined
+          address_number: effectiveAddressNumber || undefined,
+          province: effectiveProvince || undefined
         })
         .eq('id', userId);
 
@@ -224,7 +315,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error("Erro na API /api/asaas/subaccount:", error);
+    console.error("Erro na API /api/asaas/subaccount:", error?.message);
     return NextResponse.json(
       { error: error.message || 'Erro interno ao criar subconta Asaas' },
       { status: 500 }

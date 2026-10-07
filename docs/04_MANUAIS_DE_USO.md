@@ -1,4 +1,4 @@
-# AçaíFood — Manuais de Uso Oficiais e Guia Operacional (Versão Pós-R12 / Outubro 2026)
+# AçaíFood — Manuais de Uso Oficiais e Guia Operacional (Versão Pós-R16 / 06 de outubro de 2026)
 
 > **Documentação oficial de operação e fluxos de usuários para a plataforma AçaíFood.**  
 > **Site Oficial de Produção:** https://www.acaifood.app.br (espelho: https://acai-food-mobile.vercel.app)  
@@ -48,8 +48,8 @@
 ### 2.1 Cadastro, KYC e Ativação
 1. Acesse `/cadastro` e selecione o perfil **Batedeira/Loja**.
 2. Preencha os dados cadastrais (Razão Social/Nome, CNPJ/CPF, data de nascimento/abertura, faturamento mensal estimado, endereço completo com CEP e dados de contato).
-3. **Subconta Asaas:** É gerada a subconta bancária vinculada no Asaas para custódia e repasse das vendas.
-4. Parceiros fundadores (vagas promocionais iniciais liberadas pelo Admin) têm isenção de adesão. Demais parceiros quitam a taxa de homologação de R$ 12,90 via Pix dinâmico.
+3. **Subconta Asaas:** é aberta no Asaas com os seus dados reais. Veja **"Como abrir sua conta Asaas"** (seção 8).
+4. Parceiros fundadores (vagas definidas pelo admin) não pagam ativação. Os demais pagam a taxa de ativação definida pelo admin, por Pix Asaas.
 
 ### 2.2 Gestão de Cardápio e Vitrine
 - Configure os preços dos 4 tipos de açaí (Popular, Médio, Grosso, Branco), fotos, descrições e status de disponibilidade (Ativo / Esgotado).
@@ -73,8 +73,9 @@
 - Solicite a coleta de caroços de açaí diretamente pelo painel. Um motorista de caçamba/caminhão recolhe o volume para destinação correta (ecopontos, olarias, queima de caldeiras ou compostagem).
 
 ### 2.7 Financeiro e Saques
-- O saldo das vendas é mantido em segurança e liberado após a conclusão das entregas confirmadas com PIN.
-- Solicite a transferência do saldo disponível para a conta bancária da mesma titularidade do CNPJ/CPF cadastrado.
+- O saldo das vendas é liberado depois da entrega confirmada com PIN.
+- **Seu saque é analisado e pago na sua subconta Asaas.** O botão "Solicitar Saque" só aparece depois que a sua conta Asaas for aprovada.
+- Só pode haver um saque em andamento por vez. Não existe limite de 2 saques por dia.
 
 ---
 
@@ -92,7 +93,7 @@
 
 ### 4.1 Cadastro e Validação
 1. Cadastre-se em `/cadastro` selecionando o perfil **Motoboy**.
-2. Preencha CPF, dados do veículo e chave Pix vinculada ao próprio CPF.
+2. Preencha CPF, celular, endereço completo e dados do veículo. Depois abra a sua conta Asaas (seção 8).
 3. Conceda permissão de GPS para telemetria em tempo real.
 
 ### 4.2 Radar de Pedidos Prontos
@@ -113,7 +114,7 @@
 - **Importante:** São permitidas no máximo 5 tentativas antes do bloqueio por segurança. Nunca entregue o açaí sem digitar o PIN correto.
 
 ### 4.5 Saque de Ganhos
-- Acompanhe seus ganhos acumulados e solicite a transferência Pix para sua conta de mesma titularidade.
+- Acompanhe seus ganhos e peça o saque. **Seu saque é analisado e pago na sua subconta Asaas** (o botão aparece depois da aprovação da conta).
 
 ---
 
@@ -140,6 +141,13 @@ O acesso ao `/admin` é restrito a administradores com credenciais verificadas d
 | **Ativações** | Gestão da taxa de homologação de parceiros e número de vagas de fundadores isentos. |
 | **Suporte ao Vivo** | Atendimento em tempo real com clientes e parceiros via WebSocket/Realtime e atalho para o canal de ouvidoria Asaas. |
 | **Termos & LGPD** | Monitoramento dos registros de aceite de termos e conformidade com o contrato BaaS. |
+| **🛡️ Conformidade** | **Subcontas Asaas** (situação, detalhe, CPF/CNPJ mascarado, botão "Reconsultar", filtro "Só com problema"); **Repasses** (aprovar `REVIEW` com valor recalculado no servidor ou cancelar); **Log de auditoria** (só leitura, filtro por data e ação); **SLA mensal** (informar a disponibilidade medida no mês). |
+
+> **MFA obrigatório:** toda conta admin precisa cadastrar o autenticador (TOTP) no primeiro acesso. Sem MFA as rotas de admin respondem "não autorizado".
+>
+> **Relatório mensal (cl. 11):** em Suporte → "Relatório mensal", informe o mês (AAAA-MM). O arquivo traz chamados, procedentes, encaminhados ao Asaas e a disponibilidade informada na aba Conformidade.
+>
+> **Excluir usuário:** contas com pedido pago ou saque não podem ser excluídas — use **Bloquear**.
 
 ---
 
@@ -149,3 +157,26 @@ O acesso ao `/admin` é restrito a administradores com credenciais verificadas d
 - **Canal de Atendimento Oficial:** Suporte integrado no app e e-mail de atendimento da plataforma.
 - **Reclamações Financeiras / Ouvidoria Asaas:** Questões relativas a transações financeiras BaaS podem ser direcionadas através do canal oficial de ouvidoria do Asaas conforme previsto no contrato de prestação de serviços.
 - **Proteção de Dados (LGPD):** Dados pessoais e PINs são criptografados e acessíveis exclusivamente aos envolvidos diretos na transação.
+
+---
+
+## 8. Como abrir sua conta Asaas (parceiros)
+
+Todo parceiro (batedeira, fornecedor, motoboy, caminhoneiro) recebe por uma **subconta Asaas em seu nome**. Sem ela aprovada, não há saque.
+
+1. **Aceite os termos** no cadastro (Termos de Uso, Privacidade e documentos do Asaas).
+2. **Preencha os dados reais:** nome ou razão social, e-mail, CPF ou CNPJ, celular, renda ou faturamento mensal, CEP, rua, número e bairro (tipo de empresa e data de nascimento quando o Asaas pedir). O app não completa nada por você.
+3. **Abra o cartão "Minha conta Asaas"** no topo do seu painel. Ele mostra a situação e os documentos pedidos pelo Asaas (por exemplo, documento com foto e selfie; para CNPJ, também o documento da empresa).
+4. **Envie os documentos** pelo link do Asaas (quando aparecer) ou pelo botão de envio do próprio cartão.
+5. **Aguarde a análise do Asaas.** A situação muda sozinha; se quiser, toque em **"Reconsultar"**.
+
+| Situação no cartão | O que fazer |
+|---|---|
+| Aguardando documentos | Enviar os documentos pedidos |
+| Em análise no Asaas | Aguardar |
+| Aprovada | Pronto: o saque fica liberado |
+| Reprovada | Ver o motivo no cartão e falar com o suporte |
+| Precisa do admin | Já existe conta no Asaas com seu CPF/CNPJ; o suporte resolve com você |
+
+> Período de avaliação do Asaas: no início da operação o Asaas limita o número de subcontas e o valor movimentado por subconta. Se o seu saque for recusado por limite, o suporte avisa.
+

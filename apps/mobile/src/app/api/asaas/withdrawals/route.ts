@@ -37,6 +37,15 @@ export async function GET(request: Request) {
 
     const minWithdrawalValue = Number(ps?.min_withdrawal_value ?? 20.00);
 
+    // Situação da subconta Asaas (saque só para walletId de subconta APPROVED)
+    const { data: acct } = await adminSupabase
+      .from('users')
+      .select('asaas_account_status, asaas_wallet_id')
+      .eq('id', user.id)
+      .maybeSingle();
+    const accountStatus = String(acct?.asaas_account_status || 'PENDING_DOCUMENTS');
+    const accountApproved = accountStatus === 'APPROVED' && Boolean(String(acct?.asaas_wallet_id || '').trim());
+
     // 2. Obter saldo disponível recalculado
     const balanceInfo = await getPartnerAvailableBalance(user.id, role);
 
@@ -45,7 +54,7 @@ export async function GET(request: Request) {
       .from('withdrawal_requests')
       .select('*')
       .eq('partner_id', user.id)
-      .in('status', ['PENDENTE', 'PROCESSING'])
+      .in('status', ['PENDENTE', 'APROVADO', 'PROCESSING'])
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -59,7 +68,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
       .limit(10);
 
-    const canRequest = !pendingRequest && balanceInfo.totalDisponivel >= minWithdrawalValue;
+    const canRequest = accountApproved && !pendingRequest && balanceInfo.totalDisponivel >= minWithdrawalValue;
 
     return NextResponse.json({
       success: true,
@@ -69,6 +78,8 @@ export async function GET(request: Request) {
       quantidadePedidos: balanceInfo.quantidadePedidos,
       minWithdrawalValue,
       canRequest,
+      accountStatus,
+      accountApproved,
       pendingRequest,
       recentRequests: recentRequests || []
     });
@@ -122,15 +133,17 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // 4. Confirmar que o parceiro possui pelo menos uma chave de destino cadastrada
-    const rawPixKey = String(user.pix_key || '').trim();
-    const rawCpfCnpj = String(user.cpf_cnpj || '').replace(/\D/g, '');
-    const rawEmail = String(user.email || '').trim();
-    const rawWalletId = String(user.asaas_wallet_id || '').trim();
-
-    if (!rawPixKey && !rawCpfCnpj && !rawEmail && !rawWalletId) {
+    // 4. Saque só para a subconta Asaas aprovada do próprio parceiro (walletId)
+    const { data: acct } = await adminSupabase
+      .from('users')
+      .select('asaas_account_status, asaas_wallet_id')
+      .eq('id', user.id)
+      .maybeSingle();
+    const rawWalletId = String(acct?.asaas_wallet_id || '').trim();
+    if (acct?.asaas_account_status !== 'APPROVED' || !rawWalletId) {
       return NextResponse.json({
-        error: 'Por favor, cadastre uma Chave Pix ou CPF/CNPJ no seu perfil antes de solicitar o saque.'
+        error: 'Sua conta Asaas ainda não foi aprovada. Envie os documentos em "Minha conta Asaas" para liberar o saque.',
+        code: 'ACCOUNT_NOT_APPROVED'
       }, { status: 400 });
     }
 
@@ -168,7 +181,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Solicitação de saque no valor de R$ ${balanceInfo.totalDisponivel.toFixed(2)} enviada com sucesso! Aguardando aprovação do administrador.`,
+      message: `Solicitação de saque no valor de R$ ${balanceInfo.totalDisponivel.toFixed(2)} enviada com sucesso! Seu saque é analisado e pago na sua subconta Asaas.`,
       request: newRequest
     });
   } catch (err: any) {

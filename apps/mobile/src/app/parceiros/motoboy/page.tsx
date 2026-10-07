@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Bike, BookOpen, Share2 } from "lucide-react";
-import { useAppStore, getRatesForCity, calculateOrderFreight, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
+import { useAppStore, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -154,7 +154,6 @@ export default function MotoboyDashboard() {
   }, [corridasDisponiveis.length]);
   const minhasCorridasAll = (store.orders || []).filter((o: any) => o && currentUser?.id && o.motoristaId === currentUser.id);
   const ganhosHoje = serverBalance !== null ? serverBalance : minhasCorridasAll.filter((o: any) => o && isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + (curr ? getMotoboyFee(curr) : 0), 0);
-  const saquesHoje = currentUser?.id ? getDailyWithdrawalCount(currentUser.id) : 0;
 
   const motoActiveOrders = minhasCorridasAll.filter((o: any) => o && !isDelivered(o.status) && o.status !== 'cancelado' && o.status !== 'arquivado');
   const motoHistoryOrders = minhasCorridasAll.filter((o: any) => o && (isDelivered(o.status) || o.status === 'cancelado' || o.status === 'arquivado'));
@@ -192,59 +191,9 @@ export default function MotoboyDashboard() {
   const linkAsaasAccount = store.linkAsaasAccount;
   const handleLinkAsaas = async () => {
     if (!currentUser) return;
-    const cpfKey = currentUser.cpfCnpj || currentUser.pixKey;
-    alert(`🔒 Chave PIX Oficial de Repasses:\n\nSua Chave Pix oficial cadastrada é o seu CPF/CNPJ (${cpfKey || 'Cadastrado'}).\n\nPor conformidade bancária e segurança contra fraudes, os repasses de corridas são creditados exclusivamente na conta bancária de mesma titularidade.`);
+    alert('Seu saque é analisado e pago na sua subconta Asaas.\n\nPara liberar, abra sua conta e envie os documentos no cartão "Minha conta Asaas", no topo desta página.');
   };
 
-  const handleResgatarPix = async () => {
-    if (!currentUser) return;
-    const targetKey = String(currentUser.cpfCnpj || currentUser.pixKey || '').replace(/\D/g, '');
-
-    if (!targetKey) {
-      alert("Chave Pix (CPF/CNPJ) não localizada no seu cadastro. Entre em contato com o suporte.");
-      return;
-    }
-
-    if (!ganhosHoje || ganhosHoje <= 0) {
-      alert("Não há saldo disponível para saque no momento.");
-      return;
-    }
-
-    const saquesHoje = getDailyWithdrawalCount(currentUser.id);
-    if (saquesHoje >= 2) {
-      alert("⚠️ Limite diário atingido:\n\nVocê já realizou 2 saques hoje (limite máximo permitido). Novos valores acumulados serão liquidados automaticamente no encerramento diário pelo administrador ou estarão disponíveis para novo saque amanhã.");
-      return;
-    }
-
-    if (isWithdrawing) return;
-
-    if (confirm(`Deseja transferir R$ ${ganhosHoje.toFixed(2)} instantaneamente via PIX para o seu CPF/CNPJ (${targetKey}) cadastrado?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
-      setIsWithdrawing(true);
-      try {
-        const pendingOrders = minhasCorridasAll.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone);
-        const pendingOrderIds = pendingOrders.map((o: any) => o.id);
-
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch('/api/asaas/withdrawals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}) }
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          incrementDailyWithdrawalCount(currentUser.id);
-          alert(`✅ Solicitação de Saque no valor de R$ ${ganhosHoje.toFixed(2)} enviada com sucesso!\nO valor será repassado via Pix Asaas para sua chave/subconta.`);
-          store.fetchOrders(currentUser.id, true);
-        } else {
-          const msg = data.error || '';
-          alert(`Solicitação de Saque: ${msg || 'Não foi possível registrar o saque no momento.'}`);
-        }
-      } catch (_err) {
-        alert("Erro de conexão ao solicitar transferência PIX.");
-      } finally {
-        setIsWithdrawing(false);
-      }
-    }
-  };
 
 
   return (

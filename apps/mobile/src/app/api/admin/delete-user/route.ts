@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
+import { logAdminAction } from '@/lib/adminAudit';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin']);
@@ -15,6 +16,59 @@ export async function POST(request: Request) {
     }
 
     const supabase = getSupabaseAdmin();
+    const actorId = auth.user?.id || auth.profile?.id || null;
+
+    if (actorId && userId === actorId) {
+      return NextResponse.json({ error: 'Você não pode excluir a própria conta de administrador.' }, { status: 400 });
+    }
+
+    const { data: before } = await supabase
+      .from('users')
+      .select('id, name, role, status, asaas_account_status, created_at')
+      .eq('id', userId)
+      .maybeSingle();
+
+    // Registros financeiros devem ser guardados (contrato BaaS e lei). Com pedidos pagos
+    // ou saques, a conta deve ser bloqueada, não apagada — salvo liberação explícita.
+    if (process.env.ALLOW_DESTRUCTIVE_ADMIN_RESET !== 'true') {
+      const { count: paidOrders } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .or(`buyer_id.eq.${userId},driver_id.eq.${userId}`)
+        .not('paid_at', 'is', null);
+      const { data: ownStorefronts } = await supabase
+        .from('storefronts')
+        .select('id')
+        .eq('partner_id', userId);
+      let sellerPaidOrders = 0;
+      const sfIdsForCheck = (ownStorefronts || []).map((s: any) => s.id);
+      if (sfIdsForCheck.length > 0) {
+        const { count } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .in('seller_storefront_id', sfIdsForCheck)
+          .not('paid_at', 'is', null);
+        sellerPaidOrders = count || 0;
+      }
+      const { count: withdrawals } = await supabase
+        .from('withdrawal_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('partner_id', userId);
+      if ((paidOrders || 0) > 0 || sellerPaidOrders > 0 || (withdrawals || 0) > 0) {
+        await logAdminAction({
+          actorId,
+          action: 'USER_DELETE_BLOCKED',
+          targetType: 'USER',
+          targetId: String(userId),
+          beforeState: before || null,
+          afterState: { paidOrders: paidOrders || 0, sellerPaidOrders, withdrawals: withdrawals || 0 },
+          request
+        });
+        return NextResponse.json({
+          error: 'Este usuário tem pedidos pagos ou saques. Bloqueie a conta em vez de excluir (os registros financeiros precisam ser guardados).'
+        }, { status: 409 });
+      }
+    }
 
     // 0. Deletar logs e registros associados onde user_id tem FK
     try { await supabase.from('incident_logs').delete().eq('user_id', userId); } catch (_) {}
@@ -86,6 +140,16 @@ export async function POST(request: Request) {
     } catch (authDeleteErr) {
       console.warn("Aviso ao deletar usuário do Supabase Auth:", authDeleteErr);
     }
+
+    await logAdminAction({
+      actorId,
+      action: 'USER_DELETED',
+      targetType: 'USER',
+      targetId: String(userId),
+      beforeState: before || null,
+      afterState: { deleted: true },
+      request
+    });
 
     return NextResponse.json({ success: true, message: 'Usuário e todos os dados associados foram excluídos com sucesso' });
   } catch (err: any) {

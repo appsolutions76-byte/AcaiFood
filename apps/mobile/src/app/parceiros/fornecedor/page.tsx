@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { PackageOpen, Printer, BookOpen, Share2 } from "lucide-react";
-import { useAppStore, getRatesForCity, generateUUID, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
+import { useAppStore, getRatesForCity, generateUUID } from "@/store/useAppStore";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { supabase } from "@/lib/supabase";
@@ -210,67 +210,9 @@ export default function FornecedorDashboard() {
 
   const handleLinkAsaas = async () => {
     if (!currentUser) return;
-    const cpfKey = currentUser.cpfCnpj || currentUser.pixKey;
-    alert(`🔒 Chave PIX Oficial de Repasses:\n\nSua Chave Pix oficial cadastrada é o seu CPF/CNPJ (${cpfKey || 'Cadastrado'}).\n\nPor conformidade bancária e segurança contra fraudes, os repasses são creditados exclusivamente na conta bancária de mesma titularidade.`);
+    alert('Seu saque é analisado e pago na sua subconta Asaas.\n\nPara liberar, abra sua conta e envie os documentos no cartão "Minha conta Asaas", no topo desta página.');
   };
 
-  const handleResgatarPix = async () => {
-    if (!currentUser) return;
-    const targetKey = String(currentUser.cpfCnpj || currentUser.pixKey || '').replace(/\D/g, '');
-
-    if (!targetKey) {
-      alert("Chave Pix (CPF/CNPJ) não localizada no seu cadastro. Entre em contato com o suporte.");
-      return;
-    }
-
-    const valorSaque = (vendasHoje && vendasHoje > 0) ? vendasHoje : 0;
-    if (!valorSaque || valorSaque <= 0) {
-      alert("Não há saldo disponível para saque no momento.");
-      return;
-    }
-
-    const saquesHoje = getDailyWithdrawalCount(currentUser.id);
-    if (saquesHoje >= 2) {
-      alert("⚠️ Limite diário atingido:\n\nVocê já realizou 2 saques hoje (limite máximo permitido). Novos valores acumulados serão liquidados automaticamente no encerramento diário pelo administrador ou estarão disponíveis para novo saque amanhã.");
-      return;
-    }
-
-    if (isWithdrawing) return;
-
-    if (confirm(`Deseja transferir R$ ${valorSaque.toFixed(2)} instantaneamente via PIX para o seu CPF/CNPJ (${targetKey}) cadastrado?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
-      setIsWithdrawing(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const authHeaders: any = { 
-          'Content-Type': 'application/json'
-        };
-        if (session?.access_token) {
-          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
-        }
-
-        const pendingOrders = meusPedidos.filter((o: any) => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2B' && !o.payoutSellerDone);
-        const pendingOrderIds = pendingOrders.map((o: any) => o.id);
-
-        const res = await fetch('/api/asaas/withdrawals', {
-          method: 'POST',
-          headers: authHeaders
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          incrementDailyWithdrawalCount(currentUser.id);
-          alert(`✅ Solicitação de Saque no valor de R$ ${valorSaque.toFixed(2)} enviada com sucesso!\nO valor será repassado via Pix Asaas para sua chave/subconta.`);
-          store.fetchOrders(currentUser.id, true);
-        } else {
-          const msg = data.error || '';
-          alert(`Solicitação de Saque: ${msg || 'Não foi possível registrar o saque no momento.'}`);
-        }
-      } catch (_err) {
-        alert("Erro de conexão ao solicitar transferência PIX.");
-      } finally {
-        setIsWithdrawing(false);
-      }
-    }
-  };
 
   const [isUpdatingGPS, setIsUpdatingGPS] = useState(false);
 
@@ -358,7 +300,6 @@ export default function FornecedorDashboard() {
   const meusPedidosAll = (store.orders || []).filter((o: any) => isMyOrder(o));
   const vendasHoje = meusPedidosAll.filter((o: any) => isCompleted(o.status) && !o.payoutSellerDone).reduce((acc: number, curr: any) => acc + getSupplierRepasse(curr), 0);
   const emProcessamento = meusPedidosAll.filter((o: any) => isPaidOrProcessing(o.status)).reduce((acc: number, curr: any) => acc + getSupplierRepasse(curr), 0);
-  const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
 
   const fornActiveOrders = meusPedidosAll.filter((o: any) => 
     o.status !== 'aguardando_pagamento' && 

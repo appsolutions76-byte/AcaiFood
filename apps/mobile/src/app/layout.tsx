@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { TermsAcceptanceGate } from "@/components/TermsAcceptanceGate";
 
 export const viewport: Viewport = {
   themeColor: "#9333ea",
@@ -64,6 +65,7 @@ export default function RootLayout({
       <body className="antialiased font-sans bg-zinc-950 text-zinc-100">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
+          <TermsAcceptanceGate />
         </ThemeProvider>
       </body>
     </html>

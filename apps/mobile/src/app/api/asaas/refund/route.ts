@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { logAdminAction } from '@/lib/adminAudit';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { orderId, paymentId, description, reason, value } = body;
+    const { orderId, paymentId, description, reason } = body; // valor nunca vem do navegador
 
     if (!orderId && !paymentId) {
       return NextResponse.json(
@@ -221,7 +222,7 @@ export async function POST(request: Request) {
           }
 
           // O valor de estorno é SEMPRE o valor total cobrado no Asaas (produtos + frete) ou o saldo restante
-          let refundValue = origValue > 0 ? (totalRefundedSoFar > 0 ? remainingToRefund : origValue) : (value ? Number(value) : 0);
+          let refundValue = origValue > 0 ? (totalRefundedSoFar > 0 ? remainingToRefund : origValue) : 0; // 0 = estorno total pelo Asaas
 
           if (origValue > 0 && (totalRefundedSoFar + refundValue > origValue + 0.05)) {
             refundValue = remainingToRefund;
@@ -341,6 +342,18 @@ export async function POST(request: Request) {
       } catch (dbErr) {
         console.warn("Erro ao atualizar status do pedido no Supabase:", dbErr);
       }
+    }
+
+    if (isAdmin && auth.source !== 'cron_secret' && auth.source !== 'internal_secret') {
+      await logAdminAction({
+        actorId: callerId || null,
+        action: 'REFUND_BY_ADMIN',
+        targetType: effectiveOrderId ? 'ORDER' : 'PAYMENT',
+        targetId: String(effectiveOrderId || asaasPaymentId || ''),
+        beforeState: { status: targetOrder?.status || null, charged_amount: targetOrder?.charged_amount ?? null },
+        afterState: { refund_status: refundStatus, refund_id: refundId || null, reason: cancelReasonText },
+        request
+      });
     }
 
     return NextResponse.json({

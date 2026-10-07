@@ -28,3 +28,43 @@ jobs:
       - name: TypeScript Check
         run: |
           cd apps/mobile && npx tsc --noEmit
+
+      - name: Build
+        env:
+          # Valores falsos: o build não conecta em nada; só garante que compila.
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: |
+          cd apps/mobile && npm run build
+
+  guards:
+    # Regras de segurança que não podem voltar (PIN, segredos, e-mail inventado, token na URL)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regras de segurança no código
+        run: bash scripts/ci_guards.sh
+
+  db-tests:
+    # PIN (12 casos do docs/18), privacidade de users, radar, log de admin e
+    # platform_config/monthly_sla, num Postgres 16 limpo com um stub do Supabase.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testes de banco
+        env:
+          PGURL: postgres://postgres:postgres@localhost:5432/postgres
+        run: bash supabase/tests/run_ci.sh

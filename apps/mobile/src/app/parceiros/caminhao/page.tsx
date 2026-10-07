@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Truck, BookOpen, Share2 } from "lucide-react";
-import { useAppStore, getRatesForCity, calculateOrderFreight, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
+import { useAppStore, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -164,7 +164,6 @@ export default function CaminhaoDashboard() {
   const caminhaoActiveOrders = minhasCorridas.filter((o: any) => !isDelivered(o.status) && o.status !== 'cancelado');
   const caminhaoHistoryOrders = minhasCorridas.filter((o: any) => isDelivered(o.status) || o.status === 'cancelado');
   const ganhosHoje = minhasCorridas.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + getDriverFee(curr), 0);
-  const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -198,8 +197,7 @@ export default function CaminhaoDashboard() {
   const linkAsaasAccount = store.linkAsaasAccount;
   const handleLinkAsaas = async () => {
     if (!currentUser) return;
-    const cpfKey = currentUser.cpfCnpj || currentUser.pixKey;
-    alert(`🔒 Chave PIX Oficial de Repasses:\n\nSua Chave Pix oficial cadastrada é o seu CPF/CNPJ (${cpfKey || 'Cadastrado'}).\n\nPor conformidade bancária e segurança contra fraudes, os repasses de fretes pesados são creditados exclusivamente na conta bancária de mesma titularidade.`);
+    alert('Seu saque é analisado e pago na sua subconta Asaas.\n\nPara liberar, abra sua conta e envie os documentos no cartão "Minha conta Asaas", no topo desta página.');
   };
 
   const renderFreightCard = (o: any) => {

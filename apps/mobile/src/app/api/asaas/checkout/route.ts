@@ -1,6 +1,8 @@
+import { randomInt } from 'crypto';
 import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { priceOrderOnServer } from '@/lib/serverOrderPricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
         await supabase.from('users').insert({
           id: validBuyerId,
           name: customerName || auth.user?.user_metadata?.name || 'Cliente AçaíFood',
-          email: customerEmail || auth.user?.email || `cliente_${validBuyerId}@acaifood.app.br`,
+          email: auth.user?.email || customerEmail || null,
           phone: customerPhone || null,
           cpf_cnpj: customerCpfCnpj || null,
           role: 'cliente'
@@ -137,8 +139,29 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Loja ou fornecedor do pedido não encontrado' }, { status: 400 });
       }
 
-      const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
-      const pickupPin = orderType !== 'COLETA' ? Math.floor(1000 + Math.random() * 9000).toString() : null;
+      // Preço e distância calculados no servidor (C8): valores do app são ignorados
+      const serverPricing = await priceOrderOnServer({
+        supabase,
+        orderType,
+        sellerStorefrontId,
+        items,
+        deliveryLat: deliveryInfo?.lat ? Number(deliveryInfo.lat) : null,
+        deliveryLng: deliveryInfo?.lng ? Number(deliveryInfo.lng) : null,
+        buyerId: validBuyerId,
+        clientDistanceKm: Number(deliveryDistanceKm || 0)
+      });
+      if (!serverPricing.ok) {
+        return NextResponse.json({ error: serverPricing.error || 'Não foi possível calcular o valor do pedido' }, { status: 400 });
+      }
+      if (orderType !== 'COLETA' && Math.abs(Number(productsSubtotal || 0) - serverPricing.productsSubtotal) > 0.01) {
+        console.warn(`[Checkout] Subtotal do app diverge do servidor (app=${Number(productsSubtotal || 0).toFixed(2)} servidor=${serverPricing.productsSubtotal.toFixed(2)}). Usando o servidor.`);
+      }
+      const serverSubtotal = serverPricing.productsSubtotal;
+      const serverDistanceKm = serverPricing.distanceKm;
+
+      // PIN com gerador criptográfico (o banco move para order_pins e limpa orders)
+      const deliveryPin = randomInt(1000, 10000).toString();
+      const pickupPin = orderType !== 'COLETA' ? randomInt(1000, 10000).toString() : null;
 
       // Calcular precificação e regras de frete (Fixo vs KM) antes de persistir no banco
       const { calculateOrderPricing } = await import('@/lib/pricingEngine');
@@ -157,15 +180,15 @@ export async function POST(request: Request) {
 
       const prePricing = await calculateOrderPricing({
         orderType,
-        distanceKm: Number(deliveryDistanceKm || 0),
+        distanceKm: serverDistanceKm,
         cityName: orderCity,
-        productsSubtotal: Number(productsSubtotal || 0),
+        productsSubtotal: serverSubtotal,
         sellerStorefrontId
       }, supabase);
 
       const isFixedFreight = prePricing.courierPaymentMode === 'FIXED';
-      const effectiveDbDistance = isFixedFreight ? 1.0 : Number(deliveryDistanceKm || 0);
-      const distInfoText = `Distância estimada: ${deliveryDistanceKm || 0} km${isFixedFreight ? ' (Valor Fixo da Moto aplicado)' : ''}`;
+      const effectiveDbDistance = isFixedFreight ? 1.0 : serverDistanceKm;
+      const distInfoText = `Distância estimada: ${serverDistanceKm} km${isFixedFreight ? ' (Valor Fixo da Moto aplicado)' : ''}`;
       const effectiveReference = deliveryInfo?.reference
         ? `${deliveryInfo.reference} | ${distInfoText}`
         : distInfoText;
@@ -178,7 +201,7 @@ export async function POST(request: Request) {
         seller_storefront_id: sellerStorefrontId,
         order_type: orderType,
         status: 'PENDING',
-        products_subtotal: Number(productsSubtotal || 0),
+        products_subtotal: serverSubtotal,
         delivery_distance_km: effectiveDbDistance,
         delivery_pin: deliveryPin,
         delivery_address: deliveryInfo?.address || null,
@@ -214,7 +237,7 @@ export async function POST(request: Request) {
             seller_storefront_id: sellerStorefrontId,
             order_type: orderType,
             status: 'PENDING',
-            products_subtotal: Number(productsSubtotal || 0),
+            products_subtotal: serverSubtotal,
             delivery_distance_km: effectiveDbDistance,
             delivery_pin: deliveryPin,
             delivery_address: deliveryInfo?.address || null,
@@ -242,14 +265,14 @@ export async function POST(request: Request) {
       order = newOrder;
 
       // Inserir itens do pedido
-      if (items && Array.isArray(items) && items.length > 0) {
-        const itemsPayload = items.map((it: any) => ({
+      if (serverPricing.items.length > 0) {
+        const itemsPayload = serverPricing.items.map((it) => ({
           order_id: order.id,
-          product_id: it.id || null,
-          product_name: it.name || 'Açaí',
-          quantity: it.quantity || 1,
-          unit_price_cents: Math.round((it.price || 0) * 100),
-          total_price_cents: Math.round((it.price || 0) * (it.quantity || 1) * 100)
+          product_id: it.product_id,
+          product_name: it.product_name,
+          quantity: it.quantity,
+          unit_price_cents: Math.round(it.unit_price * 100),
+          total_price_cents: Math.round(it.unit_price * it.quantity * 100)
         }));
 
         try {
@@ -295,7 +318,7 @@ export async function POST(request: Request) {
       sellerStorefrontId: order.seller_storefront_id
     }, supabase);
 
-    const calculatedValue = pricing.buyerTotal > 0 ? pricing.buyerTotal : (Number(productsSubtotal || 0) + 2.00);
+    const calculatedValue = pricing.buyerTotal > 0 ? pricing.buyerTotal : Number(order.products_subtotal || 0);
 
     if (calculatedValue <= 0) {
       return NextResponse.json({ error: 'Valor total do pedido inválido para cobrança' }, { status: 400 });
@@ -370,7 +393,8 @@ export async function POST(request: Request) {
     }
 
     let customerId = '';
-    const emailToSearch = customerEmail || (order?.buyer_id ? `cliente_${order.buyer_id}@acaifood.app.br` : undefined);
+    // E-mail real do comprador logado (nada de e-mail inventado no cadastro do pagador)
+    const emailToSearch: string | undefined = auth.user?.email || customerEmail || undefined;
 
     const cpfSearchRes = await fetch(`${ASAAS_URL}/customers?cpfCnpj=${encodeURIComponent(validCpfCnpj)}`, {
       headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
@@ -407,7 +431,7 @@ export async function POST(request: Request) {
     if (!customerId) {
       const customerPayload: any = {
         name: customerName || 'Cliente AçaíFood',
-        email: emailToSearch || `cliente_${Date.now()}@acaifood.app.br`,
+        email: emailToSearch,
         cpfCnpj: validCpfCnpj,
         mobilePhone: customerPhone ? String(customerPhone).replace(/\D/g, '') : undefined
       };

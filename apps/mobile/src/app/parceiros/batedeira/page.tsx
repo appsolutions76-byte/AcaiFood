@@ -21,7 +21,7 @@ import {
   Layers,
   ArrowUpDown
 } from "lucide-react";
-import { useAppStore, haversineKm, getRatesForCity, generateUUID, getDailyWithdrawalCount, incrementDailyWithdrawalCount } from "@/store/useAppStore";
+import { useAppStore, haversineKm, getRatesForCity, generateUUID } from "@/store/useAppStore";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
@@ -355,66 +355,9 @@ export default function BatedeiraDashboard() {
 
   const handleLinkAsaas = async () => {
     if (!currentUser) return;
-    const cpfKey = currentUser.cpfCnpj || currentUser.pixKey;
-    alert(`🔒 Chave PIX Oficial de Repasses:\n\nSua Chave Pix oficial cadastrada é o seu CPF/CNPJ (${cpfKey || 'Cadastrado'}).\n\nPor conformidade bancária e segurança contra fraudes, os repasses são creditados exclusivamente na conta bancária de mesma titularidade.`);
+    alert('Seu saque é analisado e pago na sua subconta Asaas.\n\nPara liberar, abra sua conta e envie os documentos no cartão "Minha conta Asaas", no topo desta página.');
   };
 
-  const handleResgatarPix = async () => {
-    if (!currentUser) return;
-    const targetKey = String(currentUser.cpfCnpj || currentUser.pixKey || '').replace(/\D/g, '');
-
-    if (!targetKey) {
-      alert("Chave Pix (CPF/CNPJ) não localizada no seu cadastro. Entre em contato com o suporte.");
-      return;
-    }
-
-    if (!vendasHoje || vendasHoje <= 0) {
-      alert("Não há saldo disponível para saque no momento.");
-      return;
-    }
-
-    const saquesHoje = getDailyWithdrawalCount(currentUser.id);
-    if (saquesHoje >= 2) {
-      alert("⚠️ Limite diário atingido:\n\nVocê já realizou 2 saques hoje (limite máximo permitido). Novos valores acumulados serão liquidados automaticamente no encerramento diário pelo administrador ou estarão disponíveis para novo saque amanhã.");
-      return;
-    }
-
-    if (isWithdrawing) return;
-
-    if (confirm(`Deseja transferir R$ ${vendasHoje.toFixed(2)} instantaneamente via PIX para o seu CPF/CNPJ (${targetKey}) cadastrado?\n(Saque ${saquesHoje + 1} de no máximo 2 saques hoje)`)) {
-      setIsWithdrawing(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const authHeaders: any = { 
-          'Content-Type': 'application/json'
-        };
-        if (session?.access_token) {
-          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
-        }
-
-        const pendingOrders = meusPedidosAll.filter((o: any) => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone);
-        const pendingOrderIds = pendingOrders.map((o: any) => o.id);
-
-        const res = await fetch('/api/asaas/withdrawals', {
-          method: 'POST',
-          headers: authHeaders
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          incrementDailyWithdrawalCount(currentUser.id);
-          alert(`✅ Solicitação de Saque no valor de R$ ${vendasHoje.toFixed(2)} enviada com sucesso!\nO valor será repassado via Pix Asaas para sua chave/subconta.`);
-          store.fetchOrders(currentUser.id, true);
-        } else {
-          const msg = data.error || '';
-          alert(`Solicitação de Saque: ${msg || 'Não foi possível registrar o saque no momento.'}`);
-        }
-      } catch (_err) {
-        alert("Erro de conexão ao solicitar transferência PIX.");
-      } finally {
-        setIsWithdrawing(false);
-      }
-    }
-  };
 
   const [isUpdatingGPS, setIsUpdatingGPS] = useState(false);
 
@@ -476,7 +419,6 @@ export default function BatedeiraDashboard() {
     return isMyStore;
   });
   const vendasHoje = serverBalance !== null ? serverBalance : meusPedidosAll.filter((o: any) => (o.status === 'entregue' || o.status === 'arquivado') && o.type === 'B2C' && !o.payoutSellerDone).reduce((acc: number, curr: any) => acc + (curr.taxas?.repasse || 0), 0);
-  const saquesHoje = currentUser ? getDailyWithdrawalCount(currentUser.id) : 0;
   
   const batedeiraActiveOrders = meusPedidosAll.filter((o: any) => 
     o.status !== 'aguardando_pagamento' && 
@@ -1042,13 +984,13 @@ export default function BatedeiraDashboard() {
           <div className="bg-purple-950/30 border border-purple-800/60 rounded-2xl p-6 text-center shadow-sm">
             <h3 className="text-purple-300 font-bold text-lg mb-2">Atenção: Vendas Bloqueadas!</h3>
             <p className="text-purple-200/80 text-sm mb-4">
-              Para receber os repasses automáticos dos clientes via PIX ou Cartão com Split, informe ou vincule sua Carteira Asaas / Chave Pix.
+              Para receber pelas vendas, abra sua conta Asaas e envie os documentos no cartão "Minha conta Asaas", no topo da página. O saque é analisado e pago na sua subconta Asaas.
             </p>
             <button 
               onClick={handleLinkAsaas}
               className="inline-block bg-purple-600 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-purple-700 transition"
             >
-              🤝 Vincular Conta / Carteira Asaas
+              Como liberar minha conta
             </button>
           </div>
         )}

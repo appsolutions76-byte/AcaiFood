@@ -19,6 +19,15 @@ export async function processWithdrawalApproval(
   const adminSupabase = getSupabaseAdmin();
   const attemptId = `ATTEMPT_${requestId}_${Date.now()}`;
 
+  // 0. Tentativa anterior (para a checagem de idempotência no Asaas): precisa ser lida
+  //    ANTES da trava, que sobrescreve transfer_attempt_id com a tentativa nova.
+  const { data: previousRow } = await adminSupabase
+    .from('withdrawal_requests')
+    .select('status, transfer_attempt_id')
+    .eq('id', requestId)
+    .maybeSingle();
+  const previousAttemptId: string | null = previousRow?.transfer_attempt_id || null;
+
   // 1. Trava atômica condicional (P5 & H2): Marcar como 'PROCESSING' com transfer_attempt_id
   const { data: lockRow, error: lockErr } = await adminSupabase
     .from('withdrawal_requests')
@@ -69,16 +78,13 @@ export async function processWithdrawalApproval(
     return { success: false, status: 'FALHOU', error: 'Parceiro não encontrado.' };
   }
 
-  // 3. Validar se o parceiro possui destino válido (Subconta Asaas ou Chave Pix / CPF / Email)
-  const rawPixKey = String(partnerUser.pix_key || requestRow.pix_key_used || '').trim();
-  const rawCpfCnpj = String(partnerUser.cpf_cnpj || '').replace(/\D/g, '');
-  const rawEmail = String(partnerUser.email || '').trim();
+  // 3. Destino: SOMENTE a subconta Asaas do parceiro, aprovada (cl. 2.1, 6.3 e 6.4 do
+  //    contrato BaaS). Nada de Pix para chave digitada, CPF ou e-mail.
   const rawWalletId = String(partnerUser.asaas_wallet_id || '').trim();
-  const isAccountActive = partnerUser.asaas_account_status === 'APPROVED' && Boolean(rawWalletId);
-  const hasPixDestination = Boolean(rawPixKey) || Boolean(rawCpfCnpj) || (rawEmail.includes('@') && rawEmail.includes('.'));
+  const isAccountActive = String(partnerUser.asaas_account_status || '').toUpperCase() === 'APPROVED' && Boolean(rawWalletId);
 
-  if (!isAccountActive && !hasPixDestination && !rawWalletId) {
-    const failMsg = 'O parceiro não possui Chave Pix, CPF/CNPJ ou subconta Asaas configurada para recebimento.';
+  if (!isAccountActive) {
+    const failMsg = 'A conta de pagamento Asaas do parceiro ainda não foi aprovada. O saque só é pago na subconta aprovada.';
     await adminSupabase
       .from('withdrawal_requests')
       .update({
@@ -106,10 +112,12 @@ export async function processWithdrawalApproval(
   const requestedAmount = Number(requestRow.requested_amount || 0);
   const balanceResult = await getPartnerAvailableBalance(requestRow.partner_id, requestRow.role || partnerUser.role);
   
-  const finalAmount = requestedAmount > 0 ? requestedAmount : balanceResult.totalDisponivel;
-  const finalOrderIds = (Array.isArray(requestRow.order_ids) && requestRow.order_ids.length > 0)
-    ? requestRow.order_ids 
-    : balanceResult.orderIds;
+  const hasExplicitOrders = Array.isArray(requestRow.order_ids) && requestRow.order_ids.length > 0;
+  const finalOrderIds = hasExplicitOrders ? requestRow.order_ids : balanceResult.orderIds;
+  // Nunca paga acima do saldo calculado no servidor
+  const finalAmount = Number((hasExplicitOrders && requestedAmount > 0
+    ? Math.min(requestedAmount, balanceResult.totalDisponivel)
+    : balanceResult.totalDisponivel).toFixed(2));
 
   const isDriverRole = ['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(String(requestRow.role || partnerUser.role).toLowerCase());
 
@@ -118,7 +126,7 @@ export async function processWithdrawalApproval(
     const { data: otherWithdrawals } = await adminSupabase
       .from('withdrawal_requests')
       .select('id, order_ids, status')
-      .in('status', ['PAGO', 'PROCESSING'])
+      .in('status', ['PAGO', 'PROCESSING', 'PENDENTE', 'APROVADO'])
       .neq('id', requestId);
 
     if (otherWithdrawals && otherWithdrawals.length > 0) {
@@ -212,11 +220,13 @@ export async function processWithdrawalApproval(
 
   // 6. Consulta de Idempotência no Asaas antes de transferir (H2)
   try {
-    const prevAttempt = requestRow.transfer_attempt_id || requestId;
-    const checkRes = await fetch(`${baseUrl}/transfers?externalReference=${encodeURIComponent(prevAttempt)}`, {
-      headers: { 'access_token': asaasApiKey }
-    });
-    if (checkRes.ok) {
+    // Só faz sentido quando houve tentativa anterior (reprocessamento de FALHOU/timeout)
+    const checkRes = previousAttemptId
+      ? await fetch(`${baseUrl}/transfers?externalReference=${encodeURIComponent(previousAttemptId)}`, {
+          headers: { 'access_token': asaasApiKey }
+        })
+      : null;
+    if (checkRes && checkRes.ok) {
       const checkData = await checkRes.json();
       if (checkData?.data && checkData.data.length > 0) {
         const existingTransfer = checkData.data[0];
@@ -252,12 +262,8 @@ export async function processWithdrawalApproval(
   }
 
   // 7. Resolver payload de transferência Asaas com externalReference
-  const partnerUserToUse = {
-    ...partnerUser,
-    pix_key: partnerUser.pix_key || requestRow.pix_key_used
-  };
   const transferPayload: any = buildAsaasTransferPayload(
-    partnerUserToUse,
+    partnerUser,
     finalAmount,
     `Saque AçaíFood - #${requestId.substring(0, 8)}`
   );
@@ -283,6 +289,8 @@ export async function processWithdrawalApproval(
   let transferStatus = '';
   let apiSuccess = false;
   let apiErrorMsg = '';
+  // true = o Asaas respondeu com erro de negócio (4xx); false = rede/timeout/5xx (resultado incerto)
+  let definitiveFailure = false;
 
   try {
     const res = await fetch(`${baseUrl}/transfers`, {
@@ -294,17 +302,18 @@ export async function processWithdrawalApproval(
       body: JSON.stringify(transferPayload)
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
 
     if (res.ok && data?.id) {
       apiSuccess = true;
       asaasTransferId = data.id;
       transferStatus = data.status || 'PENDING';
     } else {
-      apiErrorMsg = data?.errors?.[0]?.description || data?.message || 'Erro na resposta do Asaas ao efetuar transferência';
+      apiErrorMsg = data?.errors?.[0]?.description || data?.message || `Erro HTTP ${res.status} do Asaas ao efetuar transferência`;
+      definitiveFailure = res.status >= 400 && res.status < 500 && Array.isArray(data?.errors);
     }
   } catch (err: any) {
-    apiErrorMsg = err.message || 'Exceção de rede ao comunicar com Asaas';
+    apiErrorMsg = err?.message || 'Exceção de rede ao comunicar com Asaas';
   }
 
   const nowIso = new Date().toISOString();
@@ -374,6 +383,37 @@ export async function processWithdrawalApproval(
       transferId: asaasTransferId,
       amount: finalAmount,
       message: `Saque de R$ ${finalAmount.toFixed(2)} processado com sucesso via Asaas (Status: ${finalRequestStatus}).`
+    };
+  } else if (!definitiveFailure) {
+    // Resultado incerto (rede/timeout/5xx): a transferência pode ter sido criada no Asaas.
+    // Fica PROCESSING; o webhook TRANSFER_* ou o reprocessamento (que consulta pelo
+    // externalReference desta tentativa) fecha o status sem pagar em dobro.
+    await adminSupabase
+      .from('withdrawal_requests')
+      .update({
+        status: 'PROCESSING',
+        requested_amount: finalAmount,
+        order_ids: finalOrderIds,
+        failure_reason: `A confirmar no Asaas: ${apiErrorMsg}`,
+        reviewed_by: actorId,
+        reviewed_at: nowIso
+      })
+      .eq('id', requestId);
+
+    await logAdminAction({
+      actorId,
+      action: 'WITHDRAWAL_TRANSFER_UNCERTAIN',
+      targetType: 'WITHDRAWAL_REQUEST',
+      targetId: requestId,
+      beforeState: { status: 'PENDENTE', amount: finalAmount },
+      afterState: { status: 'PROCESSING', error: apiErrorMsg, attemptId }
+    });
+
+    return {
+      success: false,
+      status: 'PROCESSING',
+      amount: finalAmount,
+      error: `Sem confirmação do Asaas (${apiErrorMsg}). O saque ficou "em processamento"; confira no painel do Asaas antes de tentar de novo.`
     };
   } else {
     await adminSupabase
