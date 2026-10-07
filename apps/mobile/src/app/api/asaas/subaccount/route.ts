@@ -29,7 +29,7 @@ const ACCOUNT_STATUS_EVENTS = [
 ];
 
 function getAppBaseUrl(request: Request): string {
-  const fromEnv = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || '';
+  const fromEnv = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || '').trim();
   if (fromEnv) return fromEnv.replace(/\/$/, '');
   return new URL(request.url).origin;
 }
@@ -232,8 +232,8 @@ export async function POST(request: Request) {
       };
 
       // Webhook de situação da conta da subconta → /api/asaas/account-webhook
-      const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN || '';
-      const webhookEmail = process.env.ASAAS_WEBHOOK_EMAIL || '';
+      const webhookToken = (process.env.ASAAS_WEBHOOK_TOKEN || '').trim();
+      const webhookEmail = (process.env.ASAAS_WEBHOOK_EMAIL || '').trim();
       if (webhookToken && webhookEmail) {
         accountPayload.webhooks = [{
           name: 'AcaiFood - situacao da conta',
