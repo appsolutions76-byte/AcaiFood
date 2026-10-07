@@ -124,6 +124,7 @@ export default function FornecedorDashboard() {
   }>({ open: false, title: '', onSelect: () => {} });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [serverBalance, setServerBalance] = useState<number | null>(null);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
   const [myStorefrontId, setMyStorefrontId] = useState<string | null>(null);
@@ -298,7 +299,8 @@ export default function FornecedorDashboard() {
   };
 
   const meusPedidosAll = (store.orders || []).filter((o: any) => isMyOrder(o));
-  const vendasHoje = meusPedidosAll.filter((o: any) => isCompleted(o.status) && !o.payoutSellerDone).reduce((acc: number, curr: any) => acc + getSupplierRepasse(curr), 0);
+  // Mesmo saldo do servidor usado no saque (igual ao painel da batedeira)
+  const vendasHoje = serverBalance !== null ? serverBalance : meusPedidosAll.filter((o: any) => isCompleted(o.status) && !o.payoutSellerDone).reduce((acc: number, curr: any) => acc + getSupplierRepasse(curr), 0);
   const emProcessamento = meusPedidosAll.filter((o: any) => isPaidOrProcessing(o.status)).reduce((acc: number, curr: any) => acc + getSupplierRepasse(curr), 0);
 
   const fornActiveOrders = meusPedidosAll.filter((o: any) => 
@@ -967,6 +969,7 @@ export default function FornecedorDashboard() {
             <PartnerWithdrawalSection 
               partnerId={currentUser.id} 
               role="fornecedor" 
+              onBalanceLoaded={setServerBalance}
             />
           </div>
         )}

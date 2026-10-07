@@ -40,6 +40,7 @@ export default function CaminhaoDashboard() {
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [serverBalance, setServerBalance] = useState<number | null>(null);
   const lastAvailableCountRef = React.useRef(0);
 
   const mounted = useSyncExternalStore(
@@ -163,7 +164,8 @@ export default function CaminhaoDashboard() {
   const minhasCorridas = (store.orders || []).filter((o: any) => o.motoristaId === currentUser.id);
   const caminhaoActiveOrders = minhasCorridas.filter((o: any) => !isDelivered(o.status) && o.status !== 'cancelado');
   const caminhaoHistoryOrders = minhasCorridas.filter((o: any) => isDelivered(o.status) || o.status === 'cancelado');
-  const ganhosHoje = minhasCorridas.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + getDriverFee(curr), 0);
+  // Mesmo saldo do servidor usado no saque (igual ao painel do motoboy)
+  const ganhosHoje = serverBalance !== null ? serverBalance : minhasCorridas.filter((o: any) => isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + getDriverFee(curr), 0);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -374,11 +376,37 @@ export default function CaminhaoDashboard() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex gap-2 w-full">
-                      <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-3 rounded-lg transition">❌ Cancelar</button>
-                      <button onClick={() => store.acaoPedido(o.id, 'retirar_pedido')} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
-                        🏪 Confirmar Coleta na Loja
-                      </button>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 p-4 rounded-xl flex flex-col gap-2.5 shadow-inner">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold flex items-center gap-1">
+                          <span>🔑</span> PIN de Confirmação da Coleta (Loja)
+                        </p>
+                        <span className="text-[10px] bg-orange-200/60 dark:bg-orange-800 text-orange-900 dark:text-orange-100 font-extrabold px-2 py-0.5 rounded">Coleta ESG</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                        Ao recolher o caroço na loja, peça o PIN de 4 dígitos que aparece na tela da loja.
+                      </p>
+                      <div className="flex gap-2 mt-1">
+                        <input 
+                          type="text" 
+                          maxLength={4} 
+                          placeholder="0000" 
+                          value={pinInputs[o.id] || ''} 
+                          onChange={e => setPinInputs(prev => ({ ...prev, [o.id]: e.target.value }))}
+                          className="w-24 text-center font-black tracking-widest text-xl p-2.5 rounded-xl border border-orange-300 dark:border-orange-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                        <button 
+                          onClick={() => store.acaoPedido(o.id, 'validar_pin', pinInputs[o.id])} 
+                          className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm"
+                        >
+                          Validar Coleta
+                        </button>
+                      </div>
+                      <div className="flex justify-end pt-1">
+                        <button onClick={() => { if(confirm('Deseja cancelar este transporte?')) store.acaoPedido(o.id, 'cancelar_pedido'); }} className="text-[11px] text-red-600 hover:underline">
+                          ❌ Cancelar transporte
+                        </button>
+                      </div>
                     </div>
                   )
                 ) : (
@@ -652,6 +680,7 @@ export default function CaminhaoDashboard() {
             <PartnerWithdrawalSection 
               partnerId={currentUser.id} 
               role="motorista" 
+              onBalanceLoaded={setServerBalance}
             />
           </div>
         )}

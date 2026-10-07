@@ -258,6 +258,7 @@ export async function POST(request: Request) {
       // PINs gerados pelo banco (gravados só em order_pins)
       try { await supabase.rpc('generate_delivery_pin', { p_order_id: order.id }); } catch (_e) {}
       try { await supabase.rpc('generate_pickup_pin', { p_order_id: order.id }); } catch (_e) {}
+      try { await supabase.from('orders').update({ status: 'READY', ready_at: new Date().toISOString() }).eq('id', order.id).eq('order_type', 'COLETA').eq('status', 'PAID'); } catch (_e) {}
 
       await logAdminAction({
         actorId: adminUser?.id || null,
