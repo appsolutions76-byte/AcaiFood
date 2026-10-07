@@ -115,6 +115,7 @@ export interface User {
   freteSubsidyPct?: number;
   asaasWalletId?: string;
   asaasAccountId?: string;
+  asaas_account_status?: string; // situação da subconta Asaas vinda do banco (APPROVED, PENDING_DOCUMENTS, ...)
   asaasLinked?: boolean;
   email?: string;
   cpfCnpj?: string;
@@ -527,6 +528,7 @@ export const useAppStore = create<AppState>()(
             activationPaid: userProfile.activation_paid !== false,
             activationPaymentId: userProfile.activation_payment_id,
             asaasAccountId: userProfile.asaas_account_id,
+            asaas_account_status: userProfile.asaas_account_status || undefined,
             products: mapDbProducts(sf?.products),
             cpfCnpj: userProfile.cpf_cnpj
           };
@@ -948,6 +950,7 @@ export const useAppStore = create<AppState>()(
                         activationPaid: dbUser.activation_paid !== false,
                         activationPaymentId: dbUser.activation_payment_id,
                         asaasAccountId: dbUser.asaas_account_id,
+                        asaas_account_status: dbUser.asaas_account_status || undefined,
                         products: mapDbProducts(sf?.products),
                         cpfCnpj: dbUser.cpf_cnpj
                     };
@@ -1068,6 +1071,7 @@ export const useAppStore = create<AppState>()(
                         activationPaid: dbUser.activation_paid !== false,
                         activationPaymentId: dbUser.activation_payment_id,
                         asaasAccountId: dbUser.asaas_account_id,
+                        asaas_account_status: dbUser.asaas_account_status || undefined,
                         products: mapDbProducts(sf?.products),
                         cpfCnpj: dbUser.cpf_cnpj,
                         storefrontId: sf?.id,
