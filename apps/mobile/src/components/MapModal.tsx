@@ -341,7 +341,7 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
                 rel="noopener noreferrer"
                 className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center active:scale-95"
               >
-                🚀 GPS p/ Retirada
+                📍 Google Maps (Retirada)
               </a>
             )}
             {gmapsClienteUrl && (
@@ -351,7 +351,7 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
                 rel="noopener noreferrer"
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center active:scale-95"
               >
-                🏁 GPS p/ Cliente
+                📍 Google Maps (Destino)
               </a>
             )}
             {wazeClienteUrl && (

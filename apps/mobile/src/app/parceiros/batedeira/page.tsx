@@ -739,10 +739,11 @@ export default function BatedeiraDashboard() {
                 </div>
               )}
               {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Preparo</span>}
-              {o.status === 'pronto' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase">{o.type === 'B2B' ? '🚛 Aguardando Caminhão' : '🏍️ Aguardando Moto'}</span>}
+              {o.status === 'pronto' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase">{o.type === 'B2B' ? '🚛 Aguardando Caminhão' : o.type === 'COLETA' ? '🚚 Aguardando Caçamba' : '🏍️ Aguardando Moto'}</span>}
               {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Em Transporte</span>}
               {o.status === 'aguardando_cliente' && o.type === 'B2C' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aguardando Cliente Confirmar</span>}
               {o.status === 'aguardando_cliente' && o.type === 'B2B' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Caminhão Chegou</span>}
+              {o.status === 'aguardando_cliente' && o.type === 'COLETA' && <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Caçamba Chegou</span>}
               {(o.status === 'entregue' || o.status === 'arquivado') && (
                 <div className="flex flex-col items-end gap-1">
                   <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Concluído</span>

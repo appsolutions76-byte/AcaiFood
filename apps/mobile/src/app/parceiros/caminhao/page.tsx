@@ -271,7 +271,7 @@ export default function CaminhaoDashboard() {
                   rel="noopener noreferrer"
                   className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
                 >
-                  🚀 GPS p/ Retirada
+                  📍 Google Maps (Retirada)
                 </a>
               ) : (
                 <a 
@@ -280,7 +280,7 @@ export default function CaminhaoDashboard() {
                   rel="noopener noreferrer"
                   className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
                 >
-                  🚀 GPS p/ Retirada
+                  📍 Google Maps (Retirada)
                 </a>
               )}
 
@@ -305,7 +305,7 @@ export default function CaminhaoDashboard() {
                       rel="noopener noreferrer"
                       className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
                     >
-                      🏁 GPS p/ Destino
+                      📍 Google Maps (Destino)
                     </a>
                     <button
                       type="button"
