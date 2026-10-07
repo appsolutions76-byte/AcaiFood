@@ -30,7 +30,9 @@ export async function getAsaasApiKey(): Promise<string> {
   // e fora de produção não aceita chave de produção.
   const vercelEnv = process.env.VERCEL_ENV || process.env.NODE_ENV || '';
   if (vercelEnv === 'production' && process.env.VERCEL_ENV && isSandboxKey(envKey)) {
-    console.error('[AsaasConfig] Chave SANDBOX configurada no ambiente de PRODUÇÃO. Corrija ASAAS_API_KEY.');
+    // Chave sandbox em produção gera QR Code Pix que nenhum banco aceita: bloqueia.
+    console.error('[AsaasConfig] Chave SANDBOX configurada no ambiente de PRODUÇÃO. Bloqueado. Corrija ASAAS_API_KEY.');
+    return '';
   }
   if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production' && !isSandboxKey(envKey)) {
     console.error('[AsaasConfig] Chave de PRODUÇÃO em ambiente de preview/desenvolvimento. Bloqueado.');

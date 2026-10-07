@@ -1,5 +1,6 @@
 import { randomInt } from 'crypto';
 import { NextResponse } from 'next/server';
+import { getAsaasApiKey } from '@/lib/asaasConfig';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { priceOrderOnServer } from '@/lib/serverOrderPricing';
@@ -43,6 +44,14 @@ export async function POST(request: Request) {
       items = [],
       taxas
     } = body;
+
+    // Sem chave Asaas válida para este ambiente, não cria pedido nem cobrança
+    if (!(await getAsaasApiKey())) {
+      return NextResponse.json(
+        { error: 'Pagamento Pix temporariamente indisponível. Tente novamente mais tarde.' },
+        { status: 503 }
+      );
+    }
 
     const supabase = getSupabaseAdmin();
     let order: any = null;
@@ -326,7 +335,7 @@ export async function POST(request: Request) {
 
     // Fase 3.1: Cobrança gerada 100% para a conta da plataforma (repasses liquidados após confirmação do PIN)
 
-    const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
+    const { getAsaasBaseUrl } = await import('@/lib/asaasConfig');
     const ASAAS_API_KEY = await getAsaasApiKey();
     if (!ASAAS_API_KEY) {
       return NextResponse.json(
