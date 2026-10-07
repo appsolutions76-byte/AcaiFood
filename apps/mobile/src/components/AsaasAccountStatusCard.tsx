@@ -95,6 +95,22 @@ export function AsaasAccountStatusCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
+  // Enquanto o Asaas prepara a lista de documentos (ou analisa), reconsulta sozinho
+  // a cada 30 s por até 10 min, para o parceiro não precisar sair da tela.
+  const pollCountRef = React.useRef(0);
+  const [pollTick, setPollTick] = useState(0);
+  useEffect(() => {
+    const waiting = ['PENDING_DOCUMENTS', 'PENDING', 'AWAITING_APPROVAL'].includes(status);
+    if (!waiting || pollCountRef.current >= 20) return;
+    const t = setTimeout(() => {
+      pollCountRef.current += 1;
+      fetchDocStatus(false);
+      setPollTick(n => n + 1);
+    }, 30000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, pollTick]);
+
   // Pré-preenche o formulário com o perfil do próprio usuário
   useEffect(() => {
     if (!currentUser?.id) return;

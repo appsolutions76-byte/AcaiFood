@@ -294,14 +294,30 @@ export async function POST(request: Request) {
         })
         .eq('id', userId);
 
+      // A chave da subconta só vem nesta resposta: sem ela o app não consegue mostrar
+      // os documentos (link do Asaas) nem consultar a aprovação. Falha aqui = admin.
+      let keySaved = false;
       if (accountApiKey) {
-        await supabase
+        const { error: keyErr } = await supabase
           .from('partner_secrets')
           .upsert({
             user_id: userId,
             asaas_account_api_key: accountApiKey,
             updated_at: new Date().toISOString()
           }, { onConflict: 'user_id' });
+        keySaved = !keyErr;
+        if (keyErr) console.error('[Subaccount] Falha ao guardar a chave da subconta:', keyErr.message);
+      }
+      if (!keySaved) {
+        await supabase.from('users').update({ asaas_account_status: 'NEEDS_ADMIN' }).eq('id', userId);
+        try {
+          await supabase.from('admin_audit_log').insert({
+            action: 'ASAAS_SUBACCOUNT_KEY_MISSING',
+            target_type: 'USER',
+            target_id: String(userId),
+            after_state: { accountId, motivo: accountApiKey ? 'erro ao gravar a chave' : 'Asaas não devolveu apiKey' }
+          });
+        } catch (_e) {}
       }
     }
 
