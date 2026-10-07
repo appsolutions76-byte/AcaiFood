@@ -416,6 +416,28 @@ export async function processWithdrawalApproval(
       error: `Sem confirmação do Asaas (${apiErrorMsg}). O saque ficou "em processamento"; confira no painel do Asaas antes de tentar de novo.`
     };
   } else {
+    // O Asaas recusou porque a subconta de destino ainda não foi aprovada por ele:
+    // a situação "APPROVED" gravada no app estava errada. Volta para "em análise"
+    // (some o botão de saque do parceiro) e registra no log.
+    const destinationNotApproved = /aprova[çc][ãa]o do cadastro|conta de destino/i.test(apiErrorMsg);
+    if (destinationNotApproved) {
+      apiErrorMsg = `${apiErrorMsg} (a conta Asaas do parceiro ainda está em análise no Asaas; reprocesse este saque depois da aprovação)`;
+      try {
+        await adminSupabase
+          .from('users')
+          .update({ asaas_account_status: 'AWAITING_APPROVAL', split_enabled: false })
+          .eq('id', requestRow.partner_id);
+        await logAdminAction({
+          actorId,
+          action: 'ASAAS_DESTINATION_NOT_APPROVED',
+          targetType: 'USER',
+          targetId: String(requestRow.partner_id),
+          beforeState: { status: 'APPROVED' },
+          afterState: { status: 'AWAITING_APPROVAL', withdrawalRequestId: requestId }
+        });
+      } catch (_stErr) {}
+    }
+
     await adminSupabase
       .from('withdrawal_requests')
       .update({

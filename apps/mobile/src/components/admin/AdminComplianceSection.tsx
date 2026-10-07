@@ -120,7 +120,23 @@ function SubaccountsPanel({ toast }: { toast: (m: string) => void }) {
     setBusyId(null);
   };
 
-  const visible = onlyAttention ? rows.filter(r => r.status === 'NEEDS_ADMIN' || r.status === 'REJECTED') : rows;
+  // Subconta antiga sem chave guardada: o app não consegue consultar o Asaas.
+  // O admin confere no painel do Asaas (Subcontas) e registra a situação aqui.
+  const setManual = async (userId: string, action: 'mark_approved' | 'mark_pending') => {
+    const note = window.prompt(action === 'mark_approved'
+      ? 'Confirme que a subconta está APROVADA no painel do Asaas. Como você conferiu? (fica no log)'
+      : 'Motivo para voltar a subconta para "em análise" (fica no log):');
+    if (note === null) return;
+    setBusyId(userId);
+    try {
+      const data = await apiPost('/api/admin/subaccounts', { userId, action, note });
+      toast(`Situação registrada: ${STATUS_LABEL[data?.status] || data?.status}`);
+      await load();
+    } catch (e: any) { toast(`Erro: ${e.message}`); }
+    setBusyId(null);
+  };
+
+  const visible = onlyAttention ? rows.filter(r => r.status === 'NEEDS_ADMIN' || r.status === 'REJECTED' || (r.accountId && !r.hasApiKey)) : rows;
 
   return (
     <Panel
@@ -168,8 +184,8 @@ function SubaccountsPanel({ toast }: { toast: (m: string) => void }) {
                   {r.detail ? (typeof r.detail === 'string' ? r.detail : Object.entries(r.detail).map(([k, v]) => `${k}: ${v}`).join(' · ')) : '—'}
                 </td>
                 <td className="py-2 pr-2">{fmtDate(r.createdAt)}</td>
-                <td className="py-2">
-                  {r.accountId && (
+                <td className="py-2 space-y-1">
+                  {r.accountId && r.hasApiKey && (
                     <button
                       disabled={busyId === r.id}
                       onClick={() => recheck(r.id)}
@@ -177,6 +193,20 @@ function SubaccountsPanel({ toast }: { toast: (m: string) => void }) {
                     >
                       {busyId === r.id ? '...' : 'Reconsultar'}
                     </button>
+                  )}
+                  {r.accountId && !r.hasApiKey && (
+                    <div className="flex flex-col gap-1">
+                      {r.status !== 'APPROVED' && (
+                        <button disabled={busyId === r.id} onClick={() => setManual(r.id, 'mark_approved')} className="text-xs px-2 py-1 rounded bg-emerald-600 text-white disabled:opacity-50 whitespace-nowrap">
+                          Aprovada no Asaas
+                        </button>
+                      )}
+                      {r.status === 'APPROVED' && (
+                        <button disabled={busyId === r.id} onClick={() => setManual(r.id, 'mark_pending')} className="text-xs px-2 py-1 rounded bg-amber-600 text-white disabled:opacity-50 whitespace-nowrap">
+                          Voltar p/ em análise
+                        </button>
+                      )}
+                    </div>
                   )}
                 </td>
               </tr>
