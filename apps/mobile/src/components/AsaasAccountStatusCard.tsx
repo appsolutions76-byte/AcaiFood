@@ -72,6 +72,11 @@ export function AsaasAccountStatusCard() {
       if (res.ok && data?.success) {
         const st = data.hasAccount ? String(data.status || 'PENDING_DOCUMENTS') : 'NO_ACCOUNT';
         setStatus(st);
+        if (st && currentUser?.asaas_account_status !== st) {
+          useAppStore.setState((state: any) => ({
+            currentUser: state.currentUser ? { ...state.currentUser, asaas_account_status: st } : state.currentUser
+          }));
+        }
         const groups: DocGroup[] = Array.isArray(data.documents) ? data.documents : [];
         setDocs(groups.filter(g => String(g?.status || '').toUpperCase() !== 'APPROVED'));
         setOnboardingUrl(data.onboardingUrl || null);
