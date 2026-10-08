@@ -9,7 +9,8 @@ run "$DIR/tests/fixtures/minimal_schema.sql"
 for m in 20261006010000_r15_pin_hardening.sql \
          20261006020000_r15_users_privacy.sql \
          20261006030000_r16_users_privacy_account_status_radar.sql \
-         20261006040000_r16_platform_config_and_sla.sql; do
+         20261006040000_r16_platform_config_and_sla.sql \
+         20261008010000_public_store_list.sql; do
   echo "→ migration $m"
   run "$DIR/migrations/$m"
 done

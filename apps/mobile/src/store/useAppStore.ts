@@ -874,10 +874,23 @@ export const useAppStore = create<AppState>()(
         }
         lastFetchLojasTime = now;
 
-        const { data: dbLojas, error } = await supabase
-            .from('users')
-            .select('id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, created_at, storefronts(*, products(*))')
-            .or('role.eq.PARTNER,role.eq.loja');
+        // Visitante sem login (anon) não lê users desde a migration 20261006030000:
+        // usa a vitrine pública get_public_stores() (sem CPF, e-mail, telefone, endereço).
+        const { data: { session: lojasSession } } = await supabase.auth.getSession();
+        let dbLojas: any[] | null = null;
+        let error: any = null;
+        if (lojasSession) {
+            const res = await supabase
+                .from('users')
+                .select('id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, created_at, storefronts(*, products(*))')
+                .or('role.eq.PARTNER,role.eq.loja');
+            dbLojas = res.data;
+            error = res.error;
+        } else {
+            const res = await supabase.rpc('get_public_stores');
+            dbLojas = Array.isArray(res.data) ? res.data : null;
+            error = res.error;
+        }
             
         if (error) {
             console.error("Erro ao buscar lojas reais:", error);
@@ -987,6 +1000,9 @@ export const useAppStore = create<AppState>()(
                 error = e;
             }
         } else {
+            // Sem login não há lista de usuários (anon não lê users); as lojas vêm de fetchLojas
+            const { data: { session: usersSession } } = await supabase.auth.getSession();
+            if (!usersSession) return;
             const res = await supabase
                 .from('users')
                 .select('id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, created_at, storefronts(*, products(*))');
