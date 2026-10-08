@@ -92,6 +92,22 @@ export default function MotoboyDashboard() {
     };
   }, [mounted, currentUser?.id, currentUser?.status]);
 
+  // Notificação sonora quando surgirem novas corridas prontas no Radar (Hook declarado antes de retornos condicionais)
+  const availableRadarCount = (store.orders || []).filter((o: any) => {
+    if (!o) return false;
+    const st = String(o.status || '').toLowerCase().trim();
+    return (st === 'pronto' || st === 'ready' || st === 'searching_operator') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
+  }).length;
+
+  useEffect(() => {
+    if (mounted && availableRadarCount > lastAvailableCountRef.current) {
+      playDeliveryAlertTone();
+    }
+    if (mounted) {
+      lastAvailableCountRef.current = availableRadarCount;
+    }
+  }, [mounted, availableRadarCount]);
+
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
   }
@@ -150,13 +166,6 @@ export default function MotoboyDashboard() {
     if (!isReady) return false;
     return true;
   });
-
-  useEffect(() => {
-    if (corridasDisponiveis.length > lastAvailableCountRef.current) {
-      playDeliveryAlertTone();
-    }
-    lastAvailableCountRef.current = corridasDisponiveis.length;
-  }, [corridasDisponiveis.length]);
   const minhasCorridasAll = (store.orders || []).filter((o: any) => o && currentUser?.id && o.motoristaId === currentUser.id);
   const ganhosHoje = serverBalance !== null ? serverBalance : minhasCorridasAll.filter((o: any) => o && isDelivered(o.status) && !o.payoutDriverDone).reduce((acc: number, curr: any) => acc + (curr ? getMotoboyFee(curr) : 0), 0);
 
