@@ -136,6 +136,24 @@ function SubaccountsPanel({ toast }: { toast: (m: string) => void }) {
     setBusyId(null);
   };
 
+  // Troca para o modelo BaaS: encerra a subconta antiga e o parceiro abre uma nova pelo app.
+  const closeOrUnlink = async (r: any, action: 'close_in_asaas' | 'unlink_closed') => {
+    const question = action === 'close_in_asaas'
+      ? `Encerrar no Asaas a subconta de "${r.name}"? É IRREVERSÍVEL. O parceiro terá de abrir uma nova pelo app.\n\nEscreva o motivo (fica no log):`
+      : `Só use se o Asaas JÁ ENCERROU a subconta de "${r.name}" (suporte ou painel).\n\nComo você confirmou o encerramento? (fica no log)`;
+    const note = window.prompt(question);
+    if (note === null) return;
+    setBusyId(r.id);
+    try {
+      await apiPost('/api/admin/subaccounts', { userId: r.id, action, note });
+      toast(action === 'close_in_asaas'
+        ? 'Subconta encerrada no Asaas. O parceiro já pode abrir a nova em "Minha conta Asaas".'
+        : 'Vínculo removido. O parceiro já pode abrir a nova em "Minha conta Asaas".');
+      await load();
+    } catch (e: any) { toast(`Erro: ${e.message}`); }
+    setBusyId(null);
+  };
+
   const visible = onlyAttention ? rows.filter(r => r.status === 'NEEDS_ADMIN' || r.status === 'REJECTED' || (r.accountId && !r.hasApiKey)) : rows;
 
   return (
@@ -178,7 +196,7 @@ function SubaccountsPanel({ toast }: { toast: (m: string) => void }) {
                     {STATUS_LABEL[r.status] || r.status}
                   </span>
                   {!r.accountId && <div className="text-[11px] text-zinc-500 mt-1">Sem subconta criada</div>}
-                  {r.accountId && !r.hasApiKey && <div className="text-[11px] text-red-600 mt-1">Chave da subconta ausente</div>}
+                  {r.accountId && !r.hasApiKey && <div className="text-[11px] text-red-600 mt-1">Subconta antiga (antes do BaaS): trocar</div>}
                 </td>
                 <td className="py-2 pr-2 text-[11px] text-zinc-600 dark:text-zinc-400 max-w-[220px] break-words">
                   {r.detail ? (typeof r.detail === 'string' ? r.detail : Object.entries(r.detail).map(([k, v]) => `${k}: ${v}`).join(' · ')) : '—'}
@@ -206,6 +224,16 @@ function SubaccountsPanel({ toast }: { toast: (m: string) => void }) {
                           Voltar p/ em análise
                         </button>
                       )}
+                    </div>
+                  )}
+                  {r.accountId && (
+                    <div className="flex flex-col gap-1 pt-1">
+                      <button disabled={busyId === r.id} onClick={() => closeOrUnlink(r, 'close_in_asaas')} className="text-xs px-2 py-1 rounded bg-red-600 text-white disabled:opacity-50 whitespace-nowrap">
+                        Encerrar no Asaas
+                      </button>
+                      <button disabled={busyId === r.id} onClick={() => closeOrUnlink(r, 'unlink_closed')} className="text-xs px-2 py-1 rounded border border-red-400 text-red-600 disabled:opacity-50 whitespace-nowrap">
+                        Desvincular (já encerrada no Asaas)
+                      </button>
                     </div>
                   )}
                 </td>

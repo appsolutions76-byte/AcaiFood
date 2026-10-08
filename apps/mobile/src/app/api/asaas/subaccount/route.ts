@@ -3,6 +3,8 @@ import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { CURRENT_TERMS_VERSION, SUBACCOUNT_REQUIRED_DOCS } from '@/lib/legalVersions';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { logAdminAction } from '@/lib/adminAudit';
+import { loadSubaccountUser, countOpenWithdrawals, closeSubaccountInAsaas, unlinkSubaccount } from '@/lib/asaasSubaccountClose';
 
 export const dynamic = 'force-dynamic';
 
@@ -339,92 +341,48 @@ export async function POST(request: Request) {
   }
 }
 
+// Encerramento de subconta (admin com MFA). Só remove o vínculo no banco quando o Asaas
+// confirma o encerramento. Mesma regra da aba Conformidade (/api/admin/subaccounts).
 export async function DELETE(request: Request) {
   const auth = await authorizeRequest(request, ['admin']);
   if (!auth.authorized) return unauthorizedResponse(auth.error);
 
-  try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const accountIdParam = searchParams.get('accountId');
-
-    const ASAAS_API_KEY = await getAsaasApiKey();
-    if (!ASAAS_API_KEY) {
-      return NextResponse.json({ error: 'ASAAS_API_KEY não configurada no ambiente' }, { status: 500 });
-    }
-
-    const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
-    let accountId = accountIdParam || '';
-
-    const supabaseAdmin = getSupabaseAdmin();
-
-    if (userId) {
-      const { data: user } = await supabaseAdmin
-        .from('users')
-        .select('asaas_account_id, asaas_wallet_id, cpf_cnpj')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (user) {
-        if (!accountId && user.asaas_account_id) {
-          accountId = user.asaas_account_id;
-        }
-
-        if (!accountId && user.cpf_cnpj) {
-          const cleanCpfCnpj = String(user.cpf_cnpj).replace(/\D/g, '');
-          if (cleanCpfCnpj) {
-            const searchRes = await fetch(`${ASAAS_URL}/accounts?cpfCnpj=${cleanCpfCnpj}`, {
-              headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
-            });
-            const searchData = await searchRes.json();
-            if (searchData && searchData.data && searchData.data.length > 0) {
-              accountId = searchData.data[0].id;
-            }
-          }
-        }
-      }
-    }
-
-    let asaasResult: any = null;
-    if (accountId) {
-      console.log(`Excluindo subconta Asaas ${accountId}...`);
-      const deleteRes = await fetch(`${ASAAS_URL}/accounts/${accountId}`, {
-        method: 'DELETE',
-        headers: {
-          'access_token': ASAAS_API_KEY,
-          'Content-Type': 'application/json'
-        }
-      });
-      asaasResult = await deleteRes.json();
-    }
-
-    if (userId) {
-      await supabaseAdmin
-        .from('users')
-        .update({
-          asaas_wallet_id: null,
-          asaas_account_id: null,
-          split_enabled: false
-        })
-        .eq('id', userId);
-
-      await supabaseAdmin
-        .from('partner_secrets')
-        .delete()
-        .eq('user_id', userId);
-    }
-
-    return NextResponse.json({
-      success: true,
-      deletedAccountId: accountId,
-      asaasResult
-    });
-
-  } catch (error: any) {
-    console.error("Erro na API DELETE /api/asaas/subaccount:", error);
-    return NextResponse.json(
-      { error: error.message || 'Erro interno ao excluir subconta Asaas' },
-      { status: 500 }
-    );
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get('userId') || '';
+  const reason = (searchParams.get('reason') || 'Encerramento solicitado pelo administrador AçaíFood').slice(0, 200);
+  if (!userId) {
+    return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 });
   }
+
+  const actorId = auth.user?.id || auth.profile?.id || null;
+  const user = await loadSubaccountUser(userId);
+  if (!user) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
+  if (!user.asaas_account_id) {
+    return NextResponse.json({ success: true, message: 'Usuário sem subconta vinculada.' });
+  }
+
+  if (await countOpenWithdrawals(userId) > 0) {
+    return NextResponse.json({ error: 'Parceiro com saque em aberto. Conclua ou rejeite o saque antes de encerrar a subconta.' }, { status: 409 });
+  }
+
+  const before = { accountId: user.asaas_account_id, status: user.asaas_account_status };
+  const result = await closeSubaccountInAsaas(user, reason);
+  if (!result.ok) {
+    await logAdminAction({
+      actorId, action: 'ASAAS_SUBACCOUNT_CLOSE_REFUSED', targetType: 'USER', targetId: userId,
+      beforeState: before, afterState: { mode: result.mode, error: result.error }, request
+    });
+    return NextResponse.json({ error: result.error }, { status: result.httpStatus });
+  }
+
+  const unlinked = await unlinkSubaccount(user);
+  await logAdminAction({
+    actorId, action: unlinked.ok ? 'ASAAS_SUBACCOUNT_CLOSED' : 'ASAAS_SUBACCOUNT_UNLINK_FAILED',
+    targetType: 'USER', targetId: userId, beforeState: before,
+    afterState: { mode: result.mode, unlinked: unlinked.ok, reason }, request
+  });
+  if (!unlinked.ok) {
+    return NextResponse.json({ error: 'O Asaas encerrou a subconta, mas houve erro ao atualizar o banco. Use "Desvincular" na aba Conformidade.' }, { status: 500 });
+  }
+  return NextResponse.json({ success: true, deletedAccountId: result.accountId });
 }

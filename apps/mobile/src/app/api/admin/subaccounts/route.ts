@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { logAdminAction } from '@/lib/adminAudit';
+import { loadSubaccountUser, countOpenWithdrawals, closeSubaccountInAsaas, unlinkSubaccount } from '@/lib/asaasSubaccountClose';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,11 +61,15 @@ export async function POST(request: Request) {
   const action = String(body?.action || '');
   const note = String(body?.note || '').trim().slice(0, 300);
 
-  if (!userId || !['mark_approved', 'mark_pending'].includes(action)) {
+  if (!userId || !['mark_approved', 'mark_pending', 'close_in_asaas', 'unlink_closed'].includes(action)) {
     return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 });
   }
   if (note.length < 10) {
-    return NextResponse.json({ error: 'Escreva como conferiu no Asaas (mínimo 10 caracteres).' }, { status: 400 });
+    return NextResponse.json({ error: 'Escreva o motivo / como conferiu no Asaas (mínimo 10 caracteres).' }, { status: 400 });
+  }
+
+  if (action === 'close_in_asaas' || action === 'unlink_closed') {
+    return closeOrUnlink(request, auth, userId, action, note);
   }
 
   const supabase = getSupabaseAdmin();
@@ -96,4 +101,69 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({ success: true, status: newStatus });
+}
+
+// Troca de subconta (modelo BaaS):
+//  - close_in_asaas: pede o encerramento ao Asaas e só desvincula se o Asaas confirmar;
+//  - unlink_closed: o admin declara que o Asaas (suporte/painel) já encerrou a subconta.
+async function closeOrUnlink(request: Request, auth: any, userId: string, action: 'close_in_asaas' | 'unlink_closed', note: string) {
+  const actorId = auth.user?.id || auth.profile?.id || null;
+  const user = await loadSubaccountUser(userId);
+  if (!user) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
+  if (!user.asaas_account_id) {
+    return NextResponse.json({ error: 'Este usuário não tem subconta vinculada.' }, { status: 400 });
+  }
+
+  const before = {
+    accountId: user.asaas_account_id,
+    hasWallet: Boolean(user.asaas_wallet_id),
+    status: user.asaas_account_status
+  };
+
+  const openWithdrawals = await countOpenWithdrawals(userId);
+  if (openWithdrawals > 0) {
+    await logAdminAction({
+      actorId, action: 'ASAAS_SUBACCOUNT_CLOSE_BLOCKED', targetType: 'USER', targetId: userId,
+      beforeState: before, afterState: { motivo: 'saque em aberto', openWithdrawals, note }, request
+    });
+    return NextResponse.json({
+      error: 'Este parceiro tem saque em aberto (pendente, aprovado ou em processamento). Conclua ou rejeite o saque antes de trocar a subconta.'
+    }, { status: 409 });
+  }
+
+  if (action === 'close_in_asaas') {
+    const result = await closeSubaccountInAsaas(user, note);
+    if (!result.ok) {
+      await logAdminAction({
+        actorId, action: 'ASAAS_SUBACCOUNT_CLOSE_REFUSED', targetType: 'USER', targetId: userId,
+        beforeState: before, afterState: { mode: result.mode, error: result.error, note }, request
+      });
+      return NextResponse.json({ error: result.error }, { status: result.httpStatus });
+    }
+  }
+
+  const unlinked = await unlinkSubaccount(user);
+  if (!unlinked.ok) {
+    await logAdminAction({
+      actorId, action: 'ASAAS_SUBACCOUNT_UNLINK_FAILED', targetType: 'USER', targetId: userId,
+      beforeState: before, afterState: { action, error: unlinked.error, note }, request
+    });
+    return NextResponse.json({
+      error: action === 'close_in_asaas'
+        ? 'O Asaas encerrou a subconta, mas houve erro ao atualizar o banco. Use "Desvincular (já encerrada no Asaas)".'
+        : unlinked.error
+    }, { status: 500 });
+  }
+
+  await logAdminAction({
+    actorId,
+    action: action === 'close_in_asaas' ? 'ASAAS_SUBACCOUNT_CLOSED' : 'ASAAS_SUBACCOUNT_UNLINKED',
+    targetType: 'USER',
+    targetId: userId,
+    beforeState: before,
+    afterState: { accountId: null, status: 'PENDING_DOCUMENTS', note },
+    request
+  });
+
+  return NextResponse.json({ success: true, status: 'NO_ACCOUNT' });
 }

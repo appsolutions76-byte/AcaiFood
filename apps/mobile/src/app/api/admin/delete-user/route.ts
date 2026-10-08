@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { logAdminAction } from '@/lib/adminAudit';
+import { loadSubaccountUser, closeSubaccountInAsaas, unlinkSubaccount } from '@/lib/asaasSubaccountClose';
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin']);
@@ -68,6 +69,27 @@ export async function POST(request: Request) {
           error: 'Este usuário tem pedidos pagos ou saques. Bloqueie a conta em vez de excluir (os registros financeiros precisam ser guardados).'
         }, { status: 409 });
       }
+    }
+
+    // Subconta Asaas: precisa ser encerrada no Asaas antes de apagar o usuário,
+    // senão a conta fica aberta no Asaas sem dono no app.
+    const subUser = await loadSubaccountUser(String(userId));
+    if (subUser?.asaas_account_id) {
+      const closed = await closeSubaccountInAsaas(subUser, 'Exclusão de usuário pelo administrador AçaíFood');
+      if (!closed.ok) {
+        await logAdminAction({
+          actorId, action: 'USER_DELETE_BLOCKED', targetType: 'USER', targetId: String(userId),
+          beforeState: before || null, afterState: { motivo: 'subconta Asaas não encerrada', error: closed.error }, request
+        });
+        return NextResponse.json({
+          error: `A subconta Asaas deste usuário não foi encerrada: ${closed.error} Depois de encerrada, use "Desvincular" na aba Conformidade e tente excluir de novo.`
+        }, { status: 409 });
+      }
+      await unlinkSubaccount(subUser);
+      await logAdminAction({
+        actorId, action: 'ASAAS_SUBACCOUNT_CLOSED', targetType: 'USER', targetId: String(userId),
+        beforeState: { accountId: subUser.asaas_account_id }, afterState: { mode: closed.mode, motivo: 'exclusão de usuário' }, request
+      });
     }
 
     // 0. Deletar logs e registros associados onde user_id tem FK

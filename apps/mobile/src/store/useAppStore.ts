@@ -1450,17 +1450,7 @@ export const useAppStore = create<AppState>()(
         }
 
         try {
-          try {
-            const subHeaders = await getAuthHeaders();
-            await fetch(`/api/asaas/subaccount?userId=${userId}`, { 
-              method: 'DELETE',
-              headers: subHeaders
-            });
-          } catch (_e) {
-            console.warn("Aviso ao tentar excluir subconta Asaas via API local:", _e);
-          }
-
-          // 1. Chamar rota API de servidor com Service Role Key
+          // 1. Rota de servidor (service_role): encerra a subconta Asaas antes de excluir
           const headers = await getAuthHeaders();
           const apiRes = await fetch('/api/admin/delete-user', {
             method: 'POST',
@@ -1471,12 +1461,10 @@ export const useAppStore = create<AppState>()(
           const resJson = await apiRes.json().catch(() => ({}));
 
           if (!apiRes.ok || resJson.error) {
-            // Fallback direto via Supabase JS se a API falhar
-            const { error: dbDeleteErr } = await supabase.from('users').delete().eq('id', userId);
-            if (dbDeleteErr) {
-              alert("Erro ao excluir usuário do banco: " + (resJson.error || dbDeleteErr.message));
-              return;
-            }
+            // Sem atalho pelo navegador: a regra de exclusão (registros financeiros,
+            // subconta Asaas) fica só no servidor.
+            alert("Não foi possível excluir: " + (resJson.error || `erro ${apiRes.status}`));
+            return;
           }
 
           set((state) => {

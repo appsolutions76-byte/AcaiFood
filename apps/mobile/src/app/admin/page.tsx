@@ -850,17 +850,8 @@ function AdminDashboardContent() {
       const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
       if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
 
-      // 1. Tentar excluir subconta Asaas se houver
-      try {
-        await fetch(`/api/asaas/subaccount?userId=${targetUser.id}`, {
-          method: 'DELETE',
-          headers: authHeaders
-        });
-      } catch (_subErr) {
-        console.warn("Aviso ao tentar excluir subconta Asaas:", _subErr);
-      }
-
-      // 2. Chamar rota administrativa de exclusão definitiva
+      // 1. Rota administrativa de exclusão definitiva (encerra a subconta Asaas antes,
+      //    e recusa a exclusão se o Asaas não encerrar)
       const res = await fetch('/api/admin/delete-user', {
         method: 'POST',
         headers: authHeaders,
@@ -873,7 +864,7 @@ function AdminDashboardContent() {
         throw new Error(data.error || 'Falha na exclusão pelo servidor');
       }
 
-      // 3. Atualizar store Zustand removendo o usuário
+      // 2. Atualizar store Zustand removendo o usuário
       useAppStore.setState((state: any) => {
         const newUsers = { ...state.users };
         delete newUsers[targetUser.id];
