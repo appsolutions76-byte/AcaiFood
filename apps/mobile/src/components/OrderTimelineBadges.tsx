@@ -11,6 +11,7 @@ export function getNormalizedOrderTimestamps(order: {
   deliveredAt?: string;
   receivedAt?: string;
 }) {
+  if (!order) return {};
   const tCreated = order.createdAt ? new Date(order.createdAt).getTime() : 0;
   let tAccepted = order.acceptedAt ? new Date(order.acceptedAt).getTime() : 0;
   let tReady = order.readyAt ? new Date(order.readyAt).getTime() : 0;

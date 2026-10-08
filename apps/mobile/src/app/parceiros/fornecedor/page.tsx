@@ -47,11 +47,11 @@ export default function FornecedorDashboard() {
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
   const printedOrdersRef = useRef<Set<string>>(new Set());
 
-  const mounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(getPrinterConfig);
 

@@ -31,10 +31,11 @@ export default function ParceirosError({
       <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-xs">
         <button
           onClick={() => {
-            if (typeof window !== 'undefined') {
-              window.location.reload();
-            } else {
+            try {
               reset();
+            } catch (_) {}
+            if (typeof window !== 'undefined') {
+              window.location.href = window.location.pathname;
             }
           }}
           className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-5 rounded-2xl transition shadow-lg active:scale-95 flex items-center justify-center gap-2 text-sm cursor-pointer"

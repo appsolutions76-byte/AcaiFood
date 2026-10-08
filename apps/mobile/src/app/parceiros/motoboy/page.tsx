@@ -19,8 +19,6 @@ import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 import { PartnerDashboardLayout } from "@/components/PartnerDashboardLayout";
 
-const emptySubscribe = () => () => {};
-
 export default function MotoboyDashboard() {
   const router = useRouter();
   const store = useAppStore();
@@ -41,13 +39,12 @@ export default function MotoboyDashboard() {
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
   const [serverBalance, setServerBalance] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const lastAvailableCountRef = React.useRef(0);
 
-  const mounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     initAudioUnlock();

@@ -43,11 +43,11 @@ export default function CaminhaoDashboard() {
   const [serverBalance, setServerBalance] = useState<number | null>(null);
   const lastAvailableCountRef = React.useRef(0);
 
-  const mounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     initAudioUnlock();

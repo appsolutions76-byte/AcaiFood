@@ -3271,12 +3271,12 @@ export const useAppStore = create<AppState>()(
           if (!state.users || typeof state.users !== 'object') (state as any).users = {};
           if (!state.rates || typeof state.rates !== 'object') (state as any).rates = DB_DEFAULTS.rates;
 
-          if (state.currentUser) {
+          if (state.currentUser && state.currentUser.id) {
             setTimeout(() => {
-              state.setupRealtime(state.currentUser!.id);
-              state.fetchOrders(state.currentUser!.id);
-              state.startAutoRefresh();
-              state.fetchCities();
+              if (typeof state.setupRealtime === 'function') state.setupRealtime(state.currentUser!.id);
+              if (typeof state.fetchOrders === 'function') state.fetchOrders(state.currentUser!.id);
+              if (typeof state.startAutoRefresh === 'function') state.startAutoRefresh();
+              if (typeof state.fetchCities === 'function') state.fetchCities();
             }, 50);
           }
         }

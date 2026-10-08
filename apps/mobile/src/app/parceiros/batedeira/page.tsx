@@ -180,11 +180,11 @@ export default function BatedeiraDashboard() {
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
   const [serverBalance, setServerBalance] = useState<number | null>(null);
 
-  const mounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const s = useAppStore.getState();
