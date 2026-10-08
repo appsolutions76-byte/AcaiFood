@@ -24,9 +24,15 @@ export default function ParceirosError({
         Sincronizando Painel do Parceiro
       </h1>
 
-      <p className="text-sm text-zinc-400 max-w-md mb-6 leading-relaxed">
+      <p className="text-sm text-zinc-400 max-w-md mb-4 leading-relaxed">
         Não foi possível atualizar todas as informações em tempo real. Clique em recarregar para reestabelecer o painel operacional.
       </p>
+
+      {error?.message && (
+        <div className="bg-red-950/60 border border-red-800/80 text-red-200 text-xs p-3 rounded-2xl mb-6 max-w-md w-full font-mono text-left overflow-auto max-h-32">
+          <strong>Detalhe do erro:</strong> {error.message}
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-xs">
         <button

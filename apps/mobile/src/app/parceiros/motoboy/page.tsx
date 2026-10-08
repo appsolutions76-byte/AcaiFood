@@ -98,7 +98,15 @@ export default function MotoboyDashboard() {
 
   const roleStr = String(currentUser?.role || '').toLowerCase();
   const veicStr = String(currentUser?.veiculo || '').toLowerCase();
-  const isMotoboyUser = currentUser && (roleStr === 'motoboy' || (roleStr === 'motorista' && (!veicStr || veicStr.includes('moto'))));
+  const isMotoboyUser = Boolean(
+    currentUser && (
+      roleStr === 'motoboy' || 
+      roleStr === 'courier' || 
+      roleStr === 'motorista' || 
+      roleStr === 'driver' ||
+      (roleStr !== 'admin' && roleStr !== 'cliente' && (!veicStr || veicStr.includes('moto')))
+    )
+  );
 
   if (!isMotoboyUser) {
     return (
@@ -199,10 +207,10 @@ export default function MotoboyDashboard() {
       title="Corridas (B2C)"
       roleIcon={<Bike className="text-amber-500" size={24} />}
       themeColor="amber"
-      partnerId={currentUser.id}
-      partnerName={`${currentUser.name || 'Entregador Motoboy'} (${currentUser.veiculo || 'Moto'})`}
-      locationText={`Base: ${currentUser.bairro || currentUser.cidade || 'Belém'}`}
-      pixKeyInfo={currentUser.cpfCnpj || currentUser.pixKey}
+      partnerId={currentUser?.id || ''}
+      partnerName={`${currentUser?.name || 'Entregador Motoboy'} (${currentUser?.veiculo || 'Moto'})`}
+      locationText={`Base: ${currentUser?.bairro || currentUser?.cidade || 'Belém'}`}
+      pixKeyInfo={currentUser?.cpfCnpj || currentUser?.pixKey}
       statusLabel={isPaused ? 'Pausado (Fora de Serviço)' : 'Online (Recebendo Corridas)'}
       isOnline={!isPaused}
       onToggleStatus={handleToggleStatus}
@@ -677,7 +685,7 @@ export default function MotoboyDashboard() {
         {/* 4. ABA: CARTEIRA DIGITAL & SAQUES PIX ASAAS */}
         {activeTab === 'carteira' && (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-            <PartnerWithdrawalSection partnerId={currentUser.id} role="motorista" onBalanceLoaded={setServerBalance} />
+            <PartnerWithdrawalSection partnerId={currentUser?.id || ''} role="motorista" onBalanceLoaded={setServerBalance} />
           </div>
         )}
       </div>
@@ -695,8 +703,8 @@ export default function MotoboyDashboard() {
           isOpen={chatModalData.open}
           onClose={() => setChatModalData({ open: false, orderId: "" })}
           orderId={chatModalData.orderId}
-          currentUserId={currentUser.id}
-          currentUserName={currentUser.name}
+          currentUserId={currentUser?.id || ''}
+          currentUserName={currentUser?.name || ''}
           currentUserRole="motoboy"
           otherParticipantName={chatModalData.otherName}
           otherParticipantPhone={chatModalData.otherPhone}

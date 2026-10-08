@@ -484,10 +484,12 @@ export const useAppStore = create<AppState>()(
             return false;
           }
           
-          const appRole = userProfile.role === 'PARTNER' ? 'loja' :
-                          userProfile.role === 'SUPPLIER' ? 'fornecedor' :
-                          userProfile.role === 'COURIER' ? 'motorista' :
-                          userProfile.role === 'ADMIN' ? 'admin' : 'cliente';
+          const rNorm = String(userProfile.role || '').toUpperCase();
+          const appRole = (rNorm === 'PARTNER' || rNorm === 'LOJA' || rNorm === 'BATEDEIRA') ? 'loja' :
+                          (rNorm === 'SUPPLIER' || rNorm === 'FORNECEDOR') ? 'fornecedor' :
+                          (rNorm === 'COURIER' || rNorm === 'MOTORISTA' || rNorm === 'MOTOBOY' || rNorm === 'CAMINHAO' || rNorm === 'DRIVER') ? 'motorista' :
+                          (rNorm === 'ADMIN') ? 'admin' :
+                          (userProfile.role ? String(userProfile.role).toLowerCase() : 'cliente');
           
           const sf = extractStorefront(userProfile.storefronts);
           const sfMeta = parseStorefrontMeta(sf?.logo_url);
