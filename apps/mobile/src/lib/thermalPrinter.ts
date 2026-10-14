@@ -407,7 +407,7 @@ export function generateSingleTicketHTML(
           <span>${formattedTotal}</span>
         </div>
         <div style="font-size: ${is58 ? '9px' : '10px'}; text-align: right;">
-          💳 Pagamento: PIX (Asaas IP S.A.)
+          💳 Pagamento: PIX (Asaas Gestão Financeira Instituição de Pagamento S.A.)
         </div>
       </div>
 

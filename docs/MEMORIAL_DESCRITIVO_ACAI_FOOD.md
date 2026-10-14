@@ -25,7 +25,7 @@ O **AçaíFood** é uma plataforma tecnológica de intermediação comercial, lo
 1. **Segmento B2C (Business to Consumer):** Venda e entrega expressa de açaí pronto e complementos entre batedeiras artesanais/lojas e o consumidor final.
 2. **Segmento B2B (Business to Business):** Compra e venda de matéria-prima (frutos em sacas/latas e polpa industrial) entre produtores/ribeirinhos/fornecedores e as batedeiras de açaí, com suporte a transporte rodoviário e frete pesado (Caminhão).
 3. **Segmento de Sustentabilidade e Economia Circular (Coleta de Resíduos):** Logística reversa para recolhimento e destinação ecológica dos caroços de açaí resultantes do despolpamento para indústrias de biomassa, cerâmicas e compostagem.
-4. **Infraestrutura Bancária Integrada (BaaS):** Liquidação de recebíveis, custódia de transações, gestão de carteiras digitais e transferências instantâneas via Pix operadas pelo Asaas IP S.A.
+4. **Infraestrutura Bancária Integrada (BaaS):** Liquidação de recebíveis, custódia de transações, gestão de carteiras digitais e transferências instantâneas via Pix operadas pelo Asaas Gestão Financeira Instituição de Pagamento S.A.
 
 ---
 
@@ -127,7 +127,7 @@ $$\text{Total do Pedido (B2C)} = \text{Subtotal dos Produtos} + \text{Frete do C
 | **Plataforma AçaíFood** | $\text{Comissão sobre Venda} + \text{Taxa sobre Entrega}$ | Retido na conta da plataforma |
 
 ### 5.3 Modelo de Custódia (Escrow) e Gestão de Saques
-1. **Entrada de Recursos:** 100% dos pagamentos dos clientes são liquidados na conta corrente da operadora da plataforma (**Eletromecânica Baia Ltda**) mantida no Asaas IP S.A.
+1. **Entrada de Recursos:** 100% dos pagamentos dos clientes são liquidados na conta corrente da operadora da plataforma (**Eletromecânica Baia Ltda**) mantida no Asaas Gestão Financeira Instituição de Pagamento S.A.
 2. **Custódia Transitória:** O valor permanece retido em garantia até a conclusão física da entrega.
 3. **Solicitação de Saque:** O parceiro solicita a transferência de seus créditos pelo app (limite máximo de **2 saques diários** por operador para controle de custos de tarifa bancária).
 4. **Aprovação pelo Administrador:**

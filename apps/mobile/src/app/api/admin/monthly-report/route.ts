@@ -114,7 +114,7 @@ export async function GET(request: Request) {
       rows.push('RELATÓRIO MENSAL DE ATENDIMENTO E CONFORMIDADE ASAAS BAAS (CLÁUSULA 11)');
       rows.push(`Mês de Referência;${month}`);
       rows.push(`Titular da Plataforma;Eletromecânica Baia Ltda (CNPJ 42.035.623/0001-40)`);
-      rows.push(`Parceiro Financeiro;ASAAS GESTÃO FINANCEIRA S.A. (CNPJ 19.540.550/0001-21)`);
+      rows.push(`Parceiro Financeiro;ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A. (CNPJ 19.540.550/0001-21)`);
       rows.push(`Disponibilidade da API / Uptime;${uptimeEstimate}`);
       rows.push('');
       rows.push(`Total de Chamados Abertos;${totalTickets}`);

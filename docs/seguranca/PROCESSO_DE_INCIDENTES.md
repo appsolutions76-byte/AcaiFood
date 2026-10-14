@@ -3,9 +3,9 @@
 ## 1. Objetivo e Escopo
 Este documento estabelece o protocolo oficial de identificação, triagem, contenção, erradicação, recuperação e comunicação de incidentes de segurança da informação no ecossistema AçaíFood, operado pela **Eletromecânica Baia Ltda** (CNPJ 42.035.623/0001-40).
 
-## 2. Comunicação Obrigatória ao Asaas IP S.A.
+## 2. Comunicação Obrigatória ao Asaas Gestão Financeira Instituição de Pagamento S.A.
 > **REGRA CRÍTICA (Contrato BaaS - Cláusula de Segurança e Notificação):**
-> Em qualquer incidente confirmado ou com suspeita razoável que envolva dados de subcontas, transações financeiras, credenciais de API, integridade de repasses Pix ou chaves criptográficas, o time de segurança da Eletromecânica Baia Ltda notificará formalmente o **Asaas IP S.A. no prazo máximo de 24 (vinte e quatro) horas** após a confirmação do evento.
+> Em qualquer incidente confirmado ou com suspeita razoável que envolva dados de subcontas, transações financeiras, credenciais de API, integridade de repasses Pix ou chaves criptográficas, o time de segurança da Eletromecânica Baia Ltda notificará formalmente o **Asaas Gestão Financeira Instituição de Pagamento S.A. no prazo máximo de 24 (vinte e quatro) horas** após a confirmação do evento.
 
 - **Canais de Notificação Asaas:**
   - E-mail Oficial: `seguranca@asaas.com.br` / `suporte@asaas.com.br`

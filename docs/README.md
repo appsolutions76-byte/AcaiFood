@@ -21,7 +21,7 @@ Esta pasta `docs/` é a **fonte oficial de verdade** sobre o app e a arquitetura
 
 - [`docs/legal/TERMOS_DE_USO_ACAI_FOOD.md`](legal/TERMOS_DE_USO_ACAI_FOOD.md): Termos de Uso oficiais da plataforma AçaíFood (Eletromecânica Baia Ltda - CNPJ 42.035.623/0001-40).
 - [`docs/legal/POLITICA_DE_PRIVACIDADE_ACAI_FOOD.md`](legal/POLITICA_DE_PRIVACIDADE_ACAI_FOOD.md): Política de Privacidade e Proteção de Dados (LGPD).
-- [`docs/legal/TERMOS_E_POLITICAS_ASAAS.md`](legal/TERMOS_E_POLITICAS_ASAAS.md): Referências oficiais aos termos do Asaas Gestão Financeira S.A. (BACEN).
+- [`docs/legal/TERMOS_E_POLITICAS_ASAAS.md`](legal/TERMOS_E_POLITICAS_ASAAS.md): Referências oficiais aos termos do Asaas Gestão Financeira Instituição de Pagamento S.A. (BACEN).
 - [`docs/legal/MANDATO_SUBCONTA_ASAAS.md`](legal/MANDATO_SUBCONTA_ASAAS.md): Instrumento de mandato para abertura e movimentação de subcontas Asaas.
 - [`docs/legal/CONSENTIMENTO_PIX_ALEATORIO.md`](legal/CONSENTIMENTO_PIX_ALEATORIO.md): Consentimento para criação e uso de chave Pix aleatória (EVP).
 - [`docs/seguranca/PROCESSO_DE_INCIDENTES.md`](seguranca/PROCESSO_DE_INCIDENTES.md): Protocolo de resposta a incidentes de segurança e operacionais.

@@ -113,7 +113,7 @@ function ManualCliente() {
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
             <p>📄 <strong>Comprovante com Logomarca Asaas</strong>: Em qualquer pedido pago ou histórico, clique no botão <strong>"📄 Comprovante Asaas"</strong> para abrir o documento oficial contendo:</p>
             <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
-              <li>Selo e logomarca oficial do <strong>Asaas IP S.A.</strong></li>
+              <li>Selo e logomarca oficial do <strong>Asaas Gestão Financeira Instituição de Pagamento S.A.</strong></li>
               <li>ID da transação bancária e dados fiscais da Eletromecânica Baia Ltda</li>
               <li>Detalhamento de produtos, frete, estabelecimento e data/hora</li>
               <li>Botão para <strong>Imprimir / Salvar em PDF</strong> ou cupom térmico</li>

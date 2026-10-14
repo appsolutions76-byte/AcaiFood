@@ -119,7 +119,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
               </div>
 
               <div className="text-xs bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                <p className="font-bold text-zinc-900 dark:text-white mb-2">🛡️ Taxa de Homologação / Ativação de Parceiros:</p>
+                <p className="font-bold text-zinc-900 dark:text-white mb-2">🛡️ Taxa de ativação da plataforma AçaíFood:</p>
                 <p>Na aba <em>Ativações</em>, ative ou desative a cobrança de taxa de adesão Pix para novas lojas e configure a quantidade de vagas promocionais gratuitas de fundadores.</p>
               </div>
             </div>

@@ -650,7 +650,7 @@ export function buildOrderEscPosBuffer(
     addBytes(0x1B, 0x45, 0x01); // Negrito ON
     addLine(formatCols2('TOTAL DO PEDIDO:', `R$ ${totalFinal.toFixed(2)}`, width));
     addBytes(0x1B, 0x45, 0x00); // Negrito OFF
-    addLine('Pagamento: PIX (Asaas IP S.A.)');
+    addLine('Pagamento: PIX (Asaas Gestão Financeira Instituição de Pagamento S.A.)');
   } else {
     // Formato Ultra Compacto
     if (clientDeliveryFee > 0) {
@@ -659,7 +659,7 @@ export function buildOrderEscPosBuffer(
     addBytes(0x1B, 0x45, 0x01); // Negrito ON
     addLine(formatCols2('TOTAL DO PEDIDO:', `R$ ${totalFinal.toFixed(2)}`, width));
     addBytes(0x1B, 0x45, 0x00); // Negrito OFF
-    addLine('Pagamento: PIX (Asaas IP S.A.)');
+    addLine('Pagamento: PIX (Asaas Gestão Financeira Instituição de Pagamento S.A.)');
   }
 
   // --- PIN DE RETIRADA / BALCÃO ---

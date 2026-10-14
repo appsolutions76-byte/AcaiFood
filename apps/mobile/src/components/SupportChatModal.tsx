@@ -446,7 +446,7 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
               <span>Serviços Financeiros Asaas (BACEN)</span>
             </div>
             <p className="text-[10px] text-blue-800 dark:text-blue-300 leading-tight">
-              Os pagamentos, cobranças Pix e liquidações de saldo são operados por <strong>ASAAS GESTÃO FINANCEIRA S.A.</strong> (CNPJ 19.540.550/0001-21). Canais oficiais da instituição: <strong>0800 007 0070</strong> | <strong>suporte@asaas.com.br</strong> | <strong>ouvidoria@asaas.com.br</strong>.
+              Os pagamentos, cobranças Pix e liquidações de saldo são operados por <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong> (CNPJ 19.540.550/0001-21). Canais oficiais da instituição: <strong>0800 007 0070</strong> | <strong>suporte@asaas.com.br</strong> | <strong>ouvidoria@asaas.com.br</strong>.
             </p>
           </div>
         )}
