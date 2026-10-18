@@ -278,6 +278,11 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
                       <Clock size={11} /> Pendente
                     </span>
                   )}
+                  {req.status === 'PROCESSING' && (
+                    <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 px-2.5 py-1 rounded-full font-bold uppercase text-[10px] flex items-center gap-1">
+                      <Clock size={11} className="animate-spin" /> Em Processamento (Subconta)
+                    </span>
+                  )}
                   {req.status === 'APROVADO' && (
                     <span className="bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-300 dark:border-blue-800 px-2.5 py-1 rounded-full font-bold uppercase text-[10px] flex items-center gap-1">
                       <Clock size={11} /> Aprovado

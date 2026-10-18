@@ -41,7 +41,7 @@ export function AdminWithdrawalsSection({
   appRevenue = 0,
   onRefreshAll
 }: AdminWithdrawalsSectionProps) {
-  const [activeTab, setActiveTab] = useState<'PENDENTE' | 'PAGO' | 'REJEITADO' | 'FALHOU' | 'all'>('PENDENTE');
+  const [activeTab, setActiveTab] = useState<'PENDENTE' | 'PROCESSING' | 'PAGO' | 'REJEITADO' | 'FALHOU' | 'all'>('PENDENTE');
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -236,6 +236,33 @@ export function AdminWithdrawalsSection({
   const pendingWithdrawalsCount = useMemo(() => {
     return requests.filter(r => r.status === 'PENDENTE').length;
   }, [requests]);
+
+  const processingWithdrawalsCount = useMemo(() => {
+    return requests.filter(r => r.status === 'PROCESSING').length;
+  }, [requests]);
+
+  const handleReconcileAll = async () => {
+    setLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch('/api/admin/withdrawals/reconcile', {
+        method: 'POST',
+        headers
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (showToast) showToast(`⚡ ${data.processedCount || 0} solicitação(ões) verificada(s) com o Asaas.`);
+        else alert(`${data.processedCount || 0} solicitação(ões) verificada(s) no Asaas.`);
+        await refreshAllData();
+      } else {
+        alert("Erro ao reconciliar: " + (data.error || 'Falha de comunicação'));
+      }
+    } catch (err: any) {
+      alert("Erro ao sincronizar saques: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredRequests = requests.filter((r: any) => {
     const pName = r.partner?.name || '';
@@ -464,6 +491,16 @@ export function AdminWithdrawalsSection({
             <Clock size={13} /> Pendentes ({pendingWithdrawalsCount})
           </button>
           <button
+            onClick={() => setActiveTab('PROCESSING')}
+            className={`px-4 py-2 rounded-xl font-bold text-xs transition flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'PROCESSING'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+            }`}
+          >
+            <Clock size={13} className={processingWithdrawalsCount > 0 ? "animate-spin" : ""} /> Em Processamento ({processingWithdrawalsCount})
+          </button>
+          <button
             onClick={() => setActiveTab('PAGO')}
             className={`px-4 py-2 rounded-xl font-bold text-xs transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'PAGO'
@@ -558,6 +595,11 @@ export function AdminWithdrawalsSection({
 
                     <td className="p-3">
                       {req.status === 'PENDENTE' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pendente</span>}
+                      {req.status === 'PROCESSING' && (
+                        <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 px-2 py-1 rounded text-[10px] font-bold uppercase inline-flex items-center gap-1">
+                          <Clock size={10} className="animate-spin" /> Em Processamento (Subconta)
+                        </span>
+                      )}
                       {req.status === 'APROVADO' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aprovado</span>}
                       {req.status === 'PAGO' && <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pago Pix</span>}
                       {req.status === 'REJEITADO' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Rejeitado</span>}
@@ -589,15 +631,15 @@ export function AdminWithdrawalsSection({
                             ❌ Rejeitar
                           </button>
                         </div>
-                      ) : req.status === 'APROVADO' || req.status === 'FALHOU' ? (
+                      ) : req.status === 'PROCESSING' || req.status === 'APROVADO' || req.status === 'FALHOU' ? (
                         <div className="flex items-center justify-end gap-2">
                           <button
                             disabled={processingId === req.id || loading}
-                            onClick={() => refreshAllData()}
-                            className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-2.5 py-1.5 rounded-lg transition text-xs flex items-center gap-1 cursor-pointer"
-                            title="Consultar status no Asaas e reconciliar"
+                            onClick={() => handleReconcileAll()}
+                            className="bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold px-2.5 py-1.5 rounded-lg transition text-xs flex items-center gap-1 cursor-pointer"
+                            title="Consultar status no Asaas e liquidar Pix se aprovado"
                           >
-                            <RefreshCw size={11} className={loading ? 'animate-spin' : ''} /> Sincronizar
+                            <RefreshCw size={11} className={loading ? 'animate-spin' : ''} /> {req.status === 'PROCESSING' ? '⚡ Liquidar Pix' : 'Sincronizar'}
                           </button>
                           <button
                             disabled={processingId === req.id}

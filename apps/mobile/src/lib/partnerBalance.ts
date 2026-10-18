@@ -184,8 +184,25 @@ export async function reconcilePartnerWithdrawals(partnerId?: string, role?: str
       let updatedStatus: string | null = null;
       let failureReason: string | null = null;
 
-      // 1. Se possui asaas_transfer_id, consultar status em tempo real na API do Asaas
-      if (req.asaas_transfer_id && asaasApiKey) {
+      // 1. Se estiver em PROCESSING com asaas_transfer_id:
+      // O saque passou pelo Tempo 1 (Master -> Subconta). Checar se liquidou no Asaas e disparar o Tempo 2 (Pix da Subconta).
+      if (req.status === 'PROCESSING' && req.asaas_transfer_id) {
+        try {
+          const { executeSubaccountPixPayout } = await import('@/lib/withdrawalApproval');
+          const pixExecRes = await executeSubaccountPixPayout(req.id);
+          if (pixExecRes.status === 'PAGO') {
+            continue; // Já finalizado pelo helper
+          }
+          if (pixExecRes.status === 'FALHOU') {
+            continue;
+          }
+        } catch (subPixErr) {
+          console.warn(`[reconcilePartnerWithdrawals] Erro ao tentar liquidar Pix da subconta para saque #${req.id}:`, subPixErr);
+        }
+      }
+
+      // 1.1 Se possui asaas_transfer_id e status não é PROCESSING, consultar status na API do Asaas
+      if (req.status !== 'PROCESSING' && req.asaas_transfer_id && asaasApiKey) {
         try {
           const tRes = await fetch(`${asaasUrl}/transfers/${req.asaas_transfer_id}`, {
             headers: { 'access_token': asaasApiKey }
