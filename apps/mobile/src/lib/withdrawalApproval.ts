@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getPartnerAvailableBalance } from '@/lib/partnerBalance';
-import { buildAsaasTransferPayload } from '@/lib/asaasTransferHelpers';
+import { buildAsaasTransferPayload, buildSubaccountPixTransferPayload } from '@/lib/asaasTransferHelpers';
 import { logAdminAction } from '@/lib/adminAudit';
 
 export interface ProcessApprovalResult {
@@ -8,6 +8,9 @@ export interface ProcessApprovalResult {
   status: 'PAGO' | 'PROCESSING' | 'FALHOU' | 'REJEITADO';
   transferId?: string;
   amount?: number;
+  netAmount?: number;
+  pixFee?: number;
+  pixKeyUsed?: string;
   message?: string;
   error?: string;
 }
@@ -328,20 +331,92 @@ export async function processWithdrawalApproval(
   if (apiSuccess) {
     const isDone = transferStatus === 'DONE' || transferStatus === 'COMPLETED' || transferStatus === 'CONFIRMED';
     const finalRequestStatus = isDone ? 'PAGO' : 'PROCESSING';
-    
+
+    // --- ETAPA 2: Transferência Automática da Subconta para a Chave Pix do Parceiro (Opção 1) ---
+    // A taxa Pix (R$ 0,99) é abatida do valor transferido para a conta bancária do parceiro
+    const { data: psSettings } = await adminSupabase
+      .from('platform_settings')
+      .select('asaas_pix_fee_fixed')
+      .limit(1)
+      .maybeSingle();
+
+    const pixFeeFixed = Number(psSettings?.asaas_pix_fee_fixed ?? 0.99);
+    const netPixAmount = Number(Math.max(0, finalAmount - pixFeeFixed).toFixed(2));
+
+    // Buscar chave da subconta em partner_secrets
+    const { data: secretRow } = await adminSupabase
+      .from('partner_secrets')
+      .select('asaas_account_api_key')
+      .eq('user_id', requestRow.partner_id)
+      .maybeSingle();
+
+    const subaccountApiKey = secretRow?.asaas_account_api_key;
+    const pixBuild = buildSubaccountPixTransferPayload(
+      partnerUser,
+      netPixAmount,
+      `Saque AçaíFood Pix #${requestId.substring(0, 8)}`
+    );
+
+    let pixTransferSuccess = false;
+    let subaccountPixTransferId = '';
+    let pixErrorMessage = '';
+
+    if (subaccountApiKey && pixBuild.payload && netPixAmount > 0) {
+      try {
+        // Pausa breve de 1.2s para garantir consistência do crédito na subconta Asaas
+        await new Promise(resTimeout => setTimeout(resTimeout, 1200));
+
+        const subBaseUrl = getAsaasBaseUrl(subaccountApiKey);
+        const pixRes = await fetch(`${subBaseUrl}/transfers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'access_token': subaccountApiKey
+          },
+          body: JSON.stringify({
+            ...pixBuild.payload,
+            externalReference: `${attemptId}_PIX`
+          })
+        });
+
+        const pixData = await pixRes.json().catch(() => null);
+        if (pixRes.ok && pixData?.id) {
+          pixTransferSuccess = true;
+          subaccountPixTransferId = pixData.id;
+          console.log(`[WithdrawalApproval] ✅ Pix da subconta enviado com sucesso: ID ${pixData.id} | Líquido: R$ ${netPixAmount} | Chave: ${pixBuild.formattedKey}`);
+        } else {
+          pixErrorMessage = pixData?.errors?.[0]?.description || pixData?.message || `Erro HTTP ${pixRes.status} no Pix da subconta`;
+          console.warn(`[WithdrawalApproval] Aviso ao disparar Pix da subconta:`, pixErrorMessage);
+        }
+      } catch (pixErr: any) {
+        pixErrorMessage = pixErr?.message || 'Falha de rede ao disparar Pix da subconta';
+        console.warn(`[WithdrawalApproval] Exceção no Pix da subconta:`, pixErrorMessage);
+      }
+    } else if (!subaccountApiKey) {
+      pixErrorMessage = 'Chave da subconta não encontrada em partner_secrets.';
+    } else if (pixBuild.error) {
+      pixErrorMessage = pixBuild.error;
+    }
+
+    const effectivePixKey = pixBuild.formattedKey || partnerUser.pix_key || partnerUser.cpf_cnpj;
+    const finalTransferId = subaccountPixTransferId || asaasTransferId;
+
     await adminSupabase
       .from('withdrawal_requests')
       .update({
         status: finalRequestStatus,
         requested_amount: finalAmount,
         order_ids: finalOrderIds,
-        asaas_transfer_id: asaasTransferId,
-        pix_key_used: transferPayload.pixAddressKey || null,
+        asaas_transfer_id: finalTransferId,
+        pix_key_used: effectivePixKey || null,
         wallet_id_used: transferPayload.walletId || null,
         paid_at: isDone ? nowIso : null,
         reviewed_by: actorId,
         reviewed_at: nowIso,
-        processed_automatically: (actorId === null)
+        processed_automatically: (actorId === null),
+        failure_reason: pixTransferSuccess 
+          ? null 
+          : (pixErrorMessage ? `Creditado na subconta Asaas. Envio Pix externo: ${pixErrorMessage}` : null)
       })
       .eq('id', requestId);
 
@@ -371,7 +446,7 @@ export async function processWithdrawalApproval(
         type: 'debit',
         amount: finalAmount,
         balance_after: newBal,
-        description: `Saque aprovado #${requestId.substring(0, 8)} via Pix Asaas (Transf: ${asaasTransferId})`
+        description: `Saque aprovado #${requestId.substring(0, 8)} via Pix Asaas (Transf: ${finalTransferId})`
       });
     } catch (_lErr) {}
 
@@ -381,15 +456,29 @@ export async function processWithdrawalApproval(
       targetType: 'WITHDRAWAL_REQUEST',
       targetId: requestId,
       beforeState: { status: 'PENDENTE', amount: finalAmount },
-      afterState: { status: finalRequestStatus, asaas_transfer_id: asaasTransferId, attemptId }
+      afterState: { 
+        status: finalRequestStatus, 
+        asaas_transfer_id: finalTransferId, 
+        attemptId,
+        pixTransferSuccess,
+        netPixAmount,
+        pixFeeFixed
+      }
     });
+
+    const successMsg = pixTransferSuccess
+      ? `Saque de R$ ${finalAmount.toFixed(2)} aprovado! R$ ${netPixAmount.toFixed(2)} transferidos via Pix para ${effectivePixKey} (Taxa Pix de R$ ${pixFeeFixed.toFixed(2)} descontada).`
+      : `Saque de R$ ${finalAmount.toFixed(2)} creditado na subconta Asaas com sucesso!` + (pixErrorMessage ? ` (Envio Pix automático: ${pixErrorMessage})` : '');
 
     return {
       success: true,
       status: finalRequestStatus,
-      transferId: asaasTransferId,
+      transferId: finalTransferId,
       amount: finalAmount,
-      message: `Saque de R$ ${finalAmount.toFixed(2)} processado com sucesso via Asaas (Status: ${finalRequestStatus}).`
+      netAmount: netPixAmount,
+      pixFee: pixFeeFixed,
+      pixKeyUsed: effectivePixKey,
+      message: successMsg
     };
   } else if (!definitiveFailure) {
     // Resultado incerto (rede/timeout/5xx): a transferência pode ter sido criada no Asaas.

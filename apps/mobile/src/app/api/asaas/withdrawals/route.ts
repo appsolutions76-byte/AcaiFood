@@ -179,9 +179,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Erro ao registrar solicitação de saque no banco de dados.' }, { status: 500 });
     }
 
+    const netVal = Math.max(0, balanceInfo.totalDisponivel - 0.99);
     return NextResponse.json({
       success: true,
-      message: `Solicitação de saque no valor de R$ ${balanceInfo.totalDisponivel.toFixed(2)} enviada com sucesso! Seu saque é analisado e pago na sua subconta Asaas.`,
+      message: `Solicitação de saque de R$ ${balanceInfo.totalDisponivel.toFixed(2)} enviada! Líquido de R$ ${netVal.toFixed(2)} será transferido via Pix após aprovação (taxa Asaas: R$ 0,99).`,
       request: newRequest
     });
   } catch (err: any) {

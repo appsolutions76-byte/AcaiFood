@@ -105,4 +105,41 @@ export function buildAsaasTransferPayload(
   return null;
 }
 
+/**
+ * Constrói payload de transferência Pix disparado a partir da subconta Asaas do parceiro
+ * diretamente para a sua chave Pix bancária externa de mesma titularidade.
+ */
+export function buildSubaccountPixTransferPayload(
+  partnerUser: any,
+  netAmount: number,
+  descriptionStr?: string
+): { payload: any; formattedKey?: string; keyType?: string; error?: string } {
+  if (!partnerUser || netAmount <= 0) {
+    return { payload: null, error: 'Usuário parceiro ou valor líquido inválido.' };
+  }
+
+  // Chave Pix do parceiro (prioriza chave cadastrada ou CPF/CNPJ de mesma titularidade)
+  const rawKey = String(partnerUser.pix_key || partnerUser.pixKey || partnerUser.cpf_cnpj || partnerUser.cpfCnpj || '').trim();
+  if (!rawKey) {
+    return { payload: null, error: 'Chave Pix não encontrada no cadastro do parceiro.' };
+  }
+
+  const validated = validateAndFormatPixKey(rawKey, partnerUser.pix_key_type || partnerUser.pixKeyType);
+  if (!validated.valid || !validated.formattedKey) {
+    return { payload: null, error: validated.error || 'Chave Pix do parceiro é inválida.' };
+  }
+
+  return {
+    formattedKey: validated.formattedKey,
+    keyType: validated.type,
+    payload: {
+      value: Number(netAmount.toFixed(2)),
+      operationType: 'PIX',
+      pixAddressKey: validated.formattedKey,
+      pixAddressKeyType: validated.type,
+      description: descriptionStr || `Saque AçaíFood Pix - ${partnerUser.name || 'Parceiro'}`
+    }
+  };
+}
+
 

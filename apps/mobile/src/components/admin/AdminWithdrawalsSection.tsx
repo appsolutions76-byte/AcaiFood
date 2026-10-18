@@ -136,7 +136,19 @@ export function AdminWithdrawalsSection({
   };
 
   const handleApprove = async (req: any) => {
-    const confirmMsg = `Deseja APROVAR e realizar a transferência Pix de R$ ${Number(req.requested_amount).toFixed(2)} para o parceiro "${req.partner?.name || 'Parceiro'}"?`;
+    const requestedAmount = Number(req.requested_amount || 0);
+    const pixFee = 0.99;
+    const netAmount = Math.max(0, requestedAmount - pixFee);
+    const partnerName = req.partner?.name || 'Parceiro';
+    const pixDestino = req.partner?.pix_key || req.partner?.cpf_cnpj || req.pix_key_used || 'CPF do titular';
+
+    const confirmMsg = `Deseja APROVAR o saque de "${partnerName}"?\n\n` +
+      `• Valor total solicitado: R$ ${requestedAmount.toFixed(2)}\n` +
+      `• Taxa Pix Asaas (Opção 1): - R$ ${pixFee.toFixed(2)}\n` +
+      `• Valor líquido transferido via Pix: R$ ${netAmount.toFixed(2)}\n` +
+      `• Chave Pix de destino: ${pixDestino}\n\n` +
+      `O valor será creditado na subconta Asaas e enviado automaticamente para a chave Pix do parceiro.`;
+
     if (!confirm(confirmMsg)) return;
 
     setProcessingId(req.id);
@@ -522,6 +534,9 @@ export function AdminWithdrawalsSection({
 
                     <td className="p-3 font-black text-sm text-zinc-900 dark:text-white">
                       {formatMoney(req.requested_amount)}
+                      <div className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">
+                        Líquido Pix: {formatMoney(Math.max(0, Number(req.requested_amount || 0) - 0.99))}
+                      </div>
                       {req.order_ids && req.order_ids.length > 0 && (
                         <div className="text-[10px] text-zinc-400 font-normal">{req.order_ids.length} pedido(s)</div>
                       )}

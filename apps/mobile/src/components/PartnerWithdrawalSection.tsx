@@ -53,7 +53,14 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
   const handleRequestWithdrawal = async () => {
     if (!balanceData || !balanceData.canRequest) return;
 
-    if (!confirm(`Deseja solicitar o saque de todo o seu saldo disponível (R$ ${balanceData.totalDisponivel.toFixed(2)})?`)) {
+    const total = balanceData.totalDisponivel;
+    const net = Math.max(0, total - 0.99);
+    const confirmMsg = `Confirmar solicitação de saque no valor de ${formatMoney(total)}?\n\n` +
+      `• Tarifa de transferência Pix Asaas (Opção 1): - ${formatMoney(0.99)}\n` +
+      `• Valor líquido que cairá na sua conta bancária: ${formatMoney(net)}\n\n` +
+      `Após a aprovação do administrador, o dinheiro será enviado automaticamente para sua chave Pix.`;
+
+    if (!confirm(confirmMsg)) {
       return;
     }
 
@@ -124,7 +131,7 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
             </div>
             <div>
               <h3 className="font-bold text-sm text-zinc-300">Saldo Disponível para Saque</h3>
-              <p className="text-[11px] text-zinc-400">Seu saque é analisado e pago na sua subconta Asaas</p>
+              <p className="text-[11px] text-zinc-400">Transferência automática via Pix para a sua conta bancária</p>
             </div>
           </div>
           <button
@@ -142,8 +149,13 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
             <div className="text-3xl sm:text-4xl font-black text-white tracking-tight">
               {formatMoney(totalDisponivel)}
             </div>
-            <div className="text-xs text-zinc-400 mt-1 font-medium">
-              Valor mínimo configurado: <span className="text-purple-300 font-bold">{formatMoney(minVal)}</span>
+            <div className="text-xs text-zinc-400 mt-1 font-medium space-y-0.5">
+              <div>Valor mínimo configurado: <span className="text-purple-300 font-bold">{formatMoney(minVal)}</span></div>
+              {totalDisponivel > 0.99 && (
+                <div className="text-[11px] text-emerald-400 font-semibold">
+                  Líquido Pix a receber: {formatMoney(totalDisponivel - 0.99)} <span className="text-zinc-400 font-normal">(tarifa Pix Asaas: {formatMoney(0.99)})</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -163,7 +175,12 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
                   ? 'Transferência em Processamento'
                   : 'Solicitação em Andamento'}
               </div>
-              <div className="text-sm font-black text-white">{formatMoney(pendingReq.requested_amount)}</div>
+              <div className="text-sm font-black text-white">
+                {formatMoney(pendingReq.requested_amount)}
+                <span className="text-[11px] text-emerald-400 font-semibold block">
+                  Líquido Pix: {formatMoney(Math.max(0, Number(pendingReq.requested_amount || 0) - 0.99))} <span className="text-zinc-400 font-normal">(taxa: {formatMoney(0.99)})</span>
+                </span>
+              </div>
               <div className={`text-[10px] ${
                 pendingReq.status === 'APROVADO' || pendingReq.status === 'PROCESSING'
                   ? 'text-blue-200/80'
