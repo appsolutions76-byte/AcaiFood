@@ -96,10 +96,10 @@ function ManualCliente() {
             <p>🗺️ <strong>Rastreamento em Tempo Real</strong>: Acompanhe no mapa interativo o trajeto real pelas ruas da cidade (linhas coloridas OSRM) e o motoboy em deslocamento ao vivo.</p>
             <p>💬 <strong>Chat Integrado no Pedido</strong>: Converse diretamente com a batedeira ou com o motoboy. Há também atalho direto para discar ou abrir WhatsApp.</p>
             <p className="font-bold text-purple-900 dark:text-purple-300">🔐 Regra de Ouro do PIN de 4 Dígitos:</p>
-            <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 space-y-1">
+            <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 space-y-1.5">
               <p>• O <strong>PIN de 4 dígitos</strong> aparece em destaque no card do seu pedido.</p>
               <p>• <strong>IMPORTANTE:</strong> Somente dite o código PIN para o motoboy <strong>após receber o seu pedido em mãos</strong>.</p>
-              <p>• A digitação desse PIN pelo motoboy no aplicativo dele é a comprovação digital irrevogável de que a entrega foi concluída com sucesso.</p>
+              <p>• A digitação desse PIN pelo motoboy no aplicativo dele é a comprovação digital irrevogável de que a entrega foi concluída com sucesso e o único gatilho que libera o pagamento ao entregador e à loja.</p>
             </div>
           </div>
         </div>
@@ -206,19 +206,25 @@ function ManualBatedeira() {
       {tab === 'financeiro' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-            <DollarSign size={16} className="text-purple-600" /> Recebimento Líquido & Solicitação de Saques
+            <DollarSign size={16} className="text-purple-600" /> Recebimento Líquido, Subcontas Asaas & Saques Pix
           </h4>
-          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-            <p>• <strong>Divisão Automática (Split)</strong>: A cada pedido entregue com PIN, o sistema calcula seu valor líquido: <code>Subtotal − Comissão (%) − Subsídio de Frete</code>.</p>
-            <p>• <strong>Painel de Saques</strong>: Na aba Financeiro, acompanhe seu saldo disponível e envie <strong>Solicitações de Saque</strong> (valor mínimo padrão de R$ 20,00).</p>
-            <p>• <strong>Aprovação & Auditoria</strong>: A equipe administrativa audita e aprova os saques para liquidação direta na sua conta bancária via Pix Asaas.</p>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
+            <p>• <strong>Liberação Pós-PIN de Entrega</strong>: O saldo da venda é liberado para saque <strong>exclusivamente após a entrega ser concluída com o PIN de 4 dígitos</strong>, garantindo proteção total contra cancelamentos durante o trajeto.</p>
+            <p>• <strong>Cálculo do Valor Líquido</strong>: Cada pedido entregue calcula automaticamente: <code>Subtotal − Comissão (%) − Subsídio de Frete</code>.</p>
+            <p>• <strong>Fluxo de Saque em 2 Tempos (Contrato Asaas BaaS)</strong>:</p>
+            <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 space-y-1.5">
+              <p><strong>1. Tempo 1 (Aprovação):</strong> O administrador aprova o saque. O valor bruto é transferido da conta Master para a sua subconta digital Asaas (status: <em>Em Processamento</em>).</p>
+              <p><strong>2. Tempo 2 (Pix Automático):</strong> Assim que o Asaas confirma a liquidação na subconta, o sistema dispara automaticamente uma transferência Pix para a sua conta bancária externa de mesma titularidade.</p>
+              <p><strong>3. Tarifa Pix Asaas (R$ 0,99):</strong> Conforme a política da plataforma, a taxa de transferência Pix do Asaas (R$ 0,99) é descontada do valor transferido (ex: em um saque de R$ 50,00, você recebe R$ 49,01 líquidos no seu banco e sua subconta zera perfeitamente).</p>
+            </div>
+            <p>• <strong>Valor Mínimo de Saque</strong>: O valor mínimo configurado na plataforma é de R$ 20,00.</p>
           </div>
           <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs space-y-1.5">
             <p className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-              🛡️ Regra do Banco Central — Mesma Titularidade Obrigatória (Pix CPF/CNPJ):
+              🛡️ Mesma Titularidade Obrigatória (Resoluções BCB / Asaas):
             </p>
             <p className="text-amber-800 dark:text-amber-300">
-              Conforme as <strong>Resoluções BCB nº 1/2020 e nº 80/2021 do Banco Central do Brasil</strong> e as normas de segurança do Asaas, todo saque é processado <strong>exclusivamente para a conta bancária do mesmo titular (mesmo CPF ou CNPJ)</strong> cadastrado na plataforma, impedindo desvio de valores.
+              Conforme as <strong>Resoluções BCB nº 1/2020 e nº 80/2021 do Banco Central do Brasil</strong> e as normas de segurança do Asaas, todo saque é processado <strong>exclusivamente para a conta bancária do mesmo titular (mesmo CPF ou CNPJ)</strong> cadastrado na plataforma, impedindo qualquer desvio de valores.
             </p>
           </div>
         </div>
@@ -246,9 +252,11 @@ function ManualFornecedor() {
         <p className="font-bold text-emerald-900 dark:text-emerald-300">📌 Escopo do Fornecedor:</p>
         <p className="text-emerald-700 dark:text-emerald-300">O fornecedor atua exclusivamente na venda dos frutos frescos colhidos e <strong>não recebe caroços de volta</strong>.</p>
       </div>
-      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
-        <p className="font-bold">💰 Painel de Saques & Mesma Titularidade (BCB/Asaas):</p>
-        <p className="text-zinc-600 dark:text-zinc-400">Solicite saques do seu saldo disponível (mínimo R$ 20,00). O valor é creditado unicamente na conta bancária do CPF/CNPJ cadastrado.</p>
+      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
+        <p className="font-bold">💰 Saques Pix via Subconta Asaas (2 Tempos & Mesma Titularidade):</p>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          O saldo das vendas atacadistas B2B é liberado após a validação do PIN de entrega pelo caminhoneiro. Ao solicitar saque (mínimo R$ 20,00), o valor é creditado na sua subconta Asaas e enviado automaticamente via Pix para a sua conta bancária de mesma titularidade (CPF/CNPJ), com desconto da tarifa de R$ 0,99 do Asaas.
+        </p>
       </div>
     </div>
   );
@@ -274,9 +282,14 @@ function ManualMotoboy() {
         </ul>
         <p>5. 🔐 <strong>Validação Obrigatória do PIN de 4 Dígitos</strong>: Peça o PIN ao cliente, digite na tela e confirme. Sem o PIN correto, a entrega não fecha e o frete não é liberado.</p>
       </div>
-      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
-        <p className="font-bold">💸 Solicitação de Saques Pix (Regra Banco Central):</p>
-        <p className="text-zinc-600 dark:text-zinc-400">Acompanhe seu saldo em tempo real na aba Financeiro e utilize o botão <em>Solicitar Saque</em> (mínimo R$ 20,00). O valor é transferido para sua conta bancária vinculada ao seu CPF cadastrado.</p>
+      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
+        <p className="font-bold text-purple-900 dark:text-purple-300">💸 Repasse Garantido Pós-PIN & Saque Pix em 2 Tempos:</p>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          • <strong>Garantia de Repasse:</strong> O frete só é liberado para saque após você digitar o <strong>PIN de 4 dígitos</strong> informado pelo cliente. Se houver troca de motoboy antes da entrega, o valor só vai para quem finalizar o serviço.
+        </p>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          • <strong>Saque Pix Automático:</strong> Solicite saques na aba Financeiro (mínimo R$ 20,00). O valor é creditado na sua subconta Asaas e transferido automaticamente para sua conta bancária externa via Pix (mesmo CPF cadastrado), abatendo a tarifa de R$ 0,99 do Asaas.
+        </p>
       </div>
     </div>
   );
@@ -300,9 +313,14 @@ function ManualCaminhao() {
         <p>4. 🧭 <strong>Botões de GPS</strong>: Use os atalhos <em>"🚀 GPS p/ Retirada"</em> e <em>"🏁 GPS p/ Destino"</em> para abrir no Google Maps.</p>
         <p>5. 🔐 <strong>PIN de Conclusão</strong>: Ao descarregar, solicite o PIN de 4 dígitos ao responsável no destino (loja ou ecoponto) e valide na tela.</p>
       </div>
-      <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-800 text-xs space-y-1.5">
-        <p className="font-bold text-blue-900 dark:text-blue-300">💰 Repasses & Solicitação de Saque (Regra Banco Central):</p>
-        <p className="text-blue-700 dark:text-blue-300">Solicite saques do seu saldo acumulado diretamente no painel. O repasse é efetuado na conta bancária vinculada ao CPF/CNPJ de mesma titularidade.</p>
+      <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-800 text-xs space-y-2">
+        <p className="font-bold text-blue-900 dark:text-blue-300">💰 Repasses Pós-PIN & Saque Pix (BaaS Asaas):</p>
+        <p className="text-blue-700 dark:text-blue-300">
+          • O frete pesado (B2B ou Caçamba ESG) é creditado após a confirmação do PIN de 4 dígitos no destino.
+        </p>
+        <p className="text-blue-700 dark:text-blue-300">
+          • Os saques solicitados são aprovados e enviados da subconta Asaas diretamente para a sua conta bancária Pix de mesma titularidade (CPF/CNPJ), com desconto da taxa de R$ 0,99 do Asaas.
+        </p>
       </div>
     </div>
   );

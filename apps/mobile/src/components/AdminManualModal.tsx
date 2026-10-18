@@ -153,15 +153,16 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
 
           {activeSection === 'saques' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">💸 Gestão da Esteira de Saques</h3>
-              <p>Na aba <strong>💸 Saques</strong>, a administração audita e aprova as solicitações de transferência enviadas pelos parceiros:</p>
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">💸 Gestão da Esteira de Saques (Opção 2 — 2 Tempos Assíncrono)</h3>
+              <p>Na aba <strong>💸 Saques</strong>, a administração gerencia a esteira de liquidação em conformidade com as regras de Banking as a Service (BaaS) do Asaas:</p>
 
-              <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 text-xs space-y-2">
-                <p className="font-bold text-purple-900 dark:text-purple-300">🔍 Como Funciona a Aprovação de Saques:</p>
-                <p>1. <strong>Solicitação do Parceiro</strong>: Batedeiras, fornecedores e entregadores solicitam saques do saldo de pedidos entregues com PIN.</p>
-                <p>2. <strong>Auditoria de Segurança</strong>: O sistema valida se a chave Pix pertence ao mesmo CPF/CNPJ cadastrado e se o valor atinge o mínimo configurado.</p>
-                <p>3. <strong>Aprovar</strong>: Dispara a transferência Pix na subconta Asaas e marca os pedidos correspondentes como pagos.</p>
-                <p>4. <strong>Rejeitar</strong>: Caso haja divergência ou disputa, o administrador pode recusar com justificativa registrada no histórico do parceiro.</p>
+              <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 text-xs space-y-2.5">
+                <p className="font-bold text-purple-900 dark:text-purple-300">🔄 Fluxo de Liquidação Assíncrona em 2 Tempos (Opção 2):</p>
+                <p>1. <strong>Origem Pós-PIN:</strong> O parceiro só acumula saldo disponível para saque de pedidos cuja entrega foi 100% concluída via validação do <strong>PIN de 4 dígitos</strong>, protegendo contra cancelamentos ou trocas de motorista no trajeto.</p>
+                <p>2. <strong>Tempo 1 (Aprovação Master ➔ Subconta):</strong> Ao clicar em <em>"✅ Aprovar"</em>, a conta Master transfere o valor integral solicitado para a subconta Asaas (<code>walletId</code>) do parceiro. O saque assume o status <code>Em Processamento (Subconta)</code>. <strong>O Pix externo não é chamado simultaneamente</strong>, eliminando o erro de estorno concorrente no Asaas.</p>
+                <p>3. <strong>Tempo 2 (Subconta ➔ Pix Bancário Externo):</strong> Assim que o Asaas confirma a liquidação na subconta (<code>status: DONE</code>), o sistema dispara automaticamente uma transferência Pix a partir da própria subconta para a conta bancária do titular (mesmo CPF/CNPJ), descontando a tarifa de R$ 0,99 do Asaas (Opção 1 de tarifa: parceiro arca com o Pix). O saque é finalizado como <code>PAGO</code> e os pedidos são baixados.</p>
+                <p>4. <strong>⚡ Sincronização & Botão "Liquidar Pix":</strong> Na aba <em>Em Processamento</em>, o administrador pode clicar em <em>"⚡ Liquidar Pix / Sincronizar"</em> para consultar o Asaas em tempo real ou reprocessar o envio do Pix imediatamente.</p>
+                <p>5. <strong>Rejeição com Justificativa:</strong> Caso haja inconsistência cadastral ou suspeita de fraude, o administrador pode clicar em <em>"❌ Rejeitar"</em>, informando o motivo formal registrado no extrato do parceiro.</p>
               </div>
             </div>
           )}
@@ -172,16 +173,17 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
 
               <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
                 <p className="font-bold text-zinc-900 dark:text-white">⚡ Ciclo de Vida Financeiro:</p>
-                <p>1. <strong>Criação do Pedido</strong>: O cliente gera o Pix dinâmico via Asaas (<code>asaas-checkout</code>).</p>
+                <p>1. <strong>Criação do Pedido</strong>: O cliente gera o Pix dinâmico via Asaas (<code>asaas-checkout</code>). O dinheiro entra com segurança na conta Master.</p>
                 <p>2. <strong>Confirmação via Webhook</strong>: Ao pagar no banco, o Asaas aciona o webhook em tempo real, que atualiza o pedido para <code>PAID</code>.</p>
-                <p>3. <strong>Divisão Automática (Triple Split)</strong>:</p>
+                <p>3. <strong>Proteção no Despacho & Trajeto</strong>: Durante o preparo e a rota, se houver troca de motoboy ou cancelamento justificado, o valor permanece seguro na conta Master.</p>
+                <p>4. <strong>Divisão Automática (Triple Split) Pós-PIN</strong>: Após a digitação do PIN de 4 dígitos na entrega, o saldo é liberado na carteira de cada parceiro:</p>
                 <div className="pl-3 space-y-1 text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 p-2.5 rounded-lg">
                   <p>💜 <strong>Plataforma</strong>: Comissão Venda (%) + Comissão Frete (%).</p>
                   <p>🏪 <strong>Vendedor</strong>: Subtotal dos Produtos − Comissão Venda − Subsídio de Frete.</p>
                   <p>🛵 <strong>Entregador</strong>: Valor do Frete − Comissão de Frete.</p>
                 </div>
-                <p>4. <strong>📄 Comprovante Oficial Asaas</strong>: O sistema gera o comprovante oficial com selo/logo Asaas, ID da transação e favorecido Eletromecânica Baia Ltda para impressão térmica ou em PDF.</p>
-                <p>5. <strong>Estorno Automático Pix (Refund)</strong>: Cancelamentos realizados antes do preparo acionam <code>POST /api/asaas/refund</code>, devolvendo 100% do valor ao cliente em segundos.</p>
+                <p>5. <strong>📄 Comprovante Oficial Asaas</strong>: O sistema gera o comprovante oficial com selo/logo Asaas, ID da transação e favorecido Eletromecânica Baia Ltda para impressão térmica ou em PDF.</p>
+                <p>6. <strong>Estorno Automático Pix (Refund)</strong>: Cancelamentos realizados antes do preparo acionam <code>POST /api/asaas/refund</code>, devolvendo 100% do valor ao cliente em segundos.</p>
               </div>
             </div>
           )}

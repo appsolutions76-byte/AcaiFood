@@ -164,24 +164,38 @@ flowchart LR
 
 ## 8. Mecanismo Universal de Segurança por PIN (4 Dígitos)
 
-O protocolo de PIN é o núcleo anti-fraude do AçaíFood em todas as operações:
+O protocolo de PIN é o núcleo anti-fraude e de conformidade do AçaíFood em todas as operações:
 
 | Tipo de Transação | Quem gera e possui o PIN? | Quem digita e valida o PIN? | O que acontece após a validação? |
 | :--- | :--- | :--- | :--- |
-| **B2C (Venda de Açaí)** | 👤 Cliente Residencial | 🛵 Motoboy | Libera o pagamento da batedeira e o frete do motoboy. |
-| **B2B (Lote de Frutos)** | 🏪 Batedeira Compradora | 🚚 Caminhoneiro | Libera o valor das latas para o produtor e o frete pesado. |
-| **EcoPoint (Resíduos)** | 🏪 Batedeira Solicitante | 🚛 Motorista de Caçamba | Confirma a coleta física e liquida o frete da caçamba. |
+| **B2C (Venda de Açaí)** | 👤 Cliente Residencial | 🛵 Motoboy | Confirma a entrega física, protege contra cancelamento e **libera o saldo na carteira da batedeira e do motoboy**. |
+| **B2B (Lote de Frutos)** | 🏪 Batedeira Compradora | 🚚 Caminhoneiro | Confirma a conferência do lote e **libera o valor das latas para o produtor e o frete pesado**. |
+| **EcoPoint (Resíduos)** | 🏪 Batedeira Solicitante | 🚛 Motorista de Caçamba | Confirma a coleta física do caroço e **liquida o frete da caçamba**. |
+
+> **🔐 Regra de Proteção em Trânsito:** No momento do pagamento pelo cliente, o entregador ainda não foi alocado ou pode haver troca/cancelamento durante o trajeto. Portanto, os repasses financeiros aos parceiros **só entram no saldo disponível de saque após a validação presencial do PIN de 4 dígitos** (`RECEIVED`). Isso garante que o valor seja creditado exclusivamente a quem finalizou com sucesso a entrega.
 
 ---
 
-## 9. Sistema Financeiro: Checkout Asaas, Split Automático e Saques PIX
+## 9. Sistema Financeiro: Checkout Asaas, Split Automático e Liquidação em 2 Tempos (Opção 2)
  
- ### 💳 Fluxo de Liquidação e Split
- 1. **Idempotência de Pagamento:** Cada pedido gera uma cobrança com chave única (`externalReference = orderId`), impedindo duplicidade.
- 2. **Split Nativo Asaas:** A divisão dos percentuais entre Plataforma, Vendedor e Entregador é calculada em centavos no checkout e gravada na tabela `splits`.
- 3. **Saldo Estrito Pós-PIN:** O saldo para saque só é creditado ao parceiro após a validação presencial do PIN de 4 dígitos na entrega (`RECEIVED` / `DELIVERED`).
- 4. **Controle de Saques Diários:** Cada parceiro (batedeira, fornecedor, motoboy e caminhoneiro) pode solicitar saques instantâneos via PIX diretamente pelo seu painel para qualquer banco.
- 5. **Varredura Diária Automática (Sweep):** Valores remanescentes são liquidados automaticamente no horário configurado no município (padrão: 22:00).
+ ### 💳 Fluxo de Liquidação Assíncrona em 2 Tempos (Contrato Asaas BaaS)
+ Em estrito cumprimento às **Cláusulas 2.1, 6.3 e 6.4 do contrato de Banking as a Service (BaaS) do Asaas**, os valores repassados devem transitar pela subconta de pagamento do parceiro antes de serem enviados à sua conta bancária externa:
+
+ 1. **Idempotência de Pagamento:** Cada pedido gera uma cobrança com chave única (`externalReference = orderId`), impedindo duplicidade no checkout PIX.
+ 2. **Acúmulo Seguro na Conta Master:** O pagamento do cliente entra na conta Master (Eletromecânica Baia Ltda) e fica protegido durante todo o preparo e despacho.
+ 3. **Saldo Estrito Pós-PIN:** O saldo para saque só é liberado ao parceiro após a validação presencial do PIN de 4 dígitos (`RECEIVED` / `DELIVERED`).
+ 4. **Tempo 1 (Master ➔ Subconta Asaas):**
+    - Quando o parceiro solicita saque e o administrador aprova no painel, a conta Master efetua a transferência do valor integral solicitado para a subconta Asaas (`walletId`) do parceiro.
+    - A solicitação assume o status `PROCESSING` (`Em Processamento (Subconta)`).
+    - **O Pix externo NÃO é disparado simultaneamente**, eliminando o conflito de fila que causava o estorno (`INTERNAL_TRANSFER_REVERSAL`) no Asaas.
+ 5. **Tempo 2 (Subconta ➔ Conta Bancária Pix do Parceiro):**
+    - Assim que a transferência interna é liquidada no Asaas (`status: DONE`), notificada via Webhook (`/api/asaas/transfer-webhook`) ou detectada pelo sincronizador contínuo (`/api/admin/withdrawals/reconcile`):
+    - O sistema acessa a subconta via sua chave de API dedicada (`partner_secrets`).
+    - Desconta a taxa de transferência Pix do Asaas de **R$ 0,99** (Opção 1 de tarifa: o parceiro arca com o custo do Pix).
+    - Envia o valor líquido via Pix diretamente para a conta bancária do titular (mesmo CPF/CNPJ).
+    - A subconta zera perfeitamente, o saque atinge status `PAGO`, os pedidos vinculados são baixados (`payout_driver_done` / `payout_seller_done = true`) e o extrato financeiro é registrado.
+ 6. **Mesma Titularidade Obrigatória (Resoluções BCB nº 1/2020 e nº 80/2021):**
+    - Todas as contas bancárias de destino Pix devem pertencer rigorosamente ao mesmo CPF ou CNPJ cadastrado, sem exceções.
  
  ---
  
