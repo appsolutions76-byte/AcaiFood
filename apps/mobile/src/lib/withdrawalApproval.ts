@@ -121,25 +121,32 @@ export async function processWithdrawalApproval(
 
   const isDriverRole = ['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(String(requestRow.role || partnerUser.role).toLowerCase());
 
-  // 4.1 Validação de duplicidade de ordens (Recusa se algum pedido estiver em outro saque aberto/pago)
+  // 4.1 Validação de duplicidade de ordens (Recusa se algum pedido estiver em outro saque aberto/pago do MESMO papel)
   if (finalOrderIds && finalOrderIds.length > 0) {
     const { data: otherWithdrawals } = await adminSupabase
       .from('withdrawal_requests')
-      .select('id, order_ids, status')
+      .select('id, order_ids, status, role')
       .in('status', ['PAGO', 'PROCESSING', 'PENDENTE', 'APROVADO'])
       .neq('id', requestId);
 
     if (otherWithdrawals && otherWithdrawals.length > 0) {
       const alreadyUsedOrderIds = new Set<string>();
       for (const ow of otherWithdrawals) {
-        if (Array.isArray(ow.order_ids)) {
-          ow.order_ids.forEach((oid: string) => alreadyUsedOrderIds.add(oid));
+        const owIsDriver = ['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(String(ow.role || '').toLowerCase());
+        // Só considera duplicidade se o saque pertencer ao mesmo grupo de papel:
+        // motorista conflita com motorista; loja/fornecedor conflita com loja/fornecedor.
+        // O mesmo pedido possui payout_driver e payout_seller independentes.
+        if (owIsDriver === isDriverRole) {
+          if (Array.isArray(ow.order_ids)) {
+            ow.order_ids.forEach((oid: string) => alreadyUsedOrderIds.add(String(oid)));
+          }
         }
       }
 
-      const duplicateOrderId = finalOrderIds.find((id: string) => alreadyUsedOrderIds.has(id));
+      const duplicateOrderId = finalOrderIds.find((id: string) => alreadyUsedOrderIds.has(String(id)));
       if (duplicateOrderId) {
-        const failMsg = `O pedido ${duplicateOrderId} já está vinculado a outro saque aberto ou liquidado.`;
+        const papelStr = isDriverRole ? 'motorista' : 'loja/fornecedor';
+        const failMsg = `O pedido ${duplicateOrderId} já está vinculado a outro saque de ${papelStr} aberto ou liquidado.`;
         await adminSupabase
           .from('withdrawal_requests')
           .update({
