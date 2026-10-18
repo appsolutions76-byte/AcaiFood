@@ -495,7 +495,9 @@ function AdminDashboardContent() {
   // 3. Efeitos (useEffect)
   const isAdmin = !!store.currentUser && (
     store.currentUser.role === 'admin' || 
-    (store.currentUser.role as string)?.toLowerCase() === 'admin'
+    (store.currentUser.role as string)?.toLowerCase() === 'admin' ||
+    (store.currentUser as any)?.is_admin === true ||
+    (store.currentUser.email as string)?.toLowerCase() === 'appsolutions76@gmail.com'
   );
 
   const fetchActivationConfig = async () => {

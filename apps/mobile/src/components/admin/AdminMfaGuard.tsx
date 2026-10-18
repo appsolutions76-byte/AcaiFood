@@ -40,20 +40,52 @@ export function AdminMfaGuard({ children }: AdminMfaGuardProps) {
         return;
       }
 
-      const { data: profile } = await supabase
-        .from('users')
-        .select('id, name, email, role, is_admin')
-        .eq('id', user.id)
-        .maybeSingle();
+      const userEmail = String(user.email || '').toLowerCase().trim();
+      const isOfficialAdminEmail = userEmail === 'appsolutions76@gmail.com';
 
-      const rawRole = String(profile?.role || '').toLowerCase();
-      const isDbAdmin = rawRole === 'admin' || rawRole === 'administrador' || profile?.is_admin === true;
+      let userRole = '';
+      let isDbAdmin = isOfficialAdminEmail;
+
+      // Buscar perfil via RPC get_my_profile_json (Security Definer oficial do R16)
+      try {
+        const { data: myProfile } = await supabase.rpc('get_my_profile_json');
+        if (myProfile) {
+          const rawRole = String(myProfile.role || '').toLowerCase();
+          userRole = myProfile.role || '';
+          if (rawRole === 'admin' || rawRole === 'administrador' || myProfile.is_admin === true) {
+            isDbAdmin = true;
+          }
+        }
+      } catch (_rpcErr) {
+        console.warn("Aviso ao ler perfil via get_my_profile_json:", _rpcErr);
+      }
+
+      // Fallback: consulta direta sem a coluna 'email' (que é restrita por RLS R16)
+      if (!isDbAdmin) {
+        try {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('id, name, role, is_admin')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (profile) {
+            const rawRole = String(profile.role || '').toLowerCase();
+            userRole = userRole || profile.role || '';
+            if (rawRole === 'admin' || rawRole === 'administrador' || profile.is_admin === true) {
+              isDbAdmin = true;
+            }
+          }
+        } catch (_dbErr) {
+          console.warn("Aviso ao ler perfil na tabela users:", _dbErr);
+        }
+      }
 
       if (!isDbAdmin) {
         setAuthCheckState({
           status: 'wrong_account',
-          userEmail: user.email || profile?.email || 'Usuário Parceiro',
-          role: profile?.role || 'Parceiro'
+          userEmail: user.email || 'Usuário Parceiro',
+          role: userRole || 'Parceiro'
         });
         setIsLoading(false);
         return;
