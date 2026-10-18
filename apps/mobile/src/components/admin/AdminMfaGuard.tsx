@@ -22,11 +22,46 @@ export function AdminMfaGuard({ children }: AdminMfaGuardProps) {
   const [verifyCode, setVerifyCode] = useState<string>('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [authCheckState, setAuthCheckState] = useState<{
+    status: 'ok' | 'wrong_account' | 'unauthenticated';
+    userEmail?: string;
+    role?: string;
+  }>({ status: 'ok' });
 
   const checkMfaStatus = async () => {
     setIsLoading(true);
     setErrorMsg(null);
     try {
+      // 1. Checar se a sessão ativa no Supabase Auth é de fato Administrador
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setAuthCheckState({ status: 'unauthenticated' });
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('id, name, email, role, is_admin')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const rawRole = String(profile?.role || '').toLowerCase();
+      const isDbAdmin = rawRole === 'admin' || rawRole === 'administrador' || profile?.is_admin === true;
+
+      if (!isDbAdmin) {
+        setAuthCheckState({
+          status: 'wrong_account',
+          userEmail: user.email || profile?.email || 'Usuário Parceiro',
+          role: profile?.role || 'Parceiro'
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      setAuthCheckState({ status: 'ok' });
+
+      // 2. Com a sessão de admin confirmada, checar MFA (TOTP)
       const { data: aalData, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aalErr) {
         setIsLoading(false);
@@ -74,12 +109,7 @@ export function AdminMfaGuard({ children }: AdminMfaGuardProps) {
   };
 
   useEffect(() => {
-    const role = String(currentUser?.role || '').toLowerCase();
-    if (role === 'admin' || currentUser?.is_admin === true) {
-      checkMfaStatus();
-    } else {
-      setIsLoading(false);
-    }
+    checkMfaStatus();
   }, [currentUser?.id, currentUser?.role]);
 
   const handleVerifyTotp = async (e: React.FormEvent) => {
@@ -135,6 +165,72 @@ export function AdminMfaGuard({ children }: AdminMfaGuardProps) {
       <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4">
         <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mb-4" />
         <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400">Verificando segurança MFA de Administrador...</p>
+      </div>
+    );
+  }
+
+  if (authCheckState.status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-zinc-900 border border-purple-800/60 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-4">
+          <div className="w-14 h-14 bg-purple-500/20 text-purple-400 rounded-2xl flex items-center justify-center mx-auto">
+            <KeyRound size={32} />
+          </div>
+          <h2 className="text-xl font-black text-white">Sessão Administrativa Expirada</h2>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Faça login com a conta de Administrador para gerenciar pedidos, saques e configurações.
+          </p>
+          <button
+            onClick={() => {
+              logout();
+              window.location.href = '/login';
+            }}
+            className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-3 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer"
+          >
+            <LogOut size={16} /> Fazer Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (authCheckState.status === 'wrong_account') {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-zinc-900 border border-amber-600/50 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-4">
+          <div className="w-14 h-14 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto">
+            <ShieldAlert size={32} />
+          </div>
+          <h2 className="text-xl font-black text-white">Acesso Exclusivo para Administrador</h2>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Você está conectado no navegador com a conta:
+            <br />
+            <strong className="text-amber-300 font-mono text-sm">{authCheckState.userEmail}</strong>
+            {authCheckState.role && (
+              <span className="block text-[11px] text-zinc-400 mt-1">
+                Perfil ativo: <span className="font-bold uppercase text-zinc-200">{authCheckState.role}</span>
+              </span>
+            )}
+          </p>
+          <div className="bg-zinc-800/80 p-3.5 rounded-xl text-xs text-zinc-300 border border-zinc-700/80 text-left space-y-1">
+            <p className="font-bold text-amber-300 flex items-center gap-1.5">
+              <span>💡</span> Por que vejo esta tela?
+            </p>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              Ao testar o app com o perfil do parceiro (ex: Gabriel Lobo) no mesmo navegador, a sessão salva foi a do parceiro. Para aprovar solicitações de saque e ter autorização do Asaas, você deve estar logado com a conta oficial de <strong>Administrador</strong>.
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              logout();
+              window.location.href = '/login';
+            }}
+            className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-3.5 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer"
+          >
+            <LogOut size={16} /> Entrar como Administrador
+          </button>
+        </div>
       </div>
     );
   }
