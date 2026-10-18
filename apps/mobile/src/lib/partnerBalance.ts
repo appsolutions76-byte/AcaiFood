@@ -27,41 +27,54 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     const ORDER_BALANCE_COLS = 'id, status, driver_id, seller_storefront_id, order_type, products_subtotal, delivery_distance_km, driver_amount, seller_amount, seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, payout_seller_done, payout_driver_done';
 
     if (isDriver) {
-      // 1. Motorista / Motoboy / Caminhão: consultar orders por driver_id ou motorista_id
-      const queries = [
-        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).eq('driver_id', partnerId).or('payout_driver_done.eq.false,payout_driver_done.is.null').in('status', validStatuses),
-        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).eq('motorista_id', partnerId).or('payout_driver_done.eq.false,payout_driver_done.is.null').in('status', validStatuses),
-      ];
+      // 1. Motorista / Motoboy / Caminhão: consultar orders por driver_id
+      const { data: driverOrders, error: dErr } = await adminSupabase
+        .from('orders')
+        .select(ORDER_BALANCE_COLS)
+        .eq('driver_id', partnerId)
+        .or('payout_driver_done.eq.false,payout_driver_done.is.null')
+        .in('status', validStatuses);
 
-      const results = await Promise.allSettled(queries);
-      for (const res of results) {
-        if (res.status === 'fulfilled' && res.value.data) {
-          for (const order of res.value.data) {
-            const st = String(order.status || '').trim();
-            if (validStatuses.includes(st) && !order.payout_driver_done) {
-              matchedOrdersMap.set(order.id, order);
-            }
+      if (dErr) {
+        console.warn('[partnerBalance] Aviso ao consultar pedidos do motorista:', dErr);
+      }
+
+      if (driverOrders && driverOrders.length > 0) {
+        for (const order of driverOrders) {
+          const st = String(order.status || '').trim();
+          if (validStatuses.includes(st) && !order.payout_driver_done) {
+            matchedOrdersMap.set(order.id, order);
           }
         }
       }
 
       for (const o of matchedOrdersMap.values()) {
-        const productsSubtotal = Number((o as any).products_subtotal ?? (o as any).valor ?? (o as any).total_value ?? (o as any).subtotal ?? (o as any).price ?? 0);
-        const distanceKm = Number((o as any).delivery_distance_km ?? (o as any).distancia ?? (o as any).distance ?? 0);
-        const cityName = (o as any).cidade_origem || (o as any).cidade || (o as any).delivery_city || (o as any).city || null;
-
         let netDriver = 0;
-        try {
-          const pricing = await calculateOrderPricing({
-            orderType: o.order_type || (o as any).type || 'B2C',
-            distanceKm,
-            cityName,
-            productsSubtotal,
-            sellerStorefrontId: o.seller_storefront_id
-          }, adminSupabase);
-          netDriver = pricing.netDriverPayout;
-        } catch (_pErr) {
-          netDriver = Number((o as any).driver_amount || (o as any).driver_payout || 0);
+        // Prioridade 1: valor líquido gravado diretamente no pedido
+        const savedAmount = o.driver_payout_amount !== null && o.driver_payout_amount !== undefined
+          ? Number(o.driver_payout_amount)
+          : (o.driver_amount !== null && o.driver_amount !== undefined ? Number(o.driver_amount) : null);
+
+        if (savedAmount !== null && savedAmount > 0) {
+          netDriver = savedAmount;
+        } else {
+          // Fallback: cálculo pelo motor de precificação
+          const productsSubtotal = Number((o as any).products_subtotal ?? (o as any).valor ?? (o as any).total_value ?? (o as any).subtotal ?? (o as any).price ?? 0);
+          const distanceKm = Number((o as any).delivery_distance_km ?? (o as any).distancia ?? (o as any).distance ?? 0);
+          const cityName = (o as any).cidade_origem || (o as any).cidade || (o as any).delivery_city || (o as any).city || null;
+
+          try {
+            const pricing = await calculateOrderPricing({
+              orderType: o.order_type || (o as any).type || 'B2C',
+              distanceKm,
+              cityName,
+              productsSubtotal,
+              sellerStorefrontId: o.seller_storefront_id
+            }, adminSupabase);
+            netDriver = pricing.netDriverPayout;
+          } catch (_pErr) {
+            netDriver = Number(o.driver_payout_amount || (o as any).driver_amount || (o as any).driver_payout || 0);
+          }
         }
 
         if (netDriver > 0) {
@@ -79,42 +92,53 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
       const sfIds = storefronts ? storefronts.map(s => s.id) : [];
       const validIds = Array.from(new Set([...sfIds, partnerId]));
 
-      const queries = [
-        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).in('seller_storefront_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
-        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).in('loja_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
-        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).in('fornecedor_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
-        adminSupabase.from('orders').select(ORDER_BALANCE_COLS).in('origem_id', validIds).or('payout_seller_done.eq.false,payout_seller_done.is.null').in('status', validStatuses),
-      ];
+      const { data: storeOrders, error: sErr } = await adminSupabase
+        .from('orders')
+        .select(ORDER_BALANCE_COLS)
+        .in('seller_storefront_id', validIds)
+        .or('payout_seller_done.eq.false,payout_seller_done.is.null')
+        .in('status', validStatuses);
 
-      const results = await Promise.allSettled(queries);
-      for (const res of results) {
-        if (res.status === 'fulfilled' && res.value.data) {
-          for (const order of res.value.data) {
-            const st = String(order.status || '').trim();
-            if (validStatuses.includes(st) && !order.payout_seller_done) {
-              matchedOrdersMap.set(order.id, order);
-            }
+      if (sErr) {
+        console.warn('[partnerBalance] Aviso ao consultar pedidos da loja/fornecedor:', sErr);
+      }
+
+      if (storeOrders && storeOrders.length > 0) {
+        for (const order of storeOrders) {
+          const st = String(order.status || '').trim();
+          if (validStatuses.includes(st) && !order.payout_seller_done) {
+            matchedOrdersMap.set(order.id, order);
           }
         }
       }
 
       for (const o of matchedOrdersMap.values()) {
-        const productsSubtotal = Number((o as any).products_subtotal ?? (o as any).valor ?? (o as any).total_value ?? (o as any).subtotal ?? (o as any).price ?? 0);
-        const distanceKm = Number((o as any).delivery_distance_km ?? (o as any).distancia ?? (o as any).distance ?? 0);
-        const cityName = (o as any).cidade_origem || (o as any).cidade || (o as any).delivery_city || (o as any).city || null;
-
         let netSeller = 0;
-        try {
-          const pricing = await calculateOrderPricing({
-            orderType: o.order_type || (o as any).type || 'B2C',
-            distanceKm,
-            cityName,
-            productsSubtotal,
-            sellerStorefrontId: o.seller_storefront_id
-          }, adminSupabase);
-          netSeller = pricing.netSellerPayout;
-        } catch (_pErr) {
-          netSeller = Number((o as any).seller_amount || (o as any).seller_payout || 0);
+        // Prioridade 1: valor líquido gravado diretamente no pedido
+        const savedAmount = o.seller_payout_amount !== null && o.seller_payout_amount !== undefined
+          ? Number(o.seller_payout_amount)
+          : (o.seller_amount !== null && o.seller_amount !== undefined ? Number(o.seller_amount) : null);
+
+        if (savedAmount !== null && savedAmount > 0) {
+          netSeller = savedAmount;
+        } else {
+          // Fallback: cálculo pelo motor de precificação
+          const productsSubtotal = Number((o as any).products_subtotal ?? (o as any).valor ?? (o as any).total_value ?? (o as any).subtotal ?? (o as any).price ?? 0);
+          const distanceKm = Number((o as any).delivery_distance_km ?? (o as any).distancia ?? (o as any).distance ?? 0);
+          const cityName = (o as any).cidade_origem || (o as any).cidade || (o as any).delivery_city || (o as any).city || null;
+
+          try {
+            const pricing = await calculateOrderPricing({
+              orderType: o.order_type || (o as any).type || 'B2C',
+              distanceKm,
+              cityName,
+              productsSubtotal,
+              sellerStorefrontId: o.seller_storefront_id
+            }, adminSupabase);
+            netSeller = pricing.netSellerPayout;
+          } catch (_pErr) {
+            netSeller = Number(o.seller_payout_amount || (o as any).seller_amount || (o as any).seller_payout || 0);
+          }
         }
 
         if (netSeller > 0) {

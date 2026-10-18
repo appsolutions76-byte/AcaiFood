@@ -300,9 +300,18 @@ function AdminDashboardContent() {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
+  const normalizePartnerRole = (r?: string): 'motorista' | 'loja' | 'fornecedor' | null => {
+    const s = String(r || '').toLowerCase().trim();
+    if (['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(s)) return 'motorista';
+    if (['loja', 'partner', 'batedeira'].includes(s)) return 'loja';
+    if (['fornecedor', 'supplier'].includes(s)) return 'fornecedor';
+    return null;
+  };
+
   // Função auxiliar centralizada para calcular pedidos pendentes e saldo devido de qualquer usuário parceiro (estritamente pós-PIN)
   const getPendingOrdersAndOwedForUser = (u: any) => {
-    if (!u || !['motorista', 'loja', 'fornecedor'].includes(u.role)) {
+    const normRole = normalizePartnerRole(u?.role);
+    if (!u || !normRole) {
       return { pendingOrders: [] as Order[], amountOwed: 0 };
     }
 
@@ -316,11 +325,11 @@ function AdminDashboardContent() {
       const isValidOrder = validStatuses.includes(st);
       if (!isValidOrder) return false;
 
-      if (u.role === 'motorista') {
+      if (normRole === 'motorista') {
         const isThisDriver = o.motoristaId === u.id || (o as any).driver_id === u.id;
         const isPaid = !!o.payoutDriverDone || !!(o as any).payout_driver_done;
         return isThisDriver && !isPaid;
-      } else if (u.role === 'loja') {
+      } else if (normRole === 'loja') {
         const isThisStore = o.lojaId === u.id || 
                             (o as any).sellerStorefrontId === u.id || 
                             (o as any).seller_storefront_id === u.id || 
@@ -341,12 +350,12 @@ function AdminDashboardContent() {
     });
 
     const amountOwed = pendingOrders.reduce((acc: number, o: Order) => {
-      if (u.role === 'motorista') {
-        return acc + (o.taxas?.entregaMotorista || (o as any).driver_amount || getDynamicTaxes(o).repasseMoto || 0);
-      } else if (u.role === 'loja') {
-        return acc + (o.taxas?.repasse || (o as any).seller_amount || getDynamicTaxes(o).repasseLoja || 0);
+      if (normRole === 'motorista') {
+        return acc + (o.taxas?.entregaMotorista || (o as any).driver_payout_amount || (o as any).driver_amount || getDynamicTaxes(o).repasseMoto || 0);
+      } else if (normRole === 'loja') {
+        return acc + (o.taxas?.repasse || (o as any).seller_payout_amount || (o as any).seller_amount || getDynamicTaxes(o).repasseLoja || 0);
       } else {
-        return acc + (o.taxas?.repasse || (o as any).seller_amount || getDynamicTaxes(o).repasseForn || 0);
+        return acc + (o.taxas?.repasse || (o as any).seller_payout_amount || (o as any).seller_amount || getDynamicTaxes(o).repasseForn || 0);
       }
     }, 0);
 
@@ -1193,7 +1202,7 @@ function AdminDashboardContent() {
   const partnersWithPendingPayouts = useMemo(() => {
     const list: Array<{ user: any; pendingOrders: Order[]; amountOwed: number }> = [];
     Object.values(users).forEach((u: any) => {
-      if (u && (u.role === 'motorista' || u.role === 'loja' || u.role === 'fornecedor')) {
+      if (u && normalizePartnerRole(u.role)) {
         const { pendingOrders, amountOwed } = getPendingOrdersAndOwedForUser(u);
         if (amountOwed > 0) {
           list.push({ user: u, pendingOrders, amountOwed });
@@ -2680,7 +2689,7 @@ function AdminDashboardContent() {
                                           <p className="text-[10px] text-zinc-500 font-mono">{u.id}</p>
                                       </div>
                                   </div>
-                                  {(u.role === 'motorista' || u.role === 'loja' || u.role === 'fornecedor') && (() => {
+                                  {normalizePartnerRole(u.role) && (() => {
                                     const { pendingOrders, amountOwed } = getPendingOrdersAndOwedForUser(u);
                                     const isPaying = payingPartnerId === u.id;
                                     const rawPix = (u.cpfCnpj || (u as any).cpf_cnpj || u.pixKey || (u as any).pix_key || '').trim();

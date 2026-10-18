@@ -185,11 +185,18 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
               <button
                 disabled={!balanceData?.canRequest || requesting}
                 onClick={handleRequestWithdrawal}
-                className={`px-5 py-3.5 rounded-2xl font-bold text-sm shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
+                className={`px-5 py-3.5 rounded-2xl font-bold text-sm shadow-lg transition active:scale-95 flex items-center justify-center gap-2 ${
                   balanceData?.canRequest && !requesting
-                    ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-900/50'
-                    : 'bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
+                    ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-900/50 cursor-pointer'
+                    : 'bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed opacity-75'
                 }`}
+                title={
+                  !balanceData?.canRequest 
+                    ? (totalDisponivel < minVal 
+                        ? `Saldo disponível (${formatMoney(totalDisponivel)}) abaixo do valor mínimo (${formatMoney(minVal)})` 
+                        : 'Saque não disponível no momento')
+                    : 'Solicitar transferência para sua subconta Asaas'
+                }
               >
                 <ArrowDownToLine size={18} />
                 {requesting ? 'Enviando...' : 'Solicitar Saque'}
@@ -197,6 +204,13 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
             </div>
           )}
         </div>
+
+        {accountApproved && !pendingReq && totalDisponivel === 0 && (
+          <div className="mt-4 text-xs text-zinc-400 bg-zinc-800/40 border border-zinc-700/40 rounded-xl p-2.5 flex items-center gap-2">
+            <AlertCircle size={15} className="shrink-0 text-zinc-400" />
+            <span>Nenhum repasse de entrega pendente no momento. Quando concluir novos pedidos com validação de PIN, seu saldo disponível será liberado aqui.</span>
+          </div>
+        )}
 
         {accountApproved && !pendingReq && totalDisponivel > 0 && totalDisponivel < minVal && (
           <div className="mt-4 text-xs text-amber-300 bg-amber-950/40 border border-amber-900/50 rounded-xl p-2.5 flex items-center gap-2">
