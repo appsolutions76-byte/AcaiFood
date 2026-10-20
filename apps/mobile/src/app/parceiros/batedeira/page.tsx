@@ -628,7 +628,7 @@ export default function BatedeiraDashboard() {
               <div className="text-xs text-zinc-700 dark:text-zinc-300 mb-1 font-bold flex flex-wrap items-center gap-3">
                   <span>
                     {o.type === 'B2C' ? `👤 Cliente: ${o.clienteNome || store.users[(o as any).buyerId!]?.name || store.users[o.destinoId]?.name || store.users[o.clienteId!]?.name || store.users[o.criadoPor]?.name || 'Cliente'}` :
-                     o.type === 'B2B' ? `🏭 Fornecedor: ${store.users[o.origemId]?.name || '—'}` :
+                     o.type === 'B2B' ? `🏭 Fornecedor: ${store.users[o.origemId]?.name || store.users[(o as any).fornecedorId]?.name || (o as any).fornecedorNome || (o as any).sellerName || 'Fornecedor'}` :
                      `🚛 Caçamba Ecoponto`}
                   </span>
                   <span className="text-zinc-400">|</span>
@@ -657,13 +657,15 @@ export default function BatedeiraDashboard() {
                  </div>
               )}
 
-              {o.deliveryPin && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && o.type !== 'B2C' && (
+              {(o.deliveryPin || (o as any).delivery_pin) && !isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && o.type !== 'B2C' && (
                  <div className="mt-2 mb-2 bg-purple-900 dark:bg-purple-950 text-white p-3 rounded-lg flex items-center justify-between shadow-md border border-purple-700">
                      <div>
                          <p className="text-[10px] font-bold uppercase text-purple-300">🔑 PIN de Segurança</p>
                          <p className="text-[10px] text-purple-100 leading-tight">Forneça ao motorista na entrega/coleta</p>
                      </div>
-                     <div className="text-xl font-black tracking-widest text-white bg-purple-950 px-3 py-1 rounded border border-purple-600">{o.deliveryPin}</div>
+                     <div className="text-xl font-black tracking-widest text-white bg-purple-950 px-3 py-1 rounded border border-purple-600">
+                       {o.deliveryPin || (o as any).delivery_pin}
+                     </div>
                  </div>
               )}
           </div>

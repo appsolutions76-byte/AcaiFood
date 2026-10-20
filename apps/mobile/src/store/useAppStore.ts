@@ -806,7 +806,11 @@ export const useAppStore = create<AppState>()(
                         // 1. Sinal sonoro de Novo Pedido para Lojas / Batedeiras & Fornecedores
                         if (
                           (userRole === 'loja' || userRole === 'batedeira' || userRole === 'fornecedor') &&
-                          (newOrder.loja_id === u.id || newOrder.lojaId === u.id || newOrder.fornecedor_id === u.id || newOrder.fornecedorId === u.id) &&
+                          (
+                            newOrder.loja_id === u.id || newOrder.lojaId === u.id || 
+                            newOrder.fornecedor_id === u.id || newOrder.fornecedorId === u.id ||
+                            newOrder.seller_storefront_id === u.id || (u.storefrontId && newOrder.seller_storefront_id === u.storefrontId)
+                          ) &&
                           newOrder.status !== 'aguardando_pagamento' && newOrder.status !== 'PENDING' &&
                           (newOrder.status === 'pendente' || newOrder.status === 'PAID' || newOrder.status === 'preparo' || newOrder.status === 'PREPARING' || newOrder.status === 'aguardando_loja')
                         ) {
