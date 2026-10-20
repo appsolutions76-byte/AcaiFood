@@ -147,7 +147,7 @@ export function AdminWithdrawalsSection({
       `• Taxa Pix Asaas (Opção 1): - R$ ${pixFee.toFixed(2)}\n` +
       `• Valor líquido transferido via Pix: R$ ${netAmount.toFixed(2)}\n` +
       `• Chave Pix de destino: ${pixDestino}\n\n` +
-      `Ao aprovar, a requisição Pix é disparada via API para o Asaas. Em seguida, acesse o app do Asaas para realizar a autorização bancária final da transferência.`;
+      `Ao aprovar, a transferência Pix é enviada diretamente da subconta Asaas do parceiro para a conta bancária dele.`;
 
     if (!confirm(confirmMsg)) return;
 
