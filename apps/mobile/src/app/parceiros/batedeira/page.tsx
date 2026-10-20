@@ -1235,9 +1235,9 @@ export default function BatedeiraDashboard() {
                                         ⚡ Pix
                                       </button>
                                   )}
-                                  {activeColeta.deliveryPin && (
+                                  {(activeColeta.deliveryPin || (activeColeta as any).delivery_pin) && (
                                       <span className="text-[11px] font-black bg-purple-700 text-white px-2 py-1 rounded-md border border-purple-500 tracking-wider">
-                                          PIN: {activeColeta.deliveryPin}
+                                          PIN: {activeColeta.deliveryPin || (activeColeta as any).delivery_pin}
                                       </span>
                                   )}
                                   <button onClick={() => store.acaoPedido(activeColeta.id, 'cancelar_pedido')} className="text-[11px] text-red-500 hover:text-red-700 font-bold bg-red-50 px-2 py-1 rounded-lg border border-red-100">Cancelar</button>
