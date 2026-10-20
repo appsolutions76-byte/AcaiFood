@@ -295,13 +295,7 @@ export async function reconcilePartnerWithdrawals(partnerId?: string, role?: str
         }
       }
 
-      // 3. Se status é APROVADO mas saldo recalculado já zerou e pedidos concluídos
-      if (!updatedStatus && (req.status === 'APROVADO' || req.status === 'PROCESSING')) {
-        const bal = await getPartnerAvailableBalance(req.partner_id, req.role || 'loja');
-        if (bal.totalDisponivel === 0 && bal.orderIds.length === 0) {
-          updatedStatus = 'PAGO';
-        }
-      }
+      // (Removido fechamento prematuro sem autorização do Asaas)
 
       if (updatedStatus && updatedStatus !== req.status) {
         const nowIso = new Date().toISOString();
