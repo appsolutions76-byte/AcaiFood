@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getPartnerAvailableBalance } from '@/lib/partnerBalance';
 import { buildAsaasTransferPayload, buildSubaccountPixTransferPayload } from '@/lib/asaasTransferHelpers';
 import { logAdminAction } from '@/lib/adminAudit';
+import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 
 export interface ProcessApprovalResult {
   success: boolean;
@@ -271,6 +272,70 @@ export async function processWithdrawalApproval(
     console.warn('[WithdrawalApproval] Aviso ao checar idempotência prévia:', chkErr);
   }
 
+  // 6.5 Se o saldo já estiver depositado na subconta Asaas do parceiro, disparar Pix direto
+  let subaccountAlreadyFunded = false;
+  try {
+    const { data: secretRow } = await adminSupabase
+      .from('partner_secrets')
+      .select('asaas_account_api_key')
+      .eq('user_id', requestRow.partner_id)
+      .maybeSingle();
+
+    if (secretRow?.asaas_account_api_key) {
+      const subUrl = getAsaasBaseUrl(secretRow.asaas_account_api_key);
+      const bRes = await fetch(`${subUrl}/finance/balance`, {
+        headers: { 'access_token': secretRow.asaas_account_api_key }
+      });
+      if (bRes.ok) {
+        const bData = await bRes.json();
+        if (typeof bData?.balance === 'number' && bData.balance >= finalAmount) {
+          subaccountAlreadyFunded = true;
+          console.log(`[WithdrawalApproval] Subconta Asaas já possui saldo (R$ ${bData.balance} >= R$ ${finalAmount}). Disparando Pix direto da subconta...`);
+        }
+      }
+    }
+  } catch (_balErr) {}
+
+  if (subaccountAlreadyFunded) {
+    const effectivePixKey = partnerUser.pix_key || partnerUser.cpf_cnpj;
+    await adminSupabase
+      .from('withdrawal_requests')
+      .update({
+        status: 'PROCESSING',
+        requested_amount: finalAmount,
+        order_ids: finalOrderIds,
+        pix_key_used: effectivePixKey || null,
+        wallet_id_used: rawWalletId || null,
+        reviewed_by: actorId,
+        reviewed_at: new Date().toISOString(),
+        processed_automatically: (actorId === null),
+        failure_reason: 'Disparando transferência Pix da subconta'
+      })
+      .eq('id', requestId);
+
+    const pixResult = await executeSubaccountPixPayout(requestId);
+    if (pixResult.status === 'PAGO') {
+      return {
+        success: true,
+        status: 'PAGO',
+        transferId: pixResult.pixTransferId,
+        amount: finalAmount,
+        netAmount: pixResult.netAmount,
+        pixFee: pixResult.pixFee,
+        pixKeyUsed: pixResult.pixKeyUsed,
+        message: pixResult.message || `Saque de R$ ${finalAmount.toFixed(2)} aprovado e liquidado via Pix!`
+      };
+    } else {
+      return {
+        success: true,
+        status: 'PROCESSING',
+        transferId: pixResult.pixTransferId,
+        amount: finalAmount,
+        message: `Transferência Pix de R$ ${finalAmount.toFixed(2)} disparada no Asaas! Acesse o app do Asaas para autorizar o envio.`
+      };
+    }
+  }
+
   // 7. Resolver payload de transferência Asaas com externalReference
   const transferPayload: any = buildAsaasTransferPayload(
     partnerUser,
@@ -534,54 +599,52 @@ export async function executeSubaccountPixPayout(
   }
 
   const masterTransferId = requestRow.asaas_transfer_id;
-  if (!masterTransferId) {
-    return { success: false, status: 'PROCESSING', error: 'Sem ID de transferência interna Master -> Subconta.' };
-  }
 
-  // 2. Chaves e URLs do Asaas
-  const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
-  const masterApiKey = await getAsaasApiKey();
-  const masterBaseUrl = getAsaasBaseUrl(masterApiKey);
+  // Se houver ID de transferência interna Master -> Subconta, checar se ela liquidou (DONE) no Asaas
+  if (masterTransferId) {
+    const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
+    const masterApiKey = await getAsaasApiKey();
+    const masterBaseUrl = getAsaasBaseUrl(masterApiKey);
 
-  // 3. Consultar status da transferência interna (Master -> Subconta) no Asaas
-  try {
-    const tRes = await fetch(`${masterBaseUrl}/transfers/${masterTransferId}`, {
-      headers: { 'access_token': masterApiKey }
-    });
+    try {
+      const tRes = await fetch(`${masterBaseUrl}/transfers/${masterTransferId}`, {
+        headers: { 'access_token': masterApiKey }
+      });
 
-    if (tRes.ok) {
-      const tData = await tRes.json();
-      const tStatus = String(tData.status || '').toUpperCase();
+      if (tRes.ok) {
+        const tData = await tRes.json();
+        const tStatus = String(tData.status || '').toUpperCase();
 
-      // Se falhou ou foi cancelada no Asaas
-      if (['FAILED', 'CANCELLED', 'REJECTED', 'REFUSED'].includes(tStatus)) {
-        const failMsg = tData.failReason || tData.description || `Transferência para a subconta foi ${tStatus.toLowerCase()} no Asaas.`;
-        await adminSupabase
-          .from('withdrawal_requests')
-          .update({
-            status: 'FALHOU',
-            failure_reason: failMsg,
-            reviewed_at: new Date().toISOString()
-          })
-          .eq('id', requestId);
+        // Se falhou ou foi cancelada no Asaas
+        if (['FAILED', 'CANCELLED', 'REJECTED', 'REFUSED'].includes(tStatus)) {
+          const failMsg = tData.failReason || tData.description || `Transferência para a subconta foi ${tStatus.toLowerCase()} no Asaas.`;
+          await adminSupabase
+            .from('withdrawal_requests')
+            .update({
+              status: 'FALHOU',
+              failure_reason: failMsg,
+              reviewed_at: new Date().toISOString()
+            })
+            .eq('id', requestId);
 
-        return { success: false, status: 'FALHOU', error: failMsg };
+          return { success: false, status: 'FALHOU', error: failMsg };
+        }
+
+        // Se ainda estiver PENDING ou BANK_PROCESSING
+        if (!['DONE', 'COMPLETED', 'CONFIRMED'].includes(tStatus)) {
+          return {
+            success: false,
+            status: 'PROCESSING',
+            message: `Transferência Master -> Subconta ainda está com status '${tStatus}' no Asaas. Aguardando confirmação.`
+          };
+        }
+      } else if (tRes.status !== 404) {
+        return { success: false, status: 'PROCESSING', error: `Erro HTTP ${tRes.status} ao consultar Asaas.` };
       }
-
-      // Se ainda estiver PENDING ou BANK_PROCESSING
-      if (!['DONE', 'COMPLETED', 'CONFIRMED'].includes(tStatus)) {
-        return {
-          success: false,
-          status: 'PROCESSING',
-          message: `Transferência Master -> Subconta ainda está com status '${tStatus}' no Asaas. Aguardando confirmação.`
-        };
-      }
-    } else if (tRes.status !== 404) {
-      return { success: false, status: 'PROCESSING', error: `Erro HTTP ${tRes.status} ao consultar Asaas.` };
+    } catch (chkErr: any) {
+      console.warn(`[executeSubaccountPixPayout] Falha de rede ao consultar Master -> Subconta:`, chkErr);
+      return { success: false, status: 'PROCESSING', error: 'Falha temporária de rede ao consultar o Asaas.' };
     }
-  } catch (chkErr: any) {
-    console.warn(`[executeSubaccountPixPayout] Falha de rede ao consultar Master -> Subconta:`, chkErr);
-    return { success: false, status: 'PROCESSING', error: 'Falha temporária de rede ao consultar o Asaas.' };
   }
 
   // 4. Transferência interna confirmada (DONE)! Disparar Pix da subconta (Tempo 2)

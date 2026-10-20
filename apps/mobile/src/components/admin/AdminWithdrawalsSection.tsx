@@ -147,7 +147,7 @@ export function AdminWithdrawalsSection({
       `• Taxa Pix Asaas (Opção 1): - R$ ${pixFee.toFixed(2)}\n` +
       `• Valor líquido transferido via Pix: R$ ${netAmount.toFixed(2)}\n` +
       `• Chave Pix de destino: ${pixDestino}\n\n` +
-      `O valor será creditado na subconta Asaas e enviado automaticamente para a chave Pix do parceiro.`;
+      `Ao aprovar, a requisição Pix é disparada via API para o Asaas. Em seguida, acesse o app do Asaas para realizar a autorização bancária final da transferência.`;
 
     if (!confirm(confirmMsg)) return;
 
@@ -596,9 +596,16 @@ export function AdminWithdrawalsSection({
                     <td className="p-3">
                       {req.status === 'PENDENTE' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pendente</span>}
                       {req.status === 'PROCESSING' && (
-                        <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 px-2 py-1 rounded text-[10px] font-bold uppercase inline-flex items-center gap-1">
-                          <Clock size={10} className="animate-spin" /> Em Processamento (Subconta)
-                        </span>
+                        <div className="space-y-0.5">
+                          <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 px-2 py-1 rounded text-[10px] font-bold uppercase inline-flex items-center gap-1">
+                            <Clock size={10} className="animate-spin" /> Em Processamento
+                          </span>
+                          {req.failure_reason?.includes('Asaas') && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                              📱 Autorizar no app Asaas
+                            </div>
+                          )}
+                        </div>
                       )}
                       {req.status === 'APROVADO' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Aprovado</span>}
                       {req.status === 'PAGO' && <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pago Pix</span>}

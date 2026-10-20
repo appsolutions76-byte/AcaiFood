@@ -5,6 +5,9 @@ export interface PartnerBalanceResult {
   totalDisponivel: number;
   orderIds: string[];
   quantidadePedidos: number;
+  mirroredFromAsaas?: boolean;
+  subaccountBalance?: number;
+  internalOrderBalance?: number;
 }
 
 export async function getPartnerAvailableBalance(partnerId: string, role: string): Promise<PartnerBalanceResult> {
@@ -151,11 +154,66 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     console.error("Erro ao calcular saldo disponível do parceiro:", err);
   }
 
-  totalDisponivel = Number(totalDisponivel.toFixed(2));
+  const internalOrderBalance = Number(totalDisponivel.toFixed(2));
+  let mirroredFromAsaas = false;
+  let subaccountBalance: number | null = null;
+
+  // 3. Espelhamento do saldo real da subconta Asaas (BaaS Cláusula 6.4)
+  try {
+    const { data: secretRow } = await adminSupabase
+      .from('partner_secrets')
+      .select('asaas_account_api_key')
+      .eq('user_id', partnerId)
+      .maybeSingle();
+
+    const subApiKey = secretRow?.asaas_account_api_key;
+    if (subApiKey) {
+      const { getAsaasBaseUrl } = await import('@/lib/asaasConfig');
+      const asaasUrl = getAsaasBaseUrl(subApiKey);
+      const balRes = await fetch(`${asaasUrl}/finance/balance`, {
+        headers: {
+          'access_token': subApiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (balRes.ok) {
+        const balData = await balRes.json();
+        if (typeof balData?.balance === 'number') {
+          subaccountBalance = Number(balData.balance);
+          mirroredFromAsaas = true;
+        }
+      } else {
+        console.warn(`[partnerBalance] Resposta HTTP ${balRes.status} do Asaas ao consultar saldo da subconta.`);
+      }
+    }
+  } catch (asaasErr) {
+    console.warn(`[partnerBalance] Não foi possível consultar saldo Asaas em tempo real para parceiro ${partnerId}:`, asaasErr);
+  }
+
+  // Regra de espelhamento:
+  // Se a subconta Asaas existe e retornou saldo com sucesso:
+  // O saldo disponível na carteira digital interna espelha diretamente o saldo da subconta no Asaas.
+  if (mirroredFromAsaas && subaccountBalance !== null) {
+    if (subaccountBalance > 0) {
+      totalDisponivel = Number(subaccountBalance.toFixed(2));
+    } else if (internalOrderBalance > 0) {
+      // Pedidos concluídos no app aguardando liquidação/depósito na subconta Asaas
+      totalDisponivel = internalOrderBalance;
+    } else {
+      totalDisponivel = 0;
+    }
+  } else {
+    totalDisponivel = internalOrderBalance;
+  }
+
   return {
-    totalDisponivel,
+    totalDisponivel: Number(totalDisponivel.toFixed(2)),
     orderIds,
-    quantidadePedidos: orderIds.length
+    quantidadePedidos: orderIds.length,
+    mirroredFromAsaas,
+    subaccountBalance: subaccountBalance !== null ? Number(subaccountBalance.toFixed(2)) : undefined,
+    internalOrderBalance
   };
 }
 

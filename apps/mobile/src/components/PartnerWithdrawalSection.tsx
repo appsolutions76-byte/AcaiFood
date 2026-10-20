@@ -21,6 +21,9 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
     canRequest: boolean;
     accountStatus?: string;
     accountApproved?: boolean;
+    mirroredFromAsaas?: boolean;
+    subaccountBalance?: number;
+    internalOrderBalance?: number;
     pendingRequest: any;
     recentRequests: any[];
   } | null>(null);
@@ -130,8 +133,20 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
               <Wallet size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-zinc-300">Saldo Disponível para Saque</h3>
-              <p className="text-[11px] text-zinc-400">Transferência automática via Pix para a sua conta bancária</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-sm text-zinc-300">Saldo Disponível para Saque</h3>
+                {balanceData?.mirroredFromAsaas && (
+                  <span className="text-[10px] bg-emerald-950/80 text-emerald-300 border border-emerald-600/50 font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Subconta Asaas
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-400">
+                {balanceData?.mirroredFromAsaas
+                  ? "Espelhado em tempo real da sua subconta bancária no Asaas"
+                  : "Transferência automática via Pix para a sua conta bancária"}
+              </p>
             </div>
           </div>
           <button
