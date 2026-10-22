@@ -375,6 +375,31 @@ export function AdminWithdrawalsSection({
         </div>
       </div>
 
+      {/* Banner de Orientação Regulamentar Asaas & Autorização 2FA */}
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-base font-bold shrink-0 mt-0.5">
+            🛡️
+          </div>
+          <div className="space-y-0.5">
+            <h4 className="font-bold text-amber-950 dark:text-amber-100 flex items-center gap-1.5">
+              Regra Bancária Asaas: Transferências da Conta Master & Saques Pix
+            </h4>
+            <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+              Transferências de liquidação enviadas da Conta Master para subcontas ou saques Pix externos podem exigir confirmação rápida no app <strong>Asaas</strong> do titular da conta por diretriz de segurança 2FA do Banco Central.
+            </p>
+          </div>
+        </div>
+        <a
+          href="https://www.asaas.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-[11px] transition shadow active:scale-95 flex items-center gap-1"
+        >
+          Abrir Asaas ↗
+        </a>
+      </div>
+
       {/* 2. Painel Unificado de Liquidação Rápida em Lote (Geral / Por Cidade) */}
       {pagarTodosParceiros && (
         <div className="bg-gradient-to-r from-purple-900/10 via-indigo-900/10 to-purple-900/5 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-zinc-900 border border-purple-200 dark:border-purple-800/60 p-5 rounded-3xl shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">

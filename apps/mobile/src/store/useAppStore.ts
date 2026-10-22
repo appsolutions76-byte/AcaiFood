@@ -2490,11 +2490,15 @@ export const useAppStore = create<AppState>()(
 
            await get().fetchOrders(currentUser.id, true);
 
-           if (action === 'forcar_baixa') {
+           if (action === 'forcar_baixa' || action === 'conf_recebedor') {
               const currentOrder = get().orders.find(o => o.id === orderId) || state.orders.find(o => o.id === orderId);
               if (currentOrder) {
                 get().incrementAdminBalances(currentOrder);
               }
+              getAuthHeaders().then(headers => {
+                fetch('/api/settlements/process?orderId=' + encodeURIComponent(orderId), { method: 'POST', headers })
+                  .catch(e => console.warn('Aviso settlement post-forcar_baixa:', e));
+              }).catch(() => {});
            }
          }
 
