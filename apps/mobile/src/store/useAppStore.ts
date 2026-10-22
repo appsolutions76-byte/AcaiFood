@@ -2269,6 +2269,9 @@ export const useAppStore = create<AppState>()(
                 set((state) => ({
                   orders: state.orders.map(o => o.id === orderId ? { ...o, deliveredAt: nowIso, receivedAt: nowIso, status: 'entregue' } : o)
                 }));
+                getAuthHeaders().then(headers => {
+                  fetch('/api/settlements/process?orderId=' + encodeURIComponent(orderId), { method: 'POST', headers }).catch(e => console.warn('Aviso settlement post-pin:', e));
+                }).catch(() => {});
                 await get().fetchOrders(currentUser.id, true);
                 return;
               }

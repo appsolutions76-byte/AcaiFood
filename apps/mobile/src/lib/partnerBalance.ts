@@ -191,18 +191,12 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     console.warn(`[partnerBalance] Não foi possível consultar saldo Asaas em tempo real para parceiro ${partnerId}:`, asaasErr);
   }
 
-  // Regra de espelhamento:
+  // Regra de espelhamento integrado:
   // Se a subconta Asaas existe e retornou saldo com sucesso:
-  // O saldo disponível na carteira digital interna espelha diretamente o saldo da subconta no Asaas.
+  // O saldo disponível na carteira considera o saldo da subconta Asaas + pedidos concluídos ainda não liquidados nela
   if (mirroredFromAsaas && subaccountBalance !== null) {
-    if (subaccountBalance > 0) {
-      totalDisponivel = Number(subaccountBalance.toFixed(2));
-    } else if (internalOrderBalance > 0) {
-      // Pedidos concluídos no app aguardando liquidação/depósito na subconta Asaas
-      totalDisponivel = internalOrderBalance;
-    } else {
-      totalDisponivel = 0;
-    }
+    const effectiveSubBal = Math.max(0, subaccountBalance);
+    totalDisponivel = Number((effectiveSubBal + internalOrderBalance).toFixed(2));
   } else {
     totalDisponivel = internalOrderBalance;
   }
@@ -280,20 +274,7 @@ export async function reconcilePartnerWithdrawals(partnerId?: string, role?: str
         }
       }
 
-      // 2. Se os pedidos cobertos já foram marcados como quitados no banco
-      if (!updatedStatus && Array.isArray(req.order_ids) && req.order_ids.length > 0) {
-        const { data: checkOrders } = await adminSupabase
-          .from('orders')
-          .select('id, payout_seller_done, payout_driver_done')
-          .in('id', req.order_ids);
-
-        if (checkOrders && checkOrders.length > 0) {
-          const allPaid = checkOrders.every((o: any) => isDriver ? o.payout_driver_done : o.payout_seller_done);
-          if (allPaid) {
-            updatedStatus = 'PAGO';
-          }
-        }
-      }
+      // 2. Não antecipar status PAGO sem confirmação real da API do Asaas
 
       // (Removido fechamento prematuro sem autorização do Asaas)
 

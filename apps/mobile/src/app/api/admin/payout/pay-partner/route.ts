@@ -103,7 +103,9 @@ export async function POST(request: Request) {
 
     // 3. Saldo autoritativo calculado no servidor
     const balanceInfo = await getPartnerAvailableBalance(partnerId, payoutRole);
-    if (!balanceInfo || balanceInfo.totalDisponivel <= 0 || balanceInfo.orderIds.length === 0) {
+    const hasOrders = Array.isArray(balanceInfo?.orderIds) && balanceInfo.orderIds.length > 0;
+    const hasSubaccountBal = Number(balanceInfo?.subaccountBalance || 0) > 0;
+    if (!balanceInfo || balanceInfo.totalDisponivel <= 0 || (!hasOrders && !hasSubaccountBal)) {
       return NextResponse.json({ error: 'Parceiro não possui saldo disponível para repasse.' }, { status: 400 });
     }
 

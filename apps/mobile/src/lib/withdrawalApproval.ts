@@ -186,8 +186,12 @@ export async function processWithdrawalApproval(
     });
     if (chkRes.ok) {
       const chkData = await chkRes.json();
-      if (chkData?.data && chkData.data.length > 0) {
-        existingTransferId = chkData.data[0].id;
+      if (Array.isArray(chkData?.data)) {
+        // O Asaas não filtra transfers por externalReference na query string, precisamos filtrar explicitamente
+        const matched = chkData.data.find((t: any) => t.externalReference === pixAttemptRef);
+        if (matched) {
+          existingTransferId = matched.id;
+        }
       }
     }
   } catch (_cErr) {}
