@@ -1412,7 +1412,7 @@ export default function StorefrontPage() {
 
         {/* PEDIDOS ATIVOS EM ANDAMENTO NA TELA PRINCIPAL */}
         {currentUser && clientActiveOrders.length > 0 && (
-          <div className="mt-8">
+          <div id="pedidos-em-andamento" className="mt-8 scroll-mt-20">
               <div className="flex items-center justify-between mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">
                 <div className="flex items-center gap-2">
                   <h3 className="font-extrabold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
@@ -1593,13 +1593,24 @@ export default function StorefrontPage() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setOrderHistoryModalOpen(true)}
-              className="w-full sm:w-auto px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-extrabold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
-            >
-              <span>Ver Histórico de Pedidos</span>
-              <span>➔</span>
-            </button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto shrink-0">
+              {clientHistoryOrders[0] && (
+                <button
+                  onClick={() => setReceiptModalOrder(clientHistoryOrders[0])}
+                  className="px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-zinc-200 dark:border-zinc-700 shadow-2xs cursor-pointer"
+                  title="Ver comprovante do último pedido"
+                >
+                  📄 Último Comprovante
+                </button>
+              )}
+              <button
+                onClick={() => setOrderHistoryModalOpen(true)}
+                className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-extrabold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <span>Ver Histórico Completo</span>
+                <span>➔</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -1993,6 +2004,11 @@ export default function StorefrontPage() {
       <PixModal 
         data={pixModalData} 
         onClose={() => setPixModalData({ open: false })} 
+        onPaymentConfirmed={async () => {
+          if (currentUser?.id) {
+            await store.fetchOrders(currentUser.id, true);
+          }
+        }}
       />
 
       <OrderReceiptModal

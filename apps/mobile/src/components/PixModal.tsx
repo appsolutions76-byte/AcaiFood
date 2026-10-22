@@ -192,10 +192,19 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
             </div>
 
             <button
-              onClick={onClose}
+              onClick={() => {
+                if (onPaymentConfirmed) onPaymentConfirmed();
+                onClose();
+                if (typeof window !== 'undefined') {
+                  setTimeout(() => {
+                    const el = document.getElementById('pedidos-em-andamento');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 250);
+                }
+              }}
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
             >
-              Concluir e Acompanhar Pedido
+              Concluir e Acompanhar Pedido ➔
             </button>
           </div>
         ) : (
