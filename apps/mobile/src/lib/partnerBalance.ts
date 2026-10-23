@@ -191,15 +191,10 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     console.warn(`[partnerBalance] Não foi possível consultar saldo Asaas em tempo real para parceiro ${partnerId}:`, asaasErr);
   }
 
-  // Regra de espelhamento integrado:
-  // Se a subconta Asaas existe e retornou saldo com sucesso:
-  // O saldo disponível na carteira considera o saldo da subconta Asaas + pedidos concluídos ainda não liquidados nela
-  if (mirroredFromAsaas && subaccountBalance !== null) {
-    const effectiveSubBal = Math.max(0, subaccountBalance);
-    totalDisponivel = Number((effectiveSubBal + internalOrderBalance).toFixed(2));
-  } else {
-    totalDisponivel = internalOrderBalance;
-  }
+  // Saldo disponível para saque = SOMENTE o saldo real da subconta Asaas (de onde o Pix sai).
+  // Pedidos entregues ainda não repassados (internalOrderBalance) aparecem como "a caminho",
+  // mas não entram no saque: só depois que o repasse Master -> subconta é confirmado.
+  totalDisponivel = mirroredFromAsaas && subaccountBalance !== null ? Math.max(0, subaccountBalance) : 0;
 
   return {
     totalDisponivel: Number(totalDisponivel.toFixed(2)),
@@ -211,99 +206,29 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
   };
 }
 
-export async function reconcilePartnerWithdrawals(partnerId?: string, role?: string): Promise<void> {
+export async function reconcilePartnerWithdrawals(partnerId?: string, _role?: string): Promise<void> {
+  // Confirma no Asaas os saques em processamento. Não envia Pix e não mexe nos pedidos:
+  // o repasse de cada pedido é controlado por settlements (payout_*_done).
   const adminSupabase = getSupabaseAdmin();
   try {
-    const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
-    const asaasApiKey = await getAsaasApiKey();
-    const asaasUrl = getAsaasBaseUrl(asaasApiKey);
-
     let query = adminSupabase
       .from('withdrawal_requests')
-      .select('id, partner_id, role, status, order_ids, asaas_transfer_id, created_at')
-      .in('status', ['PENDENTE', 'APROVADO', 'PROCESSING', 'FALHOU']);
-
-    if (partnerId) {
-      query = query.eq('partner_id', partnerId);
-    }
+      .select('id')
+      .eq('status', 'PROCESSING');
+    if (partnerId) query = query.eq('partner_id', partnerId);
 
     const { data: requests } = await query.limit(50);
     if (!requests || requests.length === 0) return;
 
+    const { reconcileWithdrawal } = await import('@/lib/withdrawalApproval');
     for (const req of requests) {
-      const normalizedRole = String(req.role || role || '').toLowerCase().trim();
-      const isDriver = ['motorista', 'motoboy', 'caminhao', 'courier', 'driver'].includes(normalizedRole);
-      let updatedStatus: string | null = null;
-      let failureReason: string | null = null;
-
-      // 1. Se estiver em PROCESSING com asaas_transfer_id:
-      // O saque passou pelo Tempo 1 (Master -> Subconta). Checar se liquidou no Asaas e disparar o Tempo 2 (Pix da Subconta).
-      if (req.status === 'PROCESSING' && req.asaas_transfer_id) {
-        try {
-          const { executeSubaccountPixPayout } = await import('@/lib/withdrawalApproval');
-          const pixExecRes = await executeSubaccountPixPayout(req.id);
-          if (pixExecRes.status === 'PAGO') {
-            continue; // Já finalizado pelo helper
-          }
-          if (pixExecRes.status === 'FALHOU') {
-            continue;
-          }
-        } catch (subPixErr) {
-          console.warn(`[reconcilePartnerWithdrawals] Erro ao tentar liquidar Pix da subconta para saque #${req.id}:`, subPixErr);
-        }
-      }
-
-      // 1.1 Se possui asaas_transfer_id e status não é PROCESSING, consultar status na API do Asaas
-      if (req.status !== 'PROCESSING' && req.asaas_transfer_id && asaasApiKey) {
-        try {
-          const tRes = await fetch(`${asaasUrl}/transfers/${req.asaas_transfer_id}`, {
-            headers: { 'access_token': asaasApiKey }
-          });
-          if (tRes.ok) {
-            const tData = await tRes.json();
-            const tStatus = String(tData.status || '').toUpperCase();
-            if (['DONE', 'COMPLETED', 'CONFIRMED'].includes(tStatus)) {
-              updatedStatus = 'PAGO';
-            } else if (['FAILED', 'CANCELLED', 'REJECTED', 'REFUSED'].includes(tStatus)) {
-              updatedStatus = 'FALHOU';
-              failureReason = tData.failReason || tData.description || `Transferência ${tStatus.toLowerCase()} no Asaas`;
-            }
-          }
-        } catch (tErr) {
-          console.warn(`[reconcilePartnerWithdrawals] Aviso ao consultar transferência Asaas ${req.asaas_transfer_id}:`, tErr);
-        }
-      }
-
-      // 2. Não antecipar status PAGO sem confirmação real da API do Asaas
-
-      // (Removido fechamento prematuro sem autorização do Asaas)
-
-      if (updatedStatus && updatedStatus !== req.status) {
-        const nowIso = new Date().toISOString();
-        const updatePayload: any = {
-          status: updatedStatus,
-          reviewed_at: nowIso
-        };
-
-        if (updatedStatus === 'PAGO') {
-          updatePayload.paid_at = nowIso;
-          updatePayload.failure_reason = null;
-        } else if (updatedStatus === 'FALHOU') {
-          updatePayload.failure_reason = failureReason || 'Transferência cancelada ou recusada no Asaas';
-        }
-
-        await adminSupabase
-          .from('withdrawal_requests')
-          .update(updatePayload)
-          .eq('id', req.id);
-
-        if (updatedStatus === 'PAGO' && Array.isArray(req.order_ids) && req.order_ids.length > 0) {
-          const updateField = isDriver ? { payout_driver_done: true } : { payout_seller_done: true };
-          await adminSupabase.from('orders').update(updateField).in('id', req.order_ids);
-        }
+      try {
+        await reconcileWithdrawal(req.id);
+      } catch (recErr) {
+        console.warn(`[reconcilePartnerWithdrawals] Aviso ao confirmar saque #${req.id}:`, recErr);
       }
     }
   } catch (err) {
-    console.warn("[reconcilePartnerWithdrawals] Aviso ao reconciliar saques:", err);
+    console.warn('[reconcilePartnerWithdrawals] Aviso ao reconciliar saques:', err);
   }
 }

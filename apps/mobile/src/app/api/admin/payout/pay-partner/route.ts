@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getPartnerAvailableBalance } from '@/lib/partnerBalance';
 import { processWithdrawalApproval } from '@/lib/withdrawalApproval';
+import { settlePendingOrdersForPartner } from '@/lib/orderSettlements';
 import { logAdminAction } from '@/lib/adminAudit';
 
 export const dynamic = 'force-dynamic';
@@ -101,16 +102,16 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
 
-    // 3. Saldo autoritativo calculado no servidor
+    // 3. Leva para a subconta as entregas ainda não repassadas e lê o saldo real da subconta
+    await settlePendingOrdersForPartner(partnerId, payoutRole === 'motorista');
     const balanceInfo = await getPartnerAvailableBalance(partnerId, payoutRole);
-    const hasOrders = Array.isArray(balanceInfo?.orderIds) && balanceInfo.orderIds.length > 0;
-    const hasSubaccountBal = Number(balanceInfo?.subaccountBalance || 0) > 0;
-    if (!balanceInfo || balanceInfo.totalDisponivel <= 0 || (!hasOrders && !hasSubaccountBal)) {
+    if (!balanceInfo || !balanceInfo.mirroredFromAsaas || balanceInfo.totalDisponivel <= 0) {
       return NextResponse.json({ error: 'Parceiro não possui saldo disponível para repasse.' }, { status: 400 });
     }
 
     const amountToPay = balanceInfo.totalDisponivel;
-    const eligibleOrders = balanceInfo.orderIds;
+    // O saque usa só o saldo da subconta; os pedidos são controlados pelos repasses (settlements)
+    const eligibleOrders: string[] = [];
 
     // 4. Solicitação de saque
     const { data: withdrawal, error: createErr } = await supabase

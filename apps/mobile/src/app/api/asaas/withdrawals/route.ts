@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getPartnerAvailableBalance, reconcilePartnerWithdrawals } from '@/lib/partnerBalance';
 import { authorizeRequest } from '@/lib/apiAuth';
+import { settlePendingOrdersForPartner } from '@/lib/orderSettlements';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,8 +26,9 @@ export async function GET(request: Request) {
     const role = getAppRole(user.role);
     const adminSupabase = getSupabaseAdmin();
 
-    // 0. Auto-reconciliação com histórico bancário Pix caso pedidos já tenham sido quitados
+    // 0. Confirma saques em processamento e leva para a subconta as entregas ainda não repassadas
     await reconcilePartnerWithdrawals(user.id, role);
+    await settlePendingOrdersForPartner(user.id, role === 'motorista');
 
     // 1. Obter valor mínimo de saque em platform_settings
     const { data: ps } = await adminSupabase
@@ -127,8 +129,15 @@ export async function POST(request: Request) {
 
     const minWithdrawalValue = Number(ps?.min_withdrawal_value ?? 20.00);
 
-    // 3. Recalcular saldo no servidor
+    // 3. Leva para a subconta as entregas ainda não repassadas e lê o saldo REAL da subconta
+    await settlePendingOrdersForPartner(user.id, role === 'motorista');
     const balanceInfo = await getPartnerAvailableBalance(user.id, role);
+
+    if (!balanceInfo.mirroredFromAsaas) {
+      return NextResponse.json({
+        error: 'Não foi possível consultar o saldo da sua conta Asaas agora. Tente novamente em alguns minutos.'
+      }, { status: 503 });
+    }
 
     if (balanceInfo.totalDisponivel < minWithdrawalValue) {
       return NextResponse.json({
@@ -171,7 +180,8 @@ export async function POST(request: Request) {
         partner_id: user.id,
         role,
         requested_amount: balanceInfo.totalDisponivel,
-        order_ids: balanceInfo.orderIds,
+        // O saque usa só o saldo da subconta; os pedidos são controlados pelos repasses (settlements)
+        order_ids: [],
         status: 'PENDENTE'
       })
       .select()

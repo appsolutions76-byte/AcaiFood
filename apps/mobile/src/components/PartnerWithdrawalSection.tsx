@@ -166,6 +166,11 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
             </div>
             <div className="text-xs text-zinc-400 mt-1 font-medium space-y-0.5">
               <div>Valor mínimo configurado: <span className="text-purple-300 font-bold">{formatMoney(minVal)}</span></div>
+              {Number(balanceData?.internalOrderBalance || 0) > 0 && (
+                <div className="text-[11px] text-amber-300 font-semibold">
+                  A caminho da sua subconta: {formatMoney(Number(balanceData?.internalOrderBalance || 0))} <span className="text-zinc-400 font-normal">(entregas concluídas aguardando repasse)</span>
+                </div>
+              )}
               {totalDisponivel > 0.99 && (
                 <div className="text-[11px] text-emerald-400 font-semibold">
                   Líquido Pix a receber: {formatMoney(totalDisponivel - 0.99)} <span className="text-zinc-400 font-normal">(tarifa Pix Asaas: {formatMoney(0.99)})</span>
