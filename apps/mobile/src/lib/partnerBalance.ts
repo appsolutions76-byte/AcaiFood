@@ -158,6 +158,33 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     console.error("Erro ao calcular saldo disponível do parceiro:", err);
   }
 
+  // Repasses na fila em settlements (o gatilho do banco marca payout_*_done ao criar a linha,
+  // então a consulta por flag acima não enxerga esses pedidos)
+  try {
+    const { data: pendRows } = await adminSupabase
+      .from('settlements')
+      .select('order_id, role, amount')
+      .eq('partner_id', partnerId)
+      .in('status', ['PENDING', 'FAILED', 'WAITING_ACCOUNT', 'PROCESSING'])
+      .limit(200);
+    const rows = (pendRows || []).filter((r: any) => !orderIds.includes(r.order_id));
+    let splitIds = new Set<string>();
+    if (rows.length > 0 && !isDriver) {
+      const { data: os } = await adminSupabase.from('orders').select('id, pricing_snapshot').in('id', rows.map((r: any) => r.order_id));
+      splitIds = new Set((os || []).filter((o: any) => snapshotModel(o).model === 'SELLER_SPLIT').map((o: any) => o.id));
+    }
+    for (const r of rows) {
+      if (r.role === 'seller' && splitIds.has(r.order_id)) continue; // modelo novo: loja já recebeu
+      const amt = Number(r.amount || 0);
+      if (amt > 0) {
+        totalDisponivel += amt;
+        orderIds.push(r.order_id);
+      }
+    }
+  } catch (pendErr) {
+    console.warn('[partnerBalance] Aviso ao somar repasses na fila:', pendErr);
+  }
+
   const internalOrderBalance = Number(totalDisponivel.toFixed(2));
   let mirroredFromAsaas = false;
   let subaccountBalance: number | null = null;
@@ -205,18 +232,35 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
       const sfIds = (sfs || []).map((x: any) => x.id);
       if (sfIds.length > 0) {
         const notPaidOrClosed = ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT', 'CANCELLED', 'CANCELADO', 'REFUNDED', 'RECUSADO'];
-        const deliveredStatuses = ['RECEIVED', 'received', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO'];
+        const deliveredStatuses = ['RECEIVED', 'received', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO', 'COMPLETED', 'completed'];
         const { data: splitOrders } = await adminSupabase
           .from('orders')
-          .select('id, status, driver_payout_amount, payout_driver_done, pricing_snapshot')
+          .select('id, status, driver_id, driver_payout_amount, pricing_snapshot')
           .in('seller_storefront_id', sfIds)
           .eq('pricing_snapshot->>paymentModel', 'SELLER_SPLIT')
           .not('status', 'in', `(${notPaidOrClosed.map(x => `"${x}"`).join(',')})`)
           .limit(500);
+
+        // Corrida só deixa de ser reservada quando o repasse da moto está DONE em settlements
+        // (a flag payout_driver_done é marcada pelo gatilho do banco antes da transferência).
+        const deliveredIds = (splitOrders || [])
+          .filter((o: any) => deliveredStatuses.includes(String(o.status || '').trim()) && o.driver_id)
+          .map((o: any) => o.id);
+        const rideDone = new Set<string>();
+        if (deliveredIds.length > 0) {
+          const { data: rideRows } = await adminSupabase
+            .from('settlements')
+            .select('order_id, status')
+            .in('order_id', deliveredIds)
+            .eq('role', 'driver')
+            .eq('status', 'DONE');
+          for (const r of rideRows || []) rideDone.add(r.order_id);
+        }
+
         for (const o of splitOrders || []) {
           const st = String(o.status || '').trim();
           if (deliveredStatuses.includes(st)) {
-            if (!o.payout_driver_done) reservedBalance += Math.max(0, Number(o.driver_payout_amount || 0));
+            if (o.driver_id && !rideDone.has(o.id)) reservedBalance += Math.max(0, Number(o.driver_payout_amount || 0));
           } else {
             const snap: any = o.pricing_snapshot || {};
             const net = snap.sellerSplitNet !== null && snap.sellerSplitNet !== undefined

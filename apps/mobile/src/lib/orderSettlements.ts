@@ -19,7 +19,7 @@ import { snapshotModel, getPartnerCtx } from '@/lib/paymentAccount';
  * - `orders.payout_seller_done` / `payout_driver_done` só viram true quando o Asaas confirma o repasse.
  */
 
-export const DELIVERED_STATUSES = ['RECEIVED', 'received', 'entregue', 'concluido', 'CONCLUIDO', 'ARQUIVADO', 'arquivado'];
+export const DELIVERED_STATUSES = ['RECEIVED', 'received', 'entregue', 'concluido', 'CONCLUIDO', 'ARQUIVADO', 'arquivado', 'COMPLETED', 'completed'];
 const MAX_ATTEMPTS = 5;
 // Repasse "PROCESSING" sem id do Asaas e sem transferência localizada volta para a fila depois disso
 const STALE_PROCESSING_MS = 15 * 60 * 1000;
@@ -63,6 +63,23 @@ async function resolveSourceCtx(orderId: string, fallback?: AsaasCtx | null): Pr
     return getPartnerCtx(issuerPartnerId);
   }
   return fallback || (await getMasterCtx());
+}
+
+async function isSellerSplitOrder(orderId: string): Promise<boolean> {
+  const { data: order } = await getSupabaseAdmin().from('orders').select('id, pricing_snapshot').eq('id', orderId).maybeSingle();
+  return snapshotModel(order).model === 'SELLER_SPLIT';
+}
+
+async function closeSellerNotApplicable(settlementId: string, orderId: string) {
+  const nowIso = new Date().toISOString();
+  await getSupabaseAdmin().from('settlements').update({
+    status: 'DONE',
+    amount: 0,
+    last_error: 'Não aplicável: no modelo novo a loja recebe venda + frete no próprio pagamento',
+    transferred_at: nowIso,
+    updated_at: nowIso
+  }).eq('id', settlementId);
+  await markOrderRoleDone(orderId, 'seller');
 }
 
 async function getMasterCtx(): Promise<AsaasCtx | null> {
@@ -129,6 +146,13 @@ export async function executeSettlementTransfer(settlementId: string, ctxIn?: As
   const amount = Number(row.amount || 0);
   const attempts = Number(row.attempts || 0);
 
+  // Modelo novo: a loja recebeu venda + frete no próprio pagamento. A linha "seller" criada pelo
+  // gatilho do banco não é um repasse: fecha sem transferir (evita transferência da loja para ela mesma).
+  if (role === 'seller' && (await isSellerSplitOrder(row.order_id))) {
+    await closeSellerNotApplicable(settlementId, row.order_id);
+    return { settlementId, status: 'DONE', error: 'Não aplicável: loja recebeu no pagamento' };
+  }
+
   const ctx = await resolveSourceCtx(row.order_id, ctxIn);
   if (!ctx) {
     await supabase.from('settlements').update({ status: 'PENDING', last_error: 'Chave Asaas da conta de origem indisponível', updated_at: new Date().toISOString() }).eq('id', settlementId);
@@ -188,6 +212,15 @@ export async function executeSettlementTransfer(settlementId: string, ctxIn?: As
 
     if (!res.ok || !data?.id) {
       const errMsg = describeAsaasError(data, res.status);
+      if (/saldo/i.test(errMsg) && /(insuficiente|dispon)/i.test(errMsg)) {
+        // Conta de origem sem saldo (ex.: loja sacou antes): fica na fila sem gastar tentativa
+        await supabase.from('settlements').update({
+          status: 'PENDING',
+          last_error: `Aguardando saldo na conta de origem: ${errMsg}`,
+          updated_at: new Date().toISOString()
+        }).eq('id', settlementId);
+        return { settlementId, status: 'PENDING', error: errMsg };
+      }
       const next = attempts + 1;
       const nextStatus = next >= MAX_ATTEMPTS ? 'FAILED' : 'PENDING';
       await supabase.from('settlements').update({
@@ -336,20 +369,40 @@ async function ensureSettlementRow(orderId: string, partnerId: string, role: Rol
   return again || null;
 }
 
-async function settleRole(order: any, role: Role, partnerId: string, ctx: AsaasCtx): Promise<{ done: boolean; amount?: number; transferId?: string; error?: string }> {
-  const amount = resolveRoleAmount(order, role);
-  if (amount === null) return { done: false, error: 'Pedido sem valor de repasse calculado' };
-  if (amount <= 0) {
-    await markOrderRoleDone(order.id, role);
-    return { done: true, amount: 0 };
-  }
+async function findSettlementRow(orderId: string, role: Role) {
+  const { data } = await getSupabaseAdmin()
+    .from('settlements')
+    .select('id, status, asaas_transfer_id, amount')
+    .eq('order_id', orderId)
+    .eq('role', role)
+    .maybeSingle();
+  return data || null;
+}
 
-  const row = await ensureSettlementRow(order.id, partnerId, role, amount);
-  if (!row) return { done: false, error: 'Não foi possível registrar o repasse' };
+/**
+ * A fonte da verdade do repasse é a linha em settlements (não a flag payout_*_done:
+ * o gatilho do banco marca a flag quando CRIA a linha, antes de qualquer transferência).
+ */
+async function settleRole(order: any, role: Role, partnerId: string, ctx: AsaasCtx): Promise<{ done: boolean; amount?: number; transferId?: string; error?: string }> {
+  const flagDone = role === 'driver' ? !!order.payout_driver_done : !!order.payout_seller_done;
+  let row: any = await findSettlementRow(order.id, role);
+
+  if (!row) {
+    // Sem linha e com flag marcada: pedido antigo já pago pelo fluxo anterior
+    if (flagDone) return { done: true };
+    const amount = resolveRoleAmount(order, role);
+    if (amount === null) return { done: false, error: 'Pedido sem valor de repasse calculado' };
+    if (amount <= 0) {
+      await markOrderRoleDone(order.id, role);
+      return { done: true, amount: 0 };
+    }
+    row = await ensureSettlementRow(order.id, partnerId, role, amount);
+    if (!row) return { done: false, error: 'Não foi possível registrar o repasse' };
+  }
 
   if (row.status === 'DONE') {
     await markOrderRoleDone(order.id, role);
-    return { done: true, amount, transferId: row.asaas_transfer_id || undefined };
+    return { done: true, amount: Number(row.amount || 0), transferId: row.asaas_transfer_id || undefined };
   }
 
   const res = row.status === 'PROCESSING'
@@ -358,7 +411,7 @@ async function settleRole(order: any, role: Role, partnerId: string, ctx: AsaasC
 
   return {
     done: res.status === 'DONE',
-    amount,
+    amount: Number(row.amount || 0),
     transferId: res.transferId,
     error: res.status === 'DONE' ? undefined : (res.error || `Repasse em ${res.status}`)
   };
@@ -390,14 +443,19 @@ export async function settleOrderPayouts(orderId: string): Promise<SettleOrderRe
     // Modelo novo: a loja já recebeu venda + frete na própria subconta no pagamento.
     // Não há repasse para ela; só a corrida da moto sai da subconta da loja.
     const isSellerSplit = snapshotModel(order).model === 'SELLER_SPLIT';
-    if (isSellerSplit && !order.payout_seller_done) {
-      await markOrderRoleDone(order.id, 'seller');
+    if (isSellerSplit) {
+      const sellerRow = await findSettlementRow(order.id, 'seller');
+      if (sellerRow && sellerRow.status !== 'DONE') {
+        await closeSellerNotApplicable(sellerRow.id, order.id);
+      } else if (!order.payout_seller_done) {
+        await markOrderRoleDone(order.id, 'seller');
+      }
       result.sellerTransferred = true;
       result.sellerAmount = 0;
     }
 
     // Loja / Batedeira / Fornecedor (modelo antigo)
-    if (!isSellerSplit && !order.payout_seller_done && order.seller_storefront_id) {
+    if (!isSellerSplit && order.seller_storefront_id) {
       const { data: sf } = await supabase.from('storefronts').select('partner_id').eq('id', order.seller_storefront_id).maybeSingle();
       const sellerId = sf?.partner_id || null;
       if (sellerId) {
@@ -411,8 +469,8 @@ export async function settleOrderPayouts(orderId: string): Promise<SettleOrderRe
       }
     }
 
-    // Moto / Motorista
-    if (!order.payout_driver_done && order.driver_id) {
+    // Moto / Motorista (modelo novo: sai da subconta da loja; antigo: da conta raiz)
+    if (order.driver_id) {
       const r = await settleRole(order, 'driver', order.driver_id, ctx);
       result.driverTransferred = r.done;
       result.driverAmount = r.amount;
@@ -461,7 +519,43 @@ export async function settlePendingOrdersForPartner(partnerId: string, isDriver:
       }
     }
 
-    for (const id of orderIds) {
+    // Repasses na fila (linhas criadas pelo gatilho do banco no PIN, com a flag já marcada)
+    const queueStatuses = ['PENDING', 'FAILED', 'WAITING_ACCOUNT', 'PROCESSING'];
+    const { data: ownRows } = await supabase
+      .from('settlements')
+      .select('order_id')
+      .eq('partner_id', partnerId)
+      .in('status', queueStatuses)
+      .limit(50);
+    for (const r of ownRows || []) orderIds.push(r.order_id);
+
+    if (!isDriver) {
+      // Loja no modelo novo: corridas que ela ainda deve às motos saem antes de qualquer saque dela
+      const { data: sfs2 } = await supabase.from('storefronts').select('id').eq('partner_id', partnerId);
+      const sfIds2 = (sfs2 || []).map((x: any) => x.id);
+      if (sfIds2.length > 0) {
+        const { data: splitOrders } = await supabase
+          .from('orders')
+          .select('id')
+          .in('seller_storefront_id', sfIds2)
+          .in('status', DELIVERED_STATUSES)
+          .eq('pricing_snapshot->>paymentModel', 'SELLER_SPLIT')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        const splitIds = (splitOrders || []).map((o: any) => o.id);
+        if (splitIds.length > 0) {
+          const { data: rideRows } = await supabase
+            .from('settlements')
+            .select('order_id')
+            .in('order_id', splitIds)
+            .eq('role', 'driver')
+            .in('status', queueStatuses);
+          for (const r of rideRows || []) orderIds.push(r.order_id);
+        }
+      }
+    }
+
+    for (const id of Array.from(new Set(orderIds))) {
       results.push(await settleOrderPayouts(id));
     }
   } catch (err) {
