@@ -9,15 +9,15 @@ import { supabase, getAuthHeaders } from '@/lib/supabase';
 // quando os textos mudam). O cadastro registra o aceite por conta própria.
 
 const DOC_LABELS: Record<string, React.ReactNode> = {
-  acaifood_terms: <>Li e aceito os <a href="/politica-de-privacidade" target="_blank" className="underline font-bold">Termos de Uso do AçaíFood</a>.</>,
+  acaifood_terms: <>Li e aceito os <a href="/termos-de-uso" target="_blank" className="underline font-bold">Termos de Uso do AçaíFood</a> (o cliente paga o Pix direto à loja; a plataforma recebe só a comissão por split).</>,
   acaifood_privacy: <>Li e aceito a <a href="/politica-de-privacidade" target="_blank" className="underline font-bold">Política de Privacidade do AçaíFood</a>.</>,
   asaas_terms: <>Li e concordo com os <a href="https://www.asaas.com/termos-de-uso" target="_blank" rel="noopener noreferrer" className="underline font-bold">Termos de Uso do Asaas</a> (Asaas Gestão Financeira Instituição de Pagamento S.A.), que presta os serviços financeiros.</>,
   asaas_privacy: <>Li e concordo com a <a href="https://www.asaas.com/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="underline font-bold">Política de Privacidade do Asaas</a>.</>,
-  subaccount_mandate: <>Autorizo a <strong>Eletromecânica Baia Ltda (CNPJ 42.035.623/0001-40)</strong> a solicitar a abertura e a movimentação da minha subconta Asaas para receber os repasses das minhas vendas/entregas.</>,
-  pix_random_key_consent: <>Autorizo a criação de uma chave Pix aleatória na minha subconta Asaas para recebimentos.</>
+  subaccount_mandate: <>Autorizo a <strong>Eletromecânica Baia Ltda (CNPJ 42.035.623/0001-40)</strong>, nos termos do <a href="/termos-de-uso" target="_blank" className="underline font-bold">Mandato</a>, a abrir e movimentar a minha subconta Asaas: emitir as cobranças Pix dos meus pedidos com split da comissão, pagar automaticamente as corridas após o PIN de entrega, manter reservados os valores de pedidos em andamento, estornar pedidos cancelados e fazer saques só para chave do meu CPF/CNPJ.</>,
+  pix_random_key_consent: <>Autorizo a criação de uma chave Pix aleatória na minha subconta Asaas para receber os Pix dos clientes e as transferências automáticas da plataforma.</>
 };
 
-const SKIP_PATHS = ['/cadastro', '/login', '/politica-de-privacidade', '/apresentacao'];
+const SKIP_PATHS = ['/cadastro', '/login', '/politica-de-privacidade', '/termos-de-uso', '/apresentacao'];
 
 export function TermsAcceptanceGate() {
   const pathname = usePathname() || '';

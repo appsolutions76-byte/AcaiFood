@@ -6,7 +6,7 @@ import { ShieldCheck, ArrowLeft, Lock, FileText, Smartphone, Users } from "lucid
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
 export default function PoliticaPrivacidadePage() {
-  const currentDate = "2 de Outubro de 2026";
+  const currentDate = "24 de Outubro de 2026";
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans p-4 sm:p-8">
@@ -72,7 +72,7 @@ export default function PoliticaPrivacidadePage() {
               <li>Processar e gerenciar pedidos de açaí (B2C), insumos (B2B) e coleta de resíduos.</li>
               <li>Calcular a distância exata e o frete de entrega entre o estabelecimento e o consumidor.</li>
               <li>Transmitir a localização do entregador no mapa durante corridas ativas.</li>
-              <li>Emitir cobranças Pix registradas e efetuar o split automático de receitas.</li>
+              <li>Emitir cobranças Pix em nome do vendedor, separar a comissão da plataforma (split) e pagar as corridas dos entregadores.</li>
               <li>Validar a entrega mediante PIN de segurança de 4 dígitos.</li>
               <li>Cumprir obrigações legais e regulatórias vigentes no Brasil.</li>
             </ol>
@@ -122,7 +122,7 @@ export default function PoliticaPrivacidadePage() {
               A marca e plataforma <strong>AçaíFood</strong> é desenvolvida e mantida pela <strong>AppSolutions76</strong>, divisão de tecnologia pertencente à <strong>Eletromecânica Baia Ltda</strong> (Razão Social controladora oficial).
             </p>
             <p className="bg-purple-950/40 border border-purple-800/60 p-4 rounded-2xl text-purple-200">
-              ℹ️ <strong>Identificação Bancária e Pix:</strong> Todas as cobranças, faturas e liquidações via Pix processadas pela nossa parceira BaaS <strong>Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ 19.540.550/0001-21</strong> ocorrem formalmente sob o <strong>Modelo A — Direto Tomador</strong> em nome da <strong>Eletromecânica Baia Ltda</strong>. Por isso, nos aplicativos de bancos e comprovantes Pix, o nome do beneficiário/favorecido é exibido como <strong>Eletromecânica Baia Ltda</strong>.
+              ℹ️ <strong>Identificação Bancária e Pix:</strong> Nos pedidos de loja e de fornecedor, o Pix é pago diretamente à conta Asaas do vendedor, e o nome dele aparece como recebedor no seu banco. A comissão do AçaíFood é separada automaticamente pelo Asaas. Nas taxas da plataforma (como ativação) e na coleta de resíduos, o recebedor é a <strong>Eletromecânica Baia Ltda</strong>. Os serviços financeiros são prestados pelo <strong>Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ 19.540.550/0001-21</strong>. Veja os <a href="/termos-de-uso" className="underline">Termos de Uso</a>.
             </p>
           </section>
 

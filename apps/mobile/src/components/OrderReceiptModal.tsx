@@ -125,7 +125,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
 
               <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">
                 <div><strong>Transação Gateway:</strong> ${asaasId}</div>
-                <div><strong>Favorecido:</strong> Eletromecânica Baia Ltda</div>
+                <div><strong>Favorecido:</strong> Loja vendedora (conta Asaas da loja)</div>
               </div>
 
               <div class="divider"></div>
@@ -243,7 +243,7 @@ export const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
             </div>
             <div>
               <span className="text-zinc-400">Favorecido no Pix:</span>{' '}
-              <span className="font-semibold text-zinc-700 dark:text-zinc-300">Eletromecânica Baia Ltda</span>
+              <span className="font-semibold text-zinc-700 dark:text-zinc-300">Loja vendedora (conta Asaas da loja)</span>
             </div>
           </div>
 

@@ -80,9 +80,10 @@ function ManualCliente() {
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
             <p>1. ⚡ <strong>Aprovação Automática</strong>: Ao finalizar, o app gera o <strong>QR Code Pix</strong> e a chave <strong>Pix Copia e Cola</strong> oficial do Asaas.</p>
-            <p>2. 📱 <strong>Pague no seu Banco</strong>: Abra o aplicativo do seu banco, escolha Pix Copia e Cola, cole o código e confirme. O recebedor formal é <strong>Eletromecânica Baia Ltda</strong> (empresa detentora da AçaíFood).</p>
+            <p>2. 📱 <strong>Pague no seu Banco</strong>: Abra o aplicativo do seu banco, escolha Pix Copia e Cola, cole o código e confirme. O recebedor que aparece no banco é <strong>a própria loja</strong> que vendeu (conta Asaas da loja). A comissão do AçaíFood é separada automaticamente pelo Asaas no mesmo Pix.</p>
+            <p>⏳ <strong>Validade</strong>: O Pix vale por 60 minutos. Se não for pago nesse prazo, o pedido é cancelado sozinho.</p>
             <p>3. ⏱️ <strong>Confirmação em Segundos</strong>: A validação ocorre em tempo real via Webhook Asaas e Supabase Realtime.</p>
-            <p>4. ↩️ <strong>Garantia de Estorno Pix Automático (Refund)</strong>: Se a batedeira não puder atender ou se você cancelar antes do preparo, <strong>100% do valor é estornado automaticamente para a sua conta bancária</strong> via Pix em segundos.</p>
+            <p>4. ↩️ <strong>Garantia de Estorno Pix Automático (Refund)</strong>: Se a batedeira não puder atender ou se você cancelar antes do preparo, <strong>100% do valor é estornado pelo Asaas para a conta de onde saiu o Pix</strong>. Você pode cancelar até a loja iniciar o preparo; depois disso, fale com o suporte.</p>
           </div>
         </div>
       )}
@@ -99,7 +100,7 @@ function ManualCliente() {
             <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 space-y-1.5">
               <p>• O <strong>PIN de 4 dígitos</strong> aparece em destaque no card do seu pedido.</p>
               <p>• <strong>IMPORTANTE:</strong> Somente dite o código PIN para o motoboy <strong>após receber o seu pedido em mãos</strong>.</p>
-              <p>• A digitação desse PIN pelo motoboy no aplicativo dele é a comprovação digital irrevogável de que a entrega foi concluída com sucesso e o único gatilho que libera o pagamento ao entregador e à loja.</p>
+              <p>• A digitação desse PIN pelo motoboy no aplicativo dele é a comprovação de que a entrega foi concluída. É esse PIN que faz o app pagar a corrida ao motoboy. Se ditar antes de receber, você confirma uma entrega que não aconteceu.</p>
             </div>
           </div>
         </div>
@@ -114,7 +115,7 @@ function ManualCliente() {
             <p>📄 <strong>Comprovante com Logomarca Asaas</strong>: Em qualquer pedido pago ou histórico, clique no botão <strong>"📄 Comprovante Asaas"</strong> para abrir o documento oficial contendo:</p>
             <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
               <li>Selo e logomarca oficial do <strong>Asaas Gestão Financeira Instituição de Pagamento S.A.</strong></li>
-              <li>ID da transação bancária e dados fiscais da Eletromecânica Baia Ltda</li>
+              <li>ID da transação e o favorecido: a loja vendedora (conta Asaas da loja)</li>
               <li>Detalhamento de produtos, frete, estabelecimento e data/hora</li>
               <li>Botão para <strong>Imprimir / Salvar em PDF</strong> ou cupom térmico</li>
             </ul>
@@ -156,11 +157,11 @@ function ManualBatedeira() {
             <p>4. 🏍️ <strong>Acionamento sob Demanda (Chamar Moto)</strong>: Quando o açaí estiver embalado e pronto, clique em <strong>"Chamar Moto"</strong>. O pedido entra no radar dos entregadores disponíveis.</p>
             <p>5. 🗺️ <strong>Acompanhamento no Mapa</strong>: Visualize em tempo real o trajeto real do motoboy até sua loja e da loja até o cliente.</p>
             <p>6. 💬 <strong>Chat Integrado & Suporte</strong>: Comunique-se com o cliente/motoboy pelo chat do pedido ou acione o suporte central.</p>
-            <p>7. ↩️ <strong>Cancelamento com Estorno Pix Automático</strong>: Caso precise recusar antes do envio, o estorno de 100% é feito automaticamente pelo Asaas.</p>
+            <p>7. ↩️ <strong>Cancelamento com Estorno</strong>: Você pode recusar ou cancelar até o pedido ficar pronto (antes da retirada). O Asaas devolve 100% ao cliente a partir da sua conta, e a comissão do app volta junto.</p>
           </div>
           <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs">
             <p className="font-bold text-purple-900 dark:text-purple-300">💡 Gestão da Vitrine & Frete Promocional:</p>
-            <p className="text-purple-800 dark:text-purple-300 mt-1">Na aba <em>Visão Geral</em>, ajuste preços (Popular, Médio, Grosso, Branco), adicione produtos extras (carnes, frutas, bebidas) e configure o <strong>Subsídio de Frete</strong>.</p>
+            <p className="text-purple-800 dark:text-purple-300 mt-1">Na aba <em>Visão Geral</em>, ajuste preços (Popular, Médio, Grosso, Branco), adicione produtos extras (carnes, frutas, bebidas) e configure o <strong>Subsídio de Frete</strong> (de 0% a 100%): a parte subsidiada sai do seu valor de venda. O app não aceita pedidos em que o seu valor não cubra a corrida e as taxas.</p>
           </div>
         </div>
       )}
@@ -209,14 +210,13 @@ function ManualBatedeira() {
             <DollarSign size={16} className="text-purple-600" /> Recebimento Líquido, Subcontas Asaas & Saques Pix
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
-            <p>• <strong>Liberação Pós-PIN de Entrega</strong>: O saldo da venda é liberado para saque <strong>exclusivamente após a entrega ser concluída com o PIN de 4 dígitos</strong>, garantindo proteção total contra cancelamentos durante o trajeto.</p>
-            <p>• <strong>Cálculo do Valor Líquido</strong>: Cada pedido entregue calcula automaticamente: <code>Subtotal − Comissão (%) − Subsídio de Frete</code>.</p>
-            <p>• <strong>Fluxo de Saque em 2 Tempos (Contrato Asaas BaaS)</strong>:</p>
+            <p>• <strong>Você recebe na hora do Pix</strong>: O cliente paga direto na <strong>sua conta Asaas</strong>. No mesmo Pix, o Asaas separa a comissão do AçaíFood (percentual sobre a venda e sobre o frete, definidos por cidade). Venda + frete ficam com você.</p>
+            <p>• <strong>Valor reservado</strong>: Enquanto o pedido não é entregue, o valor fica <strong>reservado</strong> na sua conta (para um eventual estorno). Depois da entrega ele vira saldo livre.</p>
+            <p>• <strong>Pagamento da corrida (automático)</strong>: Quando o motoboy digita o PIN do cliente, o app transfere o valor da corrida da sua conta para a conta dele. Você não precisa fazer nada. Corridas ainda não pagas também ficam reservadas.</p>
             <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 space-y-1.5">
-              <p><strong>1. Tempo 1 (Aprovação):</strong> O administrador aprova o saque. O valor bruto é transferido da conta Master para a sua subconta digital Asaas (status: <em>Em Processamento</em>).</p>
-              <p><strong>2. Tempo 2 (Pix Automático):</strong> Assim que o Asaas confirma a liquidação na subconta, o sistema dispara automaticamente uma transferência Pix para a sua conta bancária externa de mesma titularidade.</p>
-              <p><strong>3. Tarifa Pix Asaas (R$ 0,99):</strong> Conforme a política da plataforma, a taxa de transferência Pix do Asaas (R$ 0,99) é descontada do valor transferido (ex: em um saque de R$ 50,00, você recebe R$ 49,01 líquidos no seu banco e sua subconta zera perfeitamente).</p>
+              <p><strong>Exemplo:</strong> pedido de R$ 42,00 (venda R$ 36,00 + frete R$ 6,00). O Asaas separa a comissão do app, desconta a parte da tarifa Pix e o restante fica na sua conta. Após o PIN, a corrida vai para o motoboy. O que sobra é seu saldo livre para saque. Os valores de cada pedido aparecem no seu Financeiro.</p>
             </div>
+            <p>• <strong>Saque</strong>: Peça o saque na aba Financeiro. Ele sai da sua conta Asaas por Pix para uma chave <strong>CPF ou CNPJ do mesmo titular</strong>. O administrador aprova (ou é automático, se ativado), e o saque só aparece como pago quando o Asaas confirma. A tarifa Pix do Asaas é descontada do valor enviado. Um saque por vez.</p>
             <p>• <strong>Valor Mínimo de Saque</strong>: O valor mínimo configurado na plataforma é de R$ 20,00.</p>
           </div>
           <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs space-y-1.5">
@@ -246,16 +246,16 @@ function ManualFornecedor() {
         <p>3. 🚛 <strong>Despacho com "Chamar Caminhão"</strong>: Após a carga estar pronta, clique em <strong>"Chamar Caminhão"</strong> para que a rota apareça no radar dos caminhoneiros credenciados.</p>
         <p>4. 🖨️ <strong>Comanda de Saída B2B</strong>: Imprima o romaneio de expedição com dados completos da batedeira compradora e identificação Asaas.</p>
         <p>5. 💬 <strong>Chat do Transporte & Suporte</strong>: Comunique-se em tempo real com o motorista e a loja compradora.</p>
-        <p>6. 🔐 <strong>Conclusão e PIN</strong>: O caminhoneiro valida a entrega no destino mediante o PIN fornecido pela batedeira, liberando seu repasse financeiro.</p>
+        <p>6. 🔐 <strong>Conclusão e PIN</strong>: O caminhoneiro valida a entrega no destino mediante o PIN fornecido pela batedeira, concluindo a entrega. Logo após o PIN, o app paga automaticamente o frete do caminhoneiro a partir da sua conta Asaas.</p>
       </div>
       <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1">
         <p className="font-bold text-emerald-900 dark:text-emerald-300">📌 Escopo do Fornecedor:</p>
         <p className="text-emerald-700 dark:text-emerald-300">O fornecedor atua exclusivamente na venda dos frutos frescos colhidos e <strong>não recebe caroços de volta</strong>.</p>
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-        <p className="font-bold">💰 Saques Pix via Subconta Asaas (2 Tempos & Mesma Titularidade):</p>
+        <p className="font-bold">💰 Recebimento e Saque (conta Asaas própria):</p>
         <p className="text-zinc-600 dark:text-zinc-400">
-          O saldo das vendas atacadistas B2B é liberado após a validação do PIN de entrega pelo caminhoneiro. Ao solicitar saque (mínimo R$ 20,00), o valor é creditado na sua subconta Asaas e enviado automaticamente via Pix para a sua conta bancária de mesma titularidade (CPF/CNPJ), com desconto da tarifa de R$ 0,99 do Asaas.
+          A batedeira compradora paga o Pix direto na <strong>sua conta Asaas</strong>, com a comissão do AçaíFood separada automaticamente (split). O valor fica reservado até a entrega; depois do PIN, o frete é pago ao caminhoneiro e o restante vira saldo livre. O saque vai por Pix para chave CPF/CNPJ do mesmo titular, com a tarifa Pix do Asaas descontada.
         </p>
       </div>
     </div>
@@ -280,15 +280,18 @@ function ManualMotoboy() {
           <li>Toque em <em>"🏁 GPS p/ Cliente"</em> para navegar até o destino.</li>
           <li>Ao chegar ao cliente, clique em <em>"Confirmar Chegada no Cliente"</em>.</li>
         </ul>
-        <p>5. 🔐 <strong>Validação Obrigatória do PIN de 4 Dígitos</strong>: Peça o PIN ao cliente, digite na tela e confirme. Sem o PIN correto, a entrega não fecha e o frete não é liberado.</p>
+        <p>5. 🔐 <strong>Validação Obrigatória do PIN de 4 Dígitos</strong>: Peça o PIN ao cliente, digite na tela e confirme. Sem o PIN correto, a entrega não fecha e a corrida não é paga.</p>
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-        <p className="font-bold text-purple-900 dark:text-purple-300">💸 Repasse Garantido Pós-PIN & Saque Pix em 2 Tempos:</p>
+        <p className="font-bold text-purple-900 dark:text-purple-300">💸 Como você recebe a corrida:</p>
         <p className="text-zinc-600 dark:text-zinc-400">
-          • <strong>Garantia de Repasse:</strong> O frete só é liberado para saque após você digitar o <strong>PIN de 4 dígitos</strong> informado pelo cliente. Se houver troca de motoboy antes da entrega, o valor só vai para quem finalizar o serviço.
+          • <strong>Autônomo:</strong> Você atende qualquer loja da sua cidade, sem contrato com a loja. Para aceitar corridas, sua conta Asaas precisa estar aprovada.
         </p>
         <p className="text-zinc-600 dark:text-zinc-400">
-          • <strong>Saque Pix Automático:</strong> Solicite saques na aba Financeiro (mínimo R$ 20,00). O valor é creditado na sua subconta Asaas e transferido automaticamente para sua conta bancária externa via Pix (mesmo CPF cadastrado), abatendo a tarifa de R$ 0,99 do Asaas.
+          • <strong>Pago após o PIN:</strong> Logo depois que você digita o PIN do cliente, o app transfere o valor da corrida <strong>da conta da loja para a sua conta Asaas</strong>. Se houver troca de motoboy antes da entrega, só quem finaliza recebe. O valor mostrado no radar já é o líquido (descontada a comissão do app sobre o frete e a sua parte da tarifa Pix, quando houver).
+        </p>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          • <strong>Saque:</strong> Peça na aba Financeiro. Sai da sua conta Asaas por Pix para chave CPF do próprio titular, com a tarifa Pix do Asaas descontada do valor enviado.
         </p>
       </div>
     </div>
@@ -314,12 +317,15 @@ function ManualCaminhao() {
         <p>5. 🔐 <strong>PIN de Conclusão</strong>: Ao descarregar, solicite o PIN de 4 dígitos ao responsável no destino (loja ou ecoponto) e valide na tela.</p>
       </div>
       <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-800 text-xs space-y-2">
-        <p className="font-bold text-blue-900 dark:text-blue-300">💰 Repasses Pós-PIN & Saque Pix (BaaS Asaas):</p>
+        <p className="font-bold text-blue-900 dark:text-blue-300">💰 Como você recebe o frete:</p>
         <p className="text-blue-700 dark:text-blue-300">
-          • O frete pesado (B2B ou Caçamba ESG) é creditado após a confirmação do PIN de 4 dígitos no destino.
+          • <strong>Frete B2B:</strong> após o PIN no destino, o app transfere o frete da conta Asaas do fornecedor para a sua conta Asaas.
         </p>
         <p className="text-blue-700 dark:text-blue-300">
-          • Os saques solicitados são aprovados e enviados da subconta Asaas diretamente para a sua conta bancária Pix de mesma titularidade (CPF/CNPJ), com desconto da taxa de R$ 0,99 do Asaas.
+          • <strong>Coleta (caçamba):</strong> a loja paga o frete à plataforma; após o PIN no destino, a plataforma transfere o valor para a sua conta Asaas.
+        </p>
+        <p className="text-blue-700 dark:text-blue-300">
+          • <strong>Saque:</strong> sai da sua conta Asaas por Pix para chave CPF/CNPJ do mesmo titular, com a tarifa Pix do Asaas descontada.
         </p>
       </div>
     </div>
@@ -373,7 +379,7 @@ function ManualLogin() {
             </div>
             <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-xl border border-blue-200 dark:border-blue-800">
               <span className="font-bold block mb-1">💳 4. Motor Financeiro Asaas</span>
-              <p className="text-zinc-600 dark:text-zinc-400">Pagamentos Pix com aprovação instantânea, divisão automática (Triple Split), comprovantes oficiais e esteira de saques.</p>
+              <p className="text-zinc-600 dark:text-zinc-400">O cliente paga o Pix direto à loja, o Asaas separa a comissão do app (split), a corrida é paga ao entregador após o PIN e cada parceiro saca da própria conta Asaas.</p>
             </div>
           </div>
         </div>
@@ -403,7 +409,8 @@ function ManualLogin() {
             <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-300 mt-2 space-y-1">
               <p className="font-bold">🛡️ Ativação Inteligente Asaas:</p>
               <p>• Contas contam com ativação conforme limite de vagas de fundadores liberadas pela administração.</p>
-              <p>• A subconta digital Asaas para split de pagamentos é conectada <strong>automaticamente assim que você concluir sua 1ª venda ou corrida</strong>.</p>
+              <p>• Parceiros aceitam os Termos, o Mandato e o Consentimento Pix. Com isso, o app abre a sua <strong>conta Asaas em seu nome</strong> (subconta); envie os documentos pedidos pelo Asaas.</p>
+              <p>• Lojas e fornecedores só recebem pedidos, e motoboys e caminhoneiros só aceitam corridas, com a conta Asaas <strong>aprovada</strong>.</p>
             </div>
           </div>
         </div>

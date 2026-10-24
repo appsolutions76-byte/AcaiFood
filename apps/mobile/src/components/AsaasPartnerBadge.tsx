@@ -41,7 +41,7 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
         <div className="flex items-center justify-center gap-1.5 flex-wrap">
           <Info size={13} className="text-amber-600 dark:text-amber-400 shrink-0" />
           <span>
-            Favorecido no Pix/Banco: <strong className="text-zinc-950 dark:text-white font-bold">Eletromecânica Baia Ltda</strong> (Empresa detentora da AppSolutions76/AçaíFood)
+            Favorecido no Pix: <strong className="text-zinc-950 dark:text-white font-bold">a loja vendedora</strong> (conta Asaas da loja; comissão do AçaíFood por split)
           </span>
         </div>
       </div>
@@ -58,13 +58,13 @@ export function AsaasPartnerBadge({ className = '', variant = 'footer' }: AsaasP
       </div>
       <div className="flex items-center justify-center gap-1.5 flex-wrap text-[11px] text-zinc-600 dark:text-zinc-300">
         <span>
-          Modelo de Operação: <strong className="text-zinc-900 dark:text-white font-bold">Modelo A — Direto Tomador</strong> (O Asaas presta os serviços financeiros e o AçaíFood atua como integradora tecnológica e distribuidora da experiência)
+          Modelo de Operação: <strong className="text-zinc-900 dark:text-white font-bold">cobrança na conta da loja com split da comissão</strong> (o Asaas presta os serviços financeiros e o AçaíFood atua como integradora tecnológica e distribuidora da experiência)
         </span>
       </div>
       <div className="flex items-center justify-center gap-1.5 flex-wrap">
         <Info size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
         <span>
-          Razão Social recebedora no Pix/Banco: <strong className="text-zinc-950 dark:text-white font-bold">Eletromecânica Baia Ltda</strong> (Empresa detentora da AppSolutions76/AçaíFood)
+          Recebedor no Pix: <strong className="text-zinc-950 dark:text-white font-bold">a loja vendedora</strong>. Taxas da plataforma e coleta de resíduos: Eletromecânica Baia Ltda
         </span>
       </div>
     </div>
@@ -79,7 +79,7 @@ export function EmpresaControladoraNota({ className = '' }: { className?: string
         <span>Empresa Controladora & Razão Social do Pagamento</span>
       </div>
       <p className="leading-relaxed text-[11px] text-zinc-700 dark:text-zinc-200">
-        A marca e plataforma <strong className="text-zinc-950 dark:text-white font-bold">AçaíFood</strong> é desenvolvida pela <strong className="text-zinc-950 dark:text-white font-bold">AppSolutions76</strong>, divisão pertencente à <strong className="text-zinc-950 dark:text-white font-bold">Eletromecânica Baia Ltda</strong>. Todas as cobranças Pix e liquidações via <strong className="text-zinc-950 dark:text-white font-bold">Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ 19.540.550/0001-21</strong> operam sob o <strong className="text-zinc-950 dark:text-white font-bold">Modelo A — Direto Tomador</strong> e são emitidas em nome da razão social <strong className="text-zinc-950 dark:text-white font-bold">Eletromecânica Baia Ltda</strong>.
+        A marca e plataforma <strong className="text-zinc-950 dark:text-white font-bold">AçaíFood</strong> é desenvolvida pela <strong className="text-zinc-950 dark:text-white font-bold">AppSolutions76</strong>, divisão pertencente à <strong className="text-zinc-950 dark:text-white font-bold">Eletromecânica Baia Ltda</strong>. Os pagamentos de pedidos via <strong className="text-zinc-950 dark:text-white font-bold">Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ 19.540.550/0001-21</strong> são emitidos em nome da <strong className="text-zinc-950 dark:text-white font-bold">loja vendedora</strong>, com a comissão do AçaíFood separada por split. Taxas da plataforma e coleta de resíduos são emitidas em nome da <strong className="text-zinc-950 dark:text-white font-bold">Eletromecânica Baia Ltda</strong>.
       </p>
     </div>
   );

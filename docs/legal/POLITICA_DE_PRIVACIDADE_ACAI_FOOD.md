@@ -1,6 +1,6 @@
 # Política de Privacidade do AçaíFood
 
-**Versão:** 2026-10-02  
+**Versão:** 2026-10-24  
 **Controladora dos Dados:** Eletromecânica Baia Ltda (CNPJ 42.035.623/0001-40)  
 **Encarregado de Dados (DPO):** dpo@acaifood.app.br  
 
@@ -21,3 +21,4 @@ A plataforma AçaíFood coleta e trata dados estritamente necessários para a op
 - **Com o Asaas Gestão Financeira Instituição de Pagamento S.A.:** Dados cadastrais e de KYC (CPF/CNPJ, nascimento, renda, endereço) são transmitidos via conexão criptografada TLS 1.3 ao Asaas para abertura de subconta de pagamento e prevenção à lavagem de dinheiro (PLD/CFT).
 - **Com Entregadores:** O endereço completo e telefone do comprador são disponibilizados exclusivamente ao entregador aceito e atribuído ao pedido, sendo ocultados do radar público.
 - **Não comercialização:** Em nenhuma hipótese o AçaíFood comercializa dados pessoais de usuários com terceiros.
+- **Com quem paga e quem recebe:** nos pedidos de loja e de fornecedor, o Pix é pago diretamente à conta Asaas do vendedor, e o nome do vendedor aparece no banco do cliente. O entregador recebe a corrida na conta Asaas dele.

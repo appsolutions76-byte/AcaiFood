@@ -71,7 +71,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
             <div className="space-y-4 animate-in fade-in duration-150">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">🥑 Visão Geral do Painel Administrativo</h3>
               <p>
-                Como <strong>Administrador Master</strong>, você possui controle irrestrito sobre o faturamento global, comissões retidas, tarifas de frete municipais, esteira de aprovação de saques, auditoria de pedidos e liquidações aos parceiros.
+                Como <strong>Administrador Master</strong>, você possui controle irrestrito sobre o faturamento global, comissões (split), tarifas de frete municipais, esteira de aprovação de saques, auditoria de pedidos e liquidações aos parceiros.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800">
@@ -153,37 +153,41 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
 
           {activeSection === 'saques' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">💸 Gestão da Esteira de Saques (Opção 2 — 2 Tempos Assíncrono)</h3>
-              <p>Na aba <strong>💸 Saques</strong>, a administração gerencia a esteira de liquidação em conformidade com as regras de Banking as a Service (BaaS) do Asaas:</p>
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">💸 Gestão de Saques (direto da conta Asaas do parceiro)</h3>
+              <p>Na aba <strong>💸 Saques</strong>, a administração aprova os saques que os parceiros pedem. O dinheiro já está na conta Asaas de cada parceiro; o saque só o leva para a chave Pix dele.</p>
 
               <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 text-xs space-y-2.5">
-                <p className="font-bold text-purple-900 dark:text-purple-300">🔄 Fluxo de Liquidação Assíncrona em 2 Tempos (Opção 2):</p>
-                <p>1. <strong>Origem Pós-PIN:</strong> O parceiro só acumula saldo disponível para saque de pedidos cuja entrega foi 100% concluída via validação do <strong>PIN de 4 dígitos</strong>, protegendo contra cancelamentos ou trocas de motorista no trajeto.</p>
-                <p>2. <strong>Tempo 1 (Aprovação Master ➔ Subconta):</strong> Ao clicar em <em>"✅ Aprovar"</em>, a conta Master transfere o valor integral solicitado para a subconta Asaas (<code>walletId</code>) do parceiro. O saque assume o status <code>Em Processamento (Subconta)</code>. <strong>O Pix externo não é chamado simultaneamente</strong>, eliminando o erro de estorno concorrente no Asaas.</p>
-                <p>3. <strong>Tempo 2 (Subconta ➔ Pix Bancário Externo):</strong> Assim que o Asaas confirma a liquidação na subconta (<code>status: DONE</code>), o sistema dispara automaticamente uma transferência Pix a partir da própria subconta para a conta bancária do titular (mesmo CPF/CNPJ), descontando a tarifa de R$ 0,99 do Asaas (Opção 1 de tarifa: parceiro arca com o Pix). O saque é finalizado como <code>PAGO</code> e os pedidos são baixados.</p>
-                <p>4. <strong>⚡ Sincronização & Botão "Liquidar Pix":</strong> Na aba <em>Em Processamento</em>, o administrador pode clicar em <em>"⚡ Liquidar Pix / Sincronizar"</em> para consultar o Asaas em tempo real ou reprocessar o envio do Pix imediatamente.</p>
-                <p>5. <strong>Rejeição com Justificativa:</strong> Caso haja inconsistência cadastral ou suspeita de fraude, o administrador pode clicar em <em>"❌ Rejeitar"</em>, informando o motivo formal registrado no extrato do parceiro.</p>
+                <p className="font-bold text-purple-900 dark:text-purple-300">🔄 Fluxo do Saque:</p>
+                <p>1. <strong>Saldo livre:</strong> O parceiro só saca o saldo livre da sua conta Asaas. Ficam reservados: pedidos pagos ainda não entregues (para estorno) e corridas que a loja ainda deve aos entregadores.</p>
+                <p>2. <strong>Aprovação:</strong> Ao clicar em <em>"✅ Aprovar"</em> (ou no modo automático, se ativado), o app pede ao Asaas um <strong>Pix a partir da conta do próprio parceiro</strong> para a chave cadastrada. A chave tem de ser <strong>CPF ou CNPJ do mesmo titular</strong>; outras chaves são bloqueadas.</p>
+                <p>3. <strong>Confirmação:</strong> O saque fica <code>Em Processamento</code> até o Asaas confirmar a transferência (webhook). Só então vira <code>PAGO</code>. Se o Asaas recusar, o saque volta como falho e o saldo continua na conta do parceiro.</p>
+                <p>4. <strong>Tarifa:</strong> A tarifa Pix do Asaas é descontada do valor enviado. Há valor mínimo e um saque em andamento por parceiro.</p>
+                <p>5. <strong>⚡ Sincronizar:</strong> Na aba <em>Em Processamento</em>, o botão <em>"⚡ Liquidar Pix / Sincronizar"</em> consulta o Asaas pela referência do saque e atualiza o status, sem criar Pix duplicado.</p>
+                <p>6. <strong>Rejeição com Justificativa:</strong> Em caso de inconsistência cadastral ou suspeita de fraude, clique em <em>"❌ Rejeitar"</em> e informe o motivo.</p>
               </div>
             </div>
           )}
 
           {activeSection === 'pagamentos' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">💳 Fluxo Pix, Split Asaas, Estornos & Comprovantes</h3>
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">💳 Fluxo Pix, Split Asaas, Corridas, Estornos & Comprovantes</h3>
 
               <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
-                <p className="font-bold text-zinc-900 dark:text-white">⚡ Ciclo de Vida Financeiro:</p>
-                <p>1. <strong>Criação do Pedido</strong>: O cliente gera o Pix dinâmico via Asaas (<code>asaas-checkout</code>). O dinheiro entra com segurança na conta Master.</p>
-                <p>2. <strong>Confirmação via Webhook</strong>: Ao pagar no banco, o Asaas aciona o webhook em tempo real, que atualiza o pedido para <code>PAID</code>.</p>
-                <p>3. <strong>Proteção no Despacho & Trajeto</strong>: Durante o preparo e a rota, se houver troca de motoboy ou cancelamento justificado, o valor permanece seguro na conta Master.</p>
-                <p>4. <strong>Divisão Automática (Triple Split) Pós-PIN</strong>: Após a digitação do PIN de 4 dígitos na entrega, o saldo é liberado na carteira de cada parceiro:</p>
+                <p className="font-bold text-zinc-900 dark:text-white">⚡ Ciclo de Vida Financeiro (modelo "Cobrança na Loja"):</p>
+                <p>1. <strong>Cobrança na conta da loja</strong>: No checkout, o app emite o Pix <strong>na conta Asaas da loja/fornecedor</strong>, com vencimento de 60 minutos. O cliente vê o nome da loja no banco.</p>
+                <p>2. <strong>Split da comissão</strong>: No mesmo Pix, o Asaas envia à conta raiz do AçaíFood apenas a comissão (<code>% venda + % frete − parte da tarifa Pix da plataforma</code>). Venda + frete ficam na conta da loja.</p>
+                <p>3. <strong>Confirmação via Webhook</strong>: Ao pagar, o webhook da conta da loja atualiza o pedido para <code>PAID</code> e o app registra os repasses na tabela <code>settlements</code> (fonte da verdade).</p>
+                <p>4. <strong>Reserva</strong>: Até a entrega, o valor do pedido fica reservado na conta da loja e não entra no saldo de saque.</p>
+                <p>5. <strong>Corrida após o PIN</strong>: Quando o motoboy digita o PIN do cliente, o app transfere o valor da corrida da conta da loja para a conta do motoboy (repasse <code>DRIVER</code>). Sem saldo na loja, o repasse fica pendente e é pago automaticamente na próxima venda ou pelo cron diário.</p>
                 <div className="pl-3 space-y-1 text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 p-2.5 rounded-lg">
-                  <p>💜 <strong>Plataforma</strong>: Comissão Venda (%) + Comissão Frete (%).</p>
-                  <p>🏪 <strong>Vendedor</strong>: Subtotal dos Produtos − Comissão Venda − Subsídio de Frete.</p>
-                  <p>🛵 <strong>Entregador</strong>: Valor do Frete − Comissão de Frete.</p>
+                  <p>💜 <strong>Plataforma</strong>: Comissão Venda (%) + Comissão Frete (%), via split no Pix.</p>
+                  <p>🏪 <strong>Loja</strong>: Venda + Frete − comissão − sua parte da tarifa Pix − corrida paga ao motoboy (o subsídio de frete sai daqui).</p>
+                  <p>🛵 <strong>Entregador</strong>: Valor da corrida − comissão sobre o frete − sua parte da tarifa Pix.</p>
                 </div>
-                <p>5. <strong>📄 Comprovante Oficial Asaas</strong>: O sistema gera o comprovante oficial com selo/logo Asaas, ID da transação e favorecido Eletromecânica Baia Ltda para impressão térmica ou em PDF.</p>
-                <p>6. <strong>Estorno Automático Pix (Refund)</strong>: Cancelamentos realizados antes do preparo acionam <code>POST /api/asaas/refund</code>, devolvendo 100% do valor ao cliente em segundos.</p>
+                <p>6. <strong>📄 Comprovante Oficial Asaas</strong>: Mostra selo Asaas, ID da transação e o favorecido: a <strong>loja vendedora</strong> (na coleta de resíduos, a Eletromecânica Baia Ltda).</p>
+                <p>7. <strong>Estorno (Refund)</strong>: Cancelamentos acionam <code>POST /api/asaas/refund</code>, que faz o estorno integral a partir da conta da loja. No estorno integral, o split da comissão é desfeito. Pix pago após o cancelamento é estornado automaticamente.</p>
+                <p>8. <strong>Taxas por cidade</strong>: <em>App na Venda (%)</em>, <em>App no Frete (%)</em>, valor da corrida e divisão da tarifa Pix são definidos por cidade no painel. Cada pedido grava um retrato (snapshot) das taxas, então mudanças valem só para pedidos novos.</p>
+                <p>9. <strong>Modelo de pagamento</strong>: Em <em>🛡️ Conformidade</em>, o painel "Modelo de pagamento" alterna entre <code>SELLER_SPLIT</code> (cobrança na loja, padrão) e <code>ROOT</code> (cobrança na conta raiz, só para contingência).</p>
               </div>
             </div>
           )}

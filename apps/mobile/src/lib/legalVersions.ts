@@ -2,7 +2,7 @@
 // /api/terms/accept, /api/terms/status e /api/asaas/subaccount.
 // Ao mudar qualquer texto em docs/legal/, atualize esta data: todos os usuários
 // terão de aceitar de novo no próximo acesso.
-export const CURRENT_TERMS_VERSION = '2026-10-06';
+export const CURRENT_TERMS_VERSION = '2026-10-24';
 
 export const LEGAL_DOCUMENTS = [
   'acaifood_terms',

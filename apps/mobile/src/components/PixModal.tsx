@@ -235,7 +235,7 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
                 ℹ️ Beneficiário no seu Banco:
               </p>
               <p className="mt-0.5 leading-tight">
-                No app do seu banco, o recebedor do Pix aparecerá como <strong>Eletromecânica Baia Ltda</strong> (Empresa detentora da AppSolutions76 / AçaíFood).
+                No app do seu banco, o recebedor do Pix aparece com o <strong>nome da loja</strong> do seu pedido (você paga direto à loja, pela conta Asaas dela). Na coleta de resíduos, aparece <strong>Eletromecânica Baia Ltda</strong>, empresa do AçaíFood.
               </p>
             </div>
 
