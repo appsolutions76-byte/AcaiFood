@@ -24,6 +24,7 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
     mirroredFromAsaas?: boolean;
     subaccountBalance?: number;
     internalOrderBalance?: number;
+    reservedBalance?: number;
     pendingRequest: any;
     recentRequests: any[];
   } | null>(null);
@@ -166,6 +167,11 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
             </div>
             <div className="text-xs text-zinc-400 mt-1 font-medium space-y-0.5">
               <div>Valor mínimo configurado: <span className="text-purple-300 font-bold">{formatMoney(minVal)}</span></div>
+              {Number(balanceData?.reservedBalance || 0) > 0 && (
+                <div className="text-[11px] text-sky-300 font-semibold">
+                  Reservado para pedidos em andamento: {formatMoney(Number(balanceData?.reservedBalance || 0))} <span className="text-zinc-400 font-normal">(liberado após a entrega e o pagamento da corrida)</span>
+                </div>
+              )}
               {Number(balanceData?.internalOrderBalance || 0) > 0 && (
                 <div className="text-[11px] text-amber-300 font-semibold">
                   A caminho da sua subconta: {formatMoney(Number(balanceData?.internalOrderBalance || 0))} <span className="text-zinc-400 font-normal">(entregas concluídas aguardando repasse)</span>

@@ -4,6 +4,15 @@ import { getAsaasApiKey } from '@/lib/asaasConfig';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { priceOrderOnServer } from '@/lib/serverOrderPricing';
+import {
+  PaymentModel,
+  getPaymentModel,
+  getPartnerCtx,
+  getRootWalletId,
+  ensureSubaccountReceiving,
+  platformCommissionFromPricing,
+  sellerNetFromPricing
+} from '@/lib/paymentAccount';
 
 export const dynamic = 'force-dynamic';
 
@@ -333,18 +342,84 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Valor total do pedido inválido para cobrança' }, { status: 400 });
     }
 
-    // Fase 3.1: Cobrança gerada 100% para a conta da plataforma (repasses liquidados após confirmação do PIN)
-
+    // Modelo de pagamento do pedido (docs/25):
+    // - SELLER_SPLIT: cobrança emitida na subconta da loja, split só da comissão para a conta raiz.
+    // - ROOT: modelo antigo (cobrança na conta raiz). Coleta sempre ROOT (não há loja vendedora).
     const { getAsaasBaseUrl } = await import('@/lib/asaasConfig');
-    const ASAAS_API_KEY = await getAsaasApiKey();
-    if (!ASAAS_API_KEY) {
-      return NextResponse.json(
-        { error: 'ASAAS_API_KEY não configurada no servidor' },
-        { status: 400 }
-      );
+    const rootKey = await getAsaasApiKey();
+    if (!rootKey) {
+      return NextResponse.json({ error: 'ASAAS_API_KEY não configurada no servidor' }, { status: 400 });
+    }
+
+    const prevSnap: any = (order as any).pricing_snapshot || {};
+    let paymentModel: PaymentModel;
+    if (prevSnap.paymentModel) {
+      paymentModel = String(prevSnap.paymentModel).toUpperCase() === 'SELLER_SPLIT' ? 'SELLER_SPLIT' : 'ROOT';
+    } else if ((order as any).asaas_payment_id) {
+      // Pedido que já tinha cobrança no modelo antigo: continua nele (evita duas cobranças)
+      paymentModel = 'ROOT';
+    } else {
+      paymentModel = await getPaymentModel();
+    }
+    if (String(order.order_type || '').toUpperCase() === 'COLETA' || !order.seller_storefront_id) {
+      paymentModel = 'ROOT';
+    }
+
+    let ASAAS_API_KEY = rootKey;
+    let issuerPartnerId: string | null = null;
+    let platformCommission = 0;
+    let rootWalletId: string | null = null;
+
+    if (paymentModel === 'SELLER_SPLIT') {
+      const { data: sfSeller } = await supabase.from('storefronts').select('partner_id').eq('id', order.seller_storefront_id).maybeSingle();
+      issuerPartnerId = sfSeller?.partner_id || null;
+      if (!issuerPartnerId) {
+        return NextResponse.json({ error: 'Loja do pedido sem responsável cadastrado.' }, { status: 400 });
+      }
+
+      const { data: sellerUser } = await supabase
+        .from('users')
+        .select('asaas_account_status, asaas_wallet_id')
+        .eq('id', issuerPartnerId)
+        .maybeSingle();
+      const sellerCtx = await getPartnerCtx(issuerPartnerId);
+      if (sellerUser?.asaas_account_status !== 'APPROVED' || !String(sellerUser?.asaas_wallet_id || '').trim() || !sellerCtx) {
+        return NextResponse.json(
+          { error: 'Esta loja ainda não está habilitada para receber pagamentos Pix. Tente outra loja ou mais tarde.' },
+          { status: 409 }
+        );
+      }
+
+      // Pedido mínimo: o que a loja recebe precisa cobrir a corrida da moto
+      platformCommission = platformCommissionFromPricing(pricing);
+      const sellerReceives = sellerNetFromPricing(pricing);
+      const driverRide = Number(pricing.netDriverPayout || 0);
+      if (sellerReceives - driverRide < 0 || sellerReceives <= 0) {
+        return NextResponse.json(
+          { error: 'O valor do pedido não cobre a entrega e as taxas. Adicione mais itens para atingir o pedido mínimo desta loja.' },
+          { status: 400 }
+        );
+      }
+
+      if (platformCommission > 0) {
+        rootWalletId = await getRootWalletId();
+        if (!rootWalletId) {
+          return NextResponse.json({ error: 'Pagamento Pix temporariamente indisponível (carteira da plataforma). Tente novamente.' }, { status: 503 });
+        }
+      }
+
+      await ensureSubaccountReceiving(issuerPartnerId);
+      ASAAS_API_KEY = sellerCtx.apiKey;
     }
 
     const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
+    const pricingSnapshot: any = {
+      ...pricing,
+      paymentModel,
+      issuerPartnerId,
+      platformCommission: paymentModel === 'SELLER_SPLIT' ? platformCommission : null,
+      sellerSplitNet: paymentModel === 'SELLER_SPLIT' ? sellerNetFromPricing(pricing) : null
+    };
 
     // Idempotência: verificar se este order.id já possui cobrança gerada no Asaas
     try {
@@ -465,7 +540,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const dueDateObj = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    // Loja: vence hoje (pedido de entrega imediata). Modelo antigo: mantém 3 dias.
+    const dueDateObj = paymentModel === 'SELLER_SPLIT'
+      ? new Date(Date.now() - 3 * 60 * 60 * 1000)
+      : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
     const dueDate = dueDateObj.toISOString().split('T')[0];
 
     // Criar Cobrança (BillingType PIX) para a plataforma
@@ -477,6 +555,10 @@ export async function POST(request: Request) {
       externalReference: order.id,
       description: `Pedido AçaíFood #${String(order.id).substring(0, 8)}`
     };
+    if (paymentModel === 'SELLER_SPLIT' && platformCommission > 0 && rootWalletId) {
+      // Só a comissão da plataforma vai para a conta raiz; o resto fica na subconta da loja
+      paymentBody.split = [{ walletId: rootWalletId, fixedValue: platformCommission }];
+    }
 
     const payRes = await fetch(`${ASAAS_URL}/payments`, {
       method: 'POST',
@@ -521,7 +603,7 @@ export async function POST(request: Request) {
       platform_fee_amount: (pricing.platformSalesFee || 0) + (pricing.platformDeliveryFee || 0),
       delivery_fee_amount: pricing.deliveryTotal || pricing.clientDeliveryFee || 0,
       asaas_fee_amount: pricing.asaasPixFeeFixed || 0,
-      pricing_snapshot: pricing
+      pricing_snapshot: pricingSnapshot
     };
     const updRes = await supabase.from('orders').update(updPayload).eq('id', order.id);
     if (updRes.error) {
@@ -529,7 +611,8 @@ export async function POST(request: Request) {
       console.warn("Aviso ao salvar snapshot no update, tentando payload básico de pagamento:", updRes.error.message);
       const safeUpd: any = {
         asaas_payment_id: paymentData.id,
-        asaas_charge_status: paymentData.status
+        asaas_charge_status: paymentData.status,
+        pricing_snapshot: pricingSnapshot
       };
       await supabase.from('orders').update(safeUpd).eq('id', order.id);
     }

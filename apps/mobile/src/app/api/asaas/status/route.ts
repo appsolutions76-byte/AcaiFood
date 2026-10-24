@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAuthorizedRequest, unauthorizedResponse } from '@/lib/apiAuth';
-import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
+import { getOrderPaymentCtx, getRootCtx } from '@/lib/paymentAccount';
+import { reconcileWithdrawal } from '@/lib/withdrawalApproval';
+import { reconcileSettlement } from '@/lib/orderSettlements';
+
+export const dynamic = 'force-dynamic';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(request: Request) {
   try {
@@ -9,8 +15,21 @@ export async function GET(request: Request) {
     const paymentId = searchParams.get('paymentId');
     const orderId = searchParams.get('orderId');
 
-    const ASAAS_API_KEY = await getAsaasApiKey();
-    const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
+    // Conta que emitiu a cobrança do pedido: conta raiz (modelo antigo) ou subconta da loja
+    let ctxOrder: any = null;
+    try {
+      const sb = getSupabaseAdmin();
+      if (orderId && UUID_RE.test(orderId)) {
+        const { data } = await sb.from('orders').select('id, pricing_snapshot').eq('id', orderId).maybeSingle();
+        ctxOrder = data;
+      } else if (paymentId) {
+        const { data } = await sb.from('orders').select('id, pricing_snapshot').eq('asaas_payment_id', paymentId).maybeSingle();
+        ctxOrder = data;
+      }
+    } catch (_e) {}
+    const payCtx = ctxOrder ? await getOrderPaymentCtx(ctxOrder) : await getRootCtx();
+    const ASAAS_API_KEY = payCtx?.apiKey || '';
+    const ASAAS_URL = payCtx?.baseUrl || '';
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -209,112 +228,42 @@ export async function POST(request: Request) {
     const payment = body.payment || (event?.startsWith('PAYMENT_') ? body : null);
     const transfer = body.transfer || (event?.startsWith('TRANSFER_') ? body : null);
 
-    // 1. Processamento de Webhooks de Transferência / Saque Pix (TRANSFER_*)
+    // 1. Transferências (TRANSFER_*): o evento só avisa; o estado real é conferido na API do Asaas.
+    //    Nunca envia Pix nem transferência a partir daqui.
     if (transfer || String(event || '').startsWith('TRANSFER_')) {
-      const transferId = transfer?.id || body.id;
-      const transferStatus = transfer?.status || (
-        (event === 'TRANSFER_DONE' || event === 'TRANSFER_COMPLETED') ? 'DONE' :
-        (event === 'TRANSFER_FAILED' || event === 'TRANSFER_CANCELLED' || event === 'TRANSFER_REVERSED') ? 'FAILED' :
-        'PENDING'
-      );
-
       const supabase = getSupabaseAdmin();
-      if (transferId) {
-        if (transferStatus === 'DONE' || event === 'TRANSFER_DONE' || event === 'TRANSFER_COMPLETED') {
-          const nowIso = new Date().toISOString();
-
-          // Sincronizar tabela settlements (Repasses novos pós-PIN)
-          try {
-            await supabase
-              .from('settlements')
-              .update({
-                status: 'DONE',
-                transferred_at: nowIso,
-                last_error: null
-              })
-              .eq('asaas_transfer_id', transferId);
-          } catch (_sErr) {}
-
-          let { data: wr } = await supabase
-            .from('withdrawal_requests')
-            .select('*')
-            .eq('asaas_transfer_id', transferId)
-            .maybeSingle();
-          // Saque que ficou "a confirmar" (timeout na criação): casa pelo externalReference da tentativa
-          if (!wr && transfer?.externalReference) {
-            const byRef = await supabase
-              .from('withdrawal_requests')
-              .select('*')
-              .eq('transfer_attempt_id', String(transfer.externalReference))
-              .maybeSingle();
-            wr = byRef.data;
-            if (wr) {
-              await supabase.from('withdrawal_requests').update({ asaas_transfer_id: transferId }).eq('id', wr.id);
-            }
-          }
-
-          if (wr) {
-            await supabase
-              .from('withdrawal_requests')
-              .update({
-                status: 'PAGO',
-                paid_at: nowIso
-              })
-              .eq('id', wr.id);
-
-            if (Array.isArray(wr.order_ids) && wr.order_ids.length > 0) {
-              const isDriver = ['motorista', 'motoboy', 'caminhao', 'courier'].includes(String(wr.role || '').toLowerCase());
-              const updateField = isDriver ? { payout_driver_done: true } : { payout_seller_done: true };
-              await supabase.from('orders').update(updateField).in('id', wr.order_ids);
-            }
-            console.log(`✅ Webhook Asaas: Saque #${wr.id} liquidado com sucesso (Transferência #${transferId})!`);
-          }
-        } else if (transferStatus === 'FAILED' || event === 'TRANSFER_FAILED' || event === 'TRANSFER_CANCELLED' || event === 'TRANSFER_REVERSED') {
-          const failReason = transfer?.failReason || transfer?.description || `Transferência ${transferStatus.toLowerCase()} no Asaas`;
-
-          // Sincronizar tabela settlements (Repasses novos)
-          try {
-            await supabase
-              .from('settlements')
-              .update({
-                status: 'FAILED',
-                last_error: failReason
-              })
-              .eq('asaas_transfer_id', transferId);
-          } catch (_sErr) {}
-
-          let { data: wr } = await supabase
-            .from('withdrawal_requests')
-            .select('*')
-            .eq('asaas_transfer_id', transferId)
-            .maybeSingle();
-          // Saque que ficou "a confirmar" (timeout na criação): casa pelo externalReference da tentativa
-          if (!wr && transfer?.externalReference) {
-            const byRef = await supabase
-              .from('withdrawal_requests')
-              .select('*')
-              .eq('transfer_attempt_id', String(transfer.externalReference))
-              .maybeSingle();
-            wr = byRef.data;
-            if (wr) {
-              await supabase.from('withdrawal_requests').update({ asaas_transfer_id: transferId }).eq('id', wr.id);
-            }
-          }
-
-          if (wr) {
-            await supabase
-              .from('withdrawal_requests')
-              .update({
-                status: 'FALHOU',
-                failure_reason: failReason
-              })
-              .eq('id', wr.id);
-            console.warn(`⚠️ Webhook Asaas: Saque #${wr.id} falhou (Transferência #${transferId}): ${failReason}`);
-          }
+      const transferId = String(transfer?.id || body.id || '');
+      const externalRef = String(transfer?.externalReference || '');
+      try {
+        let withdrawalId: string | null = null;
+        if (externalRef.startsWith('WD_') && UUID_RE.test(externalRef.slice(3))) {
+          withdrawalId = externalRef.slice(3);
+        } else if (transferId) {
+          const { data } = await supabase.from('withdrawal_requests').select('id').eq('asaas_transfer_id', transferId).limit(1);
+          withdrawalId = data && data.length > 0 ? data[0].id : null;
         }
-      }
+        if (withdrawalId) {
+          const result = await reconcileWithdrawal(withdrawalId);
+          return NextResponse.json({ success: true, processed: true, kind: 'withdrawal', event, status: result.status });
+        }
 
-      return NextResponse.json({ success: true, processed: true, event });
+        let settlementId: string | null = null;
+        if (UUID_RE.test(externalRef)) {
+          const { data } = await supabase.from('settlements').select('id').eq('id', externalRef).maybeSingle();
+          settlementId = data?.id || null;
+        }
+        if (!settlementId && transferId) {
+          const { data } = await supabase.from('settlements').select('id').eq('asaas_transfer_id', transferId).maybeSingle();
+          settlementId = data?.id || null;
+        }
+        if (settlementId) {
+          const result = await reconcileSettlement(settlementId);
+          return NextResponse.json({ success: true, processed: true, kind: 'settlement', event, status: result.status });
+        }
+      } catch (trErr: any) {
+        console.warn('[Webhook Asaas] Aviso ao conferir transferência:', trErr?.message);
+      }
+      return NextResponse.json({ success: true, processed: false, event });
     }
 
     // 2. Processamento de Webhooks de Cobrança Pix (PAYMENT_*)
@@ -382,10 +331,11 @@ export async function POST(request: Request) {
               created_at: new Date().toISOString()
             });
 
-            const { getAsaasApiKey, getAsaasBaseUrl } = await import('@/lib/asaasConfig');
-            const apiKey = await getAsaasApiKey();
+            const { data: cancelledOrder } = await supabase.from('orders').select('id, pricing_snapshot').eq('id', currentOrder?.id || '').maybeSingle();
+            const refundCtx = cancelledOrder ? await getOrderPaymentCtx(cancelledOrder) : await getRootCtx();
+            const apiKey = refundCtx?.apiKey || '';
             if (apiKey) {
-              const asaasUrl = getAsaasBaseUrl(apiKey);
+              const asaasUrl = refundCtx!.baseUrl;
               const autoRefundRes = await fetch(`${asaasUrl}/payments/${paymentId}/refund`, {
                 method: 'POST',
                 headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },

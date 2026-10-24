@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { calculateOrderPricing } from '@/lib/pricingEngine';
+import { snapshotModel, sellerNetFromPricing } from '@/lib/paymentAccount';
 
 export interface PartnerBalanceResult {
   totalDisponivel: number;
@@ -8,6 +9,7 @@ export interface PartnerBalanceResult {
   mirroredFromAsaas?: boolean;
   subaccountBalance?: number;
   internalOrderBalance?: number;
+  reservedBalance?: number;
 }
 
 export async function getPartnerAvailableBalance(partnerId: string, role: string): Promise<PartnerBalanceResult> {
@@ -27,7 +29,7 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
 
     const matchedOrdersMap = new Map<string, any>();
 
-    const ORDER_BALANCE_COLS = 'id, status, driver_id, seller_storefront_id, order_type, products_subtotal, delivery_distance_km, driver_amount, seller_amount, seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, payout_seller_done, payout_driver_done';
+    const ORDER_BALANCE_COLS = 'id, status, driver_id, seller_storefront_id, order_type, products_subtotal, delivery_distance_km, driver_amount, seller_amount, seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, payout_seller_done, payout_driver_done, pricing_snapshot';
 
     if (isDriver) {
       // 1. Motorista / Motoboy / Caminhão: consultar orders por driver_id
@@ -109,6 +111,8 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
       if (storeOrders && storeOrders.length > 0) {
         for (const order of storeOrders) {
           const st = String(order.status || '').trim();
+          // Modelo novo: a loja já recebeu na própria subconta; não há repasse "a caminho"
+          if (snapshotModel(order).model === 'SELLER_SPLIT') continue;
           if (validStatuses.includes(st) && !order.payout_seller_done) {
             matchedOrdersMap.set(order.id, order);
           }
@@ -191,10 +195,48 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     console.warn(`[partnerBalance] Não foi possível consultar saldo Asaas em tempo real para parceiro ${partnerId}:`, asaasErr);
   }
 
-  // Saldo disponível para saque = SOMENTE o saldo real da subconta Asaas (de onde o Pix sai).
+  // Reserva da loja no modelo novo (cobrança na subconta da loja):
+  // - pedido pago e ainda não entregue: o valor recebido pelo split (pode ser estornado);
+  // - pedido entregue com a corrida da moto ainda não paga: o valor da corrida.
+  let reservedBalance = 0;
+  if (!isDriver) {
+    try {
+      const { data: sfs } = await adminSupabase.from('storefronts').select('id').eq('partner_id', partnerId);
+      const sfIds = (sfs || []).map((x: any) => x.id);
+      if (sfIds.length > 0) {
+        const notPaidOrClosed = ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT', 'CANCELLED', 'CANCELADO', 'REFUNDED', 'RECUSADO'];
+        const deliveredStatuses = ['RECEIVED', 'received', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO'];
+        const { data: splitOrders } = await adminSupabase
+          .from('orders')
+          .select('id, status, driver_payout_amount, payout_driver_done, pricing_snapshot')
+          .in('seller_storefront_id', sfIds)
+          .eq('pricing_snapshot->>paymentModel', 'SELLER_SPLIT')
+          .not('status', 'in', `(${notPaidOrClosed.map(x => `"${x}"`).join(',')})`)
+          .limit(500);
+        for (const o of splitOrders || []) {
+          const st = String(o.status || '').trim();
+          if (deliveredStatuses.includes(st)) {
+            if (!o.payout_driver_done) reservedBalance += Math.max(0, Number(o.driver_payout_amount || 0));
+          } else {
+            const snap: any = o.pricing_snapshot || {};
+            const net = snap.sellerSplitNet !== null && snap.sellerSplitNet !== undefined
+              ? Number(snap.sellerSplitNet)
+              : sellerNetFromPricing(snap);
+            reservedBalance += Math.max(0, net);
+          }
+        }
+      }
+    } catch (resErr) {
+      console.warn('[partnerBalance] Aviso ao calcular reserva da loja:', resErr);
+    }
+  }
+  reservedBalance = Number(reservedBalance.toFixed(2));
+
+  // Saldo disponível para saque = SOMENTE o saldo real da subconta Asaas (de onde o Pix sai),
+  // menos a reserva dos pedidos em andamento (modelo novo).
   // Pedidos entregues ainda não repassados (internalOrderBalance) aparecem como "a caminho",
   // mas não entram no saque: só depois que o repasse Master -> subconta é confirmado.
-  totalDisponivel = mirroredFromAsaas && subaccountBalance !== null ? Math.max(0, subaccountBalance) : 0;
+  totalDisponivel = mirroredFromAsaas && subaccountBalance !== null ? Math.max(0, subaccountBalance - reservedBalance) : 0;
 
   return {
     totalDisponivel: Number(totalDisponivel.toFixed(2)),
@@ -202,7 +244,8 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
     quantidadePedidos: orderIds.length,
     mirroredFromAsaas,
     subaccountBalance: subaccountBalance !== null ? Number(subaccountBalance.toFixed(2)) : undefined,
-    internalOrderBalance
+    internalOrderBalance,
+    reservedBalance
   };
 }
 

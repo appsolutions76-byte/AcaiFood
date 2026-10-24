@@ -3,6 +3,7 @@ import { validateAndFormatPixKey } from '@/lib/asaasTransferHelpers';
 import { logAdminAction } from '@/lib/adminAudit';
 import { getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { settlePendingOrdersForPartner } from '@/lib/orderSettlements';
+import { getPartnerAvailableBalance } from '@/lib/partnerBalance';
 import {
   findTransferByExternalRef,
   getTransferById,
@@ -289,11 +290,24 @@ export async function processWithdrawalApproval(
     return { success: false, status: 'FALHOU', error: failMsg };
   }
 
+  // 6.1 Reserva da loja no modelo novo (pedidos pagos não entregues e corridas a pagar)
+  let reserved = 0;
+  try {
+    const bal = await getPartnerAvailableBalance(requestRow.partner_id, requestRow.role || partnerUser.role);
+    reserved = Number(bal.reservedBalance || 0);
+  } catch (_rErr) {}
+  const availableBalance = Number(Math.max(0, subBalance - reserved).toFixed(2));
+  if (availableBalance <= 0) {
+    const failMsg = `Saldo da subconta (R$ ${subBalance.toFixed(2)}) está reservado para pedidos em andamento e corridas a pagar (R$ ${reserved.toFixed(2)}).`;
+    await failRequest(requestId, failMsg, actorId);
+    return { success: false, status: 'FALHOU', error: failMsg };
+  }
+
   // 7. Valores
   const { data: psSettings } = await adminSupabase.from('platform_settings').select('asaas_pix_fee_fixed').limit(1).maybeSingle();
   const pixFeeFixed = Number(psSettings?.asaas_pix_fee_fixed ?? 0.99);
   const requestedAmount = Number(requestRow.requested_amount || 0);
-  const grossAmount = Number(Math.min(requestedAmount > 0 ? requestedAmount : subBalance, subBalance).toFixed(2));
+  const grossAmount = Number(Math.min(requestedAmount > 0 ? requestedAmount : availableBalance, availableBalance).toFixed(2));
   const netPixAmount = Number(Math.max(0, grossAmount - pixFeeFixed).toFixed(2));
 
   if (netPixAmount <= 0) {
@@ -307,6 +321,21 @@ export async function processWithdrawalApproval(
   const validated = validateAndFormatPixKey(rawKey, partnerUser.pix_key_type || partnerUser.pixKeyType);
   if (!validated.valid || !validated.formattedKey) {
     const failMsg = `Chave Pix inválida no cadastro do parceiro: ${validated.error || 'Não formatada'}`;
+    await failRequest(requestId, failMsg, actorId);
+    return { success: false, status: 'FALHOU', error: failMsg };
+  }
+
+  // 8.1 Mesma titularidade (mandato: só para conta do próprio parceiro)
+  const partnerDoc = String(partnerUser.cpf_cnpj || partnerUser.cpfCnpj || '').replace(/\D/g, '');
+  if (validated.type === 'CPF' || validated.type === 'CNPJ') {
+    if (!partnerDoc || validated.formattedKey !== partnerDoc) {
+      const failMsg = 'A chave Pix CPF/CNPJ cadastrada é de outro documento. O saque só vai para chave do próprio parceiro.';
+      await failRequest(requestId, failMsg, actorId);
+      return { success: false, status: 'FALHOU', error: failMsg };
+    }
+  } else if (String(process.env.PIX_ALLOW_NON_DOCUMENT_KEYS || '').toLowerCase() !== 'true') {
+    // E-mail, telefone ou chave aleatória: ainda não há como confirmar o titular antes do envio
+    const failMsg = 'Por enquanto o saque só vai para chave Pix CPF/CNPJ do próprio parceiro. Cadastre essa chave na sua conta.';
     await failRequest(requestId, failMsg, actorId);
     return { success: false, status: 'FALHOU', error: failMsg };
   }

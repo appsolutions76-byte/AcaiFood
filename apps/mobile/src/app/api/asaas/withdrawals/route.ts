@@ -81,6 +81,7 @@ export async function GET(request: Request) {
       mirroredFromAsaas: balanceInfo.mirroredFromAsaas ?? false,
       subaccountBalance: balanceInfo.subaccountBalance,
       internalOrderBalance: balanceInfo.internalOrderBalance,
+      reservedBalance: balanceInfo.reservedBalance ?? 0,
       minWithdrawalValue,
       canRequest,
       accountStatus,

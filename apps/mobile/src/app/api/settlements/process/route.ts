@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAuthorizedRequest, authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
-import { settleOrderPayouts, syncAndProcessPendingSettlements, isSettlementsEnabled } from '@/lib/orderSettlements';
+import { settleOrderPayouts, syncAndProcessPendingSettlements, isSettlementsEnabled, expireStaleSellerCharges } from '@/lib/orderSettlements';
 import { reconcilePartnerWithdrawals } from '@/lib/partnerBalance';
 
 export const dynamic = 'force-dynamic';
@@ -80,6 +80,13 @@ async function handleProcessSettlements(request: Request) {
     }
 
     const syncRes = await syncAndProcessPendingSettlements();
+
+    // Cobranças Pix da loja não pagas no prazo (modelo novo)
+    try {
+      await expireStaleSellerCharges(60);
+    } catch (expErr) {
+      console.warn('[Settlement Process] Aviso ao expirar cobranças:', expErr);
+    }
 
     // Confirma no Asaas os saques que ficaram em processamento (sem reenviar Pix)
     try {

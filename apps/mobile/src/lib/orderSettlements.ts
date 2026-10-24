@@ -7,6 +7,7 @@ import {
   isTransferFailed,
   describeAsaasError
 } from '@/lib/asaasTransferLookup';
+import { snapshotModel, getPartnerCtx } from '@/lib/paymentAccount';
 
 /**
  * Repasses pós-entrega (modelo BaaS):
@@ -49,6 +50,21 @@ interface AsaasCtx {
   baseUrl: string;
 }
 
+/**
+ * Conta de onde sai o repasse do pedido:
+ * - modelo antigo (ROOT): conta raiz;
+ * - modelo novo (SELLER_SPLIT): subconta da loja, que recebeu venda + frete e paga a corrida da moto.
+ */
+async function resolveSourceCtx(orderId: string, fallback?: AsaasCtx | null): Promise<AsaasCtx | null> {
+  const supabase = getSupabaseAdmin();
+  const { data: order } = await supabase.from('orders').select('id, pricing_snapshot').eq('id', orderId).maybeSingle();
+  const { model, issuerPartnerId } = snapshotModel(order);
+  if (model === 'SELLER_SPLIT' && issuerPartnerId) {
+    return getPartnerCtx(issuerPartnerId);
+  }
+  return fallback || (await getMasterCtx());
+}
+
 async function getMasterCtx(): Promise<AsaasCtx | null> {
   const apiKey = await getAsaasApiKey();
   if (!apiKey) return null;
@@ -88,8 +104,6 @@ async function loadPartnerAccount(partnerId: string) {
  */
 export async function executeSettlementTransfer(settlementId: string, ctxIn?: AsaasCtx | null): Promise<SettlementExecResult> {
   const supabase = getSupabaseAdmin();
-  const ctx = ctxIn || (await getMasterCtx());
-  if (!ctx) return { settlementId, status: 'PENDING', error: 'ASAAS_API_KEY não configurada' };
 
   // 1. Trava atômica: só uma execução por vez pega a linha
   const { data: row, error: lockErr } = await supabase
@@ -114,6 +128,12 @@ export async function executeSettlementTransfer(settlementId: string, ctxIn?: As
   const role = row.role as Role;
   const amount = Number(row.amount || 0);
   const attempts = Number(row.attempts || 0);
+
+  const ctx = await resolveSourceCtx(row.order_id, ctxIn);
+  if (!ctx) {
+    await supabase.from('settlements').update({ status: 'PENDING', last_error: 'Chave Asaas da conta de origem indisponível', updated_at: new Date().toISOString() }).eq('id', settlementId);
+    return { settlementId, status: 'PENDING', error: 'Chave Asaas da conta de origem indisponível' };
+  }
 
   if (!(amount > 0)) {
     await supabase.from('settlements').update({ status: 'DONE', last_error: 'Valor zero dispensado', updated_at: new Date().toISOString() }).eq('id', settlementId);
@@ -239,8 +259,6 @@ async function applyTransferState(
  */
 export async function reconcileSettlement(settlementId: string, ctxIn?: AsaasCtx | null): Promise<SettlementExecResult> {
   const supabase = getSupabaseAdmin();
-  const ctx = ctxIn || (await getMasterCtx());
-  if (!ctx) return { settlementId, status: 'PROCESSING', error: 'ASAAS_API_KEY não configurada' };
 
   const { data: row } = await supabase
     .from('settlements')
@@ -251,6 +269,8 @@ export async function reconcileSettlement(settlementId: string, ctxIn?: AsaasCtx
   if (row.status !== 'PROCESSING') return { settlementId, status: row.status as any, transferId: row.asaas_transfer_id || undefined };
 
   const role = row.role as Role;
+  const ctx = await resolveSourceCtx(row.order_id, ctxIn);
+  if (!ctx) return { settlementId, status: 'PROCESSING', error: 'Chave Asaas da conta de origem indisponível' };
 
   if (row.asaas_transfer_id) {
     const res = await getTransferById(ctx.baseUrl, ctx.apiKey, row.asaas_transfer_id);
@@ -367,8 +387,17 @@ export async function settleOrderPayouts(orderId: string): Promise<SettleOrderRe
       return result; // Ainda não entregue: repasse só após o PIN de entrega
     }
 
-    // Loja / Batedeira / Fornecedor
-    if (!order.payout_seller_done && order.seller_storefront_id) {
+    // Modelo novo: a loja já recebeu venda + frete na própria subconta no pagamento.
+    // Não há repasse para ela; só a corrida da moto sai da subconta da loja.
+    const isSellerSplit = snapshotModel(order).model === 'SELLER_SPLIT';
+    if (isSellerSplit && !order.payout_seller_done) {
+      await markOrderRoleDone(order.id, 'seller');
+      result.sellerTransferred = true;
+      result.sellerAmount = 0;
+    }
+
+    // Loja / Batedeira / Fornecedor (modelo antigo)
+    if (!isSellerSplit && !order.payout_seller_done && order.seller_storefront_id) {
       const { data: sf } = await supabase.from('storefronts').select('partner_id').eq('id', order.seller_storefront_id).maybeSingle();
       const sellerId = sf?.partner_id || null;
       if (sellerId) {
@@ -489,4 +518,61 @@ export async function syncAndProcessPendingSettlements(): Promise<{ processed: n
   }
 
   return { processed: results.length, results };
+}
+
+/**
+ * Modelo novo: cobrança Pix da loja que não foi paga em 60 minutos é apagada no Asaas
+ * (o QR Code dinâmico continuaria pagável por meses) e o pedido é cancelado.
+ * Se o cliente pagar mesmo assim, o webhook estorna automaticamente (pedido cancelado).
+ */
+export async function expireStaleSellerCharges(maxAgeMinutes = 60): Promise<{ expired: number }> {
+  const supabase = getSupabaseAdmin();
+  const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000).toISOString();
+  const { data: stale } = await supabase
+    .from('orders')
+    .select('id, status, asaas_payment_id, pricing_snapshot')
+    .in('status', ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT'])
+    .eq('pricing_snapshot->>paymentModel', 'SELLER_SPLIT')
+    .lt('created_at', cutoff)
+    .limit(50);
+
+  let expired = 0;
+  for (const o of stale || []) {
+    const { issuerPartnerId } = snapshotModel(o);
+    const ctx = issuerPartnerId ? await getPartnerCtx(issuerPartnerId) : null;
+    if (!ctx) continue;
+    try {
+      if (o.asaas_payment_id) {
+        const res = await fetch(`${ctx.baseUrl}/payments/${o.asaas_payment_id}`, {
+          headers: { access_token: ctx.apiKey },
+          cache: 'no-store'
+        });
+        if (!res.ok) continue;
+        const pay = await res.json();
+        const st = String(pay?.status || '').toUpperCase();
+        if (['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(st)) continue; // pago: o webhook/consulta cuida
+        if (st === 'PENDING' || st === 'OVERDUE') {
+          await fetch(`${ctx.baseUrl}/payments/${o.asaas_payment_id}`, {
+            method: 'DELETE',
+            headers: { access_token: ctx.apiKey }
+          });
+        }
+      }
+      const { data: upd } = await supabase
+        .from('orders')
+        .update({
+          status: 'CANCELLED',
+          cancellation_reason: 'Pix não pago no prazo',
+          asaas_charge_status: 'DELETED',
+          cancelled_at: new Date().toISOString()
+        })
+        .eq('id', o.id)
+        .in('status', ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT'])
+        .select('id');
+      if (upd && upd.length > 0) expired++;
+    } catch (e: any) {
+      console.warn(`[orderSettlements] Aviso ao expirar cobrança do pedido ${o.id}:`, e?.message);
+    }
+  }
+  return { expired };
 }

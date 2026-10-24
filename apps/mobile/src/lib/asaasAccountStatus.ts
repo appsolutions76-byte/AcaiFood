@@ -83,6 +83,14 @@ export async function saveAccountStatus(
     } catch (_e) {}
   }
 
+  // Conta aprovada: prepara a subconta para receber Pix (chave aleatória + webhook de cobranças)
+  if (newStatus === 'APPROVED') {
+    try {
+      const { ensureSubaccountReceiving } = await import('@/lib/paymentAccount');
+      await ensureSubaccountReceiving(userId);
+    } catch (_e) {}
+  }
+
   return { status: newStatus, changed };
 }
 

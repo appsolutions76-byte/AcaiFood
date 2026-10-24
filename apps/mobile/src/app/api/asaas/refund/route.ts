@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
+import { getOrderPaymentCtx } from '@/lib/paymentAccount';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { logAdminAction } from '@/lib/adminAudit';
 
@@ -33,8 +34,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
+    let ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
     const supabase = getSupabaseAdmin();
+    let REQ_KEY = ASAAS_API_KEY;
+    let isSellerSplit = false;
 
     let asaasPaymentId = paymentId ? String(paymentId).trim() : '';
     let targetOrder: any = null;
@@ -82,12 +85,22 @@ export async function POST(request: Request) {
       asaasPaymentId = targetOrder.asaas_payment_id;
     }
 
+    // Cobrança emitida na subconta da loja (modelo novo): consulta e estorno com a chave dela
+    if (targetOrder) {
+      const orderCtx = await getOrderPaymentCtx(targetOrder);
+      if (orderCtx?.model === 'SELLER_SPLIT') {
+        REQ_KEY = orderCtx.apiKey;
+        ASAAS_URL = orderCtx.baseUrl;
+        isSellerSplit = true;
+      }
+    }
+
     // 3. Se ainda não tem asaasPaymentId e é um UUID válido, buscar por externalReference no Asaas
     const referenceToSearch = targetOrder?.id || (isUUID ? cleanOrderId : null);
     if (!asaasPaymentId && referenceToSearch) {
       try {
         const searchRes = await fetch(`${ASAAS_URL}/payments?externalReference=${encodeURIComponent(referenceToSearch)}`, {
-          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+          headers: { 'access_token': REQ_KEY, 'Content-Type': 'application/json' }
         });
         if (searchRes.ok) {
           const searchData = await searchRes.json();
@@ -184,7 +197,7 @@ export async function POST(request: Request) {
     // 6. Se localizamos a cobrança no Asaas, verificar seu status atual antes de estornar
     if (asaasPaymentId) {
       const payRes = await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}`, {
-        headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+        headers: { 'access_token': REQ_KEY, 'Content-Type': 'application/json' }
       });
 
       if (!payRes.ok) {
@@ -231,14 +244,16 @@ export async function POST(request: Request) {
           console.log(`[Asaas Refund] Executando estorno Pix para ${asaasPaymentId} (R$ ${refundValue})...`);
 
           const refundBodyPayload: any = { description: cancelReasonText };
-          if (refundValue > 0) {
+          // Modelo novo: estorno integral sem "value" para o Asaas desfazer o split (a comissão volta junto)
+          const integralSellerRefund = isSellerSplit && totalRefundedSoFar <= 0;
+          if (refundValue > 0 && !integralSellerRefund) {
             refundBodyPayload.value = Number(refundValue.toFixed(2));
           }
 
           const refundRes = await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}/refund`, {
             method: 'POST',
             headers: {
-              'access_token': ASAAS_API_KEY,
+              'access_token': REQ_KEY,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(refundBodyPayload)
@@ -286,7 +301,7 @@ export async function POST(request: Request) {
           try {
             await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}`, {
               method: 'DELETE',
-              headers: { 'access_token': ASAAS_API_KEY }
+              headers: { 'access_token': REQ_KEY }
             });
           } catch (delErr) {
             console.warn("Aviso ao deletar cobrança pendente Asaas:", delErr);

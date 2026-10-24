@@ -3,6 +3,7 @@ import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { logAdminAction } from '@/lib/adminAudit';
+import { getOrderPaymentCtx } from '@/lib/paymentAccount';
 
 export const dynamic = 'force-dynamic';
 
@@ -174,8 +175,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 });
     }
 
-    const ASAAS_API_KEY = await getAsaasApiKey();
-    const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
+    // Conta que emitiu a cobrança (raiz ou subconta da loja no modelo novo)
+    const orderCtx = await getOrderPaymentCtx(order);
+    const ASAAS_API_KEY = orderCtx?.apiKey || (await getAsaasApiKey());
+    const ASAAS_URL = orderCtx?.baseUrl || getAsaasBaseUrl(ASAAS_API_KEY);
 
     // ==========================================
     // AÇÃO 1: CONFIRMAR PAGAMENTO RECEBIDO FORA DO ASAAS
@@ -298,7 +301,8 @@ export async function POST(request: Request) {
               const refundPayload: any = {
                 description: reason || 'Cancelamento e devolução solicitados pelo administrador'
               };
-              if (refundValue > 0) {
+              // Modelo novo (cobrança da loja com split): estorno integral sem "value" desfaz o split
+              if (refundValue > 0 && orderCtx?.model !== 'SELLER_SPLIT') {
                 refundPayload.value = Number(refundValue.toFixed(2));
               }
 

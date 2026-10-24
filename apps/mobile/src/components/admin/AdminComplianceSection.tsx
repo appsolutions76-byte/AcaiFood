@@ -71,11 +71,76 @@ export function AdminComplianceSection({ showToast }: { showToast?: (msg: string
         ))}
       </div>
 
+      <PaymentModelPanel toast={toast} />
+
       {tab === 'subcontas' && <SubaccountsPanel toast={toast} />}
       {tab === 'repasses' && <SettlementsPanel toast={toast} />}
       {tab === 'auditoria' && <AuditLogPanel />}
       {tab === 'sla' && <SlaPanel toast={toast} />}
     </div>
+  );
+}
+
+function PaymentModelPanel({ toast }: { toast: (m: string) => void }) {
+  const [model, setModel] = useState<string>('');
+  const [walletReady, setWalletReady] = useState<boolean>(false);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const d = await apiGet('/api/admin/payment-model');
+      setModel(d.model || 'ROOT');
+      setWalletReady(Boolean(d.rootWalletReady));
+    } catch (e: any) {
+      toast(e?.message || 'Erro ao carregar o modelo de pagamento');
+    }
+  }, [toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const change = async (next: 'ROOT' | 'SELLER_SPLIT') => {
+    const msg = next === 'SELLER_SPLIT'
+      ? 'Ativar o modelo novo? Os NOVOS pedidos serão cobrados na subconta da loja, com split só da comissão para a plataforma, e a loja paga a corrida da moto após o PIN.'
+      : 'Voltar ao modelo antigo? Os NOVOS pedidos serão cobrados na conta raiz.';
+    if (!window.confirm(msg)) return;
+    setSaving(true);
+    try {
+      const d = await apiPost('/api/admin/payment-model', { model: next });
+      setModel(d.model);
+      toast('Modelo de pagamento atualizado.');
+    } catch (e: any) {
+      toast(e?.message || 'Erro ao salvar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isNew = model === 'SELLER_SPLIT';
+  return (
+    <Panel title="💳 Modelo de pagamento dos novos pedidos">
+      <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+        {isNew
+          ? 'Ativo: cobrança na subconta da loja. A plataforma recebe só a comissão por split; a loja recebe venda + frete e paga a corrida da moto após o PIN de entrega.'
+          : 'Ativo: modelo antigo. A cobrança cai na conta raiz e os repasses saem dela após o PIN.'}
+      </p>
+      <p className="text-xs text-zinc-500 mb-3">Pedidos já cobrados continuam no modelo em que foram cobrados. Carteira da conta raiz: {walletReady ? 'ok' : 'não encontrada'}.</p>
+      <div className="flex gap-2 flex-wrap">
+        <button
+          disabled={saving || isNew}
+          onClick={() => change('SELLER_SPLIT')}
+          className="px-3 py-2 rounded-lg text-xs font-bold bg-emerald-600 text-white disabled:opacity-40 cursor-pointer"
+        >
+          Usar cobrança na loja (novo)
+        </button>
+        <button
+          disabled={saving || !isNew || !model}
+          onClick={() => change('ROOT')}
+          className="px-3 py-2 rounded-lg text-xs font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 disabled:opacity-40 cursor-pointer"
+        >
+          Voltar ao modelo antigo
+        </button>
+      </div>
+    </Panel>
   );
 }
 
