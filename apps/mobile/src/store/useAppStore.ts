@@ -2289,6 +2289,20 @@ export const useAppStore = create<AppState>()(
 
         // 2. Aceitação Atômica Condicional de Corrida pelo Operador (Regras Parte B Item 2)
         if (action === 'aceitar_motorista') {
+            // Corrida só é paga na conta Asaas do entregador: exigir conta aprovada antes de aceitar
+            if (currentUser.role !== 'admin') {
+              let accStatus = String(currentUser.asaas_account_status || '').toUpperCase();
+              if (accStatus !== 'APPROVED') {
+                try {
+                  const { data: me } = await supabase.from('users').select('asaas_account_status').eq('id', currentUser.id).maybeSingle();
+                  accStatus = String(me?.asaas_account_status || '').toUpperCase();
+                } catch (_e) { /* mantém o status em cache */ }
+              }
+              if (accStatus !== 'APPROVED') {
+                alert("⚠️ Sua conta Asaas ainda não está aprovada. Abra \"Minha conta Asaas\" no painel e envie os documentos. Só é possível aceitar corridas com a conta aprovada, porque o pagamento cai nela.");
+                return;
+              }
+            }
             try {
               const { data: acceptRes, error: acceptErr } = await supabase.rpc('accept_order_atomic', {
                 p_order_id: orderId
