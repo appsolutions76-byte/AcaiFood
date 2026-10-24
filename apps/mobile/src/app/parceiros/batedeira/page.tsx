@@ -126,16 +126,20 @@ export default function BatedeiraDashboard() {
   }>({ open: false, title: '', onSelect: () => {} });
   const [newProductImage, setNewProductImage] = useState<string | undefined>(undefined);
 
+  // Não sobrescrever o que o lojista está digitando: a lista de usuários é recarregada a cada 4 s
+  const subsidyDirtyRef = useRef(false);
   useEffect(() => {
+    if (priceModalOpen) return;
     if (currentUser?.priceB2C) {
       setPrices(currentUser.priceB2C);
     }
     if (currentUser?.descriptionsB2C) {
       setAcaiDescriptions(currentUser.descriptionsB2C);
     }
-  }, [currentUser?.priceB2C, currentUser?.descriptionsB2C]);
+  }, [currentUser?.priceB2C, currentUser?.descriptionsB2C, priceModalOpen]);
 
   useEffect(() => {
+    if (subsidyDirtyRef.current) return;
     if (currentUser?.freteSubsidyPct !== undefined) {
       setSubsidyInput(currentUser.freteSubsidyPct.toString());
     }
@@ -875,6 +879,7 @@ export default function BatedeiraDashboard() {
   };
 
   const handleSaveSubsidy = () => {
+    subsidyDirtyRef.current = false;
     store.setFreteSubsidy(currentUser.id, parseFloat(subsidyInput) || 0);
     alert('Subsídio salvo com sucesso!');
   };
@@ -1164,7 +1169,7 @@ export default function BatedeiraDashboard() {
                     min="0" 
                     max="100" 
                     value={subsidyInput} 
-                    onChange={e => setSubsidyInput(e.target.value)} 
+                    onChange={e => { subsidyDirtyRef.current = true; setSubsidyInput(e.target.value); }} 
                     className="w-14 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg py-1.5 text-center font-bold text-xs outline-none focus:ring-2 focus:ring-purple-500" 
                   />
                   <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">%</span>

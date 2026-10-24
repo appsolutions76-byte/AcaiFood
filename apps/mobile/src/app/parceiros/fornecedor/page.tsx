@@ -104,11 +104,13 @@ export default function FornecedorDashboard() {
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [b2bPrice, setB2bPrice] = useState(() => currentUser?.priceB2B ?? 140);
   
+  // Não sobrescrever o preço enquanto o fornecedor está editando (a lista de usuários recarrega a cada 4 s)
   useEffect(() => {
+    if (priceModalOpen) return;
     if (currentUser?.priceB2B !== undefined) {
       setB2bPrice(currentUser.priceB2B);
     }
-  }, [currentUser?.priceB2B]);
+  }, [currentUser?.priceB2B, priceModalOpen]);
   const [activeTab, setActiveTab] = useState('geral');
 
   const [newProductName, setNewProductName] = useState('');

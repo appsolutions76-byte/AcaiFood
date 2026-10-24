@@ -405,6 +405,13 @@ let autoRefreshInterval: any = null;
 let supabaseChannel: any = null;
 let ordersDebounceTimer: any = null;
 let lastFetchAllUsersTime = 0;
+// Depois que o parceiro salva preço/descrição/subsídio, a busca periódica (4 s) pode trazer
+// o valor antigo do banco e desfazer a edição na tela. Durante esta janela mantemos o valor local.
+let priceEditLockUntil = 0;
+const markPriceEdit = () => { priceEditLockUntil = Date.now() + 20000; };
+const keepLocalPrices = (prev: any, next: any) => (prev && Date.now() < priceEditLockUntil)
+  ? { ...next, priceB2C: prev.priceB2C, priceB2B: prev.priceB2B, descriptionsB2C: prev.descriptionsB2C, freteSubsidyPct: prev.freteSubsidyPct }
+  : next;
 let lastFetchLojasTime = 0;
 let lastFetchRatesTime = 0;
 const lastFetchOrdersTime: Record<string, number> = {};
@@ -973,9 +980,11 @@ export const useAppStore = create<AppState>()(
                         products: mapDbProducts(sf?.products),
                         cpfCnpj: dbUser.cpf_cnpj
                     };
-                    newUsers[dbUser.id] = userObj;
                     if (state.currentUser && state.currentUser.id === dbUser.id) {
-                        updatedCurrentUser = { ...state.currentUser, ...definedOnly(userObj), status: storeStatus };
+                        updatedCurrentUser = keepLocalPrices(state.currentUser, { ...state.currentUser, ...definedOnly(userObj), status: storeStatus });
+                        newUsers[dbUser.id] = keepLocalPrices(state.currentUser, userObj);
+                    } else {
+                        newUsers[dbUser.id] = userObj;
                     }
                 });
                 return { users: newUsers, currentUser: updatedCurrentUser };
@@ -1099,9 +1108,11 @@ export const useAppStore = create<AppState>()(
                         storefrontId: sf?.id,
                         storefronts: sf ? [sf] : []
                     };
-                    newUsers[dbUser.id] = userObj;
                     if (state.currentUser && state.currentUser.id === dbUser.id) {
-                        updatedCurrentUser = { ...state.currentUser, ...definedOnly(userObj), status: storeStatus };
+                        updatedCurrentUser = keepLocalPrices(state.currentUser, { ...state.currentUser, ...definedOnly(userObj), status: storeStatus });
+                        newUsers[dbUser.id] = keepLocalPrices(state.currentUser, userObj);
+                    } else {
+                        newUsers[dbUser.id] = userObj;
                     }
                 });
                 return { users: newUsers, currentUser: updatedCurrentUser };
@@ -1342,6 +1353,7 @@ export const useAppStore = create<AppState>()(
       },
       
       setFreteSubsidy: async (userId, pct) => {
+        markPriceEdit();
         set((state) => {
           const user = state.users[userId];
           if (!user) return state;
@@ -1528,6 +1540,7 @@ export const useAppStore = create<AppState>()(
       },
 
       updateUserPrice: async (userId, b2cPrices, b2bPrice) => {
+        markPriceEdit();
         set((state) => {
           const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user) return state;
@@ -1785,6 +1798,7 @@ export const useAppStore = create<AppState>()(
       },
 
       updateAcaiDescriptions: async (userId, descriptions) => {
+        markPriceEdit();
         let updatedDescs: Record<string, string | undefined> = {};
         set((state) => {
           const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
