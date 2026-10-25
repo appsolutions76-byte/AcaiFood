@@ -19,7 +19,12 @@ import {
   XCircle, 
   Package,
   Layers,
-  ArrowUpDown
+  ArrowUpDown,
+  Truck,
+  Tag,
+  Percent,
+  DollarSign,
+  Edit2
 } from "lucide-react";
 import { useAppStore, haversineKm, getRatesForCity, generateUUID } from "@/store/useAppStore";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
@@ -116,6 +121,9 @@ export default function BatedeiraDashboard() {
   const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33, branco: 38 });
   const [acaiDescriptions, setAcaiDescriptions] = useState<{ popular?: string; medio?: string; grosso?: string; branco?: string }>(() => currentUser?.descriptionsB2C || {});
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
+  const [editingInlineType, setEditingInlineType] = useState<'popular' | 'medio' | 'grosso' | 'branco' | null>(null);
+  const [inlinePriceInput, setInlinePriceInput] = useState<string>('');
+  const [subsidyFeedback, setSubsidyFeedback] = useState<string | null>(null);
 
   const [photoModalData, setPhotoModalData] = useState<{
     open: boolean;
@@ -879,9 +887,40 @@ export default function BatedeiraDashboard() {
   };
 
   const handleSaveSubsidy = () => {
+    if (!currentUser) return;
     subsidyDirtyRef.current = false;
-    store.setFreteSubsidy(currentUser.id, parseFloat(subsidyInput) || 0);
-    alert('Subsídio salvo com sucesso!');
+    const val = Math.max(0, Math.min(100, Math.round(parseFloat(subsidyInput) || 0)));
+    store.setFreteSubsidy(currentUser.id, val);
+    setSubsidyFeedback(`Participação de ${val}% salva com sucesso!`);
+    setTimeout(() => setSubsidyFeedback(null), 3500);
+  };
+
+  const handleQuickSetSubsidy = (pct: number) => {
+    if (!currentUser) return;
+    const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+    setSubsidyInput(clamped.toString());
+    subsidyDirtyRef.current = false;
+    store.setFreteSubsidy(currentUser.id, clamped);
+    setSubsidyFeedback(`Participação alterada para ${clamped}%!`);
+    setTimeout(() => setSubsidyFeedback(null), 3500);
+  };
+
+  const handleStartInlineEdit = (tipo: 'popular' | 'medio' | 'grosso' | 'branco', currentVal: number) => {
+    setEditingInlineType(tipo);
+    setInlinePriceInput(currentVal.toString());
+  };
+
+  const handleSaveInlinePrice = (tipo: 'popular' | 'medio' | 'grosso' | 'branco') => {
+    if (!currentUser) return;
+    const val = parseFloat(inlinePriceInput.replace(',', '.'));
+    if (isNaN(val) || val <= 0) {
+      alert('Por favor, informe um valor válido para o açaí.');
+      return;
+    }
+    const updated = { ...prices, [tipo]: val };
+    setPrices(updated);
+    store.updateUserPrice(currentUser.id, updated);
+    setEditingInlineType(null);
   };
 
 
@@ -925,7 +964,14 @@ export default function BatedeiraDashboard() {
                   : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
-              <span>📊 Cardápio & Loja</span>
+              <span>📊 Cardápio & Preços</span>
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
+                Number(subsidyInput) > 0 
+                  ? 'bg-emerald-500 text-white shadow-xs' 
+                  : activeTab === 'geral' ? 'bg-purple-800 text-purple-200' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+              }`}>
+                🚚 Frete: {subsidyInput}%
+              </span>
             </button>
 
             <button 
@@ -1026,6 +1072,200 @@ export default function BatedeiraDashboard() {
 
         {activeTab === 'geral' && (
           <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+            {/* WIDGET HERO: GESTÃO EXPRESSA DE PREÇOS E PARTICIPAÇÃO NO FRETE */}
+            <div className="bg-gradient-to-br from-purple-900 via-indigo-950 to-zinc-950 text-white p-4 sm:p-6 rounded-3xl shadow-xl border-2 border-purple-500/30 flex flex-col gap-5 relative overflow-hidden">
+              {/* Glow decorativo de fundo */}
+              <div className="absolute -top-12 -right-12 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Cabeçalho do Widget */}
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-white/10 pb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl sm:text-2xl">⚡</span>
+                    <h3 className="font-black text-sm sm:text-base tracking-tight uppercase flex items-center gap-2 text-white">
+                      Gestão Expressa: Preços & Frete
+                    </h3>
+                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                      Ao Vivo
+                    </span>
+                  </div>
+                  <p className="text-xs text-purple-200/80 mt-0.5">
+                    Defina quanto sua loja paga da entrega e altere preços de venda instantaneamente no app.
+                  </p>
+                </div>
+
+                {subsidyFeedback && (
+                  <div className="self-start sm:self-auto bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold px-3 py-1.5 rounded-xl animate-in fade-in slide-in-from-top-2 flex items-center gap-1.5 shadow-sm">
+                    <Check size={14} />
+                    <span>{subsidyFeedback}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Grid de 2 Colunas: Frete e Preços */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                
+                {/* 1. PARTICIPAÇÃO NO FRETE */}
+                <div className="bg-white/5 dark:bg-black/30 backdrop-blur-md p-4 sm:p-4.5 rounded-2xl border border-white/10 flex flex-col justify-between gap-3.5">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-300">
+                          <Truck size={16} />
+                        </div>
+                        <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wide text-zinc-100">
+                          Participação no Frete
+                        </h4>
+                      </div>
+                      
+                      {/* Badge do Status Atual */}
+                      {Number(subsidyInput) > 0 ? (
+                        <span className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                          🟢 Pagando {subsidyInput}%
+                        </span>
+                      ) : (
+                        <span className="bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                          🔴 0% (Cliente paga tudo)
+                        </span>
+                      )}
+                    </div>
+                    
+                    <p className="text-[11px] text-zinc-300 mt-1.5 leading-relaxed">
+                      {Number(subsidyInput) > 0 
+                        ? `Sua loja está pagando ${subsidyInput}% da entrega do cliente. Lojas com entrega subsidiada vendem até 3x mais!`
+                        : "Ao subsidiar parte ou 100% da entrega, seus produtos ganham muito mais conversão e clientes fiéis."}
+                    </p>
+                  </div>
+
+                  {/* Atalhos Rápidos de 1 Clique */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+                      <span>Atalhos Rápidos:</span>
+                      <span className="text-[10px] text-purple-300">1 toque para aplicar</span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {[
+                        { pct: 0, label: '0%' },
+                        { pct: 15, label: '15%' },
+                        { pct: 25, label: '25%' },
+                        { pct: 50, label: '50%' },
+                        { pct: 100, label: '100%' }
+                      ].map(item => {
+                        const isActive = Number(subsidyInput) === item.pct;
+                        return (
+                          <button
+                            key={item.pct}
+                            type="button"
+                            onClick={() => handleQuickSetSubsidy(item.pct)}
+                            className={`py-2 px-1 rounded-xl text-xs font-black transition-all cursor-pointer text-center shadow-sm ${
+                              isActive
+                                ? 'bg-purple-500 text-white ring-2 ring-purple-300 shadow-md scale-102'
+                                : 'bg-white/10 hover:bg-white/20 text-zinc-200 border border-white/10'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Input Manual Livre */}
+                  <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+                    <span className="text-xs text-zinc-300 font-medium">Porcentagem Livre (%):</span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={subsidyInput}
+                        onChange={e => { subsidyDirtyRef.current = true; setSubsidyInput(e.target.value); }}
+                        className="w-16 bg-black/40 border border-purple-400/40 rounded-xl py-1.5 text-center font-black text-sm text-white outline-none focus:ring-2 focus:ring-purple-400"
+                      />
+                      <span className="text-xs font-bold text-zinc-300">%</span>
+                      <button
+                        type="button"
+                        onClick={handleSaveSubsidy}
+                        className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-xl text-xs font-extrabold transition shadow-md active:scale-95 cursor-pointer ml-1"
+                      >
+                        Salvar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. PREÇOS BASE DO AÇAÍ */}
+                <div className="bg-white/5 dark:bg-black/30 backdrop-blur-md p-4 sm:p-4.5 rounded-2xl border border-white/10 flex flex-col justify-between gap-3.5">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="p-1.5 rounded-lg bg-pink-500/20 text-pink-300">
+                          <Tag size={16} />
+                        </div>
+                        <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wide text-zinc-100">
+                          Preços Base de Venda (1 Litro)
+                        </h4>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setPriceModalOpen(true)}
+                        className="bg-white/15 hover:bg-white/25 text-white border border-white/20 px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer"
+                      >
+                        <Edit2 size={12} />
+                        <span>Editar Todos</span>
+                      </button>
+                    </div>
+                    
+                    <p className="text-[11px] text-zinc-300 mt-1.5 leading-relaxed">
+                      Preços exibidos aos clientes no cardápio online. Toque em qualquer tipo para editar na hora:
+                    </p>
+                  </div>
+
+                  {/* Grid dos 4 Preços */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { tipo: 'popular' as const, label: 'Popular', price: prices.popular || 20, icon: '🥣' },
+                      { tipo: 'medio' as const, label: 'Médio', price: prices.medio || 26, icon: '🥣' },
+                      { tipo: 'grosso' as const, label: 'Grosso', price: prices.grosso || 35, icon: '🥣' },
+                      { tipo: 'branco' as const, label: 'Branco', price: prices.branco ?? 38, icon: '🥥' }
+                    ].map(item => (
+                      <div
+                        key={item.tipo}
+                        onClick={() => handleStartInlineEdit(item.tipo, item.price)}
+                        className="p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 cursor-pointer transition flex flex-col justify-between group active:scale-95"
+                        title={`Clique para editar preço do ${item.label}`}
+                      >
+                        <div className="flex items-center justify-between text-[11px] text-zinc-300">
+                          <span>{item.icon} {item.label}</span>
+                          <span className="opacity-70 group-hover:opacity-100 text-[10px] text-purple-300 font-bold transition">✏️</span>
+                        </div>
+                        <div className="text-sm sm:text-base font-black text-white mt-1 tracking-tight">
+                          R$ {item.price.toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Dica / Botão de Ação */}
+                  <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-zinc-300">
+                    <span className="text-[11px] text-purple-200 flex items-center gap-1">
+                      💡 Toque no card para editar inline
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPriceModalOpen(true)}
+                      className="text-purple-300 hover:text-white font-bold underline text-xs cursor-pointer"
+                    >
+                      Descrições & Detalhes →
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
             {/* Controles da Loja e Status Geral */}
             <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
@@ -1048,9 +1288,9 @@ export default function BatedeiraDashboard() {
                   </button>
                   <button 
                     onClick={() => setPriceModalOpen(true)} 
-                    className="bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm border border-purple-200 dark:border-purple-800"
+                    className="bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm border border-purple-200 dark:border-purple-800 flex items-center gap-1"
                   >
-                    ✏️ Editar Preços Base
+                    <span>✏️</span> Editar Preços Base
                   </button>
                 </div>
               </div>
@@ -1059,9 +1299,18 @@ export default function BatedeiraDashboard() {
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <div>
-                    <h4 className="font-bold text-xs uppercase text-zinc-700 dark:text-zinc-300">🥣 Cardápio Base de Açaí (1 Litro)</h4>
-                    <p className="text-[11px] text-zinc-500">Controle a disponibilidade e foto de cada ponto de açaí.</p>
+                    <h4 className="font-bold text-xs uppercase text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <span>🥣</span> Cardápio Base de Açaí (1 Litro)
+                    </h4>
+                    <p className="text-[11px] text-zinc-500">Controle preço direto, disponibilidade e foto de cada ponto de açaí.</p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setPriceModalOpen(true)}
+                    className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold"
+                  >
+                    Editar Todos
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1070,6 +1319,7 @@ export default function BatedeiraDashboard() {
                     const price = prices[tipo] || (tipo === 'popular' ? 20 : tipo === 'medio' ? 26 : tipo === 'grosso' ? 35 : 38);
                     const isAvailable = currentUser?.availabilityB2C?.[tipo] !== false;
                     const photo = currentUser?.imagesB2C?.[tipo];
+                    const isEditingThis = editingInlineType === tipo;
 
                     return (
                       <div 
@@ -1109,7 +1359,51 @@ export default function BatedeiraDashboard() {
 
                           <div className="flex-1 min-w-0">
                             <p className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white truncate">{label}</p>
-                            <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">R$ {price.toFixed(2)}</p>
+                            
+                            {/* PREÇO COM EDIÇÃO INLINE OU DISPLAY */}
+                            {isEditingThis ? (
+                              <div className="flex items-center gap-1 mt-1">
+                                <span className="text-xs font-bold text-zinc-500">R$</span>
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  autoFocus
+                                  value={inlinePriceInput}
+                                  onChange={e => setInlinePriceInput(e.target.value)}
+                                  className="w-16 bg-white dark:bg-zinc-900 border-2 border-purple-500 rounded-lg px-1.5 py-0.5 text-xs font-black text-zinc-900 dark:text-white outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveInlinePrice(tipo)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded-lg text-xs font-bold shadow-xs cursor-pointer"
+                                  title="Salvar Preço"
+                                >
+                                  <Check size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingInlineType(null)}
+                                  className="bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-300 p-1 rounded-lg text-xs font-bold cursor-pointer"
+                                  title="Cancelar"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">
+                                  R$ {price.toFixed(2)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartInlineEdit(tipo, price)}
+                                  className="p-1 rounded-md text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-xs transition cursor-pointer"
+                                  title="Editar este preço"
+                                >
+                                  ✏️
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1126,6 +1420,16 @@ export default function BatedeiraDashboard() {
                             }`}
                           >
                             {isAvailable ? '🟢 Disponível' : '🔴 Esgotado'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleStartInlineEdit(tipo, price)}
+                            className="p-1.5 rounded-lg bg-white dark:bg-zinc-800 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-bold border border-zinc-200 dark:border-zinc-700 shadow-xs flex items-center gap-1"
+                            title="Editar Preço"
+                          >
+                            <span>✏️</span>
+                            <span className="text-[10px]">Preço</span>
                           </button>
                           
                           <button
@@ -1152,44 +1456,16 @@ export default function BatedeiraDashboard() {
               </div>
             </div>
 
-            {/* Barra de Ajustes Operacionais (Frete e Logística Reversa) */}
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Participação no Frete */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40">
-                <div>
-                  <h4 className="font-bold text-xs uppercase text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                    <span>🚚</span> Participação no Frete (%)
-                  </h4>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">Subsidie parte da entrega para aumentar as vendas da sua loja.</p>
-                </div>
-                <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
-                  <span className="text-xs font-bold text-zinc-500">Paga:</span>
-                  <input 
-                    type="number" 
-                    min="0" 
-                    max="100" 
-                    value={subsidyInput} 
-                    onChange={e => { subsidyDirtyRef.current = true; setSubsidyInput(e.target.value); }} 
-                    className="w-14 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg py-1.5 text-center font-bold text-xs outline-none focus:ring-2 focus:ring-purple-500" 
-                  />
-                  <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">%</span>
-                  <button 
-                    onClick={handleSaveSubsidy} 
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-xs"
-                  >
-                    Salvar
-                  </button>
-                </div>
+            {/* Logística Reversa (Caroço) - Card Amplo e Dedicado */}
+            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="font-bold text-xs sm:text-sm uppercase text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                  <span>🚛</span> Logística Reversa (Descarte do Caroço de Açaí)
+                </h4>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Chame a caçamba para recolhimento e descarte sustentável no Ecoponto cadastrado.
+                </p>
               </div>
-
-              {/* Logística Reversa */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200/80 dark:border-zinc-800">
-                <div>
-                  <h4 className="font-bold text-xs uppercase text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                    <span>🚛</span> Logística Reversa (Caroço)
-                  </h4>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">Descarte sustentável no Ecoponto.</p>
-                </div>
                 <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                   <button 
                     onClick={() => {
@@ -1284,7 +1560,6 @@ export default function BatedeiraDashboard() {
                   })()}
                 </div>
               </div>
-            </div>
 
             {/* PRODUTOS EXTRAS & ADICIONAIS - VISÃO TOTALMENTE LARGA E AMPLA */}
             <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
