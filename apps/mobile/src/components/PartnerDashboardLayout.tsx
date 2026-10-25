@@ -49,6 +49,7 @@ export interface PartnerDashboardLayoutProps {
   manualRole: PartnerRole;
   shareModal?: React.ReactNode;
   navigationBar?: React.ReactNode;
+  mobileMenuCard?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -73,6 +74,7 @@ export function PartnerDashboardLayout({
   manualRole,
   shareModal,
   navigationBar,
+  mobileMenuCard,
   children
 }: PartnerDashboardLayoutProps) {
   const router = useRouter();
@@ -327,8 +329,8 @@ export function PartnerDashboardLayout({
               onClick={() => setMobileMenuOpen(false)} 
             />
 
-            <div className="fixed inset-y-0 right-0 max-w-[310px] w-full bg-white dark:bg-zinc-900 shadow-2xl p-5 flex flex-col justify-between overflow-y-auto z-10 animate-in slide-in-from-right duration-200 border-l border-zinc-200 dark:border-zinc-800">
-              <div className="space-y-4">
+            <div className="fixed inset-y-0 right-0 max-w-[340px] sm:max-w-sm w-full bg-white dark:bg-zinc-900 shadow-2xl p-4 sm:p-5 flex flex-col justify-between overflow-y-auto z-10 animate-in slide-in-from-right duration-200 border-l border-zinc-200 dark:border-zinc-800">
+              <div className="space-y-3.5">
                 {/* Header do Menu */}
                 <div className="flex justify-between items-center pb-3 border-b border-zinc-200 dark:border-zinc-800">
                   <div className="flex items-center gap-2">
@@ -346,6 +348,15 @@ export function PartnerDashboardLayout({
                     <X size={18} />
                   </button>
                 </div>
+
+                {/* Card Especial para Menu Mobile (ex: Link de Vendas Direto / Cardápio da Loja) */}
+                {mobileMenuCard && (
+                  <div className="space-y-1">
+                    <div className="rounded-2xl overflow-hidden shadow-sm">
+                      {mobileMenuCard}
+                    </div>
+                  </div>
+                )}
 
                 {/* Status e Conta */}
                 <div className="p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-2xl border border-zinc-200 dark:border-zinc-700/60 space-y-2">

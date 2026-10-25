@@ -953,6 +953,13 @@ export default function BatedeiraDashboard() {
           role="loja" 
         />
       }
+      mobileMenuCard={
+        <StoreShareCard 
+          storeId={currentUser.id} 
+          storeName={currentUser.name} 
+          role="loja" 
+        />
+      }
       navigationBar={
         <div className="bg-zinc-100/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-1.5 shadow-sm flex items-center w-full">
           <div className="flex gap-1.5 overflow-x-auto py-0.5 no-scrollbar w-full">
@@ -1049,12 +1056,14 @@ export default function BatedeiraDashboard() {
           </div>
         )}
         
-        {/* Card de Divulgação e Cardápio Digital Próprio */}
-        <StoreShareCard 
-          storeId={currentUser.id} 
-          storeName={currentUser.name} 
-          role="loja" 
-        />
+        {/* Card de Divulgação e Cardápio Digital Próprio (Apenas Desktop - no mobile fica no menu do canto) */}
+        <div className="hidden md:block">
+          <StoreShareCard 
+            storeId={currentUser.id} 
+            storeName={currentUser.name} 
+            role="loja" 
+          />
+        </div>
 
         {/* Aviso de Pedidos Ativos quando fora da aba Pedidos */}
         {batedeiraActiveOrders.length > 0 && activeTab !== 'pedidos' && (
