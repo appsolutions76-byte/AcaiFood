@@ -4,7 +4,7 @@ import React, { useEffect, useState, useSyncExternalStore, Suspense } from "reac
 import Link from "next/link";
 import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw, Menu, X, Home, Search, ClipboardList, User, ChevronRight } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAppStore, haversineKm, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
+import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PixModal } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -357,6 +357,20 @@ export default function StorefrontPage() {
 
   const batedeiras = batedeirasFiltered.slice(0, visibleStoreLimit);
 
+  // Proativamente busca a distância real pelas ruas via OSRM para a loja em foco
+  const activeTargetStoreId = selectedStoreId || cart.storeId;
+  const [, setRouteDistTick] = useState(0);
+  useEffect(() => {
+    if (!activeTargetStoreId) return;
+    const loja = store.users?.[activeTargetStoreId];
+    if (!loja?.lat || !loja?.lng) return;
+    const userLat = currentUser?.lat || gpsLocation?.lat || (loja.lat + 0.015);
+    const userLng = currentUser?.lng || gpsLocation?.lng || (loja.lng + 0.015);
+    getRouteDistanceKm(loja.lat, loja.lng, userLat, userLng).then(() => {
+      setRouteDistTick(t => t + 1);
+    });
+  }, [activeTargetStoreId, currentUser?.lat, currentUser?.lng, gpsLocation?.lat, gpsLocation?.lng]);
+
   const calcFreteCliente = (lojaId: string) => {
     const loja = store.users?.[lojaId];
     const isSupplier = loja?.role === 'fornecedor';
@@ -364,7 +378,7 @@ export default function StorefrontPage() {
     const userLat = currentUser?.lat || gpsLocation?.lat || (loja?.lat ? loja.lat + 0.015 : -1.455);
     const userLng = currentUser?.lng || gpsLocation?.lng || (loja?.lng ? loja.lng + 0.015 : -48.490);
     if (!loja || !loja.lat) return { freteCliente: rates.courier_payment_mode === 'FIXED' ? (rates.courier_fixed_fee || 6) : 6, dist: 2.0, subsidy: 0 };
-    const dist = haversineKm(loja.lat, loja.lng!, userLat, userLng);
+    const dist = getEstimatedRouteDistanceSync(loja.lat, loja.lng!, userLat, userLng);
     const freteTotal = calculateOrderFreight(orderType, dist, rates);
     const subsidy = loja.freteSubsidyPct || 0;
     const freteCliente = freteTotal * (1 - subsidy / 100);

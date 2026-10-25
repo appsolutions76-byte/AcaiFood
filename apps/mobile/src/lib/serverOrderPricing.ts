@@ -24,14 +24,7 @@ const B2C_NAMES: Record<string, string> = {
   branco: 'Açaí Branco Especial (1L)'
 };
 
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+import { haversineKm, getRouteDistanceKm } from "@/lib/routeDistance";
 
 function parseMeta(raw: any): any {
   if (!raw || typeof raw !== 'string') return {};
@@ -76,10 +69,11 @@ export async function priceOrderOnServer(params: {
     destLng = Number(buyer?.longitude || 0);
   }
 
-  // Mesmo padrão do app quando faltam coordenadas (3 km)
-  const distanceKm = (originLat && originLng && destLat && destLng)
-    ? Number(haversineKm(originLat, originLng, destLat, destLng).toFixed(2))
-    : 3.0;
+  // Distância real calculada pelas ruas (OSRM / OpenStreetMap)
+  let distanceKm = 3.0;
+  if (originLat && originLng && destLat && destLng) {
+    distanceKm = await getRouteDistanceKm(originLat, originLng, destLat, destLng);
+  }
 
   if (type === 'COLETA') {
     // Coleta: serviço de frete (sem produto). Sem loja de origem no pedido, a distância

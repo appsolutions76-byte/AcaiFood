@@ -22,6 +22,8 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const [realDistLojaCliente, setRealDistLojaCliente] = useState<number | null>(null);
+  const [realDistMotoLoja, setRealDistMotoLoja] = useState<number | null>(null);
 
   // Referências persistentes para evitar oscilação do Leaflet
   const markerOrigemRef = useRef<any>(null);
@@ -171,7 +173,11 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
         const data = await res.json();
         if (data.routes && data.routes.length > 0 && data.routes[0].geometry) {
           const coords = data.routes[0].geometry.coordinates; // [lng, lat]
-          return coords.map((c: [number, number]) => [c[1], c[0]]); // Converte para [lat, lng]
+          const distanceKm = typeof data.routes[0].distance === 'number' ? Number((data.routes[0].distance / 1000).toFixed(1)) : null;
+          return {
+            points: coords.map((c: [number, number]) => [c[1], c[0]]),
+            distanceKm
+          };
         }
       } catch (_e) {}
       return null;
@@ -188,9 +194,10 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
       polylineEntregaRef.current.setLatLngs([[p1.lat, p1.lng], [p2.lat, p2.lng]]);
     }
 
-    fetchOSRMRoute(p1.lat, p1.lng, p2.lat, p2.lng).then(routePoints => {
-      if (routePoints && polylineEntregaRef.current) {
-        polylineEntregaRef.current.setLatLngs(routePoints);
+    fetchOSRMRoute(p1.lat, p1.lng, p2.lat, p2.lng).then(res => {
+      if (res && polylineEntregaRef.current) {
+        polylineEntregaRef.current.setLatLngs(res.points);
+        if (res.distanceKm) setRealDistLojaCliente(res.distanceKm);
       }
     });
 
@@ -218,9 +225,10 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
         polylineRetiradaRef.current.setLatLngs([[pm.lat, pm.lng], [p1.lat, p1.lng]]);
       }
 
-      fetchOSRMRoute(pm.lat, pm.lng, p1.lat, p1.lng).then(routePoints => {
-        if (routePoints && polylineRetiradaRef.current) {
-          polylineRetiradaRef.current.setLatLngs(routePoints);
+      fetchOSRMRoute(pm.lat, pm.lng, p1.lat, p1.lng).then(res => {
+        if (res && polylineRetiradaRef.current) {
+          polylineRetiradaRef.current.setLatLngs(res.points);
+          if (res.distanceKm) setRealDistMotoLoja(res.distanceKm);
         }
       });
     } else {
@@ -261,8 +269,8 @@ export function MapModal({ isOpen, onClose, origem, destino, motorista }: MapMod
   const p1 = origem;
   const p2 = destino;
   const pm = motorista;
-  const distLojaCliente = (p1?.lat && p2?.lat) ? haversineKm(p1.lat || 0, p1.lng || 0, p2.lat || 0, p2.lng || 0) : 0;
-  const distMotoLoja = (pm?.lat && p1?.lat) ? haversineKm(pm.lat || 0, pm.lng || 0, p1.lat || 0, p1.lng || 0) : 0;
+  const distLojaCliente = realDistLojaCliente ?? ((p1?.lat && p2?.lat) ? haversineKm(p1.lat || 0, p1.lng || 0, p2.lat || 0, p2.lng || 0) : 0);
+  const distMotoLoja = realDistMotoLoja ?? ((pm?.lat && p1?.lat) ? haversineKm(pm.lat || 0, pm.lng || 0, p1.lat || 0, p1.lng || 0) : 0);
 
   const gmapsLojaUrl = p1?.lat ? `https://www.google.com/maps/dir/?api=1&destination=${p1.lat},${p1.lng}` : '';
   const gmapsClienteUrl = p2?.lat ? `https://www.google.com/maps/dir/?api=1&destination=${p2.lat},${p2.lng}` : '';

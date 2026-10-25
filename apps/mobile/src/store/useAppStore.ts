@@ -15,13 +15,8 @@ export function generateUUID(): string {
   });
 }
 
-export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+import { haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync } from "@/lib/routeDistance";
+export { haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync };
 
 export function isValidAsaasWalletId(id?: string): boolean {
   if (!id || typeof id !== 'string') return false;
@@ -2003,9 +1998,10 @@ export const useAppStore = create<AppState>()(
         const lat2 = Number(destLat || 0);
         const lon2 = Number(destLng || 0);
 
-        const distKM = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) 
-          ? haversineKm(lat1, lon1, lat2, lon2) 
-          : 3.0;
+        let distKM = 3.0;
+        if (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) {
+          distKM = await getRouteDistanceKm(lat1, lon1, lat2, lon2);
+        }
 
         const userCity = currentUser.cidade || 'Belém';
         const cityRates = getRatesForCity(userCity, state.rates, state.cities);

@@ -26,7 +26,7 @@ import {
   DollarSign,
   Edit2
 } from "lucide-react";
-import { useAppStore, haversineKm, getRatesForCity, generateUUID } from "@/store/useAppStore";
+import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, generateUUID } from "@/store/useAppStore";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
@@ -505,7 +505,20 @@ export default function BatedeiraDashboard() {
 
   const displayedFornecedores = filteredFornecedores.slice(0, b2bVisibleLimit);
   
-  const distColeta = (currentUser.lat && store.users?.ecoponto?.lat) ? haversineKm(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat!, store.users.ecoponto.lng!) : 0;
+  const [realDistColeta, setRealDistColeta] = useState<number | null>(null);
+  useEffect(() => {
+    if (currentUser?.lat && currentUser?.lng && store.users?.ecoponto?.lat && store.users?.ecoponto?.lng) {
+      getRouteDistanceKm(currentUser.lat, currentUser.lng, store.users.ecoponto.lat, store.users.ecoponto.lng).then(km => {
+        setRealDistColeta(km);
+      });
+    }
+  }, [currentUser?.lat, currentUser?.lng, store.users?.ecoponto?.lat, store.users?.ecoponto?.lng]);
+
+  const distColeta = realDistColeta ?? (
+    (currentUser.lat && store.users?.ecoponto?.lat)
+      ? getEstimatedRouteDistanceSync(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat!, store.users.ecoponto.lng!)
+      : 0
+  );
   const freteColeta = (rates.ecopoint_payment_mode === 'FIXED') 
     ? (rates.ecopoint_fixed_fee ?? rates.col_valor ?? 50) 
     : (distColeta > 0 ? (distColeta * (rates.col_km || 0)) : (rates.ecopoint_fixed_fee ?? rates.col_valor ?? 50));
@@ -664,12 +677,23 @@ export default function BatedeiraDashboard() {
     const lon1 = Number(forn?.lng || 0);
     const lat2 = Number(currentUser?.lat || 0);
     const lon2 = Number(currentUser?.lng || 0);
-    const dist = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) ? haversineKm(lat1, lon1, lat2, lon2) : 3.0;
+    const dist = (lat1 !== 0 && lon1 !== 0 && lat2 !== 0 && lon2 !== 0) ? getEstimatedRouteDistanceSync(lat1, lon1, lat2, lon2) : 3.0;
     const freteTotal = (rates.transporter_payment_mode === 'FIXED') ? (rates.transporter_fixed_fee ?? 150.00) : dist * rates.b2b_km;
     const subsidy = forn.freteSubsidyPct || 0;
     const freteLoja = freteTotal * (1 - subsidy / 100);
     return { freteTotal, freteLoja, subsidy, dist };
   };
+
+  const activeB2BTarget = selectedFornecedorId || cart.storeId;
+  const [, setB2BDistTick] = useState(0);
+  useEffect(() => {
+    if (!activeB2BTarget) return;
+    const forn = store.users?.[activeB2BTarget];
+    if (!forn?.lat || !forn?.lng || !currentUser?.lat || !currentUser?.lng) return;
+    getRouteDistanceKm(forn.lat, forn.lng, currentUser.lat, currentUser.lng).then(() => {
+      setB2BDistTick(t => t + 1);
+    });
+  }, [activeB2BTarget, currentUser?.lat, currentUser?.lng]);
 
   const cartB2BStore = cart.storeId ? store.users[cart.storeId] : null;
   const isB2BCart = cartB2BStore?.role === 'fornecedor';
