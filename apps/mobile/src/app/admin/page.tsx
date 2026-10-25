@@ -6,7 +6,8 @@ import {
   Settings, Trash2, Search, BookOpen, Zap, ShieldAlert,
   Download, Printer, Filter, Calendar, MapPin, User as UserIcon,
   Clock, CheckCircle, X, Eye, ArrowUpRight, Check, FileSpreadsheet,
-  FileText, Layers, Phone, Navigation, ShieldCheck, DollarSign, Share2
+  FileText, Layers, Phone, Navigation, ShieldCheck, DollarSign, Share2,
+  Menu, ChevronRight
 } from "lucide-react";
 import { useAppStore, Order, City, CityRates, getRatesForCity, calculateOrderFreight, calculateOrderTaxes, getAuthHeaders } from "@/store/useAppStore";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
@@ -206,6 +207,7 @@ function AdminDashboardContent() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [adminManualOpen, setAdminManualOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
   const [payingPartnerId, setPayingPartnerId] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<'historical' | 'monthly' | 'daily'>('historical');
@@ -1800,7 +1802,8 @@ function AdminDashboardContent() {
                 <AsaasPartnerBadge variant="inline" />
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 items-center justify-start sm:justify-end">
+            {/* Ações Desktop (Inalteradas, visíveis a partir de telas médias) */}
+            <div className="hidden md:flex flex-wrap gap-2 items-center justify-end">
                 <button onClick={() => setAdminManualOpen(true)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all cursor-pointer">
                   <BookOpen size={13} /> Manual
                 </button>
@@ -1812,7 +1815,7 @@ function AdminDashboardContent() {
                   className="text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow-sm transition-all border border-pink-200 dark:border-pink-800 cursor-pointer"
                   title="Compartilhar apresentação e vendas do AçaíFood"
                 >
-                  <Share2 size={13} /> <span className="hidden sm:inline">Divulgar App</span>
+                  <Share2 size={13} /> <span>Divulgar App</span>
                 </button>
                 <ThemeToggle />
                 <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs cursor-pointer">
@@ -1822,6 +1825,17 @@ function AdminDashboardContent() {
                     <Trash2 size={14} /> Limpar
                 </button>
                 <button onClick={() => { if(typeof store.logout === 'function') store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline cursor-pointer">Sair</button>
+            </div>
+
+            {/* Botão Menu Mobile (Exclusivo celular) */}
+            <div className="flex md:hidden items-center gap-2">
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-800 dark:text-zinc-200 active:scale-90 transition cursor-pointer"
+                aria-label="Abrir Menu Admin"
+              >
+                <Menu size={16} />
+              </button>
             </div>
           </div>
         </div>
@@ -1866,6 +1880,109 @@ function AdminDashboardContent() {
             <button onClick={() => setActiveTab('cidades')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'cidades' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🌍 Cidades / Expansão</button>
         </div>
       </header>
+
+      {/* MOBILE DRAWER EXCLUSIVO MOBILE ADMIN */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-200">
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileMenuOpen(false)} 
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-[300px] w-full bg-white dark:bg-zinc-900 shadow-2xl p-5 flex flex-col justify-between overflow-y-auto z-10 animate-in slide-in-from-right duration-200 border-l border-zinc-200 dark:border-zinc-800">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center pb-3 border-b border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <Settings className="text-purple-600" size={20} />
+                  <span className="font-black text-base text-zinc-900 dark:text-white">Admin AçaíFood</span>
+                </div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-white cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleRefresh();
+                  }}
+                  disabled={isRefreshing}
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                >
+                  <span className="flex items-center gap-2">🔄 Atualizar Painel</span>
+                  <ChevronRight size={14} className="opacity-50" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setAdminManualOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-bold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">📖 Manual Admin</span>
+                  <ChevronRight size={14} className="opacity-50" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setShareLandingModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-bold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">📢 Divulgar App</span>
+                  <ChevronRight size={14} className="opacity-50" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setPasswordModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-bold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">🔑 Alterar Senha</span>
+                  <ChevronRight size={14} className="opacity-50" />
+                </button>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 text-xs font-bold">
+                  <span>🌓 Aparência</span>
+                  <ThemeToggle />
+                </div>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleClearData();
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-xs font-bold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">🗑️ Limpar Dados</span>
+                  <ChevronRight size={14} className="opacity-50" />
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (typeof store.logout === 'function') store.logout();
+                  router.push('/login');
+                }}
+                className="w-full py-2.5 bg-red-600 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+              >
+                Sair do Admin
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
         
