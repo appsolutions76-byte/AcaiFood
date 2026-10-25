@@ -183,6 +183,8 @@ export default function BatedeiraDashboard() {
     quantity: number;
   } | null>(null);
   const [b2bCheckoutModalOpen, setB2bCheckoutModalOpen] = useState(false);
+  const [cacambaPromptModalOpen, setCacambaPromptModalOpen] = useState(false);
+  const lastB2BOrderIdRef = useRef<string | null>(null);
   const [b2bSearchQuery, setB2bSearchQuery] = useState('');
   const [b2bSortFilter, setB2bSortFilter] = useState<'all' | 'open' | 'lowest_price' | 'nearest' | 'has_stock' | 'subsidy'>('all');
   const [b2bVisibleLimit, setB2bVisibleLimit] = useState(12);
@@ -508,6 +510,153 @@ export default function BatedeiraDashboard() {
     ? (rates.ecopoint_fixed_fee ?? rates.col_valor ?? 50) 
     : (distColeta > 0 ? (distColeta * (rates.col_km || 0)) : (rates.ecopoint_fixed_fee ?? rates.col_valor ?? 50));
 
+  const activeColeta = (store.orders || []).find((o: any) => 
+    o.type === 'COLETA' && 
+    (o.origemId === currentUser.id || o.lojaId === currentUser.id || o.criadoPor === currentUser.id || (o as any).buyerId === currentUser.id || (o as any).seller_storefront_id === currentUser.id || (currentUser as any).storefrontId === (o as any).seller_storefront_id) && 
+    o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado'
+  );
+
+  const handleChamarCacamba = async () => {
+    try {
+      const res: any = await store.criarPedido('COLETA');
+      if (res && typeof res === 'object') {
+        if (res.error) {
+           alert(`Não foi possível chamar a caçamba: ${res.error}`);
+           return;
+        }
+        if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
+           setPixModalData({
+              open: true,
+              qrCode: res.pixQrCode,
+              copiaECola: res.pixCopiaECola,
+              invoiceUrl: res.invoiceUrl,
+              orderId: res.orderId,
+              paymentId: res.paymentId,
+              isSandbox: res.isSandbox,
+              totalValue: res.totalValue || freteColeta
+           });
+           return;
+        }
+        alert('✅ Chamada de caçamba registrada com sucesso!');
+      } else if (typeof res === 'string' && res.startsWith('http')) {
+        window.location.href = res;
+      } else {
+        alert('✅ Chamada de caçamba registrada com sucesso!');
+      }
+    } catch (err: any) {
+      alert(`Erro ao chamar caçamba: ${err?.message || 'Tente novamente.'}`);
+    }
+  };
+
+  const renderCacambaCard = (variant: 'geral' | 'abastecimento' = 'geral') => {
+    return (
+      <div className={`p-4 sm:p-5 rounded-2xl shadow-sm border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
+        variant === 'abastecimento'
+          ? 'bg-gradient-to-r from-amber-500/10 via-emerald-500/5 to-transparent border-amber-400/40 dark:border-amber-500/30 bg-white dark:bg-zinc-900'
+          : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
+      }`}>
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-bold text-xs sm:text-sm uppercase text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+              <span>🚚</span> LOGÍSTICA REVERSA (DESCARTE DO CAROÇO DE AÇAÍ)
+            </h4>
+            {variant === 'abastecimento' && (
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 px-2 py-0.5 rounded-full font-bold">
+                🌱 Descarte Sustentável
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Chame a caçamba para recolhimento e descarte sustentável no Ecoponto cadastrado.
+          </p>
+          {variant === 'abastecimento' && (
+            <p className="text-[11px] text-amber-700 dark:text-amber-300/90 font-medium mt-1 flex items-center gap-1">
+              <span>💡</span> <span>Assim que solicitar frutos ao fornecedor, peça a caçamba para retirar os caroços da batedeira!</span>
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+          <button 
+            type="button"
+            onClick={() => {
+              const ecopontoUser = store.users['ecoponto'];
+              const latEcoponto = ecopontoUser?.lat || -1.4558;
+              const lngEcoponto = ecopontoUser?.lng || -48.4908;
+              setMapModal({
+                open: true,
+                origem: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser?.name || 'Sua Loja' },
+                destino: { lat: latEcoponto, lng: lngEcoponto, name: ecopontoUser?.name || 'Ecoponto' },
+                motorista: null
+              });
+            }} 
+            className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 flex items-center gap-1 transition cursor-pointer"
+          >
+            🗺️ {distColeta.toFixed(1)} km
+          </button>
+          
+          {(() => {
+            if (activeColeta) {
+              const statusText = activeColeta.status === 'aguardando_pagamento' ? 'Aguardando Pagamento Pix' :
+                                 (activeColeta.status === 'pendente' || activeColeta.status === 'pronto') ? (activeColeta.motoristaId ? 'Caçamba a Caminho' : 'Aguardando Caçamba Aceitar') :
+                                 activeColeta.status === 'em_rota' ? 'Caçamba a Caminho' : 'Em Andamento';
+              return (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2.5 py-1.5 rounded-lg border border-amber-200 shadow-xs animate-pulse flex items-center gap-1">
+                    🚚 {statusText}
+                  </span>
+                  {activeColeta.status === 'aguardando_pagamento' && (
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setPixModalData({
+                          open: true,
+                          qrCode: activeColeta.pixQrCode,
+                          copiaECola: activeColeta.pixCopiaECola,
+                          invoiceUrl: activeColeta.invoiceUrl,
+                          orderId: activeColeta.id,
+                          totalValue: freteColeta
+                        });
+                      }}
+                      className="text-[11px] font-bold bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1.5 rounded-lg shadow-xs flex items-center gap-1 transition cursor-pointer"
+                    >
+                      ⚡ Pix
+                    </button>
+                  )}
+                  {(activeColeta.deliveryPin || (activeColeta as any).delivery_pin) && (
+                    <span className="text-[11px] font-black bg-purple-700 text-white px-2.5 py-1.5 rounded-md border border-purple-500 tracking-wider">
+                      PIN: {activeColeta.deliveryPin || (activeColeta as any).delivery_pin}
+                    </span>
+                  )}
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (confirm('Deseja realmente cancelar a chamada de caçamba?')) {
+                        store.acaoPedido(activeColeta.id, 'cancelar_pedido');
+                      }
+                    }} 
+                    className="text-[11px] text-red-500 hover:text-red-700 font-bold bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg border border-red-100 transition cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <button 
+                type="button"
+                onClick={handleChamarCacamba} 
+                className="bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 font-bold py-1.5 px-3.5 rounded-lg border border-amber-300 transition text-xs shadow-xs cursor-pointer flex items-center gap-1"
+              >
+                🚚 Chamar Caçamba ({formatMoney(freteColeta)})
+              </button>
+            );
+          })()}
+        </div>
+      </div>
+    );
+  };
+
   const calcFreteB2B = (fornId: string) => {
     const forn = store.users?.[fornId];
     if (!forn) return { freteTotal: 0, freteLoja: 0, subsidy: 0, dist: 3.0 };
@@ -569,6 +718,7 @@ export default function BatedeiraDashboard() {
          alert(`Não foi possível realizar o pedido B2B: ${res.error}`);
          return;
       }
+      lastB2BOrderIdRef.current = res.orderId || res.id || fornId;
       if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
          setPixModalData({
             open: true,
@@ -583,10 +733,16 @@ export default function BatedeiraDashboard() {
          return;
       }
       alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
+      if (!activeColeta) {
+        setTimeout(() => setCacambaPromptModalOpen(true), 350);
+      }
     } else if (typeof res === 'string' && res.startsWith('http')) {
       window.location.href = res;
     } else {
       alert('✅ Pedido B2B enviado ao fornecedor com sucesso!');
+      if (!activeColeta) {
+        setTimeout(() => setCacambaPromptModalOpen(true), 350);
+      }
     }
   };
 
@@ -1465,111 +1621,6 @@ export default function BatedeiraDashboard() {
               </div>
             </div>
 
-            {/* Logística Reversa (Caroço) - Card Amplo e Dedicado */}
-            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h4 className="font-bold text-xs sm:text-sm uppercase text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                  <span>🚛</span> Logística Reversa (Descarte do Caroço de Açaí)
-                </h4>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Chame a caçamba para recolhimento e descarte sustentável no Ecoponto cadastrado.
-                </p>
-              </div>
-                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                  <button 
-                    onClick={() => {
-                      const ecopontoUser = store.users['ecoponto'];
-                      const latEcoponto = ecopontoUser?.lat || -1.4558;
-                      const lngEcoponto = ecopontoUser?.lng || -48.4908;
-                      setMapModal({
-                        open: true,
-                        origem: { lat: currentUser?.lat || 0, lng: currentUser?.lng || 0, name: currentUser?.name || 'Sua Loja' },
-                        destino: { lat: latEcoponto, lng: lngEcoponto, name: ecopontoUser?.name || 'Ecoponto' },
-                        motorista: null
-                      });
-                    }} 
-                    className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-800"
-                  >
-                    🗺️ {distColeta.toFixed(1)} km
-                  </button>
-                  
-                  {(() => {
-                      const activeColeta = (store.orders || []).find((o: any) => 
-                        o.type === 'COLETA' && 
-                        (o.origemId === currentUser.id || o.lojaId === currentUser.id || o.criadoPor === currentUser.id || (o as any).buyerId === currentUser.id || (o as any).seller_storefront_id === currentUser.id || (currentUser as any).storefrontId === (o as any).seller_storefront_id) && 
-                        o.status !== 'entregue' && o.status !== 'arquivado' && o.status !== 'cancelado'
-                      );
-                      
-                      if (activeColeta) {
-                          const statusText = activeColeta.status === 'aguardando_pagamento' ? 'Aguardando Pagamento Pix' :
-                                             (activeColeta.status === 'pendente' || activeColeta.status === 'pronto') ? (activeColeta.motoristaId ? 'Caçamba a Caminho' : 'Aguardando Caçamba Aceitar') :
-                                             activeColeta.status === 'em_rota' ? 'Caçamba a Caminho' : 'Em Andamento';
-                          return (
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-lg border border-amber-200 shadow-xs animate-pulse">🚛 {statusText}</span>
-                                  {activeColeta.status === 'aguardando_pagamento' && (
-                                      <button 
-                                        type="button"
-                                        onClick={() => {
-                                            setPixModalData({
-                                                open: true,
-                                                qrCode: activeColeta.pixQrCode,
-                                                copiaECola: activeColeta.pixCopiaECola,
-                                                invoiceUrl: activeColeta.invoiceUrl,
-                                                orderId: activeColeta.id,
-                                                totalValue: freteColeta
-                                            });
-                                        }}
-                                        className="text-[11px] font-bold bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded-lg shadow-xs flex items-center gap-1"
-                                      >
-                                        ⚡ Pix
-                                      </button>
-                                  )}
-                                  {(activeColeta.deliveryPin || (activeColeta as any).delivery_pin) && (
-                                      <span className="text-[11px] font-black bg-purple-700 text-white px-2 py-1 rounded-md border border-purple-500 tracking-wider">
-                                          PIN: {activeColeta.deliveryPin || (activeColeta as any).delivery_pin}
-                                      </span>
-                                  )}
-                                  <button onClick={() => store.acaoPedido(activeColeta.id, 'cancelar_pedido')} className="text-[11px] text-red-500 hover:text-red-700 font-bold bg-red-50 px-2 py-1 rounded-lg border border-red-100">Cancelar</button>
-                              </div>
-                          );
-                      }
-
-                      return (
-                          <button onClick={async () => {
-                              const res: any = await store.criarPedido('COLETA');
-                              if (res && typeof res === 'object') {
-                                if (res.error) {
-                                   alert(`Não foi possível chamar a caçamba: ${res.error}`);
-                                   return;
-                                }
-                                if (res.pixQrCode || res.pixCopiaECola || res.invoiceUrl) {
-                                   setPixModalData({
-                                      open: true,
-                                      qrCode: res.pixQrCode,
-                                      copiaECola: res.pixCopiaECola,
-                                      invoiceUrl: res.invoiceUrl,
-                                      orderId: res.orderId,
-                                      paymentId: res.paymentId,
-                                      isSandbox: res.isSandbox,
-                                      totalValue: res.totalValue || freteColeta
-                                   });
-                                   return;
-                                }
-                                alert('✅ Chamada de caçamba registrada com sucesso!');
-                              } else if (typeof res === 'string' && res.startsWith('http')) {
-                                window.location.href = res;
-                              } else {
-                                alert('✅ Chamada de caçamba registrada com sucesso!');
-                              }
-                          }} className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-1.5 px-3 rounded-lg border border-amber-300 transition text-xs shadow-xs">
-                              🚛 Chamar Caçamba ({formatMoney(freteColeta)})
-                          </button>
-                      );
-                  })()}
-                </div>
-              </div>
-
             {/* PRODUTOS EXTRAS & ADICIONAIS - VISÃO TOTALMENTE LARGA E AMPLA */}
             <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
               {/* Header com Totais e Ações Rápidas */}
@@ -1942,6 +1993,9 @@ export default function BatedeiraDashboard() {
                 </span>
               </div>
             </div>
+
+            {/* Logística Reversa (Descarte do Caroço de Açaí) - Caçamba */}
+            {renderCacambaCard('abastecimento')}
 
             {selectedFornecedorId && store.users?.[selectedFornecedorId] ? (() => {
               const selForn = store.users[selectedFornecedorId];
@@ -2771,6 +2825,14 @@ export default function BatedeiraDashboard() {
                       </div>
                     </div>
 
+                    {/* Lembrete de Logística Reversa */}
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-300">
+                      <span className="text-xl shrink-0">🚛</span>
+                      <p>
+                        <strong>Logística Reversa:</strong> Assim que chamar o fornecedor, lembre-se de pedir a caçamba para retirar os caroços de açaí e levar ao Ecoponto!
+                      </p>
+                    </div>
+
                     {/* Botões de Ação */}
                     <div className="flex gap-2.5 pt-2">
                       <button
@@ -3002,8 +3064,96 @@ export default function BatedeiraDashboard() {
       {/* Modal de Pagamento Pix */}
       <PixModal 
         data={pixModalData} 
-        onClose={() => setPixModalData({ open: false })} 
+        onClose={() => {
+          setPixModalData({ open: false });
+          if (lastB2BOrderIdRef.current && !activeColeta) {
+            lastB2BOrderIdRef.current = null;
+            setTimeout(() => setCacambaPromptModalOpen(true), 350);
+          }
+        }} 
+        onPaymentConfirmed={() => {
+          if (lastB2BOrderIdRef.current && !activeColeta) {
+            lastB2BOrderIdRef.current = null;
+            setTimeout(() => setCacambaPromptModalOpen(true), 400);
+          }
+        }}
       />
+
+      {/* Modal Sugestão de Chamar Caçamba após Chamar Fornecedor */}
+      {cacambaPromptModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-[250] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-emerald-500/30 animate-in zoom-in-95">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-900 text-white p-5 flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">🚚</span>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg leading-tight">Descarte do Caroço de Açaí</h3>
+                  <p className="text-xs text-emerald-200 font-medium">Logística Reversa Sustentável</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setCacambaPromptModalOpen(false)}
+                className="text-white/80 hover:text-white font-bold text-2xl leading-none cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="flex items-start gap-3 bg-emerald-50 dark:bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800/60">
+                <span className="text-3xl shrink-0">🌱</span>
+                <div className="text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
+                  <p className="font-bold text-zinc-900 dark:text-white text-sm">
+                    Você acabou de pedir açaí com o fornecedor!
+                  </p>
+                  <p>
+                    Para não acumular resíduos na batedeira, solicite agora a <strong>caçamba de recolhimento</strong> para retirar os caroços e destiná-los ao Ecoponto cadastrado.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-zinc-50 dark:bg-zinc-950/60 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center text-xs">
+                <span className="text-zinc-600 dark:text-zinc-400 font-medium flex items-center gap-1.5">
+                  <span>📍</span> Distância até o Ecoponto:
+                </span>
+                <span className="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-0.5 rounded-lg border border-blue-200 dark:border-blue-800">
+                  {distColeta.toFixed(1)} km
+                </span>
+              </div>
+
+              <div className="bg-zinc-50 dark:bg-zinc-950/60 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center text-xs">
+                <span className="text-zinc-600 dark:text-zinc-400 font-medium">
+                  Valor do frete da Caçamba:
+                </span>
+                <span className="font-extrabold text-sm text-amber-600 dark:text-amber-400">
+                  {formatMoney(freteColeta)}
+                </span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCacambaPromptModalOpen(false)}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 hover:dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl text-xs transition cursor-pointer order-2 sm:order-1 text-center"
+                >
+                  Depois / Agora Não
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setCacambaPromptModalOpen(false);
+                    await handleChamarCacamba();
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold rounded-xl shadow-md transition text-xs flex items-center justify-center gap-1.5 cursor-pointer order-1 sm:order-2"
+                >
+                  <span>🚚 Pedir Caçamba Agora ({formatMoney(freteColeta)})</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {currentUser && (
         <OrderChatModal
