@@ -138,6 +138,20 @@ export default function StorefrontPage() {
   const [isRegisteringGuest, setIsRegisteringGuest] = useState(false);
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
 
+  // Proativamente busca a distância real pelas ruas via OSRM para a loja em foco
+  const activeTargetStoreId = selectedStoreId || cart.storeId;
+  const [, setRouteDistTick] = useState(0);
+  useEffect(() => {
+    if (!activeTargetStoreId) return;
+    const loja = store.users?.[activeTargetStoreId];
+    if (!loja?.lat || !loja?.lng) return;
+    const userLat = currentUser?.lat || gpsLocation?.lat || (loja.lat + 0.015);
+    const userLng = currentUser?.lng || gpsLocation?.lng || (loja.lng + 0.015);
+    getRouteDistanceKm(loja.lat, loja.lng, userLat, userLng).then(() => {
+      setRouteDistTick(t => t + 1);
+    });
+  }, [activeTargetStoreId, currentUser?.lat, currentUser?.lng, gpsLocation?.lat, gpsLocation?.lng]);
+
   const handleGetGpsLocation = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
       alert("Geolocalização não é suportada pelo seu navegador.");
@@ -356,20 +370,6 @@ export default function StorefrontPage() {
   });
 
   const batedeiras = batedeirasFiltered.slice(0, visibleStoreLimit);
-
-  // Proativamente busca a distância real pelas ruas via OSRM para a loja em foco
-  const activeTargetStoreId = selectedStoreId || cart.storeId;
-  const [, setRouteDistTick] = useState(0);
-  useEffect(() => {
-    if (!activeTargetStoreId) return;
-    const loja = store.users?.[activeTargetStoreId];
-    if (!loja?.lat || !loja?.lng) return;
-    const userLat = currentUser?.lat || gpsLocation?.lat || (loja.lat + 0.015);
-    const userLng = currentUser?.lng || gpsLocation?.lng || (loja.lng + 0.015);
-    getRouteDistanceKm(loja.lat, loja.lng, userLat, userLng).then(() => {
-      setRouteDistTick(t => t + 1);
-    });
-  }, [activeTargetStoreId, currentUser?.lat, currentUser?.lng, gpsLocation?.lat, gpsLocation?.lng]);
 
   const calcFreteCliente = (lojaId: string) => {
     const loja = store.users?.[lojaId];

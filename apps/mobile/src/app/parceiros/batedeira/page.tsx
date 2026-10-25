@@ -194,6 +194,26 @@ export default function BatedeiraDashboard() {
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
   const [serverBalance, setServerBalance] = useState<number | null>(null);
 
+  const [realDistColeta, setRealDistColeta] = useState<number | null>(null);
+  useEffect(() => {
+    if (currentUser?.lat && currentUser?.lng && store.users?.ecoponto?.lat && store.users?.ecoponto?.lng) {
+      getRouteDistanceKm(currentUser.lat, currentUser.lng, store.users.ecoponto.lat, store.users.ecoponto.lng).then(km => {
+        setRealDistColeta(km);
+      });
+    }
+  }, [currentUser?.lat, currentUser?.lng, store.users?.ecoponto?.lat, store.users?.ecoponto?.lng]);
+
+  const activeB2BTarget = selectedFornecedorId || cart.storeId;
+  const [, setB2BDistTick] = useState(0);
+  useEffect(() => {
+    if (!activeB2BTarget) return;
+    const forn = store.users?.[activeB2BTarget];
+    if (!forn?.lat || !forn?.lng || !currentUser?.lat || !currentUser?.lng) return;
+    getRouteDistanceKm(forn.lat, forn.lng, currentUser.lat, currentUser.lng).then(() => {
+      setB2BDistTick(t => t + 1);
+    });
+  }, [activeB2BTarget, currentUser?.lat, currentUser?.lng]);
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -505,15 +525,6 @@ export default function BatedeiraDashboard() {
 
   const displayedFornecedores = filteredFornecedores.slice(0, b2bVisibleLimit);
   
-  const [realDistColeta, setRealDistColeta] = useState<number | null>(null);
-  useEffect(() => {
-    if (currentUser?.lat && currentUser?.lng && store.users?.ecoponto?.lat && store.users?.ecoponto?.lng) {
-      getRouteDistanceKm(currentUser.lat, currentUser.lng, store.users.ecoponto.lat, store.users.ecoponto.lng).then(km => {
-        setRealDistColeta(km);
-      });
-    }
-  }, [currentUser?.lat, currentUser?.lng, store.users?.ecoponto?.lat, store.users?.ecoponto?.lng]);
-
   const distColeta = realDistColeta ?? (
     (currentUser.lat && store.users?.ecoponto?.lat)
       ? getEstimatedRouteDistanceSync(currentUser.lat, currentUser.lng!, store.users.ecoponto.lat!, store.users.ecoponto.lng!)
@@ -683,17 +694,6 @@ export default function BatedeiraDashboard() {
     const freteLoja = freteTotal * (1 - subsidy / 100);
     return { freteTotal, freteLoja, subsidy, dist };
   };
-
-  const activeB2BTarget = selectedFornecedorId || cart.storeId;
-  const [, setB2BDistTick] = useState(0);
-  useEffect(() => {
-    if (!activeB2BTarget) return;
-    const forn = store.users?.[activeB2BTarget];
-    if (!forn?.lat || !forn?.lng || !currentUser?.lat || !currentUser?.lng) return;
-    getRouteDistanceKm(forn.lat, forn.lng, currentUser.lat, currentUser.lng).then(() => {
-      setB2BDistTick(t => t + 1);
-    });
-  }, [activeB2BTarget, currentUser?.lat, currentUser?.lng]);
 
   const cartB2BStore = cart.storeId ? store.users[cart.storeId] : null;
   const isB2BCart = cartB2BStore?.role === 'fornecedor';
