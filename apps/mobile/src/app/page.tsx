@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
-import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw } from "lucide-react";
+import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw, Menu, X, Home, Search, ClipboardList, User, ChevronRight } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
@@ -79,6 +79,7 @@ export default function StorefrontPage() {
   const [manualOpen, setManualOpen] = useState(false);
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [orderHistoryModalOpen, setOrderHistoryModalOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [receiptModalOrder, setReceiptModalOrder] = useState<any | null>(null);
   const [historySearchQuery, setHistorySearchQuery] = useState("");
   const [historyFilter, setHistoryFilter] = useState<'all' | 'delivered' | 'canceled'>('all');
@@ -643,8 +644,9 @@ export default function StorefrontPage() {
         <PaymentHandler />
         <DirectStoreUrlHandler onStoreFound={(id) => setSelectedStoreId(id)} />
       </Suspense>
-      <header className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 p-3 sm:p-4 sticky top-0 z-30 shadow-xs">
-        <div className="flex justify-between items-center max-w-7xl mx-auto w-full px-2 sm:px-4 flex-wrap gap-2">
+      <header className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 p-2.5 sm:p-4 sticky top-0 z-30 shadow-xs">
+        {/* DESKTOP HEADER (100% Intacto para telas médias e computadores) */}
+        <div className="hidden md:flex justify-between items-center max-w-7xl mx-auto w-full px-2 sm:px-4 flex-wrap gap-2">
           <div className="flex items-center gap-2.5 text-zinc-900 dark:text-white">
             <span className="text-2xl sm:text-3xl cursor-pointer" onClick={handleClearSelectedStore}>🥣</span>
             <div>
@@ -734,7 +736,224 @@ export default function StorefrontPage() {
               )}
           </div>
         </div>
+        {/* MOBILE HEADER (Exclusivo para celular: Limpo, rápido e focado no usuário) */}
+        <div className="flex md:hidden justify-between items-center w-full px-1">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={handleClearSelectedStore}>
+            <span className="text-2xl">🥣</span>
+            <div>
+              <h1 className="text-base font-black tracking-tight leading-none text-zinc-900 dark:text-white">
+                AçaíFood
+              </h1>
+              <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-600 dark:text-purple-400 mt-0.5 truncate max-w-[170px]">
+                <span className="text-[10px]">📍</span>
+                <span className="truncate">
+                  {selectedStoreId && store.users?.[selectedStoreId]
+                    ? store.users[selectedStoreId].name
+                    : (currentUser?.bairro ? `${currentUser.bairro}, ${currentUser.cidade || 'Belém'}` : (currentUser?.cidade || 'Belém - PA'))}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {selectedStoreId && (
+              <button
+                onClick={handleClearSelectedStore}
+                className="text-[11px] bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300 font-bold px-2.5 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 active:scale-95 transition"
+              >
+                🏪 Lojas
+              </button>
+            )}
+            
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Abrir menu"
+              className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-800 dark:text-zinc-200 active:scale-90 transition cursor-pointer"
+            >
+              <Menu size={18} />
+            </button>
+          </div>
+        </div>
       </header>
+
+      {/* MOBILE DRAWER / MENU LATERAL EXCLUSIVO MOBILE */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-200">
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileMenuOpen(false)} 
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-[310px] w-full bg-white dark:bg-zinc-900 shadow-2xl p-5 flex flex-col justify-between overflow-y-auto z-10 animate-in slide-in-from-right duration-200 border-l border-zinc-200 dark:border-zinc-800">
+            <div className="space-y-4">
+              {/* Header do Menu */}
+              <div className="flex justify-between items-center pb-3 border-b border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🥣</span>
+                  <span className="font-black text-lg text-zinc-900 dark:text-white">AçaíFood</span>
+                </div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-white cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Card do Usuário */}
+              {currentUser ? (
+                <div className="p-3 bg-purple-50 dark:bg-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-900/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-600 text-white font-black flex items-center justify-center text-sm shadow-xs">
+                      {currentUser.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-extrabold text-sm text-zinc-900 dark:text-white truncate">{currentUser.name}</p>
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{currentUser.email || currentUser.telefone || 'Cliente'}</p>
+                      <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-0.5 truncate">
+                        📍 {currentUser.bairro || currentUser.cidade || 'Belém'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-800/60 rounded-2xl border border-zinc-200 dark:border-zinc-700/60 space-y-2">
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300 font-medium">Faça login para acompanhar seus pedidos e agilizar seu pedido:</p>
+                  <div className="flex gap-2 pt-1">
+                    <Link
+                      href={loginUrl}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex-1 py-2 text-center text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 border border-purple-300 dark:border-purple-800 rounded-xl"
+                    >
+                      Entrar
+                    </Link>
+                    <Link
+                      href={cadastroUrl}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex-1 py-2 text-center text-xs font-bold text-white bg-purple-600 rounded-xl shadow-xs"
+                    >
+                      Criar Conta
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {/* Botão de Destaque para Parceiro */}
+              {partnerDashboard && (
+                <Link
+                  href={partnerDashboard.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full p-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-between shadow-md active:scale-95 transition"
+                >
+                  <span className="flex items-center gap-2">
+                    {partnerDashboard.label}
+                  </span>
+                  <ChevronRight size={16} />
+                </Link>
+              )}
+
+              {/* Links de navegação e utilidades */}
+              <div className="space-y-1.5 pt-1">
+                {currentUser && (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setOrderHistoryModalOpen(true);
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <span className="text-base">📜</span> Meus Pedidos
+                    </span>
+                    {clientHistoryOrders.length > 0 && (
+                      <span className="bg-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                        {clientHistoryOrders.length}
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleRefresh();
+                  }}
+                  disabled={isRefreshing}
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <RefreshCw size={15} className={isRefreshing ? 'animate-spin' : ''} />
+                    <span>{isRefreshing ? 'Atualizando dados...' : 'Atualizar Catálogo'}</span>
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setManualOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <BookOpen size={15} className="text-amber-500" />
+                    <span>Manual de Instruções</span>
+                  </span>
+                  <ChevronRight size={14} className="opacity-50" />
+                </button>
+
+                <Link
+                  href="/apresentacao"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-base">✨</span>
+                    <span>Apresentação do App</span>
+                  </span>
+                  <ChevronRight size={14} className="opacity-50" />
+                </Link>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setShareLandingModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Share2 size={15} className="text-pink-500" />
+                    <span>Compartilhar / Divulgar</span>
+                  </span>
+                  <ChevronRight size={14} className="opacity-50" />
+                </button>
+
+                {/* Tema */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                  <span className="flex items-center gap-2">
+                    <span>🌓</span> Aparência
+                  </span>
+                  <ThemeToggle />
+                </div>
+              </div>
+            </div>
+
+            {/* Rodapé do Menu */}
+            {currentUser && (
+              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    store.logout();
+                  }}
+                  className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 font-extrabold text-xs rounded-xl border border-red-200 dark:border-red-900/40 transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>🚪 Sair da Conta</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role="login" />
       <ShareLandingModal isOpen={shareLandingModalOpen} onClose={() => setShareLandingModalOpen(false)} />
@@ -1969,30 +2188,6 @@ export default function StorefrontPage() {
         </div>
       )}
 
-      {/* Floating Cart Button */}
-      {cart.items.length > 0 && cart.storeId && !checkoutModalOpen && (
-          <div className="fixed bottom-6 left-0 right-0 px-4 sm:px-6 max-w-3xl mx-auto z-40 animate-in slide-in-from-bottom-10">
-              <button 
-                  onClick={() => setCheckoutModalOpen(true)}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white shadow-2xl rounded-2xl p-4 flex justify-between items-center transition active:scale-95"
-              >
-                  <div className="flex items-center gap-3">
-                      <div className="bg-purple-800/50 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg relative">
-                          🛒
-                          <span className="absolute -top-1 -right-1 bg-white text-purple-600 text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-black">{cartTotalQuantity}</span>
-                      </div>
-                      <div className="text-left">
-                          <p className="text-xs text-purple-200 font-medium">Ver Carrinho</p>
-                          <p className="font-bold text-sm truncate max-w-[150px]">{store.users?.[cart.storeId]?.name}</p>
-                      </div>
-                  </div>
-                  <div className="font-black text-xl">
-                      {formatMoney(finalCartTotal)}
-                  </div>
-              </button>
-          </div>
-      )}
-
       <MapModal 
         isOpen={mapModal.open} 
         onClose={() => setMapModal(prev => ({ ...prev, open: false }))} 
@@ -2054,27 +2249,133 @@ export default function StorefrontPage() {
         </div>
       )}
 
-      {/* Floating Cart Sticky Bar */}
+      {/* CARRINHO UNIFICADO (Mobile & Desktop perfeitamente calibrados sem duplicação) */}
       {!checkoutModalOpen && cart.items.length > 0 && cart.storeId && (
-        <div className="fixed bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 max-w-md mx-auto z-30">
-          <div className="bg-purple-900/95 dark:bg-purple-950/95 text-white p-3 sm:p-3.5 rounded-2xl shadow-2xl border border-purple-700/80 flex justify-between items-center backdrop-blur-md transition-all animate-in slide-in-from-bottom-3">
-            <div className="pr-2 min-w-0 flex-1">
-              <p className="text-[10px] uppercase font-bold text-purple-300 tracking-wider truncate">
-                🛒 {store.users?.[cart.storeId]?.name || 'Carrinho da Loja'}
-              </p>
-              <p className="font-bold text-xs sm:text-sm text-zinc-100 truncate">
-                {cartTotalQuantity} item(ns) • Total: {formatMoney(finalCartTotal)}
-              </p>
-            </div>
-            <button 
+        <>
+          {/* Versão Mobile: flutua logo acima da Bottom Navigation Bar (bottom-[62px]) */}
+          <div className="fixed bottom-[62px] left-3 right-3 z-30 md:hidden animate-in slide-in-from-bottom-5">
+            <button
               onClick={() => setCheckoutModalOpen(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-lg transition active:scale-95 flex items-center gap-1 shrink-0"
+              className="w-full bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 text-white p-3 rounded-2xl shadow-xl border border-purple-500/40 flex items-center justify-between backdrop-blur-md active:scale-98 transition cursor-pointer"
             >
-              Ver Pedido ➔
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-bold text-sm relative shrink-0">
+                  🛒
+                  <span className="absolute -top-1 -right-1 bg-white text-purple-700 text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black shadow-xs">
+                    {cartTotalQuantity}
+                  </span>
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="text-[10px] text-purple-200 font-bold uppercase tracking-wider truncate">
+                    {store.users?.[cart.storeId]?.name || 'Ver Carrinho'}
+                  </p>
+                  <p className="font-black text-sm text-white">
+                    {formatMoney(finalCartTotal)}
+                  </p>
+                </div>
+              </div>
+              <span className="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow-md shrink-0 flex items-center gap-1">
+                Ver Sacola ➔
+              </span>
             </button>
           </div>
-        </div>
+
+          {/* Versão Desktop: intacta, posicionada no padrão clássico para computador */}
+          <div className="hidden md:block fixed bottom-6 left-0 right-0 px-6 max-w-3xl mx-auto z-40 animate-in slide-in-from-bottom-10">
+            <button 
+              onClick={() => setCheckoutModalOpen(true)}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white shadow-2xl rounded-2xl p-4 flex justify-between items-center transition active:scale-95 cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-purple-800/50 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg relative">
+                  🛒
+                  <span className="absolute -top-1 -right-1 bg-white text-purple-600 text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-black">{cartTotalQuantity}</span>
+                </div>
+                <div className="text-left">
+                  <p className="text-xs text-purple-200 font-medium">Ver Carrinho</p>
+                  <p className="font-bold text-sm truncate max-w-[250px]">{store.users?.[cart.storeId]?.name}</p>
+                </div>
+              </div>
+              <div className="font-black text-xl">
+                {formatMoney(finalCartTotal)}
+              </div>
+            </button>
+          </div>
+        </>
       )}
+
+      {/* BOTTOM NAVIGATION BAR (Exclusiva para dispositivos mobile) */}
+      <nav 
+        aria-label="Navegação Principal Mobile" 
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-zinc-200 dark:border-zinc-800 px-3 py-1.5 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]"
+      >
+        <div className="max-w-md mx-auto grid grid-cols-4 items-center">
+          {/* Início */}
+          <button
+            onClick={() => {
+              if (selectedStoreId) {
+                handleClearSelectedStore();
+              }
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="flex flex-col items-center justify-center py-1 text-purple-600 dark:text-purple-400 active:scale-95 transition cursor-pointer"
+          >
+            <Home size={20} />
+            <span className="text-[10px] font-bold mt-0.5">Início</span>
+          </button>
+
+          {/* Buscar */}
+          <button
+            onClick={() => {
+              if (selectedStoreId) {
+                handleClearSelectedStore();
+              }
+              setTimeout(() => {
+                const searchInput = document.querySelector<HTMLInputElement>('input[placeholder*="Buscar"]');
+                if (searchInput) {
+                  searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  searchInput.focus();
+                }
+              }, 100);
+            }}
+            className="flex flex-col items-center justify-center py-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white active:scale-95 transition cursor-pointer"
+          >
+            <Search size={20} />
+            <span className="text-[10px] font-bold mt-0.5">Buscar</span>
+          </button>
+
+          {/* Meus Pedidos */}
+          <button
+            onClick={() => {
+              if (!currentUser) {
+                window.location.href = loginUrl;
+              } else {
+                setOrderHistoryModalOpen(true);
+              }
+            }}
+            className="flex flex-col items-center justify-center py-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white active:scale-95 transition cursor-pointer relative"
+          >
+            <div className="relative">
+              <ClipboardList size={20} />
+              {clientHistoryOrders.length > 0 && (
+                <span className="absolute -top-1 -right-2 bg-purple-600 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black animate-pulse">
+                  {clientHistoryOrders.length}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-bold mt-0.5">Pedidos</span>
+          </button>
+
+          {/* Minha Conta / Menu */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex flex-col items-center justify-center py-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white active:scale-95 transition cursor-pointer"
+          >
+            <User size={20} />
+            <span className="text-[10px] font-bold mt-0.5">Conta</span>
+          </button>
+        </div>
+      </nav>
 
       {currentUser && (
         <OrderChatModal
