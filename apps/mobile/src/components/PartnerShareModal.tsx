@@ -20,7 +20,7 @@ export function PartnerShareModal({ isOpen, onClose, storeId, storeName, role }:
 
   const isSupplier = role === 'fornecedor';
   const storeUrl = `https://www.acaifood.app.br/?loja=${storeId}`;
-  const appUrl = "https://www.acaifood.app.br/apresentacao";
+  const appUrl = "https://www.acaifood.app.br/cadastro";
 
   const targetUrl = activeTab === 'store' ? storeUrl : appUrl;
   const qrCodeImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(targetUrl)}`;
@@ -33,7 +33,7 @@ export function PartnerShareModal({ isOpen, onClose, storeId, storeName, role }:
         return `🥣 Olá! Acesse nosso cardápio oficial no *AçaíFood* e faça seu pedido direto na *${storeName}*:\n\n${storeUrl}`;
       }
     }
-    return `🥣 Conheça o *AçaíFood* — O marketplace e aplicativo oficial do Açaí!\n\nVeja a apresentação completa:\n${appUrl}`;
+    return `🥣 Conheça o *AçaíFood* — O marketplace e ecossistema oficial do Açaí!\n\nEscolha o seu perfil (Cliente, Batedeira, Fornecedor, Entregador ou Caminhão) e acesse:\n${appUrl}`;
   };
 
   const handleCopyLink = () => {
@@ -89,7 +89,7 @@ export function PartnerShareModal({ isOpen, onClose, storeId, storeName, role }:
           <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium max-w-xs mx-auto">
             {activeTab === 'store' 
               ? `Divulgue seu link exclusivo para clientes entrarem direto no cardápio de ${storeName}!` 
-              : 'Divulgue a página de apresentação oficial do aplicativo AçaíFood.'}
+              : 'Divulgue o aplicativo oficial do AçaíFood para novos clientes e parceiros da cadeia do açaí.'}
           </p>
         </div>
 
@@ -122,7 +122,7 @@ export function PartnerShareModal({ isOpen, onClose, storeId, storeName, role }:
         <div className="bg-purple-50 dark:bg-zinc-900/80 border border-purple-200 dark:border-purple-950 p-3.5 rounded-2xl space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-black text-purple-700 dark:text-purple-400 uppercase tracking-wider">
-              {activeTab === 'store' ? '🔗 Link Direto do Seu Estabelecimento' : '✨ Link de Apresentação'}
+              {activeTab === 'store' ? '🔗 Link Direto do Seu Estabelecimento' : '✨ Link Oficial do App'}
             </span>
             {activeTab === 'store' && (
               <span className="text-[9px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold px-2 py-0.5 rounded-md">
@@ -200,7 +200,7 @@ export function PartnerShareModal({ isOpen, onClose, storeId, storeName, role }:
             rel="noopener noreferrer"
             className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold inline-flex items-center gap-1"
           >
-            <span>{activeTab === 'store' ? '👁️ Abrir e testar meu cardápio agora' : '✨ Ver página de apresentação'}</span>
+            <span>{activeTab === 'store' ? '👁️ Abrir e testar meu cardápio agora' : '✨ Abrir tela de perfis e cadastro'}</span>
             <ExternalLink size={12} />
           </a>
         </div>

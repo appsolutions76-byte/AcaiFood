@@ -50,7 +50,7 @@ export default function LandingPage() {
     setIsVideoModalOpen(true);
   };
 
-  const landingUrl = "https://www.acaifood.app.br/apresentacao";
+  const landingUrl = "https://www.acaifood.app.br/cadastro";
 
   const handleCopyLink = () => {
     if (navigator.clipboard) {
@@ -58,12 +58,12 @@ export default function LandingPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } else {
-      prompt("Copie o link de apresentação do AçaíFood:", landingUrl);
+      prompt("Copie o link de acesso ao AçaíFood:", landingUrl);
     }
   };
 
   const handleShareWhatsApp = () => {
-    const text = `🥣 Conheça o *AçaíFood* — O marketplace e ecossistema definitivo do Açaí!\n\nVeja a apresentação completa e acerte no pedido ou nas vendas:\n${landingUrl}`;
+    const text = `🥣 Conheça o *AçaíFood* — O marketplace e ecossistema definitivo do Açaí!\n\nEscolha o seu perfil (Cliente, Batedeira, Fornecedor, Entregador ou Caminhão) e acesse:\n${landingUrl}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -71,7 +71,7 @@ export default function LandingPage() {
     if (navigator.share) {
       navigator.share({
         title: 'AçaíFood - O Ecossistema do Açaí',
-        text: 'Conheça o AçaíFood: peça açaí fresquinho, venda mais ou transporte com frete inteligente.',
+        text: 'Conheça o AçaíFood: escolha seu perfil (cliente, batedeira, fornecedor ou entregador) e acesse direto!',
         url: landingUrl
       }).catch(() => {});
     } else {
