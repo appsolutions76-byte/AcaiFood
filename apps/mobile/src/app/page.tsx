@@ -18,6 +18,7 @@ import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { validateCpfCnpjDigits } from "@/lib/pix";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { OrderReceiptModal } from "@/components/OrderReceiptModal";
+import { RefundInfo } from "@/components/RefundInfo";
 
 const emptySubscribe = () => () => {};
 
@@ -1788,13 +1789,10 @@ export default function StorefrontPage() {
                               </button>
                             )}
   
-                            {(o as any).asaasRefundStatus === 'REFUND_FAILED' && o.status !== 'cancelado' && (
-                              <p className="w-full text-[11px] font-bold text-amber-800 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-lg px-2.5 py-1.5">
-                                ⚠️ O estorno não foi concluído e o pedido continua pago. Toque em "Cancelar Pedido" para tentar de novo ou fale com o suporte.
-                              </p>
-                            )}
+                            <RefundInfo order={o} viewer="cliente" />
 
-                            {o.status !== 'em_rota' && o.status !== 'aguardando_cliente' && (
+                            {/* Cliente só cancela até a loja iniciar o preparo (regra do /api/asaas/refund) */}
+                            {(o.status === 'pendente' || o.status === 'aguardando_pagamento') && (
                               <button 
                                 onClick={() => {
                                   const reason = prompt("Informe o motivo do cancelamento para estorno Pix Asaas:", "Desistência");
@@ -2546,6 +2544,8 @@ export default function StorefrontPage() {
                             Total Pago: <strong className="text-zinc-900 dark:text-zinc-100">{formatMoney(o.valor + (o.taxas?.entregaCliente || 0))}</strong> (Frete: {formatMoney(o.taxas?.entregaCliente || 0)})
                           </span>
                         </div>
+
+                        <RefundInfo order={o} viewer="cliente" />
 
                         {/* TIMELINE DE HORÁRIOS DO PEDIDO */}
                         <OrderTimelineBadges order={o} className="flex flex-wrap gap-1.5 mt-1.5 mb-1" />

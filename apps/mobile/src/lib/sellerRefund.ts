@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getRootCtx, type AsaasCtx } from '@/lib/paymentAccount';
 import { getPlatformConfig } from '@/lib/platformConfig';
-import { findTransferByExternalRef, describeAsaasError } from '@/lib/asaasTransferLookup';
+import { findTransferByExternalRef, describeAsaasError, isTransferDone } from '@/lib/asaasTransferLookup';
 
 /**
  * Estorno de cobrança emitida na subconta da loja (modelo SELLER_SPLIT).
@@ -41,6 +41,8 @@ export interface SellerRefundResult {
   refundedValue: number;
   splitRefunded: number;
   feeCovered: number;
+  /** Cobertura da tarifa enviada pela plataforma, mas ainda não creditada na loja */
+  feePending?: boolean;
 }
 
 async function getBalance(ctx: AsaasCtx): Promise<number | null> {
@@ -79,31 +81,33 @@ async function coverFeeShortfall(params: {
   issuerPartnerId: string;
   needFromSeller: number;
   feeCap: number;
-}): Promise<number> {
+}): Promise<{ covered: number; pending: boolean }> {
   const { orderId, sellerCtx, issuerPartnerId, needFromSeller, feeCap } = params;
+  const none = { covered: 0, pending: false };
   const balance = await getBalance(sellerCtx);
-  if (balance === null) return 0;
+  if (balance === null) return none;
   const shortfall = round2(needFromSeller - balance);
-  if (shortfall <= 0) return 0;
+  if (shortfall <= 0) return none;
   if (shortfall > round2(feeCap) + 0.01) {
     console.warn(`[SellerRefund] Loja sem saldo para o estorno do pedido ${orderId}: faltam R$ ${shortfall.toFixed(2)} (acima da tarifa Pix).`);
-    return 0;
+    return none;
   }
 
   const root = await getRootCtx();
-  if (!root) return 0;
+  if (!root) return none;
   const { data: seller } = await getSupabaseAdmin()
     .from('users')
     .select('asaas_wallet_id')
     .eq('id', issuerPartnerId)
     .maybeSingle();
   const walletId = String(seller?.asaas_wallet_id || '').trim();
-  if (!walletId) return 0;
+  if (!walletId) return none;
 
   const ref = `REFUNDFEE_${orderId}`;
   const existing = await findTransferByExternalRef(root.baseUrl, root.apiKey, ref);
   if (existing.ok && existing.transfer) {
-    return 0; // já coberto antes; não transferir de novo
+    // Já coberto antes; não transferir de novo. Se ainda não caiu na loja, avisa.
+    return { covered: 0, pending: !isTransferDone(existing.transfer?.status) };
   }
 
   try {
@@ -120,20 +124,21 @@ async function coverFeeShortfall(params: {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data?.errors) {
       console.warn('[SellerRefund] Falha ao cobrir tarifa do estorno:', describeAsaasError(data, res.status));
-      return 0;
+      return none;
     }
   } catch (err) {
     console.warn('[SellerRefund] Erro de rede ao cobrir tarifa do estorno:', err);
-    return 0;
+    return none;
   }
 
-  // Transferência interna costuma cair na hora; aguarda o saldo aparecer na loja
-  for (let i = 0; i < 4; i++) {
-    await sleep(1000);
+  // A transferência interna pode ficar alguns segundos "pendente"; aguarda o saldo aparecer na loja
+  let arrived = false;
+  for (let i = 0; i < 8; i++) {
+    await sleep(1500);
     const b = await getBalance(sellerCtx);
-    if (b !== null && b >= needFromSeller - 0.001) break;
+    if (b !== null && b >= needFromSeller - 0.001) { arrived = true; break; }
   }
-  return shortfall;
+  return { covered: shortfall, pending: !arrived };
 }
 
 /**
@@ -164,9 +169,12 @@ export async function refundSellerSplitPayment(params: {
   const feeCap = Number(order?.pricing_snapshot?.asaasPixFeeFixed ?? 0.99);
 
   let feeCovered = 0;
+  let feePending = false;
   const feePayer = await getRefundFeePayer();
   if (feePayer === 'PLATFORM' && orderId && issuerPartnerId && value > 0) {
-    feeCovered = await coverFeeShortfall({ orderId, sellerCtx, issuerPartnerId, needFromSeller, feeCap });
+    const cov = await coverFeeShortfall({ orderId, sellerCtx, issuerPartnerId, needFromSeller, feeCap });
+    feeCovered = cov.covered;
+    feePending = cov.pending;
   }
 
   const body: any = { description };
@@ -187,9 +195,14 @@ export async function refundSellerSplitPayment(params: {
     ok,
     httpStatus: res.status,
     data,
-    error: ok ? undefined : describeAsaasError(data, res.status),
+    error: ok
+      ? undefined
+      : feePending
+        ? 'A plataforma já enviou a tarifa do estorno para a conta da loja e o Asaas ainda está creditando. Tente cancelar de novo em 1 ou 2 minutos.'
+        : describeAsaasError(data, res.status),
     refundedValue: value,
     splitRefunded: splitSum,
-    feeCovered
+    feeCovered,
+    feePending
   };
 }

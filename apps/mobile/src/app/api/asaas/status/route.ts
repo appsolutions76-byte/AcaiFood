@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAuthorizedRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getOrderPaymentCtx, getRootCtx } from '@/lib/paymentAccount';
 import { refundSellerSplitPayment } from '@/lib/sellerRefund';
+import { syncOrderRefund } from '@/lib/refundRecord';
 import { reconcileWithdrawal } from '@/lib/withdrawalApproval';
 import { reconcileSettlement } from '@/lib/orderSettlements';
 
@@ -366,7 +367,7 @@ export async function POST(request: Request) {
                 requested_value: payment?.value || currentOrder?.charged_amount || 0,
                 asaas_refund_id: autoRefundData?.id || null,
                 status: autoRefundData?.status || 'REFUNDED',
-                requested_by: 'SYSTEM_WEBHOOK_AUTO_REFUND'
+                requested_by: null // estorno automático do sistema (coluna é uuid de usuário)
               });
             }
           } catch (autoRefErr) {
@@ -435,27 +436,43 @@ export async function POST(request: Request) {
       const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
       if (supabaseUrl && supabaseKey && (orderId || paymentId)) {
         const supabase = getSupabaseAdmin();
-        let refundQuery = supabase.from('orders').update({
-          status: 'REFUNDED',
-          asaas_refund_status: 'REFUNDED',
-          asaas_charge_status: 'REFUNDED',
-          cancelled_at: new Date().toISOString()
-        });
+        let lookup = supabase.from('orders').select('id, status, pricing_snapshot, asaas_payment_id, cancelled_at');
+        lookup = orderId ? lookup.eq('id', orderId) : lookup.eq('asaas_payment_id', paymentId);
+        const { data: refOrder } = await lookup.maybeSingle();
 
-        if (orderId) {
-          refundQuery = refundQuery.eq('id', orderId);
-        } else if (paymentId) {
-          refundQuery = refundQuery.eq('asaas_payment_id', paymentId);
-        }
+        if (event === 'PAYMENT_DELETED') {
+          // Cobrança não paga apagada (pedido cancelado antes do Pix): é cancelamento, não estorno
+          if (refOrder?.id) {
+            const st = String(refOrder.status || '').toUpperCase();
+            if (['PENDING', 'AWAITING_PAYMENT', 'CREATED', 'CANCELLED'].includes(st)) {
+              await supabase.from('orders').update({
+                status: 'CANCELLED',
+                asaas_charge_status: 'DELETED',
+                cancelled_at: refOrder.cancelled_at || new Date().toISOString()
+              }).eq('id', refOrder.id);
+            }
+          }
+          console.log(`🗑️ Webhook Asaas: cobrança ${paymentId} apagada (pedido #${refOrder?.id || orderId || '-'}).`);
+        } else if (refOrder?.id) {
+          await supabase.from('orders').update({
+            status: 'REFUNDED',
+            asaas_refund_status: event === 'PAYMENT_REFUND_IN_PROGRESS' ? 'REFUND_IN_PROGRESS' : 'REFUNDED',
+            asaas_charge_status: 'REFUNDED',
+            cancelled_at: refOrder.cancelled_at || new Date().toISOString()
+          }).eq('id', refOrder.id);
 
-        await refundQuery;
-
-        if (orderId) {
           try {
-            await supabase.from('splits').update({ status: 'REVERSED' }).eq('order_id', orderId);
+            await supabase.from('splits').update({ status: 'REVERSED' }).eq('order_id', refOrder.id);
           } catch (_e) {}
+
+          // R28: grava valor, data, código Pix e comprovante do estorno
+          try {
+            await syncOrderRefund(refOrder, { paymentId: paymentId || refOrder.asaas_payment_id });
+          } catch (syncErr) {
+            console.warn('[Webhook Asaas] Aviso ao registrar comprovante do estorno:', syncErr);
+          }
+          console.log(`↩️ Webhook Asaas: Pedido #${refOrder.id} atualizado para REFUNDED com sucesso!`);
         }
-        console.log(`↩️ Webhook Asaas: Pedido #${orderId || paymentId} atualizado para REFUNDED com sucesso!`);
       }
     }
 

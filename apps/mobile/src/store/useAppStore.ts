@@ -2496,7 +2496,8 @@ export const useAppStore = create<AppState>()(
          else if (action === 'retirar_pedido') rpcAction = 'pickup';
          else if (action === 'conf_motorista') rpcAction = 'delivered_by_driver';
          else if (action === 'forcar_baixa') rpcAction = 'force_receive';
-         else if (action === 'cancelar_pedido' && targetCurrentOrder?.status === 'aguardando_pagamento') rpcAction = 'cancel_unpaid'; // 'pendente' = já pago: segue direto para o estorno
+         // Cancelamento (pago ou não) vai direto para /api/asaas/refund, que apaga a cobrança pendente ou estorna a paga.
+         // (A RPC cancel_unpaid cancelava antes e o /refund depois recusava o pedido já cancelado.)
 
          if (rpcAction && action !== 'validar_pin' && action !== 'aceitar_motorista') {
            try {
@@ -2658,6 +2659,7 @@ export const useAppStore = create<AppState>()(
              applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
              buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
              accepted_at, ready_at, received_at, asaas_payment_id, asaas_refund_status,
+             refund_value, refunded_at, refund_receipt_url, refund_e2e_id, cancellation_reason, cancelled_at,
              payout_seller_done, payout_driver_done,
              seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount,
              pricing_snapshot, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro,
@@ -2984,6 +2986,12 @@ export const useAppStore = create<AppState>()(
                         paymentId: dbOrder.asaas_payment_id || localOrder?.paymentId || localOrder?.asaasPaymentId,
                         asaasChargeStatus: dbOrder.asaas_charge_status || localOrder?.asaasChargeStatus,
                         asaasRefundStatus: dbOrder.asaas_refund_status || null,
+                        refundValue: dbOrder.refund_value ?? null,
+                        refundedAt: dbOrder.refunded_at || null,
+                        refundReceiptUrl: dbOrder.refund_receipt_url || null,
+                        refundE2eId: dbOrder.refund_e2e_id || null,
+                        cancellationReason: dbOrder.cancellation_reason || null,
+                        cancelledAt: dbOrder.cancelled_at || null,
                        confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
                        taxas: {
                           entregaTotal: finalEntregaTotal,

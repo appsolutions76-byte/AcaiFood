@@ -3,6 +3,7 @@ import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { getOrderPaymentCtx } from '@/lib/paymentAccount';
 import { refundSellerSplitPayment } from '@/lib/sellerRefund';
+import { syncOrderRefund } from '@/lib/refundRecord';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { logAdminAction } from '@/lib/adminAudit';
 
@@ -255,6 +256,7 @@ export async function POST(request: Request) {
 
           let refundOk = false;
           let refundData: any = {};
+          let sellerErrMsg: string | null = null;
           if (integralSellerRefund && sellerIssuerId) {
             // R23: devolve a comissão a partir da conta raiz (splitRefunds) e cobre a tarifa Pix,
             // senão o Asaas responde "Saldo insuficiente" na subconta da loja
@@ -267,6 +269,7 @@ export async function POST(request: Request) {
             });
             refundOk = r.ok;
             refundData = r.data || {};
+            sellerErrMsg = r.ok ? null : (r.error || null);
             if (r.ok) refundValue = r.refundedValue;
             console.log(`[Asaas Refund] SELLER_SPLIT pedido ${targetOrder?.id}: ok=${r.ok} comissão devolvida=${r.splitRefunded} tarifa coberta=${r.feeCovered}${r.error ? ' erro=' + r.error : ''}`);
           } else {
@@ -283,9 +286,11 @@ export async function POST(request: Request) {
           }
 
           if (refundOk) {
-            refundId = refundData.id || null;
-            refundStatus = refundData.status || 'REFUNDED';
-            refundMessage = `Estorno de R$ ${refundValue.toFixed(2)} processado com sucesso pelo Asaas via Pix!`;
+            // A resposta do POST /refund é a cobrança (id pay_..., status da cobrança), não o estorno.
+            // O código Pix e o comprovante do estorno são gravados por syncOrderRefund logo abaixo.
+            refundId = null;
+            refundStatus = 'REFUND_REQUESTED';
+            refundMessage = `Estorno de R$ ${refundValue.toFixed(2)} solicitado ao Asaas via Pix.`;
 
             // Registrar no histórico de estornos
             try {
@@ -293,17 +298,17 @@ export async function POST(request: Request) {
                 order_id: targetOrder?.id || (isUUID ? cleanOrderId : null),
                 payment_id: asaasPaymentId,
                 requested_value: refundValue,
-                asaas_refund_id: refundId,
-                status: refundStatus,
+                asaas_refund_id: null,
+                status: 'REFUND_REQUESTED',
                 requested_by: actorId
               });
             } catch (hisErr) {
               console.warn("Aviso ao inserir refund_history:", hisErr);
             }
           } else {
-            const msg = Array.isArray(refundData.errors)
+            const msg = sellerErrMsg || (Array.isArray(refundData.errors)
               ? refundData.errors.map((e: any) => e.description || e.message).join(', ')
-              : (refundData.message || JSON.stringify(refundData));
+              : (refundData.message || JSON.stringify(refundData)));
             console.error("[Asaas Refund Error]:", msg);
             refundMessage = `Asaas Estorno: ${msg}`;
             refundStatus = 'REFUND_FAILED';
@@ -384,6 +389,21 @@ export async function POST(request: Request) {
         });
       } catch (dbErr) {
         console.warn("Erro ao atualizar status do pedido no Supabase:", dbErr);
+      }
+    }
+
+    // 8. Registrar valor, data, código Pix e comprovante do estorno (R28)
+    if (targetOrder?.id && asaasPaymentId && (refundStatus === 'REFUND_REQUESTED' || refundStatus === 'REFUNDED')) {
+      try {
+        await new Promise((r) => setTimeout(r, 1500));
+        const sync = await syncOrderRefund(targetOrder, { ctx: { apiKey: REQ_KEY, baseUrl: ASAAS_URL }, paymentId: asaasPaymentId });
+        if (sync.state === 'DONE') {
+          refundMessage = `Estorno de R$ ${sync.refundedValue.toFixed(2)} concluído pelo Asaas via Pix. O comprovante está no pedido.`;
+        } else if (sync.state === 'IN_PROGRESS') {
+          refundMessage = `Estorno de R$ ${sync.refundedValue.toFixed(2)} em processamento no Asaas. O comprovante aparece no pedido assim que for concluído.`;
+        }
+      } catch (syncErr) {
+        console.warn('[Asaas Refund] Aviso ao registrar comprovante do estorno:', syncErr);
       }
     }
 
