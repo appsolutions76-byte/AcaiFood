@@ -28,6 +28,7 @@ import { ThermalPrinterModal } from "@/components/ThermalPrinterModal";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
+import { RefundInfo } from "@/components/RefundInfo";
 
 const emptySubscribe = () => () => {};
 
@@ -478,6 +479,7 @@ export default function FornecedorDashboard() {
               </div>
             )}
             {o.status === 'cancelado' && <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Cancelado</span>}
+            <RefundInfo order={o} viewer="loja" compact />
             
             {isCanceled && (
               <button onClick={() => { if(confirm('Deseja excluir este pedido permanentemente?')) store.acaoPedido(o.id, 'deletar_pedido') }} className="text-xs bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-3 py-2 rounded-lg transition mt-2 sm:mt-0">🗑️ Excluir</button>

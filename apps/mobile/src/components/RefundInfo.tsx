@@ -33,7 +33,8 @@ export function RefundInfo({ order, viewer, compact = false }: { order: any; vie
   const url = order.refundReceiptUrl ? String(order.refundReceiptUrl) : '';
   const box = compact ? 'text-[10px] px-1.5 py-1' : 'w-full text-[11px] px-2.5 py-1.5';
 
-  if (status === 'cancelado' && (refundStatus === 'REFUNDED' || value > 0 || url)) {
+  // Só mostra "concluído" com valor ou comprovante do Asaas (pedido nunca pago não tem estorno)
+  if (status === 'cancelado' && (value > 0 || url)) {
     return (
       <div className={`${box} font-bold rounded-lg border bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300`}>
         ↩️ Estorno concluído{value > 0 ? ` — ${fmtBRL(value)}` : ''}{at ? ` em ${at}` : ''}

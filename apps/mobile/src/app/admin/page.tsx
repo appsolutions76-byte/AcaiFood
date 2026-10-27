@@ -25,6 +25,7 @@ import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 
 import { AdminMfaGuard } from "@/components/admin/AdminMfaGuard";
+import { RefundInfo } from "@/components/RefundInfo";
 
 const emptySubscribe = () => () => {};
 
@@ -1258,6 +1259,8 @@ function AdminDashboardContent() {
         if (orderStatusFilter === 'aguardando_pin' && o.status !== 'aguardando_cliente') return false;
         if (orderStatusFilter === 'bloqueado_pin' && !((o as any).status === 'PIN_LOCKED' || (o as any).status === 'bloqueado_pin')) return false;
         if (orderStatusFilter === 'cancelados' && o.status !== 'cancelado') return false;
+        if (orderStatusFilter === 'estornados' && !(o.status === 'cancelado' && (Number((o as any).refundValue || 0) > 0 || !!(o as any).refundReceiptUrl))) return false;
+        if (orderStatusFilter === 'estorno_falhou' && String((o as any).asaasRefundStatus || '').toUpperCase() !== 'REFUND_FAILED') return false;
       }
 
       // Type filter
@@ -2246,6 +2249,8 @@ function AdminDashboardContent() {
                     <option value="preparo">👨‍🍳 Em Preparo / Pronto</option>
                     <option value="pendentes">⏳ Pendentes</option>
                     <option value="cancelados">❌ Cancelados</option>
+                    <option value="estornados">↩️ Estornados</option>
+                    <option value="estorno_falhou">⚠️ Estorno não concluído</option>
                   </select>
                 </div>
               </div>
@@ -2256,6 +2261,11 @@ function AdminDashboardContent() {
                   <span className="font-bold text-zinc-700 dark:text-zinc-300">
                     {filteredOrdersForReport.length} pedido(s) encontrado(s)
                   </span>
+                  {orderStatusFilter === 'estornados' && (
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                      Total estornado: {filteredOrdersForReport.reduce((acc: number, o: any) => acc + Number(o?.refundValue || 0), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  )}
                   {(orderSearchQuery || orderPeriodFilter !== 'all' || orderTypeFilter !== 'all' || orderStatusFilter !== 'all') && (
                     <button
                       onClick={() => {
@@ -2513,6 +2523,7 @@ function AdminDashboardContent() {
                             {o.status === 'cancelado' && (
                               <span className="bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 px-2 py-1 rounded-md text-[10px] font-bold uppercase inline-block">❌ Cancelado</span>
                             )}
+                            <RefundInfo order={o} viewer="admin" compact />
 
                             {/* PIN de Retirada */}
                             {(o.pickupPin || (o as any).pickup_pin) && (

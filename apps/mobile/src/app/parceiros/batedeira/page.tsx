@@ -52,6 +52,7 @@ import { ThermalPrinterModal } from "@/components/ThermalPrinterModal";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
+import { RefundInfo } from "@/components/RefundInfo";
 
 const emptySubscribe = () => () => {};
 
@@ -958,11 +959,7 @@ export default function BatedeiraDashboard() {
               )}
 
               {/* Interações */}
-              {!isCanceled && (o as any).asaasRefundStatus === 'REFUND_FAILED' && (
-                <p className="w-full text-[11px] font-bold text-amber-800 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-lg px-2.5 py-1.5 mt-2 sm:mt-0">
-                  ⚠️ Estorno não concluído: o pedido continua pago. Cancele de novo para tentar outra vez.
-                </p>
-              )}
+              <RefundInfo order={o} viewer="loja" />
               {!isCanceled && o.type === 'B2C' && o.status === 'pendente' && (
                 <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                     <button onClick={() => {
