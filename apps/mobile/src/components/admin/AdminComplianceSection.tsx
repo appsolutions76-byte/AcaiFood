@@ -74,6 +74,7 @@ export function AdminComplianceSection({ showToast }: { showToast?: (msg: string
       <RootBalancePanel toast={toast} />
       <PaymentModelPanel toast={toast} />
       <RefundFeePayerPanel toast={toast} />
+      <TransferValidationPanel toast={toast} />
 
       {tab === 'subcontas' && <SubaccountsPanel toast={toast} />}
       {tab === 'repasses' && <SettlementsPanel toast={toast} />}
@@ -298,6 +299,143 @@ function RefundFeePayerPanel({ toast }: { toast: (m: string) => void }) {
           ? 'Ativo: a plataforma cobre a tarifa (até o valor da tarifa do pedido) quando faltar na conta da loja.'
           : 'Ativo: a loja paga a tarifa. Sem saldo suficiente na loja, o estorno é recusado e o pedido continua pago.'}
       </p>
+    </Panel>
+  );
+}
+
+const KIND_LABEL: Record<string, string> = {
+  WITHDRAWAL: 'Saque de parceiro',
+  SETTLEMENT: 'Repasse',
+  REFUND_FEE: 'Tarifa de estorno',
+  PIX_REFUND: 'Estorno Pix',
+  PAYMENT_SPLIT: 'Split',
+  UNKNOWN: 'Desconhecido',
+  AUTH: 'Token inválido',
+  ERROR: 'Erro'
+};
+
+function TransferValidationPanel({ toast }: { toast: (m: string) => void }) {
+  const [cfg, setCfg] = useState<{ mode: string; manualUntil?: string | null } | null>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [tableReady, setTableReady] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const d = await apiGet('/api/admin/transfer-validation');
+      setCfg(d.config);
+      setLogs(Array.isArray(d.logs) ? d.logs : []);
+      setTableReady(d.tableReady !== false);
+    } catch (e: any) {
+      toast(e?.message || 'Erro ao carregar a validação de saques');
+    }
+  }, [toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const save = async (body: any, okMsg: string) => {
+    setSaving(true);
+    try {
+      const d = await apiPost('/api/admin/transfer-validation', body);
+      setCfg(d.config);
+      toast(okMsg);
+    } catch (e: any) {
+      toast(e?.message || 'Erro ao salvar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const enforce = cfg?.mode === 'ENFORCE';
+  const manualOpen = !!cfg?.manualUntil && new Date(cfg.manualUntil).getTime() > Date.now();
+  const suspicious = logs.filter(l => (l.kind === 'UNKNOWN' || l.kind === 'AUTH' || String(l.reason || '').startsWith('Modo monitor')) && l.operation_type !== 'PIX_REFUND');
+
+  const toggleMode = () => {
+    const next = enforce ? 'MONITOR' : 'ENFORCE';
+    const msg = next === 'ENFORCE'
+      ? 'BLOQUEAR saques que não foram criados pelo app (ex.: feitos direto no painel do Asaas)? Saques, repasses e estornos do app continuam normais. Para um saque manual seu, use "Liberar saque manual".'
+      : 'Voltar ao modo MONITOR? Todos os saques serão aprovados e apenas registrados aqui.';
+    if (!window.confirm(msg)) return;
+    save({ mode: next }, next === 'ENFORCE' ? 'Bloqueio de saques não autorizados ativado.' : 'Modo monitor ativado.');
+  };
+
+  return (
+    <Panel
+      title="🛡️ Validação de saques (anti-fraude)"
+      actions={<button onClick={() => { setOpen(o => !o); if (!open) load(); }} className="text-xs font-bold text-purple-600 hover:underline cursor-pointer">{open ? 'Ocultar' : 'Ver detalhes'}</button>}
+    >
+      <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+        Com o mecanismo ligado no Asaas, cada saque ou transferência da conta da plataforma e das subcontas é conferido aqui antes de sair. O app aprova o que ele mesmo criou (saques de parceiros, repasses e estornos).
+      </p>
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className={`text-xs font-bold ${!enforce ? 'text-amber-600' : 'text-zinc-400'}`}>Monitorar</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enforce}
+          disabled={saving || !cfg}
+          onClick={toggleMode}
+          className={`relative inline-flex h-7 w-14 items-center rounded-full transition disabled:opacity-40 cursor-pointer ${enforce ? 'bg-emerald-600' : 'bg-zinc-400 dark:bg-zinc-600'}`}
+          title="Alternar entre monitorar e bloquear saques não autorizados"
+        >
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${enforce ? 'translate-x-8' : 'translate-x-1'}`} />
+        </button>
+        <span className={`text-xs font-bold ${enforce ? 'text-emerald-600' : 'text-zinc-400'}`}>Bloquear não autorizados</span>
+        {enforce && (
+          manualOpen ? (
+            <button disabled={saving} onClick={() => save({ manualMinutes: 0 }, 'Saque manual fechado.')} className="ml-auto text-xs font-bold px-3 py-1.5 rounded-lg bg-red-600 text-white cursor-pointer">
+              Fechar saque manual (aberto até {new Date(cfg!.manualUntil!).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})
+            </button>
+          ) : (
+            <button disabled={saving} onClick={() => { if (window.confirm('Liberar por 15 minutos um saque feito por você direto no painel do Asaas?')) save({ manualMinutes: 15 }, 'Saque manual liberado por 15 minutos.'); }} className="ml-auto text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500 text-white cursor-pointer">
+              Liberar saque manual (15 min)
+            </button>
+          )
+        )}
+      </div>
+      <p className="text-xs text-zinc-500 mt-3">
+        {enforce
+          ? 'Ativo: saque que não foi criado pelo app é recusado pelo Asaas, a não ser durante a liberação manual.'
+          : 'Ativo: modo monitor. Tudo é aprovado; os saques que seriam recusados aparecem marcados abaixo.'}
+      </p>
+      {suspicious.length > 0 && (
+        <p className="text-xs font-bold text-red-600 mt-2">⚠️ {suspicious.length} saque(s) não criados pelo app nas últimas validações. Confira em &quot;Ver detalhes&quot;.</p>
+      )}
+      {open && (
+        <div className="mt-3 space-y-2">
+          <div className="text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-3 leading-relaxed">
+            <strong>Como ligar no Asaas:</strong> Menu do usuário → Integrações → Mecanismos de segurança → Validação de saque via webhook.
+            URL: <code className="select-all">https://www.acaifood.app.br/api/asaas/transfer-validation</code> · Token: o mesmo token de webhook do app.
+            Marque também &quot;estornos Pix&quot; se quiser registrá-los. Deixe em <strong>Monitorar</strong> alguns dias e só depois mude para <strong>Bloquear</strong>.
+          </div>
+          {!tableReady && <p className="text-xs text-amber-600 font-bold">Tabela de registros ainda não criada (migration R32).</p>}
+          {logs.length === 0 ? (
+            <p className="text-xs text-zinc-500">Nenhuma validação recebida ainda.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-zinc-500">
+                    <th className="py-1 pr-2">Quando</th><th className="py-1 pr-2">Tipo</th><th className="py-1 pr-2">Valor</th><th className="py-1 pr-2">Decisão</th><th className="py-1">Motivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map(l => (
+                    <tr key={l.id} className="border-t border-zinc-100 dark:border-zinc-800">
+                      <td className="py-1 pr-2 whitespace-nowrap">{fmtDate(l.created_at)}</td>
+                      <td className="py-1 pr-2">{KIND_LABEL[l.kind] || l.kind || l.operation_type}</td>
+                      <td className="py-1 pr-2 whitespace-nowrap">{l.value != null ? fmtMoney(l.value) : '—'}</td>
+                      <td className={`py-1 pr-2 font-bold ${l.decision === 'REFUSED' ? 'text-red-600' : 'text-emerald-600'}`}>{l.decision === 'REFUSED' ? 'Recusado' : 'Aprovado'}</td>
+                      <td className="py-1">{l.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </Panel>
   );
 }

@@ -141,6 +141,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Você só pode vincular uma subconta ao seu próprio perfil de usuário.' }, { status: 403 });
     }
 
+    // R32 (M6): o Asaas cobra a abertura de cada subconta. No cadastro só guardamos os dados;
+    // a subconta é aberta quando o parceiro confirma que vai enviar documento e selfie em seguida.
+    if (body?.saveOnly === true) {
+      const { error: saveErr } = await supabase
+        .from('users')
+        .update({
+          birth_date: effectiveBirthDate || undefined,
+          monthly_income: effectiveIncome || undefined,
+          company_type: effectiveCompanyType || undefined,
+          postal_code: effectivePostalCode || undefined,
+          address_number: effectiveAddressNumber || undefined,
+          province: effectiveProvince || undefined
+        })
+        .eq('id', userId);
+      if (saveErr) {
+        return NextResponse.json({ error: 'Não foi possível salvar os dados da conta de pagamento.' }, { status: 500 });
+      }
+      return NextResponse.json({ success: true, saved: true, created: false });
+    }
+
+    if (!isAdmin && body?.confirmReady !== true) {
+      return NextResponse.json(
+        { error: 'Para abrir a conta de pagamento, confirme que está com documento com foto e celular para a selfie e abra pela área "Minha conta Asaas" do seu painel.' },
+        { status: 400 }
+      );
+    }
+
     // 1. Aceites obrigatórios na versão vigente (cl. 8.2.4)
     const { data: acceptedTerms } = await supabase
       .from('terms_acceptances')

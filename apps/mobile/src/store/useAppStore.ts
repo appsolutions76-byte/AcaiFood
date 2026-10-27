@@ -539,43 +539,8 @@ export const useAppStore = create<AppState>()(
           
           set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
 
-          // Se for usuário parceiro/motorista legado sem walletId mas com CPF e dados KYC preenchidos, gera subconta automaticamente
-          const hasKycData = Boolean(userProfile.postal_code && (userProfile.birth_date || userProfile.company_type));
-          if ((appRole === 'loja' || appRole === 'fornecedor' || appRole === 'motorista') && !loggedUser.asaasWalletId && loggedUser.cpfCnpj && hasKycData) {
-            getAuthHeaders().then(authHeaders => {
-              fetch('/api/asaas/subaccount', {
-                method: 'POST',
-                headers: authHeaders,
-                body: JSON.stringify({
-                  userId: loggedUser.id,
-                  name: loggedUser.name,
-                  email: loggedUser.email,
-                  cpfCnpj: loggedUser.cpfCnpj,
-                  phone: loggedUser.telefone,
-                  endereco: loggedUser.endereco,
-                  addressNumber: userProfile.address_number,
-                  bairro: loggedUser.bairro,
-                  cidade: loggedUser.cidade,
-                  postalCode: userProfile.postal_code,
-                  birthDate: userProfile.birth_date,
-                  monthlyIncome: userProfile.monthly_income,
-                  companyType: userProfile.company_type,
-                  role: userProfile.role
-                })
-              }).then(r => r.json()).then(data => {
-                if (data?.walletId && isValidAsaasWalletId(data.walletId)) {
-                  set(prev => {
-                    const u = prev.users[loggedUser.id] || loggedUser;
-                    const updated = { ...u, asaasWalletId: data.walletId, asaasLinked: true };
-                    return {
-                      users: { ...prev.users, [loggedUser.id]: updated },
-                      currentUser: prev.currentUser?.id === loggedUser.id ? updated : prev.currentUser
-                    };
-                  });
-                }
-              }).catch(() => {});
-            });
-          }
+          // R32: a subconta Asaas não é mais aberta sozinha no login (o Asaas cobra cada abertura).
+          // O parceiro abre em "Minha conta Asaas" quando estiver pronto para enviar documento e selfie.
 
           get().setupRealtime(loggedUser.id);
           get().fetchRates();
@@ -1166,7 +1131,8 @@ export const useAppStore = create<AppState>()(
                   birthDate:     uAny?.birthDate || uAny?.birth_date,
                   monthlyIncome: uAny?.monthlyIncome || uAny?.monthly_income,
                   companyType:   uAny?.companyType || uAny?.company_type,
-                  role:          uAny?.role
+                  role:          uAny?.role,
+                  confirmReady:  true
                 })
               });
               if (subRes.ok) {

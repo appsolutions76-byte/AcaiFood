@@ -38,6 +38,8 @@ export function AsaasAccountStatusCard() {
   const [docs, setDocs] = useState<DocGroup[]>([]);
   const [onboardingUrl, setOnboardingUrl] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  // R32: o Asaas cobra cada abertura de subconta; só abre quando o parceiro está pronto para os documentos
+  const [readyDocs, setReadyDocs] = useState(false);
 
   // Formulário de abertura (só os dados que o Asaas exige e que ainda faltam)
   const [form, setForm] = useState({
@@ -143,6 +145,10 @@ export function AsaasAccountStatusCard() {
       setMessage(isCnpj ? 'Informe o faturamento mensal (mínimo R$ 100).' : 'Informe sua renda mensal (mínimo R$ 100).');
       return;
     }
+    if (!readyDocs) {
+      setMessage('Marque a confirmação de que está com o documento com foto e o celular para a selfie.');
+      return;
+    }
     setLoading(true);
     setMessage(null);
     try {
@@ -163,12 +169,13 @@ export function AsaasAccountStatusCard() {
           postalCode: onlyDigits(form.postalCode),
           birthDate: isCnpj ? undefined : form.birthDate,
           monthlyIncome: income,
-          companyType: isCnpj ? form.companyType : undefined
+          companyType: isCnpj ? form.companyType : undefined,
+          confirmReady: true
         })
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data?.success) {
-        setMessage('Conta de pagamento aberta. Em alguns segundos os documentos pendentes aparecem aqui.');
+        setMessage('Conta de pagamento aberta. Em alguns segundos aparece aqui o botão para enviar o documento e a selfie: envie agora para a análise começar.');
         // O Asaas recomenda aguardar ~15 s antes de consultar os documentos da subconta nova
         setTimeout(() => fetchDocStatus(false), 15000);
       } else {
@@ -284,11 +291,24 @@ export function AsaasAccountStatusCard() {
           </div>
         </div>
 
+        <div className="bg-white/70 dark:bg-zinc-900/40 border border-amber-200 dark:border-amber-800 rounded-xl p-3 space-y-1.5 text-xs text-amber-900 dark:text-amber-100">
+          <p className="font-bold">Antes de abrir, tenha em mãos:</p>
+          <ul className="list-disc pl-5 space-y-0.5">
+            <li>Documento com foto (RG ou CNH){isCnpj ? ' do responsável e o cartão CNPJ' : ''}</li>
+            <li>Celular com câmera para tirar a selfie</li>
+          </ul>
+          <p className="text-[11px] opacity-80">Logo após abrir, o Asaas pede o envio do documento e da selfie. Sem eles a conta não é aprovada e você não recebe repasses.</p>
+          <label className="flex items-start gap-2 pt-1 cursor-pointer font-bold">
+            <input type="checkbox" checked={readyDocs} onChange={e => setReadyDocs(e.target.checked)} className="mt-0.5 accent-amber-600" />
+            <span>Estou com o documento e o celular agora e vou enviar em seguida.</span>
+          </label>
+        </div>
+
         {message && <p className="text-xs font-bold text-amber-900 dark:text-amber-200">{message}</p>}
 
         <div className="flex items-center justify-between gap-2 pt-1">
           {legalNote}
-          <button type="submit" disabled={loading} className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 cursor-pointer">
+          <button type="submit" disabled={loading || !readyDocs} className="disabled:opacity-50 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 cursor-pointer">
             <FileText size={14} />
             <span>{loading ? 'Enviando…' : 'Abrir conta de pagamento'}</span>
           </button>

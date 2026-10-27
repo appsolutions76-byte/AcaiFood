@@ -319,7 +319,9 @@ function CadastroForm() {
         } else {
           setNewUserId(newUser.id);
 
-          // 2) Abrir a subconta Asaas com os dados reais de cadastro (cl. 8.2.3)
+          // 2) Guardar os dados reais da conta de pagamento (cl. 8.2.3). A subconta Asaas NÃO é
+          //    aberta aqui (o Asaas cobra cada abertura): o parceiro abre em "Minha conta Asaas"
+          //    quando estiver com documento e selfie em mãos (R32).
           if (termsOk) {
             try {
               const subRes = await fetch('/api/asaas/subaccount', {
@@ -338,15 +340,15 @@ function CadastroForm() {
                   postalCode: cleanCep,
                   birthDate: cleanCpf.length === 11 ? birthDate : undefined,
                   monthlyIncome: parsedIncome,
-                  companyType: cleanCpf.length === 14 ? companyType : undefined
+                  companyType: cleanCpf.length === 14 ? companyType : undefined,
+                  saveOnly: true
                 })
               });
-              const subData = await subRes.json().catch(() => ({}));
               if (!subRes.ok) {
-                alert(`Cadastro criado, mas a conta de pagamento Asaas ainda não foi aberta: ${subData?.error || 'erro desconhecido'}. Você pode concluir depois em "Minha conta Asaas", no seu painel.`);
+                console.warn("Aviso: dados da conta de pagamento não salvos no cadastro; o parceiro informa em Minha conta Asaas.");
               }
             } catch (_sErr) {
-              console.warn("Aviso ao abrir subconta Asaas no cadastro");
+              console.warn("Aviso ao salvar dados da conta de pagamento no cadastro");
             }
           }
 
@@ -1091,7 +1093,7 @@ function CadastroForm() {
                       {pixData?.isFreeGranted ? 'Vaga Fundador Garantida (100% Grátis)' : 'Taxa de Ativação Paga com Sucesso!'}
                     </div>
                     <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                      Sua conta já está cadastrada e liberada. Para sua comodidade e segurança, sua subconta bancária no Asaas será conectada automaticamente assim que você aceitar a sua <strong>1ª corrida ou concluir sua 1ª venda</strong>.
+                      Sua conta já está cadastrada. Próximo passo: no seu painel, em <strong>Minha conta Asaas</strong>, abra a sua conta de pagamento quando estiver com <strong>documento com foto e celular para a selfie</strong> em mãos.
                     </p>
                   </div>
 
@@ -1106,8 +1108,8 @@ function CadastroForm() {
                     <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
                       <span className="text-lg">🛡️</span>
                       <div>
-                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Subconta Asaas sob demanda</p>
-                        <p className="text-[11px] text-zinc-500">Subconta gerada automaticamente na sua primeira operação real</p>
+                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Conta de pagamento Asaas</p>
+                        <p className="text-[11px] text-zinc-500">Aberta por você em "Minha conta Asaas", com envio de documento e selfie na hora</p>
                       </div>
                     </div>
                   </div>
@@ -1128,7 +1130,7 @@ function CadastroForm() {
                       Taxa de ativação da plataforma AçaíFood
                     </p>
                     <p className="text-[11px] text-purple-700 dark:text-purple-300">
-                      Para liberar sua conta de recebimentos e gerar sua subconta bancária na sua 1ª operação, realize o pagamento via Pix:
+                      Para liberar sua conta de recebimentos, realize o pagamento via Pix:
                     </p>
                     <p className="text-lg font-black text-purple-900 dark:text-purple-100 mt-2">
                       R$ {activationInfo.activationFee.toFixed(2).replace('.', ',')}
