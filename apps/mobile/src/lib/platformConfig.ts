@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 // Substitui o JSON que ficava dentro de platform_settings.asaas_platform_wallet_id.
 // Enquanto a migration 20261006040000 não rodar, lê o JSON antigo como reserva.
 
-export type PlatformConfigKey = 'activation' | 'support' | 'payment_model';
+export type PlatformConfigKey = 'activation' | 'support' | 'payment_model' | 'refund_fee_payer';
 
 async function readLegacyJson(): Promise<any> {
   try {

@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getRootCtx, type AsaasCtx } from '@/lib/paymentAccount';
+import { getPlatformConfig } from '@/lib/platformConfig';
 import { findTransferByExternalRef, describeAsaasError } from '@/lib/asaasTransferLookup';
 
 /**
@@ -12,10 +13,22 @@ import { findTransferByExternalRef, describeAsaasError } from '@/lib/asaasTransf
  * Correção:
  * 1. `splitRefunds`: a comissão já repassada à conta raiz volta a partir da própria raiz
  *    (o Asaas debita cada participante do split pelo valor indicado; o restante sai da loja).
- * 2. A tarifa Pix não é devolvida pelo Asaas no estorno. Se faltar só essa diferença na loja,
- *    a conta raiz cobre (transferência interna, limitada à tarifa Pix do pedido), com
+ * 2. A tarifa Pix não é devolvida pelo Asaas no estorno. Quem paga é configurável no admin
+ *    (platform_config.refund_fee_payer: PLATFORM ou SELLER; padrão PLATFORM). Com PLATFORM, se faltar
+ *    só essa diferença na loja, a conta raiz cobre (transferência interna, limitada à tarifa Pix do pedido), com
  *    externalReference REFUNDFEE_<pedido> para nunca cobrir duas vezes.
  */
+
+export type RefundFeePayer = 'PLATFORM' | 'SELLER';
+
+/** Quem paga a tarifa Pix perdida no estorno (padrão: plataforma). */
+export async function getRefundFeePayer(): Promise<RefundFeePayer> {
+  try {
+    const cfg = await getPlatformConfig<{ payer?: string }>('refund_fee_payer');
+    if (String(cfg?.payer || '').toUpperCase() === 'SELLER') return 'SELLER';
+  } catch (_e) {}
+  return 'PLATFORM';
+}
 
 const round2 = (v: number) => Math.round((Number(v) || 0) * 100) / 100;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -151,7 +164,8 @@ export async function refundSellerSplitPayment(params: {
   const feeCap = Number(order?.pricing_snapshot?.asaasPixFeeFixed ?? 0.99);
 
   let feeCovered = 0;
-  if (orderId && issuerPartnerId && value > 0) {
+  const feePayer = await getRefundFeePayer();
+  if (feePayer === 'PLATFORM' && orderId && issuerPartnerId && value > 0) {
     feeCovered = await coverFeeShortfall({ orderId, sellerCtx, issuerPartnerId, needFromSeller, feeCap });
   }
 

@@ -72,6 +72,7 @@ export function AdminComplianceSection({ showToast }: { showToast?: (msg: string
       </div>
 
       <PaymentModelPanel toast={toast} />
+      <RefundFeePayerPanel toast={toast} />
 
       {tab === 'subcontas' && <SubaccountsPanel toast={toast} />}
       {tab === 'repasses' && <SettlementsPanel toast={toast} />}
@@ -140,6 +141,69 @@ function PaymentModelPanel({ toast }: { toast: (m: string) => void }) {
           Voltar ao modelo antigo
         </button>
       </div>
+    </Panel>
+  );
+}
+
+function RefundFeePayerPanel({ toast }: { toast: (m: string) => void }) {
+  const [payer, setPayer] = useState<string>('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const d = await apiGet('/api/admin/refund-fee-payer');
+      setPayer(d.payer || 'PLATFORM');
+    } catch (e: any) {
+      toast(e?.message || 'Erro ao carregar quem paga a tarifa do estorno');
+    }
+  }, [toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const isPlatform = payer !== 'SELLER';
+  const toggle = async () => {
+    const next = isPlatform ? 'SELLER' : 'PLATFORM';
+    const msg = next === 'SELLER'
+      ? 'A LOJA passará a pagar a tarifa Pix perdida nos estornos. Se a loja não tiver saldo para cobrir, o estorno falha e o pedido continua pago. Confirmar?'
+      : 'A PLATAFORMA passará a cobrir a tarifa Pix perdida nos estornos quando faltar na loja (no máximo a tarifa do pedido). Confirmar?';
+    if (!window.confirm(msg)) return;
+    setSaving(true);
+    try {
+      const d = await apiPost('/api/admin/refund-fee-payer', { payer: next });
+      setPayer(d.payer);
+      toast('Responsável pela tarifa do estorno atualizado.');
+    } catch (e: any) {
+      toast(e?.message || 'Erro ao salvar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Panel title="↩️ Tarifa Pix nos estornos">
+      <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+        O Asaas não devolve a tarifa Pix quando um pedido é estornado. A comissão do app sempre volta a partir da conta da plataforma; esta chave decide quem paga a tarifa perdida.
+      </p>
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className={`text-xs font-bold ${!isPlatform ? 'text-purple-600' : 'text-zinc-400'}`}>Loja paga</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isPlatform}
+          disabled={saving || !payer}
+          onClick={toggle}
+          className={`relative inline-flex h-7 w-14 items-center rounded-full transition disabled:opacity-40 cursor-pointer ${isPlatform ? 'bg-emerald-600' : 'bg-zinc-400 dark:bg-zinc-600'}`}
+          title="Alternar quem paga a tarifa do estorno"
+        >
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${isPlatform ? 'translate-x-8' : 'translate-x-1'}`} />
+        </button>
+        <span className={`text-xs font-bold ${isPlatform ? 'text-emerald-600' : 'text-zinc-400'}`}>Plataforma paga</span>
+      </div>
+      <p className="text-xs text-zinc-500 mt-3">
+        {isPlatform
+          ? 'Ativo: a plataforma cobre a tarifa (até o valor da tarifa do pedido) quando faltar na conta da loja.'
+          : 'Ativo: a loja paga a tarifa. Sem saldo suficiente na loja, o estorno é recusado e o pedido continua pago.'}
+      </p>
     </Panel>
   );
 }
