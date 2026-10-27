@@ -18,6 +18,9 @@ export function generateUUID(): string {
 import { haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync } from "@/lib/routeDistance";
 export { haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync };
 
+// R33 (M4): totais do admin somados só pelo gatilho do banco (ver incrementAdminBalances)
+const CLIENT_ADMIN_BALANCE_INCREMENT_DISABLED: boolean = true;
+
 export function isValidAsaasWalletId(id?: string): boolean {
   if (!id || typeof id !== 'string') return false;
   const clean = id.trim();
@@ -2533,7 +2536,10 @@ export const useAppStore = create<AppState>()(
       },
 
       incrementAdminBalances: async (order) => {
-        if (!order) return;
+        // R33 (M4): os totais do painel admin já são somados no banco pelo gatilho
+        // trigger_increment_admin_balances quando o pedido é concluído. Somar aqui também
+        // contava cada pedido duas vezes, então o app não grava mais nada nesta tabela.
+        if (CLIENT_ADMIN_BALANCE_INCREMENT_DISABLED || !order) return;
         const volume = (order.valor || 0) + (order.taxas?.entregaTotal || 0);
         const appRev = order.taxas?.plataformaTotal || 0;
 
