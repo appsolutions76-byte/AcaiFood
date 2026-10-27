@@ -2366,7 +2366,9 @@ export const useAppStore = create<AppState>()(
             if (o.id !== orderId) return o;
             const newOrder = { ...o };
             const nowIso = new Date().toISOString();
-            if (action === 'cancelar_pedido' || action === 'cancelar_cliente' || action === 'recusar_loja' || action === 'recusar_forn' || action === 'recusar_fornecedor' || action === 'cancelar_loja' || action === 'cancelar_fornecedor') { newOrder.status = 'cancelado'; newDbStatus = 'CANCELLED'; }
+            // Cancelamento: não marca "cancelado" na tela antes do servidor confirmar o estorno.
+            // Se o estorno falhar, o pedido continua visível e pago, e pode ser cancelado de novo.
+            if (action === 'cancelar_pedido' || action === 'cancelar_cliente' || action === 'recusar_loja' || action === 'recusar_forn' || action === 'recusar_fornecedor' || action === 'cancelar_loja' || action === 'cancelar_fornecedor') { newDbStatus = 'CANCELLED'; }
             if (action === 'confirmar_pagamento' || action === 'pagar') { 
               newOrder.status = o.type === 'COLETA' ? 'pronto' : 'pendente'; 
               newDbStatus = o.type === 'COLETA' ? 'READY' : 'PAID'; 
@@ -2655,7 +2657,7 @@ export const useAppStore = create<AppState>()(
              id, order_type, status, products_subtotal, delivery_distance_km, 
              applied_platform_fee_percent, applied_delivery_fee_per_km, applied_delivery_platform_fee_percent,
              buyer_id, seller_storefront_id, driver_id, created_at, picked_up_at, delivered_at,
-             accepted_at, ready_at, received_at, asaas_payment_id,
+             accepted_at, ready_at, received_at, asaas_payment_id, asaas_refund_status,
              payout_seller_done, payout_driver_done,
              seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount,
              pricing_snapshot, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro,
@@ -2979,6 +2981,7 @@ export const useAppStore = create<AppState>()(
                         asaasPaymentId: dbOrder.asaas_payment_id || localOrder?.asaasPaymentId || localOrder?.paymentId,
                         paymentId: dbOrder.asaas_payment_id || localOrder?.paymentId || localOrder?.asaasPaymentId,
                         asaasChargeStatus: dbOrder.asaas_charge_status || localOrder?.asaasChargeStatus,
+                        asaasRefundStatus: dbOrder.asaas_refund_status || null,
                        confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
                        taxas: {
                           entregaTotal: finalEntregaTotal,

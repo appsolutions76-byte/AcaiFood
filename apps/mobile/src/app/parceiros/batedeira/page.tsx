@@ -917,7 +917,6 @@ export default function BatedeiraDashboard() {
                       onClick={() => {
                         if (confirm("Deseja realmente cancelar este pedido? Em caso de Pix já pago, o estorno automático será solicitado no Asaas.")) {
                           store.acaoPedido(o.id, 'cancelar_pedido');
-                          alert("❌ Pedido cancelado com sucesso. Caso o Pix tenha sido pago, o estorno foi solicitado no Asaas.");
                         }
                       }}
                       className="text-[10px] bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm"
@@ -959,13 +958,17 @@ export default function BatedeiraDashboard() {
               )}
 
               {/* Interações */}
+              {!isCanceled && (o as any).asaasRefundStatus === 'REFUND_FAILED' && (
+                <p className="w-full text-[11px] font-bold text-amber-800 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-lg px-2.5 py-1.5 mt-2 sm:mt-0">
+                  ⚠️ Estorno não concluído: o pedido continua pago. Cancele de novo para tentar outra vez.
+                </p>
+              )}
               {!isCanceled && o.type === 'B2C' && o.status === 'pendente' && (
                 <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                     <button onClick={() => {
                       const reason = prompt("Informe o motivo da recusa do pedido:", "Impossibilidade de atendimento");
                       if (reason !== null && reason.trim() !== "") {
                         store.acaoPedido(o.id, 'cancelar_pedido', undefined, reason.trim());
-                        alert("❌ Pedido recusado e estorno solicitado no Asaas.");
                       }
                     }} className="flex-1 sm:flex-none bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Recusar</button>
                     <button onClick={() => {
@@ -980,7 +983,6 @@ export default function BatedeiraDashboard() {
                       const reason = prompt("Informe o motivo do cancelamento do pedido:", "Falta de insumos");
                       if (reason !== null && reason.trim() !== "") {
                         store.acaoPedido(o.id, 'cancelar_pedido', undefined, reason.trim());
-                        alert("❌ Pedido cancelado e estorno solicitado no Asaas.");
                       }
                     }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Cancelar</button>
                     <button onClick={() => store.acaoPedido(o.id, 'chamar_moto')} className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition">🏍️ Chamar Moto</button>
@@ -993,7 +995,6 @@ export default function BatedeiraDashboard() {
                       const reason = prompt("Informe o motivo do cancelamento do pedido:", "Cliente solicitou cancelamento / Motoboy indisponível");
                       if (reason !== null && reason.trim() !== "") {
                         store.acaoPedido(o.id, 'cancelar_pedido', undefined, reason.trim());
-                        alert("❌ Pedido cancelado e estorno solicitado no Asaas.");
                       }
                     }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm">❌ Cancelar Pedido</button>
                 </div>
@@ -1004,7 +1005,6 @@ export default function BatedeiraDashboard() {
                   const reason = prompt("Informe o motivo do cancelamento:", "Cancelamento pela loja");
                   if (reason !== null && reason.trim() !== "") {
                     store.acaoPedido(o.id, 'cancelar_pedido', undefined, reason.trim());
-                    alert("❌ Pedido cancelado e estorno solicitado no Asaas.");
                   }
                 }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0">❌ Cancelar</button>
               )}

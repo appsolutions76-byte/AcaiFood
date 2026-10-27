@@ -1788,6 +1788,12 @@ export default function StorefrontPage() {
                               </button>
                             )}
   
+                            {(o as any).asaasRefundStatus === 'REFUND_FAILED' && o.status !== 'cancelado' && (
+                              <p className="w-full text-[11px] font-bold text-amber-800 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-lg px-2.5 py-1.5">
+                                ⚠️ O estorno não foi concluído e o pedido continua pago. Toque em "Cancelar Pedido" para tentar de novo ou fale com o suporte.
+                              </p>
+                            )}
+
                             {o.status !== 'em_rota' && o.status !== 'aguardando_cliente' && (
                               <button 
                                 onClick={() => {
