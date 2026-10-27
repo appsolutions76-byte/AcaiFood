@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { playChatDing } from "@/lib/soundAlerts";
+import { getAuthHeaders } from "@/store/useAppStore";
 import { SupportMessageItem, SupportConfig, DEFAULT_SUPPORT_CONFIG } from "@/app/api/support/route";
 
 interface SupportChatModalProps {
@@ -45,7 +46,8 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
   const loadMessages = async () => {
     if (!isRegisteredUser || !activeUserId) return;
     try {
-      const res = await fetch(`/api/support?userId=${encodeURIComponent(activeUserId)}`);
+      // O servidor identifica o usuário pelo login (token), não pelo userId da URL
+      const res = await fetch(`/api/support?userId=${encodeURIComponent(activeUserId)}`, { headers: await getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         if (data.messages && Array.isArray(data.messages)) {
@@ -130,7 +132,7 @@ export function SupportChatModal({ isOpen, onClose, currentUser, config = DEFAUL
     try {
       await fetch("/api/support", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           action: "send",
           message: newMsg,

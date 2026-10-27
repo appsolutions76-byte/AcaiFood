@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { SupportMessageItem, SupportConfig, DEFAULT_SUPPORT_CONFIG } from "@/app/api/support/route";
 import { playChatDing } from "@/lib/soundAlerts";
+import { getAuthHeaders } from "@/store/useAppStore";
 import { supabase } from "@/lib/supabase";
 import { Order, User as AppUser } from "@/store/useAppStore";
 
@@ -302,9 +303,10 @@ export function AdminSupportSection({
     setTimeout(scrollToBottom, 60);
 
     try {
+      // Resposta como suporte exige login de admin com MFA no servidor
       await fetch("/api/support", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           action: "send",
           message: newMsg,

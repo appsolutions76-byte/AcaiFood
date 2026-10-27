@@ -42,9 +42,12 @@ export interface AuthResult {
  * 1. Tokens de segurança estáticos de servidor (internal_secret ou cron_secret).
  * 2. Tokens JWT do Supabase passados pelo Header Authorization: Bearer <token>.
  */
+const BLOCKED_STATUSES = ['blocked', 'bloqueado', 'suspended', 'suspenso'];
+
 export async function authorizeRequest(
   request: Request,
-  allowedRoles?: ('admin' | 'loja' | 'fornecedor' | 'motorista' | 'cliente')[]
+  allowedRoles?: ('admin' | 'loja' | 'fornecedor' | 'motorista' | 'cliente')[],
+  options?: { allowBlocked?: boolean }
 ): Promise<AuthResult> {
   // 1. Validar tokens secretos de servidor (cron jobs e chamadas internas)
   const internalSecret = process.env.INTERNAL_API_SECRET || '';
@@ -85,6 +88,10 @@ export async function authorizeRequest(
             .maybeSingle();
 
           if (profile) {
+            // Conta bloqueada/suspensa pela moderação não usa a API (o bloqueio não é só visual)
+            if (!options?.allowBlocked && BLOCKED_STATUSES.includes(String(profile.status || '').toLowerCase())) {
+              return { authorized: false, error: 'Sua conta está bloqueada ou suspensa. Fale com o suporte.' };
+            }
             const rawRole = String(profile.role || '').toLowerCase();
             const userRole = 
               (rawRole === 'admin' || rawRole === 'administrador') ? 'admin' :

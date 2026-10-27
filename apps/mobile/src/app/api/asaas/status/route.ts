@@ -98,8 +98,11 @@ export async function GET(request: Request) {
         const status = data.status;
         const isPaid = status === 'RECEIVED' || status === 'CONFIRMED' || status === 'RECEIVED_IN_CASH' || status === 'DUNNING_RECEIVED' || status === 'PAYMENT_RECEIVED' || status === 'PAYMENT_CONFIRMED';
 
-        if (isPaid && supabaseUrl && supabaseKey) {
-          const targetOrderId = data.externalReference || orderId;
+        // A cobrança precisa ser do próprio pedido (externalReference). Cobrança sem referência
+        // ou de outro pedido nunca marca pedido como pago (auditoria A4).
+        const refMatches = Boolean(data.externalReference) && (!orderId || data.externalReference === orderId);
+        if (isPaid && refMatches && supabaseUrl && supabaseKey) {
+          const targetOrderId = data.externalReference;
           if (targetOrderId) {
             try {
               const supabase = getSupabaseAdmin();
@@ -111,7 +114,7 @@ export async function GET(request: Request) {
 
               const expectedAmt = dbOrder?.charged_amount ? Number(dbOrder.charged_amount) : null;
               const paidAmt = data.value ? Number(data.value) : null;
-              const isValueValid = (expectedAmt === null || paidAmt === null || Math.abs(expectedAmt - paidAmt) <= 0.05);
+              const isValueValid = (expectedAmt !== null && paidAmt !== null && Math.abs(expectedAmt - paidAmt) <= 0.05);
 
               if (isValueValid && dbOrder && ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT'].includes(dbOrder.status)) {
                 await supabase.from('orders').update({
@@ -173,7 +176,8 @@ export async function GET(request: Request) {
 
           const expectedAmt = dbOrder?.charged_amount ? Number(dbOrder.charged_amount) : null;
           const paidAmt = paidPayment.value ? Number(paidPayment.value) : null;
-          const isValueValid = (expectedAmt === null || paidAmt === null || Math.abs(expectedAmt - paidAmt) <= 0.05);
+          const isValueValid = (expectedAmt !== null && paidAmt !== null && Math.abs(expectedAmt - paidAmt) <= 0.05)
+            && String(paidPayment.externalReference || '') === String(orderId);
 
           if (isValueValid && dbOrder && ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT'].includes(dbOrder.status)) {
             await supabase.from('orders').update({

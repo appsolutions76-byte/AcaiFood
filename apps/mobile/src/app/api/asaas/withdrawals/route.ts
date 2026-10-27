@@ -17,7 +17,7 @@ function getAppRole(profileRole?: string) {
 
 export async function GET(request: Request) {
   try {
-    const auth = await authorizeRequest(request, ['loja', 'fornecedor', 'motorista', 'admin']);
+    const auth = await authorizeRequest(request, ['loja', 'fornecedor', 'motorista', 'admin'], { allowBlocked: true });
     if (!auth.authorized || !auth.profile) {
       return NextResponse.json({ error: auth.error || 'Não autorizado. Apenas parceiros podem consultar saques.' }, { status: 401 });
     }
@@ -97,7 +97,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const auth = await authorizeRequest(request, ['loja', 'fornecedor', 'motorista', 'admin']);
+    const auth = await authorizeRequest(request, ['loja', 'fornecedor', 'motorista', 'admin'], { allowBlocked: true });
     if (!auth.authorized || !auth.profile) {
       return NextResponse.json({ error: auth.error || 'Não autorizado. Apenas parceiros podem solicitar saques.' }, { status: 401 });
     }

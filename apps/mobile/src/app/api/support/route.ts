@@ -73,40 +73,41 @@ export async function GET(request: Request) {
     }
 
     // Se for listagem geral do admin, requer autorização de admin
+    let effectiveUserId: string | null = null;
     if (all) {
       const auth = await authorizeRequest(request, ['admin']);
       if (!auth.authorized) {
         return unauthorizedResponse(auth.error || 'Acesso restrito ao painel administrativo de suporte.');
       }
     } else {
-      // Somente usuários cadastrados têm acesso às mensagens de suporte
-      if (!userId || userId.startsWith('guest-') || userId === 'anon') {
+      // Somente o próprio usuário logado lê as suas mensagens (o userId da URL não basta: auditoria C1)
+      const auth = await authorizeRequest(request);
+      if (!auth.authorized) {
         return NextResponse.json(
-          { error: 'Acesso restrito: somente usuários cadastrados têm acesso ao canal de atendimento.', messages: [] },
-          { status: 403 }
+          { error: 'Faça login para acessar o canal de atendimento.', messages: [] },
+          { status: 401 }
         );
       }
-
-      // Validar existência do usuário no banco de dados
-      const { data: userExists } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (!userExists) {
-        return NextResponse.json(
-          { error: 'Conta de usuário não encontrada. Cadastre-se ou faça login para acessar o suporte.', messages: [] },
-          { status: 403 }
-        );
+      const callerId = auth.user?.id || auth.profile?.id || null;
+      effectiveUserId = callerId;
+      if (userId && userId !== callerId) {
+        // Ler o chamado de outra pessoa: só admin com MFA
+        const adminAuth = await authorizeRequest(request, ['admin']);
+        if (!adminAuth.authorized) {
+          return NextResponse.json({ error: 'Você só pode ver as suas próprias mensagens.', messages: [] }, { status: 403 });
+        }
+        effectiveUserId = userId;
+      }
+      if (!effectiveUserId) {
+        return NextResponse.json({ error: 'Usuário não identificado.', messages: [] }, { status: 401 });
       }
     }
 
     // 1. Tentar buscar direto na tabela support_messages
     try {
       let query = supabase.from('support_messages').select('*').order('created_at', { ascending: true });
-      if (userId && !all) {
-        query = query.eq('user_id', userId);
+      if (!all) {
+        query = query.eq('user_id', effectiveUserId as string);
       }
       const { data, error } = await query;
       if (!error && data) {
@@ -116,8 +117,8 @@ export async function GET(request: Request) {
 
     // 2. Fallback via platform_settings
     let messages = fallbackMessages;
-    if (userId && !all) {
-      messages = messages.filter(m => m.user_id === userId);
+    if (!all) {
+      messages = messages.filter(m => m.user_id === effectiveUserId);
     }
 
     return NextResponse.json({ success: true, messages, config: supportConfig });
@@ -165,7 +166,22 @@ export async function POST(request: Request) {
 
     // AÇÃO 2: ENVIAR MENSAGEM (SOMENTE USUÁRIOS CADASTRADOS)
     if (action === 'send' && message) {
-      const targetUserId = message.user_id || userId;
+      const sendAuth = await authorizeRequest(request);
+      if (!sendAuth.authorized) {
+        return unauthorizedResponse(sendAuth.error || 'Faça login para falar com o suporte.');
+      }
+      const senderIsAdmin = String(sendAuth.profile?.role || '').toLowerCase() === 'admin' || sendAuth.profile?.is_admin === true;
+      const wantsAdminSender = String(message.sender || '').toLowerCase() === 'admin';
+      if (wantsAdminSender) {
+        // Responder como suporte exige admin com MFA
+        const adminAuth = await authorizeRequest(request, ['admin']);
+        if (!adminAuth.authorized) {
+          return unauthorizedResponse(adminAuth.error || 'Apenas o suporte pode responder como atendente.');
+        }
+      }
+      const callerUserId = sendAuth.user?.id || sendAuth.profile?.id || '';
+      // Usuário comum só envia em nome próprio; admin escolhe o chamado
+      const targetUserId = (wantsAdminSender && senderIsAdmin) ? (message.user_id || userId) : callerUserId;
 
       // Restrição: visitantes sem conta NÃO TÊM ACESSO
       if (!targetUserId || targetUserId.startsWith('guest-') || targetUserId === 'anon') {
@@ -198,7 +214,7 @@ export async function POST(request: Request) {
         user_email: userRecord.email || message.user_email || '',
         category: message.category || 'geral',
         content: message.content || '',
-        sender: message.sender || 'user',
+        sender: wantsAdminSender && senderIsAdmin ? 'admin' : 'user',
         is_read: false,
         status: message.status || 'aberto',
         created_at: new Date().toISOString()
