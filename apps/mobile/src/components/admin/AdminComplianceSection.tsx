@@ -71,6 +71,7 @@ export function AdminComplianceSection({ showToast }: { showToast?: (msg: string
         ))}
       </div>
 
+      <RootBalancePanel toast={toast} />
       <PaymentModelPanel toast={toast} />
       <RefundFeePayerPanel toast={toast} />
 
@@ -140,6 +141,99 @@ function PaymentModelPanel({ toast }: { toast: (m: string) => void }) {
         >
           Voltar ao modelo antigo
         </button>
+      </div>
+    </Panel>
+  );
+}
+
+const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/** Aviso no topo do admin quando o saldo da conta da plataforma (raiz Asaas) está abaixo do mínimo. */
+export function RootBalanceBanner({ onOpen }: { onOpen?: () => void }) {
+  const [info, setInfo] = useState<{ balance: number; min: number; negative: boolean } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const d = await apiGet('/api/admin/root-balance');
+        if (!alive) return;
+        if (d?.success && d.below) setInfo({ balance: Number(d.balance), min: Number(d.min), negative: !!d.negative });
+        else setInfo(null);
+      } catch (_e) {
+        if (alive) setInfo(null);
+      }
+    };
+    load();
+    const t = setInterval(load, 5 * 60 * 1000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+
+  if (!info) return null;
+  return (
+    <div className={`rounded-xl border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${info.negative ? 'bg-red-50 border-red-300 text-red-800 dark:bg-red-950/40 dark:border-red-800 dark:text-red-300' : 'bg-amber-50 border-amber-300 text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300'}`}>
+      <p className="text-sm font-bold">
+        {info.negative ? '🚨' : '⚠️'} Saldo da conta da plataforma no Asaas: {fmtBRL(info.balance)} (mínimo configurado: {fmtBRL(info.min)}).
+        <span className="block text-xs font-medium mt-0.5">Estornos podem falhar sem saldo. Deposite por Pix na conta principal do Asaas.</span>
+      </p>
+      {onOpen && (
+        <button onClick={onOpen} className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/80 dark:bg-zinc-900 border border-current cursor-pointer">
+          Ver em Conformidade
+        </button>
+      )}
+    </div>
+  );
+}
+
+function RootBalancePanel({ toast }: { toast: (m: string) => void }) {
+  const [balance, setBalance] = useState<number | null>(null);
+  const [min, setMin] = useState<string>('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const d = await apiGet('/api/admin/root-balance');
+      setMin(String(d.min ?? ''));
+      if (d.success) { setBalance(Number(d.balance)); setError(''); }
+      else { setBalance(null); setError(d.error || 'Saldo indisponível'); }
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao consultar saldo');
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const d = await apiPost('/api/admin/root-balance', { min: Number(String(min).replace(',', '.')) });
+      setMin(String(d.min));
+      toast('Saldo mínimo de alerta atualizado.');
+      load();
+    } catch (e: any) {
+      toast(e?.message || 'Erro ao salvar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const minNum = Number(String(min).replace(',', '.'));
+  const low = balance !== null && Number.isFinite(minNum) && balance < minNum;
+  return (
+    <Panel title="🏦 Saldo da conta da plataforma (Asaas)" actions={<button onClick={load} className="text-xs font-bold text-purple-600 cursor-pointer">Atualizar</button>}>
+      {balance !== null ? (
+        <p className={`text-2xl font-black ${balance < 0 ? 'text-red-600' : low ? 'text-amber-600' : 'text-emerald-600'}`}>{fmtBRL(balance)}</p>
+      ) : (
+        <p className="text-sm text-red-600">{error || 'Carregando...'}</p>
+      )}
+      <p className="text-xs text-zinc-500 mt-1 mb-3">
+        Esta conta recebe as comissões e precisa ter saldo para devolver comissão e tarifa nos estornos e para as taxas do Asaas (ex.: criação de subconta). Abaixo do mínimo, o admin mostra um aviso no topo.
+      </p>
+      <div className="flex items-center gap-2 flex-wrap">
+        <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Avisar abaixo de R$</label>
+        <input value={min} onChange={(e) => setMin(e.target.value)} inputMode="decimal" className="w-24 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-1.5 text-sm font-bold text-center" />
+        <button disabled={saving} onClick={save} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white disabled:opacity-40 cursor-pointer">Salvar</button>
       </div>
     </Panel>
   );

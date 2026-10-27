@@ -17,7 +17,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminManualModal } from "@/components/AdminManualModal";
 import { IncidentReportSection } from "@/components/IncidentReportSection";
 import { AdminSupportSection } from "@/components/admin/AdminSupportSection";
-import { AdminComplianceSection } from "@/components/admin/AdminComplianceSection";
+import { AdminComplianceSection, RootBalanceBanner } from "@/components/admin/AdminComplianceSection";
 import { AdminWithdrawalsSection } from "@/components/admin/AdminWithdrawalsSection";
 import { AdminReconciliationSection } from "@/components/admin/AdminReconciliationSection";
 import { ShareLandingModal } from "@/components/ShareLandingModal";
@@ -1985,6 +1985,7 @@ function AdminDashboardContent() {
       )}
 
       <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+        <RootBalanceBanner onOpen={() => setActiveTab('conformidade')} />
         
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300 font-medium">
