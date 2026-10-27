@@ -2832,7 +2832,9 @@ export const useAppStore = create<AppState>()(
                 };
 
                 let finalStatus = appStatus;
-                if (localOrder?.status && (statusPriority[localOrder.status] || 0) > (statusPriority[appStatus] || 0)) {
+                // "cancelado" só vale quando vem do servidor: um "cancelado" local antigo (de um estorno que
+                // falhou, salvo no navegador) não pode esconder um pedido que no banco continua pago.
+                if (localOrder?.status && localOrder.status !== 'cancelado' && (statusPriority[localOrder.status] || 0) > (statusPriority[appStatus] || 0)) {
                   finalStatus = localOrder.status;
                 }
 
