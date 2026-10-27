@@ -1793,8 +1793,8 @@ export default function StorefrontPage() {
                                 onClick={() => {
                                   const reason = prompt("Informe o motivo do cancelamento para estorno Pix Asaas:", "Desistência");
                                   if (reason !== null && reason.trim() !== "") {
+                                    // O resultado (cancelado + estorno, ou erro) é mostrado pelo acaoPedido
                                     store.acaoPedido(o.id, 'cancelar_cliente', undefined, reason.trim());
-                                    alert("❌ Pedido cancelado.");
                                   }
                                 }} 
                                 className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-1.5 rounded-lg transition cursor-pointer"

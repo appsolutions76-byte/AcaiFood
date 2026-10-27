@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { getOrderPaymentCtx } from '@/lib/paymentAccount';
+import { refundSellerSplitPayment } from '@/lib/sellerRefund';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { logAdminAction } from '@/lib/adminAudit';
 
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
     let REQ_KEY = ASAAS_API_KEY;
     let isSellerSplit = false;
+    let sellerIssuerId: string | null = null;
 
     let asaasPaymentId = paymentId ? String(paymentId).trim() : '';
     let targetOrder: any = null;
@@ -92,6 +94,7 @@ export async function POST(request: Request) {
         REQ_KEY = orderCtx.apiKey;
         ASAAS_URL = orderCtx.baseUrl;
         isSellerSplit = true;
+        sellerIssuerId = orderCtx.issuerPartnerId;
       }
     }
 
@@ -250,18 +253,36 @@ export async function POST(request: Request) {
             refundBodyPayload.value = Number(refundValue.toFixed(2));
           }
 
-          const refundRes = await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}/refund`, {
-            method: 'POST',
-            headers: {
-              'access_token': REQ_KEY,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(refundBodyPayload)
-          });
+          let refundOk = false;
+          let refundData: any = {};
+          if (integralSellerRefund && sellerIssuerId) {
+            // R23: devolve a comissão a partir da conta raiz (splitRefunds) e cobre a tarifa Pix,
+            // senão o Asaas responde "Saldo insuficiente" na subconta da loja
+            const r = await refundSellerSplitPayment({
+              order: targetOrder,
+              paymentId: asaasPaymentId,
+              sellerCtx: { apiKey: REQ_KEY, baseUrl: ASAAS_URL },
+              issuerPartnerId: sellerIssuerId,
+              description: cancelReasonText
+            });
+            refundOk = r.ok;
+            refundData = r.data || {};
+            if (r.ok) refundValue = r.refundedValue;
+            console.log(`[Asaas Refund] SELLER_SPLIT pedido ${targetOrder?.id}: ok=${r.ok} comissão devolvida=${r.splitRefunded} tarifa coberta=${r.feeCovered}${r.error ? ' erro=' + r.error : ''}`);
+          } else {
+            const refundRes = await fetch(`${ASAAS_URL}/payments/${asaasPaymentId}/refund`, {
+              method: 'POST',
+              headers: {
+                'access_token': REQ_KEY,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(refundBodyPayload)
+            });
+            refundData = await refundRes.json().catch(() => ({}));
+            refundOk = refundRes.ok && !refundData.errors;
+          }
 
-          const refundData = await refundRes.json().catch(() => ({}));
-
-          if (refundRes.ok && !refundData.errors) {
+          if (refundOk) {
             refundId = refundData.id || null;
             refundStatus = refundData.status || 'REFUNDED';
             refundMessage = `Estorno de R$ ${refundValue.toFixed(2)} processado com sucesso pelo Asaas via Pix!`;
@@ -286,6 +307,13 @@ export async function POST(request: Request) {
             console.error("[Asaas Refund Error]:", msg);
             refundMessage = `Asaas Estorno: ${msg}`;
             refundStatus = 'REFUND_FAILED';
+
+            // Registra a tentativa sem cancelar o pedido (continua pago; pode tentar de novo)
+            if (targetOrder?.id) {
+              try {
+                await supabase.from('orders').update({ asaas_refund_status: 'REFUND_FAILED' }).eq('id', targetOrder.id);
+              } catch (_e) {}
+            }
 
             // Retornar erro explicativo para o usuário
             return NextResponse.json({

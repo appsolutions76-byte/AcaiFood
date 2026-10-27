@@ -2494,7 +2494,7 @@ export const useAppStore = create<AppState>()(
          else if (action === 'retirar_pedido') rpcAction = 'pickup';
          else if (action === 'conf_motorista') rpcAction = 'delivered_by_driver';
          else if (action === 'forcar_baixa') rpcAction = 'force_receive';
-         else if (action === 'cancelar_pedido' && (targetCurrentOrder?.status === 'aguardando_pagamento' || targetCurrentOrder?.status === 'pendente')) rpcAction = 'cancel_unpaid';
+         else if (action === 'cancelar_pedido' && targetCurrentOrder?.status === 'aguardando_pagamento') rpcAction = 'cancel_unpaid'; // 'pendente' = já pago: segue direto para o estorno
 
          if (rpcAction && action !== 'validar_pin' && action !== 'aceitar_motorista') {
            try {
@@ -2542,15 +2542,20 @@ export const useAppStore = create<AppState>()(
                     reason: reasonStr || 'Cancelamento solicitado pelo usuário antes do PIN'
                   })
                 });
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 if (data.success) {
                   console.log("✅ Estorno Asaas efetuado com sucesso:", data);
+                  alert(`❌ Pedido cancelado.\n${data.message || 'Estorno solicitado ao Asaas.'}`);
                   await get().fetchOrders(currentUser.id, true);
                 } else {
                   console.warn("⚠️ Aviso no estorno Asaas:", data.error || data);
+                  alert(`⚠️ O pedido NÃO foi cancelado: ${data.error || 'não foi possível processar o estorno agora.'}\nTente novamente ou fale com o suporte.`);
+                  await get().fetchOrders(currentUser.id, true);
                 }
               } catch (fetchErr) {
                 console.warn("Erro ao solicitar estorno Asaas:", fetchErr);
+                alert("⚠️ Não foi possível falar com o servidor para cancelar o pedido. Verifique a internet e tente novamente.");
+                await get().fetchOrders(currentUser.id, true);
               }
            } catch(e) {
               console.error("Exceção ao solicitar estorno:", e);

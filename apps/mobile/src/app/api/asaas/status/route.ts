@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAuthorizedRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getOrderPaymentCtx, getRootCtx } from '@/lib/paymentAccount';
+import { refundSellerSplitPayment } from '@/lib/sellerRefund';
 import { reconcileWithdrawal } from '@/lib/withdrawalApproval';
 import { reconcileSettlement } from '@/lib/orderSettlements';
 
@@ -331,17 +332,33 @@ export async function POST(request: Request) {
               created_at: new Date().toISOString()
             });
 
-            const { data: cancelledOrder } = await supabase.from('orders').select('id, pricing_snapshot').eq('id', currentOrder?.id || '').maybeSingle();
+            const { data: cancelledOrder } = await supabase.from('orders').select('id, pricing_snapshot, charged_amount').eq('id', currentOrder?.id || '').maybeSingle();
             const refundCtx = cancelledOrder ? await getOrderPaymentCtx(cancelledOrder) : await getRootCtx();
             const apiKey = refundCtx?.apiKey || '';
             if (apiKey) {
               const asaasUrl = refundCtx!.baseUrl;
-              const autoRefundRes = await fetch(`${asaasUrl}/payments/${paymentId}/refund`, {
-                method: 'POST',
-                headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ description: 'Estorno automático: Pix recebido após cancelamento do pedido' })
-              });
-              const autoRefundData = await autoRefundRes.json().catch(() => ({}));
+              const autoDesc = 'Estorno automático: Pix recebido após cancelamento do pedido';
+              let autoRefundData: any = {};
+              const sellerIssuer = (refundCtx as any)?.model === 'SELLER_SPLIT' ? (refundCtx as any)?.issuerPartnerId : null;
+              if (sellerIssuer && cancelledOrder) {
+                // R23: mesma lógica do estorno manual (splitRefunds + cobertura da tarifa)
+                const r = await refundSellerSplitPayment({
+                  order: cancelledOrder,
+                  paymentId,
+                  sellerCtx: { apiKey, baseUrl: asaasUrl },
+                  issuerPartnerId: sellerIssuer,
+                  description: autoDesc
+                });
+                autoRefundData = r.ok ? (r.data || {}) : { status: 'REFUND_FAILED', error: r.error };
+                if (!r.ok) console.error('[Webhook Asaas] Auto-estorno falhou:', r.error);
+              } else {
+                const autoRefundRes = await fetch(`${asaasUrl}/payments/${paymentId}/refund`, {
+                  method: 'POST',
+                  headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ description: autoDesc })
+                });
+                autoRefundData = await autoRefundRes.json().catch(() => ({}));
+              }
 
               await supabase.from('refund_history').insert({
                 order_id: currentOrder?.id || null,
