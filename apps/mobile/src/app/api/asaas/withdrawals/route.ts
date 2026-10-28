@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getPartnerAvailableBalance, reconcilePartnerWithdrawals } from '@/lib/partnerBalance';
 import { authorizeRequest } from '@/lib/apiAuth';
 import { settlePendingOrdersForPartner } from '@/lib/orderSettlements';
+import { getPayoutHold, isInstantPayoutEnabled, PAYOUT_HOLD_MESSAGE } from '@/lib/payoutHold';
+import { processWithdrawalApproval } from '@/lib/withdrawalApproval';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,7 +72,9 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
       .limit(10);
 
-    const canRequest = accountApproved && !pendingRequest && balanceInfo.totalDisponivel >= minWithdrawalValue;
+    const payoutHold = await getPayoutHold(user.id);
+    const instantPayout = await isInstantPayoutEnabled();
+    const canRequest = accountApproved && !pendingRequest && !payoutHold.hold && balanceInfo.totalDisponivel >= minWithdrawalValue;
 
     return NextResponse.json({
       success: true,
@@ -87,7 +91,10 @@ export async function GET(request: Request) {
       accountStatus,
       accountApproved,
       pendingRequest,
-      recentRequests: recentRequests || []
+      recentRequests: recentRequests || [],
+      payoutHold: payoutHold.hold,
+      payoutHoldMessage: payoutHold.hold ? PAYOUT_HOLD_MESSAGE : null,
+      instantPayout
     });
   } catch (err: any) {
     console.error('[API /api/asaas/withdrawals GET] Erro:', err);
@@ -105,6 +112,13 @@ export async function POST(request: Request) {
     const user = auth.profile;
     const role = getAppRole(user.role);
     const adminSupabase = getSupabaseAdmin();
+    const body = await request.json().catch(() => ({}));
+
+    // 0. R34: chave Pix/CPF trocada = saque suspenso até o admin liberar
+    const payoutHold = await getPayoutHold(user.id);
+    if (payoutHold.hold) {
+      return NextResponse.json({ error: PAYOUT_HOLD_MESSAGE, code: 'PAYOUT_HOLD' }, { status: 403 });
+    }
 
     // 1. Revalidar se já existe solicitação PENDENTE, APROVADO ou PROCESSING
     const { data: pendingRows } = await adminSupabase
@@ -146,6 +160,23 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    // 3.1 R34: valor escolhido pelo parceiro (vazio = todo o saldo livre)
+    let requestedAmount = Number(balanceInfo.totalDisponivel.toFixed(2));
+    if (body?.amount !== undefined && body?.amount !== null && String(body.amount).trim() !== '') {
+      const asked = Number(String(body.amount).replace(',', '.'));
+      if (!Number.isFinite(asked) || asked <= 0) {
+        return NextResponse.json({ error: 'Valor de saque inválido.' }, { status: 400 });
+      }
+      const askedR = Number(asked.toFixed(2));
+      if (askedR < minWithdrawalValue) {
+        return NextResponse.json({ error: `O valor mínimo de saque é R$ ${minWithdrawalValue.toFixed(2)}.` }, { status: 400 });
+      }
+      if (askedR > requestedAmount + 0.001) {
+        return NextResponse.json({ error: `O valor pedido é maior que o saldo livre (R$ ${requestedAmount.toFixed(2)}).` }, { status: 400 });
+      }
+      requestedAmount = askedR;
+    }
+
     // 4. Saque só para a subconta Asaas aprovada do próprio parceiro (walletId)
     const { data: acct } = await adminSupabase
       .from('users')
@@ -180,7 +211,7 @@ export async function POST(request: Request) {
       .insert({
         partner_id: user.id,
         role,
-        requested_amount: balanceInfo.totalDisponivel,
+        requested_amount: requestedAmount,
         // O saque usa só o saldo da subconta; os pedidos são controlados pelos repasses (settlements)
         order_ids: [],
         status: 'PENDENTE'
@@ -193,10 +224,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Erro ao registrar solicitação de saque no banco de dados.' }, { status: 500 });
     }
 
-    const netVal = Math.max(0, balanceInfo.totalDisponivel - 0.99);
+    const netVal = Math.max(0, requestedAmount - 0.99);
+
+    // 6. R34: saque na hora — paga já, com as mesmas conferências da aprovação manual
+    if (await isInstantPayoutEnabled()) {
+      try {
+        const result = await processWithdrawalApproval(newRequest.id, null);
+        if (result.success || result.status === 'PROCESSING') {
+          return NextResponse.json({
+            success: true,
+            instant: true,
+            message: result.message || `Saque de R$ ${requestedAmount.toFixed(2)} enviado via Pix para a sua chave (taxa Asaas: R$ 0,99).`,
+            request: { ...newRequest, status: result.status }
+          });
+        }
+        if (result.status === 'PENDENTE') {
+          return NextResponse.json({
+            success: true,
+            instant: false,
+            message: result.error || 'Solicitação registrada. Aguardando liberação.',
+            request: newRequest
+          });
+        }
+        return NextResponse.json({ error: result.error || 'Não foi possível concluir o saque agora.', request: { ...newRequest, status: result.status } }, { status: 400 });
+      } catch (instErr: any) {
+        console.error('[Saque na hora] Erro:', instErr?.message || instErr);
+        return NextResponse.json({
+          success: true,
+          instant: false,
+          message: 'Solicitação registrada. O pagamento será concluído em instantes ou pelo administrador.',
+          request: newRequest
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Solicitação de saque de R$ ${balanceInfo.totalDisponivel.toFixed(2)} enviada! Líquido de R$ ${netVal.toFixed(2)} será transferido via Pix após aprovação (taxa Asaas: R$ 0,99).`,
+      message: `Solicitação de saque de R$ ${requestedAmount.toFixed(2)} enviada! Líquido de R$ ${netVal.toFixed(2)} será transferido via Pix após aprovação (taxa Asaas: R$ 0,99).`,
       request: newRequest
     });
   } catch (err: any) {

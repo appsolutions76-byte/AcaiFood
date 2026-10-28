@@ -27,7 +27,12 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
     reservedBalance?: number;
     pendingRequest: any;
     recentRequests: any[];
+    payoutHold?: boolean;
+    payoutHoldMessage?: string | null;
+    instantPayout?: boolean;
   } | null>(null);
+  // R34: valor do saque (vazio = todo o saldo livre)
+  const [amountInput, setAmountInput] = useState('');
 
   const fetchBalance = async () => {
     setLoading(true);
@@ -57,12 +62,28 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
   const handleRequestWithdrawal = async () => {
     if (!balanceData || !balanceData.canRequest) return;
 
-    const total = balanceData.totalDisponivel;
+    const free = balanceData.totalDisponivel;
+    const typed = amountInput.trim() ? Number(amountInput.replace(',', '.')) : NaN;
+    const total = amountInput.trim() ? typed : free;
+    if (!Number.isFinite(total) || total <= 0) {
+      alert('Informe um valor válido ou deixe em branco para sacar todo o saldo livre.');
+      return;
+    }
+    if (total < (balanceData.minWithdrawalValue || 0)) {
+      alert(`O valor mínimo de saque é ${formatMoney(balanceData.minWithdrawalValue)}.`);
+      return;
+    }
+    if (total > free + 0.001) {
+      alert(`O valor é maior que o seu saldo livre (${formatMoney(free)}).`);
+      return;
+    }
     const net = Math.max(0, total - 0.99);
-    const confirmMsg = `Confirmar solicitação de saque no valor de ${formatMoney(total)}?\n\n` +
-      `• Tarifa de transferência Pix Asaas (Opção 1): - ${formatMoney(0.99)}\n` +
-      `• Valor líquido que cairá na sua conta bancária: ${formatMoney(net)}\n\n` +
-      `Após a aprovação do administrador, o dinheiro será enviado automaticamente para sua chave Pix.`;
+    const confirmMsg = `Confirmar saque de ${formatMoney(total)}?\n\n` +
+      `• Tarifa de transferência Pix Asaas: - ${formatMoney(0.99)}\n` +
+      `• Valor líquido que cairá na sua chave Pix: ${formatMoney(net)}\n\n` +
+      (balanceData.instantPayout
+        ? `O Pix é enviado agora para a chave do seu CPF/CNPJ.`
+        : `O Pix é enviado para a chave do seu CPF/CNPJ depois da liberação do AçaíFood.`);
 
     if (!confirm(confirmMsg)) {
       return;
@@ -73,13 +94,15 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
       const headers = await getAuthHeaders();
       const res = await fetch('/api/asaas/withdrawals', {
         method: 'POST',
-        headers
+        headers,
+        body: JSON.stringify(amountInput.trim() ? { amount: Number(amountInput.replace(',', '.')) } : {})
       });
       const data = await res.json();
 
       if (res.ok && data.success) {
         if (showToast) showToast("✅ " + data.message);
         else alert(data.message);
+        setAmountInput('');
         fetchBalance();
       } else {
         const errorMsg = data.error || 'Falha ao enviar solicitação de saque.';
@@ -219,12 +242,35 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
                 }
               </div>
             </div>
+          ) : balanceData?.payoutHold ? (
+            <div className="text-xs text-red-200 bg-red-950/60 border border-red-700/50 rounded-2xl p-3 sm:max-w-xs">
+              🔒 {balanceData?.payoutHoldMessage || 'Saques suspensos por segurança. Fale com o suporte do AçaíFood.'}
+            </div>
           ) : !accountApproved ? (
             <div className="text-xs text-amber-200 bg-amber-950/60 border border-amber-700/50 rounded-2xl p-3 sm:max-w-xs">
               Saque liberado depois que sua conta Asaas for aprovada. Veja no cartão "Minha conta Asaas", no topo da página, o que falta.
             </div>
           ) : (
-            <div>
+            <div className="space-y-2 sm:max-w-xs">
+              {balanceData?.canRequest && (
+                <div>
+                  <label className="block text-[11px] text-zinc-400 mb-1">Valor do saque (vazio = todo o saldo livre)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs font-bold text-zinc-400">R$</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min={minVal}
+                      max={totalDisponivel}
+                      step="0.01"
+                      value={amountInput}
+                      onChange={e => setAmountInput(e.target.value)}
+                      placeholder={totalDisponivel.toFixed(2)}
+                      className="w-full pl-9 pr-3 py-2 text-sm font-bold bg-zinc-800 border border-zinc-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                </div>
+              )}
               <button
                 disabled={!balanceData?.canRequest || requesting}
                 onClick={handleRequestWithdrawal}
@@ -242,7 +288,7 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
                 }
               >
                 <ArrowDownToLine size={18} />
-                {requesting ? 'Enviando...' : 'Solicitar Saque'}
+                {requesting ? 'Enviando...' : (balanceData?.instantPayout ? 'Sacar agora' : 'Solicitar Saque')}
               </button>
             </div>
           )}

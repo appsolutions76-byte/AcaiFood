@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest } from '@/lib/apiAuth';
 import { logAdminAction } from '@/lib/adminAudit';
+import { getPlatformConfig, setPlatformConfig } from '@/lib/platformConfig';
+import { isInstantPayoutEnabled } from '@/lib/payoutHold';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +30,8 @@ export async function GET(request: Request) {
         auto_payout_time: (settings?.auto_payout_time || '18:00').substring(0, 5),
         auto_payout_timezone: settings?.auto_payout_timezone || 'America/Belem',
         min_withdrawal_value: Number(settings?.min_withdrawal_value ?? 20.00),
-        last_auto_payout_run_at: settings?.last_auto_payout_run_at || null
+        last_auto_payout_run_at: settings?.last_auto_payout_run_at || null,
+        instant_payout_enabled: await isInstantPayoutEnabled()
       }
     });
   } catch (err: any) {
@@ -47,14 +50,35 @@ export async function POST(request: Request) {
     const admin = auth.profile;
 
     const body = await request.json();
-    const { auto_payout_enabled, auto_payout_time, min_withdrawal_value } = body;
+    const { auto_payout_enabled, auto_payout_time, min_withdrawal_value, instant_payout_enabled } = body;
+
+    // R34: saque na hora (paga assim que o parceiro pede) fica em platform_config
+    if (typeof instant_payout_enabled === 'boolean') {
+      const before = await getPlatformConfig<{ enabled?: boolean }>('instant_payout');
+      const saved = await setPlatformConfig('instant_payout', { enabled: instant_payout_enabled });
+      if (!saved.ok) return NextResponse.json({ error: saved.error }, { status: 500 });
+      await logAdminAction({
+        actorId: admin.id,
+        action: 'INSTANT_PAYOUT_CHANGED',
+        targetType: 'PLATFORM_CONFIG',
+        targetId: 'instant_payout',
+        beforeState: { enabled: before?.enabled === true },
+        afterState: { enabled: instant_payout_enabled },
+        request
+      });
+      if (auto_payout_enabled === undefined && !auto_payout_time && (min_withdrawal_value === undefined || min_withdrawal_value === null)) {
+        return NextResponse.json({
+          success: true,
+          message: instant_payout_enabled ? 'Saque na hora LIGADO: o Pix sai assim que o parceiro pedir.' : 'Saque na hora DESLIGADO: os saques aguardam aprovação (ou o horário).',
+          updates: { instant_payout_enabled }
+        });
+      }
+    }
 
     const updates: any = {};
     if (typeof auto_payout_enabled === 'boolean') {
-      // Pagamento automático continua DESLIGADO até a aprovação escrita do Asaas (docs/18, regra 4)
-      if (auto_payout_enabled === true && process.env.ALLOW_AUTO_PAYOUT !== 'true') {
-        return NextResponse.json({ error: 'O pagamento automático está bloqueado até a aprovação formal do Asaas.' }, { status: 403 });
-      }
+      // R34: liberado pelo admin. O saque sai da subconta do próprio parceiro para a chave do CPF/CNPJ dele
+      // (mandato aceito no cadastro); chave trocada fica bloqueada até o admin liberar.
       updates.auto_payout_enabled = auto_payout_enabled;
     }
 

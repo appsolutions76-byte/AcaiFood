@@ -4,6 +4,7 @@ import { logAdminAction } from '@/lib/adminAudit';
 import { getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { settlePendingOrdersForPartner } from '@/lib/orderSettlements';
 import { getPartnerAvailableBalance } from '@/lib/partnerBalance';
+import { getPayoutHold, PAYOUT_HOLD_MESSAGE } from '@/lib/payoutHold';
 import {
   findTransferByExternalRef,
   getTransferById,
@@ -202,6 +203,26 @@ export async function processWithdrawalApproval(
 ): Promise<ProcessApprovalResult> {
   const adminSupabase = getSupabaseAdmin();
   const externalRef = withdrawalExternalRef(requestId);
+
+  // 0. R34: chave Pix/CPF trocada = nenhum saque sai (nem automático nem manual) até o admin liberar
+  {
+    const { data: reqOwner } = await adminSupabase
+      .from('withdrawal_requests')
+      .select('partner_id')
+      .eq('id', requestId)
+      .maybeSingle();
+    if (reqOwner?.partner_id) {
+      const hold = await getPayoutHold(reqOwner.partner_id);
+      if (hold.hold) {
+        await adminSupabase
+          .from('withdrawal_requests')
+          .update({ failure_reason: 'Suspenso: chave Pix ou CPF/CNPJ alterado. Aguardando liberação do admin.' })
+          .eq('id', requestId)
+          .eq('status', 'PENDENTE');
+        return { success: false, status: 'PENDENTE', error: PAYOUT_HOLD_MESSAGE };
+      }
+    }
+  }
 
   // 1. Trava atômica: só PENDENTE ou FALHOU entram. PROCESSING nunca é reenviado, só confirmado.
   const { data: lockRow, error: lockErr } = await adminSupabase

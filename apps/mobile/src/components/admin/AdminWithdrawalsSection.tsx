@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { getAuthHeaders } from '@/store/useAppStore';
+import { PayoutModesPanel } from '@/components/admin/PayoutModesPanel';
 import { 
   ArrowDownToLine, 
   CheckCircle2, 
@@ -469,6 +470,9 @@ export function AdminWithdrawalsSection({
 
 
 
+      {/* R34: modos de pagamento (na hora / no horário / manual) e saques suspensos */}
+      <PayoutModesPanel showToast={showToast} onChanged={() => refreshAllData()} />
+
       {/* 4. Tabela e Filtros de Solicitações de Saque Individuais */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -477,7 +481,7 @@ export function AdminWithdrawalsSection({
               <ArrowDownToLine className="text-purple-600" size={20} /> Solicitações de Saque de Parceiros
             </h3>
             <p className="text-xs text-zinc-500">
-              Aprovação manual 1-clique e histórico de saques realizados na plataforma
+              Aprovação manual 1-clique e histórico de saques. Parceiro com chave Pix trocada não recebe até ser liberado acima.
             </p>
           </div>
 
