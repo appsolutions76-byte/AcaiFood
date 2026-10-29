@@ -18,7 +18,11 @@ export default function PoliticaPrivacidadePage() {
             <ArrowLeft size={16} /> Voltar para o AçaíFood
           </Link>
           <div className="flex items-center gap-2">
-            <span className="text-xl">🥣</span>
+            <img
+              src="/logo.png"
+              alt="AçaíFood"
+              className="w-7 h-7 object-contain rounded-lg shrink-0"
+            />
             <span className="font-extrabold text-lg text-white">AçaíFood</span>
           </div>
         </div>
