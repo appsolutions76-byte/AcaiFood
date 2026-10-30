@@ -1,6 +1,6 @@
 export interface PhotoPreset {
   id: string;
-  category: 'acai' | 'adicional' | 'b2b';
+  category: 'acai' | 'adicional' | 'b2b' | 'store';
   title: string;
   url: string;
   thumbnail: string;
@@ -116,6 +116,28 @@ export const PHOTO_PRESETS: PhotoPreset[] = [
     title: 'Frutos de Açaí Selecionados',
     url: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=400&q=80',
     thumbnail: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=150&q=70',
+  },
+  // FACHADA & ANÚNCIO DA LOJA / BATEDEIRA
+  {
+    id: 'loja-fachada-tradicional',
+    category: 'store',
+    title: 'Ponto de Açaí Tradicional',
+    url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=150&q=70',
+  },
+  {
+    id: 'loja-fachada-moderna',
+    category: 'store',
+    title: 'Batedeira e Loja Moderna',
+    url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=400&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=150&q=70',
+  },
+  {
+    id: 'loja-fachada-gourmet',
+    category: 'store',
+    title: 'Casa do Açaí & Lanches',
+    url: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=400&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=150&q=70',
   }
 ];
 

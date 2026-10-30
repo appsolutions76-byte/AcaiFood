@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation";
 import { 
   Store, 
+  Camera,
   Printer, 
   BookOpen, 
   ShoppingCart, 
@@ -1478,6 +1479,80 @@ export default function BatedeiraDashboard() {
                   >
                     <span>✏️</span> Editar Preços Base
                   </button>
+                </div>
+              </div>
+
+              
+              {/* FOTO DO ANÚNCIO DA LOJA / FACHADA */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-white to-purple-50/50 dark:from-purple-950/40 dark:via-zinc-900 dark:to-purple-950/20 border border-purple-200/80 dark:border-purple-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div 
+                    onClick={() => setPhotoModalData({
+                      open: true,
+                      title: 'Foto do Anúncio da sua Loja',
+                      category: 'store' as any,
+                      currentUrl: currentUser?.photo,
+                      onSelect: (url) => {
+                        if (currentUser) store.updateStorePhoto(currentUser.id, url);
+                      }
+                    })}
+                    className="w-16 h-16 rounded-2xl bg-white dark:bg-zinc-800 border-2 border-purple-300 dark:border-purple-700 overflow-hidden flex items-center justify-center cursor-pointer shadow-xs hover:border-purple-500 relative group shrink-0"
+                    title="Clique para escolher a foto de capa da loja"
+                  >
+                    {currentUser?.photo ? (
+                      <img src={currentUser.photo} alt={currentUser.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-purple-600 dark:text-purple-400">
+                        <Store className="w-7 h-7" />
+                        <span className="text-[9px] font-bold mt-0.5">Sem foto</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                      <Camera className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white flex items-center gap-2">
+                      <Camera size={16} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                      <span>Foto do Anúncio da sua Loja</span>
+                    </h4>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 max-w-lg leading-relaxed">
+                      Esta foto é exibida no card do seu estabelecimento na vitrine inicial do AçaíFood para todos os clientes verem sua fachada ou logo.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setPhotoModalData({
+                      open: true,
+                      title: 'Foto do Anúncio da sua Loja',
+                      category: 'store' as any,
+                      currentUrl: currentUser?.photo,
+                      onSelect: (url) => {
+                        if (currentUser) store.updateStorePhoto(currentUser.id, url);
+                      }
+                    })}
+                    className="flex-1 sm:flex-none px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Camera size={14} />
+                    <span>{currentUser?.photo ? 'Alterar Foto' : 'Adicionar Foto'}</span>
+                  </button>
+                  {currentUser?.photo && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('Deseja remover a foto do anúncio da sua loja?')) {
+                          if (currentUser) store.updateStorePhoto(currentUser.id, undefined);
+                        }
+                      }}
+                      className="px-3 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold border border-red-200 dark:border-red-900/40 transition cursor-pointer"
+                      title="Remover foto da loja"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
 

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
-import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw, Menu, X, Home, Search, ClipboardList, User, ChevronRight } from "lucide-react";
+import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw, Menu, X, Home, Search, ClipboardList, User, ChevronRight, Store, MapPin, Zap, Navigation, Clock } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
@@ -644,11 +644,11 @@ export default function StorefrontPage() {
     if (!currentUser) return null;
     const r = String(currentUser.role || '').toLowerCase();
     const v = String(currentUser.veiculo || '').toLowerCase();
-    if (r === 'admin') return { label: '👑 Admin', href: '/admin' };
-    if (r === 'loja') return { label: '🏪 Painel Loja', href: '/parceiros/batedeira' };
-    if (r === 'fornecedor') return { label: '🏭 Painel Produtor', href: '/parceiros/fornecedor' };
-    if (r === 'caminhao' || (r === 'motorista' && (v.includes('caminh') || v.includes('caçamb')))) return { label: '🚛 Painel Caminhão', href: '/parceiros/caminhao' };
-    if (r === 'motoboy' || r === 'motorista') return { label: '🛵 Painel Motoboy', href: '/parceiros/motoboy' };
+    if (r === 'admin') return { label: '• Admin', href: '/admin' };
+    if (r === 'loja') return { label: '• Painel Loja', href: '/parceiros/batedeira' };
+    if (r === 'fornecedor') return { label: '• Painel Produtor', href: '/parceiros/fornecedor' };
+    if (r === 'caminhao' || (r === 'motorista' && (v.includes('caminh') || v.includes('caçamb')))) return { label: '• Painel Caminhão', href: '/parceiros/caminhao' };
+    if (r === 'motoboy' || r === 'motorista') return { label: '• Painel Motoboy', href: '/parceiros/motoboy' };
     return null;
   };
   const partnerDashboard = getPartnerDashboard();
@@ -675,7 +675,7 @@ export default function StorefrontPage() {
               </h1>
               {selectedStoreId && store.users?.[selectedStoreId] && (
                 <p className="text-[10px] text-purple-600 dark:text-purple-400 font-black uppercase tracking-wide">
-                  {store.users[selectedStoreId].role === 'fornecedor' ? '🏭 Fornecedor Oficial' : '🏪 Loja Selecionada'} • {store.users[selectedStoreId].name}
+                  {store.users[selectedStoreId].role === 'fornecedor' ? '• Fornecedor Oficial' : '• Loja Selecionada'} • {store.users[selectedStoreId].name}
                 </p>
               )}
             </div>
@@ -687,7 +687,7 @@ export default function StorefrontPage() {
                  className="text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shrink-0"
                  title="Ver catálogo e cardápio de todas as batedeiras e lojas cadastradas"
                >
-                 🏪 <span className="hidden sm:inline">Ver</span> Todas as Lojas
+                 • <span className="hidden sm:inline">Ver</span> Todas as Lojas
                </button>
              )}
              <Link
@@ -695,7 +695,7 @@ export default function StorefrontPage() {
                className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow-2xs border border-purple-300 dark:border-purple-800 transition-all"
                title="Conheça a apresentação do aplicativo AçaíFood"
              >
-               ✨ <span className="hidden sm:inline">Apresentação</span>
+               ✦ <span className="hidden sm:inline">Apresentação</span>
              </Link>
              <button
                onClick={() => setShareLandingModalOpen(true)}
@@ -728,7 +728,7 @@ export default function StorefrontPage() {
                     </Link>
                   )}
                   <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 hidden sm:inline-block bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-xl">
-                    👋 Olá, {currentUser.name.split(' ')[0]}
+                    Olá, {currentUser.name.split(' ')[0]}
                   </span>
                   {clientHistoryOrders.length > 0 && (
                     <button 
@@ -736,7 +736,7 @@ export default function StorefrontPage() {
                       className="text-xs bg-purple-50 hover:bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 dark:text-purple-300 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border border-purple-200 dark:border-purple-800/80 transition cursor-pointer"
                       title="Ver histórico de pedidos"
                     >
-                      📜 <span className="hidden sm:inline">Histórico</span> ({clientHistoryOrders.length})
+                      • <span className="hidden sm:inline">Histórico</span> ({clientHistoryOrders.length})
                     </button>
                   )}
                   <button 
@@ -769,7 +769,7 @@ export default function StorefrontPage() {
                 AçaíFood
               </h1>
               <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-600 dark:text-purple-400 mt-0.5 truncate max-w-[170px]">
-                <span className="text-[10px]">📍</span>
+                <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">•</span>
                 <span className="truncate">
                   {selectedStoreId && store.users?.[selectedStoreId]
                     ? store.users[selectedStoreId].name
@@ -785,7 +785,7 @@ export default function StorefrontPage() {
                 onClick={handleClearSelectedStore}
                 className="text-[11px] bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300 font-bold px-2.5 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 active:scale-95 transition"
               >
-                🏪 Lojas
+                • Lojas
               </button>
             )}
             
@@ -839,7 +839,7 @@ export default function StorefrontPage() {
                       <p className="font-extrabold text-sm text-zinc-900 dark:text-white truncate">{currentUser.name}</p>
                       <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{currentUser.email || currentUser.telefone || 'Cliente'}</p>
                       <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-0.5 truncate">
-                        📍 {currentUser.bairro || currentUser.cidade || 'Belém'}
+                        • {currentUser.bairro || currentUser.cidade || 'Belém'}
                       </p>
                     </div>
                   </div>
@@ -891,7 +891,7 @@ export default function StorefrontPage() {
                     className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition cursor-pointer"
                   >
                     <span className="flex items-center gap-2.5">
-                      <span className="text-base">📜</span> Meus Pedidos
+                      <span className="text-sm font-bold text-purple-600">•</span> Meus Pedidos
                     </span>
                     {clientHistoryOrders.length > 0 && (
                       <span className="bg-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
@@ -935,7 +935,7 @@ export default function StorefrontPage() {
                   className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition cursor-pointer"
                 >
                   <span className="flex items-center gap-2.5">
-                    <span className="text-base">✨</span>
+                    <span className="text-sm font-bold text-amber-500">✦</span>
                     <span>Apresentação do App</span>
                   </span>
                   <ChevronRight size={14} className="opacity-50" />
@@ -958,7 +958,7 @@ export default function StorefrontPage() {
                 {/* Tema */}
                 <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 text-xs font-bold text-zinc-700 dark:text-zinc-300">
                   <span className="flex items-center gap-2">
-                    <span>🌓</span> Aparência
+                    <span>•</span> Aparência
                   </span>
                   <ThemeToggle />
                 </div>
@@ -975,7 +975,7 @@ export default function StorefrontPage() {
                   }}
                   className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 font-extrabold text-xs rounded-xl border border-red-200 dark:border-red-900/40 transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <span>🚪 Sair da Conta</span>
+                  <span>• Sair da Conta</span>
                 </button>
               </div>
             )}
@@ -992,7 +992,7 @@ export default function StorefrontPage() {
         <div className="bg-gradient-to-r from-purple-900/90 via-zinc-900 to-purple-950 text-white p-4 sm:p-5 rounded-2xl shadow-md border border-purple-500/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="min-w-0">
             <h2 className="text-lg sm:text-xl font-black text-white leading-tight flex items-center gap-2">
-              <span>{selectedStoreId && store.users?.[selectedStoreId]?.role === 'fornecedor' ? '🏭' : '🥣'}</span>
+              <span>•</span>
               {selectedStoreId && store.users?.[selectedStoreId] ? (
                 <span>{store.users[selectedStoreId].role === 'fornecedor' ? 'Catálogo de Fornecedor' : 'Cardápio Oficial'}: {store.users[selectedStoreId].name}</span>
               ) : (
@@ -1013,13 +1013,13 @@ export default function StorefrontPage() {
                 className="text-xs bg-white/20 hover:bg-white/30 text-white font-black px-3 py-2 rounded-xl border border-white/30 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
                 title="Ver outras lojas e batedeiras cadastradas"
               >
-                🏪 Ver Outras Lojas
+                • Ver Outras Lojas
               </button>
             )}
 
             {currentUser ? (
               <span className="text-xs bg-black/40 text-purple-200 font-bold px-3 py-2 rounded-xl border border-purple-400/30 flex items-center gap-1.5 backdrop-blur-xs">
-                📍 {currentUser.bairro ? `${currentUser.bairro} (${currentUser.cidade || 'Belém'})` : (currentUser.cidade || 'Belém')}
+                • {currentUser.bairro ? `${currentUser.bairro} (${currentUser.cidade || 'Belém'})` : (currentUser.cidade || 'Belém')}
               </span>
             ) : null}
 
@@ -1053,13 +1053,19 @@ export default function StorefrontPage() {
                     <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-purple-200 dark:border-purple-900/40 mb-6">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4 mb-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-4xl bg-purple-50 dark:bg-purple-950/50 p-2.5 rounded-2xl border border-purple-100 dark:border-purple-900/40">{selLoja.icon || (selLoja.role === 'fornecedor' ? '🏭' : '🏪')}</span>
+                          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/50 border border-purple-100 dark:border-purple-900/40 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
+     {selLoja.photo ? (
+       <img src={selLoja.photo} alt={selLoja.name} className="w-full h-full object-cover" />
+     ) : (
+       <Store className="w-7 h-7 text-purple-700 dark:text-purple-300" />
+     )}
+   </div>
                           <div>
                             <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider">
                               {selLoja.role === 'fornecedor' ? '🏭 Fornecedor / Produtor Oficial' : '🏪 Loja Selecionada'}
                             </span>
                             <h3 className="text-xl sm:text-2xl font-black text-zinc-950 dark:text-white leading-tight mt-0.5">{selLoja.name}</h3>
-                            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 font-semibold mt-0.5">📍 Bairro: {selLoja.bairro || 'Central'} • {selLoja.cidade || 'Belém'}</p>
+                            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 font-semibold mt-0.5">• Bairro: {selLoja.bairro || 'Central'} • {selLoja.cidade || 'Belém'}</p>
                           </div>
                         </div>
 
@@ -1079,7 +1085,7 @@ export default function StorefrontPage() {
                             }} 
                             className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800 flex items-center gap-1 shadow-2xs"
                           >
-                            🗺️ {dist.toFixed(1)} km
+                            • {dist.toFixed(1)} km
                           </button>
 
                           <button 
@@ -1087,7 +1093,7 @@ export default function StorefrontPage() {
                             className="text-xs sm:text-sm bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 text-white font-black px-4 py-2.5 rounded-xl transition-all shadow-md hover:shadow-purple-500/30 border border-purple-300/40 flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
                             title="Voltar para a lista com todas as lojas e batedeiras"
                           >
-                            ⬅️ Ver Outras Lojas
+                            ← Ver Outras Lojas
                           </button>
                         </div>
                       </div>
@@ -1105,7 +1111,7 @@ export default function StorefrontPage() {
                             onClick={handleClearSelectedStore}
                             className="shrink-0 bg-white hover:bg-red-50 text-red-700 font-black px-4 py-2.5 rounded-xl text-xs shadow-md transition active:scale-95 cursor-pointer"
                           >
-                            ⬅️ Ver Outras Lojas Abertas
+                            ← Ver Outras Lojas Abertas
                           </button>
                         </div>
                       )}
@@ -1117,7 +1123,7 @@ export default function StorefrontPage() {
 
                       {isCartStore && (
                         <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 p-3.5 rounded-xl text-xs sm:text-sm font-bold mb-4 flex justify-between items-center shadow-xs">
-                          <span>🛒 Você tem {cartTotalQuantity} item(ns) no carrinho desta loja ({formatMoney(cartItemsTotal)})</span>
+                          <span>• Você tem {cartTotalQuantity} item(ns) no carrinho desta loja ({formatMoney(cartItemsTotal)})</span>
                           {selLoja.status === 'paused' ? (
                             <span className="bg-red-600 text-white font-extrabold px-3.5 py-2 rounded-xl text-xs shadow">
                               Loja Fechada
@@ -1157,7 +1163,7 @@ export default function StorefrontPage() {
                         return (
                           <>
                             <h4 className="font-black text-sm sm:text-base text-zinc-900 dark:text-white uppercase tracking-wider mb-3.5 flex items-center gap-2">
-                              <span>📦</span> Catálogo de Fruto & Insumos B2B
+                              <span>✦</span> Catálogo de Fruto & Insumos B2B
                             </h4>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -1305,7 +1311,7 @@ export default function StorefrontPage() {
                         return (
                           <>
                             <h4 className="font-black text-sm sm:text-base text-zinc-900 dark:text-white uppercase tracking-wider mb-3.5 flex items-center gap-2">
-                              <span>🍽️</span> Cardápio & Produtos
+                              <span>✦</span> Cardápio & Produtos
                             </h4>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -1391,7 +1397,7 @@ export default function StorefrontPage() {
                                 onClick={handleClearSelectedStore}
                                 className="w-full sm:w-auto text-xs sm:text-sm bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-extrabold px-6 py-3 rounded-xl transition border border-zinc-300 dark:border-zinc-700 flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
                               >
-                                ⬅️ Voltar e Ver Outras Lojas / Batedeiras
+                                ← Voltar e Ver Outras Lojas / Batedeiras
                               </button>
                             </div>
                           </>
@@ -1412,7 +1418,7 @@ export default function StorefrontPage() {
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div>
                           <h3 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
-                            <span>🏪</span> Batedeiras de Açaí
+                            <span>✦</span> Batedeiras de Açaí
                           </h3>
                           <p className="text-xs text-zinc-500">
                             {batedeirasFiltered.length} {batedeirasFiltered.length === 1 ? 'loja encontrada' : 'lojas encontradas'} {userCityNorm ? `em ${currentUser?.cidade}` : ''}
@@ -1441,12 +1447,12 @@ export default function StorefrontPage() {
                       <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none text-xs">
                         {[
                           { id: 'all', label: `Todas (${countTotal})` },
-                          { id: 'open', label: `🟢 Abertas Agora (${countOpen})` },
-                          { id: 'free_frete', label: `⚡ Frete Promocional (${countFreeFrete})` },
-                          { id: 'nearest', label: '📍 Mais Próximas' },
-                          { id: 'grosso', label: `🥣 Açaí Grosso (${countGrosso})` },
-                          { id: 'branco', label: `🥥 Açaí Branco (${countBranco})` },
-                          { id: 'lowest_price', label: '💲 Menor Preço' },
+                          { id: 'open', label: `Abertas Agora (${countOpen})`, iconType: 'open' },
+                          { id: 'free_frete', label: `Frete Promocional (${countFreeFrete})`, iconType: 'frete' },
+                          { id: 'nearest', label: 'Mais Próximas', iconType: 'nearest' },
+                          { id: 'grosso', label: `Açaí Grosso (${countGrosso})`, iconType: 'grosso' },
+                          { id: 'branco', label: `Açaí Branco (${countBranco})`, iconType: 'branco' },
+                          { id: 'lowest_price', label: 'Menor Preço', iconType: 'price' },
                         ].map(chip => (
                           <button
                             key={chip.id}
@@ -1454,17 +1460,22 @@ export default function StorefrontPage() {
                               setSelectedCategoryChip(chip.id as any);
                               setVisibleStoreLimit(12);
                             }}
-                            className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all flex items-center gap-1 shrink-0 border ${
+                            className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 border ${
                               selectedCategoryChip === chip.id
                                 ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
                                 : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                             }`}
                           >
-                            {chip.label}
+                            {(chip as any).iconType === 'open' && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+                            {(chip as any).iconType === 'frete' && <Zap size={12} className="text-amber-500 shrink-0" />}
+                            {(chip as any).iconType === 'nearest' && <Navigation size={12} className="text-purple-500 shrink-0" />}
+                            {(chip as any).iconType === 'grosso' && <span className="w-1.5 h-1.5 rounded-full bg-purple-600 shrink-0" />}
+                            {(chip as any).iconType === 'branco' && <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" />}
+                            {(chip as any).iconType === 'price' && <span className="text-xs font-black text-emerald-600 shrink-0">$</span>}
+                            <span>{chip.label}</span>
                           </button>
                         ))}
 
-                        {/* FILTRO DE BAIRRO (SE HOUVER MAIS DE 1) */}
                         {bairrosList.length > 1 && (
                           <div className="flex items-center gap-1 shrink-0">
                             <span className="text-zinc-400 text-xs font-semibold pl-1">Bairro:</span>
@@ -1477,7 +1488,7 @@ export default function StorefrontPage() {
                               aria-label="Filtrar por Bairro"
                               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full px-3 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 outline-none focus:border-purple-500 shadow-xs cursor-pointer"
                             >
-                              <option value="all">📍 Todos os Bairros</option>
+                              <option value="all">Todos os Bairros</option>
                               {bairrosList.map(b => (
                                 <option key={b} value={b}>{b}</option>
                               ))}
@@ -1532,7 +1543,7 @@ export default function StorefrontPage() {
 
                               {isLojaPaused && (
                                 <div className="absolute top-0 left-0 right-0 bg-red-600 text-white text-[10px] font-black tracking-wider uppercase py-0.5 text-center shadow-xs">
-                                  ⛔ Fechada no Momento
+                                  • Fechada no Momento
                                 </div>
                               )}
 
@@ -1540,15 +1551,19 @@ export default function StorefrontPage() {
                                 {/* TOPO DO CARD: ÍCONE, NOME COMPLETO E DISTÂNCIA */}
                                 <div className="flex items-start justify-between gap-2.5 mb-2.5">
                                   <div className="flex items-start gap-2.5 min-w-0">
-                                    <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-950/70 shrink-0 border border-purple-100 dark:border-purple-900/40 flex items-center justify-center text-2xl shadow-xs group-hover:scale-105 transition">
-                                      {loja.icon || '🏪'}
-                                    </div>
+                                    <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-950/70 shrink-0 border border-purple-100 dark:border-purple-900/40 flex items-center justify-center shadow-xs group-hover:scale-105 transition overflow-hidden">
+     {loja.photo ? (
+       <img src={loja.photo} alt={loja.name} className="w-full h-full object-cover" />
+     ) : (
+       <Store className="w-5 h-5 text-purple-700 dark:text-purple-300" />
+     )}
+   </div>
                                     <div className="min-w-0">
                                       <h4 className="font-extrabold text-zinc-900 dark:text-white text-sm sm:text-base leading-snug truncate" title={loja.name}>
                                         {loja.name}
                                       </h4>
                                       <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-0.5">
-                                        <span className="truncate">📍 {loja.bairro || 'Centro'}</span>
+                                        <span className="truncate inline-flex items-center gap-1"><MapPin size={11} className="text-zinc-400 shrink-0" /> {loja.bairro || 'Centro'}</span>
                                         <span className="text-amber-500 font-bold shrink-0">★ 4.9</span>
                                       </div>
                                     </div>
@@ -1571,7 +1586,7 @@ export default function StorefrontPage() {
                                       className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2 py-1 rounded-xl shrink-0 transition flex items-center gap-1 border border-blue-200/80 dark:border-blue-800/80 shadow-xs"
                                       title="Ver rota no mapa"
                                     >
-                                      🗺️ {dist.toFixed(1)} km
+                                      • {dist.toFixed(1)} km
                                     </button>
                                   )}
                                 </div>
@@ -1579,14 +1594,14 @@ export default function StorefrontPage() {
                                 {/* BADGES DE STATUS & TEMPO */}
                                 <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
                                   {isLojaPaused ? (
-                                    <span className="text-[10px] font-black text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/80 border border-red-300 dark:border-red-800 px-2 py-0.5 rounded-md">🔴 Fechada</span>
+                                    <span className="text-[10px] font-black text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/80 border border-red-300 dark:border-red-800 px-2 py-0.5 rounded-md">• Fechada</span>
                                   ) : (
-                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">🟢 Aberta</span>
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">• Aberta</span>
                                   )}
                                   {subsidy > 0 && (
-                                    <span className="text-[10px] font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900/40 px-2 py-0.5 rounded-md">⚡ Frete -{subsidy}%</span>
+                                    <span className="text-[10px] font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900/40 px-2 py-0.5 rounded-md">✦ Frete -{subsidy}%</span>
                                   )}
-                                  <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">⏱️ {minTime}-{maxTime} min</span>
+                                  <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">{minTime}-{maxTime} min</span>
                                 </div>
                                 
                                  <div className="bg-zinc-100/90 dark:bg-zinc-950 p-3 rounded-xl flex flex-col gap-1.5 mb-2.5 border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
@@ -1605,16 +1620,16 @@ export default function StorefrontPage() {
                                 {/* TAGS DE TIPOS DE AÇAÍ DISPONÍVEIS */}
                                 <div className="flex items-center gap-1 flex-wrap">
                                   {loja.availabilityB2C?.popular !== false && (
-                                    <span className="text-[9px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 px-1.5 py-0.5 rounded font-bold">🥣 Popular</span>
+                                    <span className="text-[9px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 px-1.5 py-0.5 rounded font-bold">Popular</span>
                                   )}
                                   {loja.availabilityB2C?.medio !== false && (
-                                    <span className="text-[9px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 px-1.5 py-0.5 rounded font-bold">🥣 Médio</span>
+                                    <span className="text-[9px] bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 px-1.5 py-0.5 rounded font-bold">Médio</span>
                                   )}
                                   {loja.availabilityB2C?.grosso !== false && (
-                                    <span className="text-[9px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 px-1.5 py-0.5 rounded font-bold">🌿 Grosso</span>
+                                    <span className="text-[9px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 px-1.5 py-0.5 rounded font-bold">Grosso</span>
                                   )}
                                   {loja.availabilityB2C?.branco !== false && (
-                                    <span className="text-[9px] bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/40 px-1.5 py-0.5 rounded font-bold">🥥 Branco</span>
+                                    <span className="text-[9px] bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/40 px-1.5 py-0.5 rounded font-bold">Branco</span>
                                   )}
                                 </div>
                               </div>
@@ -1624,7 +1639,7 @@ export default function StorefrontPage() {
                                    onClick={() => alert(`⛔ A batedeira "${loja.name}" está FECHADA no momento e não está aceitando pedidos. Por favor, escolha outra loja aberta.`)}
                                    className="w-full mt-1 bg-red-100 hover:bg-red-200 dark:bg-red-950/60 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 font-extrabold py-2.5 px-3 rounded-xl border border-red-300 dark:border-red-800 transition flex justify-center items-center gap-1.5 text-xs cursor-pointer shadow-2xs active:scale-95"
                                  >
-                                   ⛔ Loja Fechada (Indisponível)
+                                   Loja Fechada (Indisponível)
                                  </button>
                                ) : (
                                  <button 
@@ -1649,7 +1664,7 @@ export default function StorefrontPage() {
                           onClick={() => setVisibleStoreLimit(prev => prev + 12)}
                           className="px-6 py-2.5 bg-white dark:bg-zinc-900 border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-xl text-xs font-extrabold transition shadow-sm active:scale-95 cursor-pointer"
                         >
-                          ➕ Carregar Mais Batedeiras (+12)
+                          Carregar Mais Batedeiras (+12)
                         </button>
                       </div>
                     )}
@@ -1663,7 +1678,7 @@ export default function StorefrontPage() {
               <div className="flex items-center justify-between mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">
                 <div className="flex items-center gap-2">
                   <h3 className="font-extrabold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
-                    <span>⚡</span> Pedidos em Andamento ({clientActiveOrders.length})
+                    <span>✦</span> Pedidos em Andamento ({clientActiveOrders.length})
                   </h3>
                   <span className="text-xs bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800 animate-pulse">
                     Ao Vivo
@@ -1674,7 +1689,7 @@ export default function StorefrontPage() {
                     onClick={() => setOrderHistoryModalOpen(true)}
                     className="px-3.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-zinc-200 dark:border-zinc-700 shadow-2xs cursor-pointer"
                   >
-                    📜 Ver Histórico ({clientHistoryOrders.length})
+                    • Ver Histórico ({clientHistoryOrders.length})
                   </button>
                 )}
               </div>
@@ -1692,12 +1707,12 @@ export default function StorefrontPage() {
                             <div className="flex items-start justify-between gap-2">
                               <p className="font-extrabold text-zinc-900 dark:text-white text-sm">{o.title} <span className="text-[11px] text-zinc-400 font-normal">({o.id.slice(-6)})</span></p>
                               <div>
-                                {o.status === 'aguardando_pagamento' && <span className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase animate-pulse">⏳ Pix Pendente</span>}
+                                {o.status === 'aguardando_pagamento' && <span className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase animate-pulse">• Pix Pendente</span>}
                                 {o.status === 'pendente' && <span className="bg-yellow-100 text-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">Aguardando Loja</span>}
                                 {o.status === 'preparo' && <span className="bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">Em Preparo</span>}
                                 {o.status === 'pronto' && <span className="bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">Aguardando Entregador</span>}
-                                {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">🛵 Moto em Rota</span>}
-                                {o.status === 'aguardando_cliente' && <span className="bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase font-black">📍 Chegou!</span>}
+                                {o.status === 'em_rota' && <span className="bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">• Moto em Rota</span>}
+                                {o.status === 'aguardando_cliente' && <span className="bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase font-black">• Chegou!</span>}
                               </div>
                             </div>
 
@@ -1709,10 +1724,10 @@ export default function StorefrontPage() {
                                })()}
                              </p>
                             {o.deliveryAddress && (
-                              <p className="text-xs text-purple-700 dark:text-purple-300 font-bold mt-0.5 truncate">📍 {o.deliveryAddress}</p>
+                              <p className="text-xs text-purple-700 dark:text-purple-300 font-bold mt-0.5 truncate">• {o.deliveryAddress}</p>
                             )}
                             {o.deliveryReference && (
-                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 italic">📌 {o.deliveryReference}</p>
+                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 italic">Ref: {o.deliveryReference}</p>
                             )}
                             <p className="text-xs text-zinc-500 mt-1">Total: <strong className="text-zinc-800 dark:text-zinc-200">{formatMoney(o.valor + o.taxas.entregaCliente)}</strong> (Frete: {formatMoney(o.taxas.entregaCliente)})</p>
                             
@@ -1748,7 +1763,7 @@ export default function StorefrontPage() {
                                 }} 
                                 className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 border border-blue-200 dark:border-blue-800 cursor-pointer"
                               >
-                                🗺️ Ver Rota ({(o.distancia || 0).toFixed(1)} km)
+                                Ver Rota ({(o.distancia || 0).toFixed(1)} km)
                               </button>
                               <button
                                 onClick={() => {
@@ -1765,14 +1780,14 @@ export default function StorefrontPage() {
                                 }}
                                 className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-2xs cursor-pointer"
                               >
-                                💬 Chat & 📞 Voz
+                                Chat & Voz
                               </button>
                               <button
                                 onClick={() => setReceiptModalOrder(o)}
                                 className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 border border-emerald-200 dark:border-emerald-800 transition cursor-pointer shadow-2xs"
                                 title="Ver Comprovante Oficial Asaas"
                               >
-                                📄 Comprovante Asaas
+                                Comprovante Asaas
                               </button>
                             </div>
                         </div>
@@ -1798,7 +1813,7 @@ export default function StorefrontPage() {
                                 }}
                                 className="text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-xs cursor-pointer"
                               >
-                                🔍 Checar Pix no Asaas
+                                Checar Pix no Asaas
                               </button>
                             )}
   
@@ -1816,7 +1831,7 @@ export default function StorefrontPage() {
                                 }} 
                                 className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-1.5 rounded-lg transition cursor-pointer"
                               >
-                                ❌ Cancelar Pedido
+                                Cancelar Pedido
                               </button>
                             )}
                         </div>
@@ -2101,7 +2116,7 @@ export default function StorefrontPage() {
                     </div>
                   ) : (
                     <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-3 mb-5">
-                        <label className="block text-xs font-bold uppercase text-purple-900 dark:text-purple-300 mb-2">📍 Onde deseja receber seu pedido?</label>
+                        <label className="block text-xs font-bold uppercase text-purple-900 dark:text-purple-300 mb-2">• Onde deseja receber seu pedido?</label>
                         
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
@@ -2112,7 +2127,7 @@ export default function StorefrontPage() {
                                     onChange={() => setAddressMode('profile')}
                                     className="accent-purple-600"
                                 />
-                                <span>🏠 Endereço de Cadastro ({currentUser?.bairro || 'Casa'})</span>
+                                <span>• Endereço de Cadastro ({currentUser?.bairro || 'Casa'})</span>
                             </label>
 
                             <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-purple-100 dark:border-zinc-700">
@@ -2127,7 +2142,7 @@ export default function StorefrontPage() {
                                     className="accent-purple-600"
                                 />
                                 <div className="flex-1 flex justify-between items-center">
-                                    <span>📍 Usar GPS Atual (Rua / Praça)</span>
+                                    <span>• Usar GPS Atual (Rua / Praça)</span>
                                     {isLocating ? (
                                         <span className="text-[10px] text-purple-600 animate-pulse">Obtendo GPS...</span>
                                     ) : (
@@ -2136,7 +2151,7 @@ export default function StorefrontPage() {
                                             onClick={(e) => { e.preventDefault(); handleGetGpsLocation(); }}
                                             className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded hover:bg-purple-200"
                                         >
-                                            {gpsLocation ? '🔄 Atualizar GPS' : '📍 Obter GPS'}
+                                            {gpsLocation ? 'Atualizar GPS' : 'Obter GPS'}
                                         </button>
                                     )}
                                 </div>
@@ -2155,7 +2170,7 @@ export default function StorefrontPage() {
                                     onChange={() => setAddressMode('custom')}
                                     className="accent-purple-600"
                                 />
-                                <span>➕ Outro Endereço / Ponto de Encontro</span>
+                                <span>• Outro Endereço / Ponto de Encontro</span>
                             </label>
 
                             {addressMode === 'custom' && (
@@ -2249,7 +2264,7 @@ export default function StorefrontPage() {
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95">
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                🆔 Confirmar CPF / CNPJ
+                Confirmar CPF / CNPJ
               </h3>
               <button onClick={() => setCpfModalOpen(false)} className="text-zinc-400 hover:text-zinc-600 text-xl font-bold">&times;</button>
             </div>
@@ -2306,7 +2321,7 @@ export default function StorefrontPage() {
                 </div>
               </div>
               <span className="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow-md shrink-0 flex items-center gap-1">
-                Ver Sacola ➔
+                Ver Sacola →
               </span>
             </button>
           </div>
@@ -2485,7 +2500,7 @@ export default function StorefrontPage() {
                       : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-300'
                   }`}
                 >
-                  ✅ Entregues ({clientHistoryOrders.filter((o: any) => o.status === 'entregue' || o.status === 'arquivado').length})
+                  Entregues ({clientHistoryOrders.filter((o: any) => o.status === 'entregue' || o.status === 'arquivado').length})
                 </button>
                 <button
                   onClick={() => setHistoryFilter('canceled')}
@@ -2495,7 +2510,7 @@ export default function StorefrontPage() {
                       : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-300'
                   }`}
                 >
-                  ❌ Cancelados ({clientHistoryOrders.filter((o: any) => o.status === 'cancelado').length})
+                  Cancelados ({clientHistoryOrders.filter((o: any) => o.status === 'cancelado').length})
                 </button>
               </div>
             </div>
@@ -2539,12 +2554,12 @@ export default function StorefrontPage() {
                               {o.title} <span className="text-[11px] text-zinc-400 font-normal">({o.id.slice(-6)})</span>
                             </p>
                             <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                              📅 {dateStr} • Loja: <strong>{o.lojaNome || store.users[o.origemId]?.name || 'Batedeira'}</strong>
+                              {dateStr} • Loja: <strong>{o.lojaNome || store.users[o.origemId]?.name || 'Batedeira'}</strong>
                             </p>
                           </div>
                           <div>
-                            {isDelivered && <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase">✅ Entregue</span>}
-                            {isCanceled && <span className="bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-300 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase">❌ Cancelado</span>}
+                            {isDelivered && <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase">• Entregue</span>}
+                            {isCanceled && <span className="bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-300 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase">• Cancelado</span>}
                           </div>
                         </div>
 
@@ -2584,7 +2599,7 @@ export default function StorefrontPage() {
                               }} 
                               className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100"
                             >
-                              🗺️ Rota
+                              Rota
                             </button>
 
                             <button
@@ -2603,7 +2618,7 @@ export default function StorefrontPage() {
                               }}
                               className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-2xs cursor-pointer"
                             >
-                              ⚠️ Reportar Problema
+                              Reportar Problema
                             </button>
 
                             <button
@@ -2624,7 +2639,7 @@ export default function StorefrontPage() {
                               }} 
                               className="text-[11px] bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold px-2.5 py-1.5 rounded-lg transition cursor-pointer"
                             >
-                              🗑️ Ocultar
+                              Ocultar
                             </button>
                           )}
                         </div>

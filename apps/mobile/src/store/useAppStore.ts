@@ -57,6 +57,7 @@ export function mapDbProducts(rawProducts: any[]): Product[] {
 
 export interface StorefrontMeta {
   isOpen?: boolean;
+  storePhoto?: string;
   priceB2C?: { popular?: number; medio?: number; grosso?: number; branco?: number };
   availabilityB2C?: { popular?: boolean; medio?: boolean; grosso?: boolean; branco?: boolean };
   imagesB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string };
@@ -99,6 +100,7 @@ export interface User {
   cidade?: string;
   bairro?: string;
   icon: string;
+  photo?: string;
   lat?: number;
   lng?: number;
   veiculo?: string;
@@ -365,6 +367,7 @@ interface AppState {
   toggleProductAvailability: (userId: string, productId: string) => Promise<void>;
   toggleAcaiAvailability: (userId: string, type: 'popular' | 'medio' | 'grosso' | 'branco') => Promise<void>;
   updateAcaiImage: (userId: string, type: 'popular' | 'medio' | 'grosso' | 'branco', imageUrl?: string) => Promise<void>;
+  updateStorePhoto: (userId: string, photoUrl?: string) => Promise<void>;
   updateAcaiDescriptions: (userId: string, descriptions: { popular?: string; medio?: string; grosso?: string; branco?: string }) => Promise<void>;
   toggleB2BAvailability: (userId: string) => Promise<void>;
   updateB2BImage: (userId: string, imageUrl?: string) => Promise<void>;
@@ -512,6 +515,7 @@ export const useAppStore = create<AppState>()(
             lat: userProfile.latitude || 0,
             lng: userProfile.longitude || 0,
             icon: appRole === 'loja' ? '🏪' : appRole === 'fornecedor' ? '🏭' : appRole === 'motorista' ? '🛵' : '👤',
+            photo: sfMeta.storePhoto || (sf?.logo_url && !sf.logo_url.startsWith('{') ? sf.logo_url : undefined),
             veiculo: userProfile.vehicle_type === 'MOTO' ? 'Moto' : userProfile.vehicle_type === 'TRUCK' ? 'Caminhão' : userProfile.vehicle_type === 'DUMP_TRUCK' ? 'Caçamba' : undefined,
             status: userProfile.status as 'active'|'paused'|'blocked',
             asaasLinked: !!(userProfile.asaas_wallet_id || userProfile.pix_key),
@@ -920,6 +924,7 @@ export const useAppStore = create<AppState>()(
                         lat: dbUser.latitude || 0,
                         lng: dbUser.longitude || 0,
                         icon: '🏪',
+                        photo: sfMeta.storePhoto || (sf?.logo_url && !sf.logo_url.startsWith('{') ? sf.logo_url : undefined),
                         status: storeStatus,
                         priceB2B: sf?.price_b2b ?? 140,
                         priceB2C: {
@@ -1042,6 +1047,7 @@ export const useAppStore = create<AppState>()(
                         lat: dbUser.latitude || 0,
                         lng: dbUser.longitude || 0,
                         icon: appRole === 'loja' ? '🏪' : appRole === 'fornecedor' ? '🏭' : appRole === 'motorista' ? '🛵' : '👤',
+                        photo: sfMeta.storePhoto || (sf?.logo_url && !sf.logo_url.startsWith('{') ? sf.logo_url : undefined),
                         veiculo,
                         status: storeStatus,
                         priceB2B: sf?.price_b2b ?? 140,
@@ -1711,6 +1717,40 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      
+      updateStorePhoto: async (userId, photoUrl) => {
+        set((state) => {
+          const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
+          if (!user) return state;
+          const updatedUser = { ...user, photo: photoUrl };
+          const isCurrent = state.currentUser?.id === userId;
+          return {
+            users: { ...state.users, [userId]: updatedUser },
+            currentUser: isCurrent ? updatedUser : state.currentUser
+          };
+        });
+
+        try {
+          const { data: sf } = await supabase.from('storefronts').select('id, logo_url').eq('partner_id', userId).maybeSingle();
+          const existingMeta = parseStorefrontMeta(sf?.logo_url);
+          const metaStr = JSON.stringify({
+            ...existingMeta,
+            storePhoto: photoUrl
+          });
+          if (sf?.id) {
+            await supabase.from('storefronts').update({ logo_url: metaStr }).eq('id', sf.id);
+          } else {
+            const user = get().users[userId] || get().currentUser;
+            await supabase.from('storefronts').insert({
+              partner_id: userId,
+              store_name: user?.name || 'Loja',
+              logo_url: metaStr
+            });
+          }
+        } catch (err) {
+          console.error("Exceção ao persistir foto da loja:", err);
+        }
+      },
       updateAcaiImage: async (userId, type, imageUrl) => {
         let updatedAvail: { popular: boolean; medio: boolean; grosso: boolean; branco?: boolean } = { popular: true, medio: true, grosso: true, branco: true };
         let updatedImages: Record<string, string | undefined> = {};
