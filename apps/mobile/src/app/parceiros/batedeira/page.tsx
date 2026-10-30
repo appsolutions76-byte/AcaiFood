@@ -1106,10 +1106,20 @@ export default function BatedeiraDashboard() {
     <PartnerDashboardLayout
       role="loja"
       title="Painel da Loja"
-      roleIcon={<Store size={24} />}
+      roleIcon={<Store size={32} />}
       themeColor="purple"
       partnerId={currentUser.id}
       partnerName={currentUser.name}
+      partnerPhoto={currentUser.photo}
+      onEditPhoto={() => setPhotoModalData({
+        open: true,
+        title: 'Foto do Anúncio da sua Loja',
+        category: 'store' as any,
+        currentUrl: currentUser?.photo,
+        onSelect: (url) => {
+          if (currentUser) store.updateStorePhoto(currentUser.id, url);
+        }
+      })}
       locationText={currentUser.bairro ? `Bairro: ${currentUser.bairro}` : (currentUser.cidade ? `Cidade: ${currentUser.cidade}` : undefined)}
       pixKeyInfo={currentUser.cpfCnpj || currentUser.pixKey}
       statusLabel={isPaused ? 'Loja Fechada' : 'Loja Aberta'}

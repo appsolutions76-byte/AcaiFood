@@ -19,7 +19,8 @@ import {
   X,
   Home,
   Settings,
-  ChevronRight
+  ChevronRight,
+  Camera
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AsaasPartnerBadge } from '@/components/AsaasPartnerBadge';
@@ -35,6 +36,8 @@ export interface PartnerDashboardLayoutProps {
   themeColor?: 'purple' | 'emerald' | 'amber';
   partnerId: string;
   partnerName: string;
+  partnerPhoto?: string;
+  onEditPhoto?: () => void;
   locationText?: string;
   pixKeyInfo?: string;
   statusLabel: string;
@@ -60,6 +63,8 @@ export function PartnerDashboardLayout({
   themeColor = 'purple',
   partnerId,
   partnerName,
+  partnerPhoto,
+  onEditPhoto,
   locationText,
   pixKeyInfo,
   statusLabel,
@@ -150,9 +155,36 @@ export function PartnerDashboardLayout({
             {/* 1. DESKTOP HEADER (100% Intacto para telas médias e computadores) */}
             <div className={`hidden md:block border rounded-2xl p-3 sm:p-3.5 shadow-sm transition relative overflow-hidden ${themeClasses.cardBorder}`}>
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                <div className="flex items-start sm:items-center gap-3">
-                  <div className="p-2 sm:p-2.5 rounded-2xl bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/60 text-purple-700 dark:text-purple-400 shrink-0 mt-0.5 sm:mt-0">
-                    {roleIcon}
+                <div className="flex items-start sm:items-center gap-3.5">
+                  <div 
+                    onClick={onEditPhoto}
+                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-purple-100 dark:bg-purple-950/60 border-2 border-purple-300 dark:border-purple-700/80 text-purple-700 dark:text-purple-400 shrink-0 flex items-center justify-center overflow-hidden shadow-sm relative group mt-0.5 sm:mt-0 ${onEditPhoto ? 'cursor-pointer hover:border-purple-500 hover:shadow-md transition-all active:scale-95' : ''}`}
+                    title={onEditPhoto ? "Clique para adicionar ou trocar a foto da sua loja" : undefined}
+                  >
+                    {partnerPhoto ? (
+                      <img 
+                        src={partnerPhoto} 
+                        alt={partnerName || title} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center scale-110">
+                        {roleIcon}
+                      </div>
+                    )}
+
+                    {onEditPhoto && (
+                      <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity duration-150">
+                        <Camera size={20} />
+                        <span className="text-[9px] font-black uppercase mt-0.5 tracking-wider">Alterar</span>
+                      </div>
+                    )}
+
+                    {onEditPhoto && (
+                      <div className="absolute bottom-1 right-1 w-5 h-5 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-xs border border-white dark:border-zinc-900 group-hover:scale-110 transition-transform">
+                        <Camera size={10} />
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-1">
@@ -273,9 +305,29 @@ export function PartnerDashboardLayout({
 
             {/* MOBILE HEADER (Exclusivo para celular: Limpo, rápido e focado) */}
             <div className={`md:hidden border rounded-2xl p-2.5 shadow-xs transition flex items-center justify-between gap-2 ${themeClasses.cardBorder}`}>
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <div className="p-1.5 rounded-xl bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/60 text-purple-700 dark:text-purple-400 shrink-0">
-                  {roleIcon}
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div 
+                  onClick={onEditPhoto}
+                  className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-purple-100 dark:bg-purple-950/60 border-2 border-purple-300 dark:border-purple-700/80 text-purple-700 dark:text-purple-400 shrink-0 flex items-center justify-center overflow-hidden shadow-xs relative group ${onEditPhoto ? 'cursor-pointer active:scale-95' : ''}`}
+                  title={onEditPhoto ? "Toque para alterar a foto da loja" : undefined}
+                >
+                  {partnerPhoto ? (
+                    <img 
+                      src={partnerPhoto} 
+                      alt={partnerName || title} 
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center scale-110">
+                      {roleIcon}
+                    </div>
+                  )}
+
+                  {onEditPhoto && (
+                    <div className="absolute bottom-0.5 right-0.5 w-4 h-4 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-xs border border-white dark:border-zinc-900">
+                      <Camera size={9} />
+                    </div>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h1 className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white truncate leading-tight">
