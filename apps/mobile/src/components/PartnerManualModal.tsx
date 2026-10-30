@@ -13,15 +13,16 @@ interface PartnerManualModalProps {
 
 // ===================== CLIENTE (CONSUMIDOR) =====================
 function ManualCliente() {
-  const [tab, setTab] = useState<'comprar' | 'endereco' | 'pix' | 'rastreio_pin' | 'comprovante'>('comprar');
+  const [tab, setTab] = useState<'comprar' | 'complementos' | 'endereco' | 'pix' | 'rastreio_pin' | 'comprovante'>('comprar');
 
   return (
     <div className="space-y-4 text-sm">
       <div className="flex gap-2 flex-wrap">
         {[
-          ['comprar', '🛒 Como Fazer Pedidos'],
+          ['comprar', '🛒 Como Comprar'],
+          ['complementos', '🍽️ Açaí & Complementos'],
           ['endereco', '📍 Endereço & GPS'],
-          ['pix', '💳 Pagamento Pix & Estorno'],
+          ['pix', '💳 Pix & Estorno'],
           ['rastreio_pin', '🔐 Rastreio, Chat & PIN'],
           ['comprovante', '📄 Comprovante & Suporte']
         ].map(([k, l]) => (
@@ -42,17 +43,75 @@ function ManualCliente() {
       {tab === 'comprar' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-            <ShoppingBag size={16} className="text-purple-600" /> Passo a Passo de Compra
+            <ShoppingBag size={16} className="text-purple-600" /> Passo a Passo de Compra no Marketplace
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
-            <p>1. 🏙️ <strong>Seleção de Cidade</strong>: O app exibe as batedeiras e lojas da sua cidade. Certifique-se de que sua cidade está correta no topo da tela.</p>
-            <p>2. 🏪 <strong>Escolha a Loja</strong>: Toque na batedeira de sua preferência para abrir o cardápio de açaí fresco e adicionais.</p>
-            <p>3. 🥣 <strong>Personalize o Açaí</strong>: Escolha a consistência (<em>Popular, Médio, Grosso ou Branco</em>), quantidade e adicionais (tapioca, farinha d’água, leite condensado, frutas, churrasco, etc.).</p>
-            <p>4. 🛍️ <strong>Sacola de Compras</strong>: Revise os itens, quantidades e o resumo de valores (subtotal + taxa de entrega).</p>
+            <p>1. 🏙️ <strong>Seleção de Cidade</strong>: O app exibe as batedeiras e lojas da sua cidade. Certifique-se de que sua praça/município está correto no topo da tela.</p>
+            <p>2. 🔍 <strong>Busca & Filtros Inteligentes</strong>: Mesmo com centenas de lojas cadastradas, encontre rapidamente o que procura:</p>
+            <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
+              <li><strong>📍 Mais Próximas</strong>: Ordena as batedeiras por proximidade GPS do seu local.</li>
+              <li><strong>🟢 Abertas Agora</strong>: Mostra apenas estabelecimentos disponíveis no momento.</li>
+              <li><strong>⚡ Frete Promocional</strong>: Lojas com taxa de entrega reduzida ou subsidiada pela casa.</li>
+              <li><strong>🥣 Açaí Grosso / Branco / Menor Preço</strong>: Filtra na hora pelo padrão de polpa ou melhor valor.</li>
+              <li><strong>🔎 Barra de Busca</strong>: Digite o nome da loja, bairro ou produto desejado.</li>
+            </ul>
+            <p>3. 🏪 <strong>Escolha a Loja</strong>: Toque em <em>"Ver Cardápio & Pedir"</em> para abrir a vitrine oficial do estabelecimento.</p>
+            <p>4. 🛍️ <strong>Monte seu Pedido</strong>: Escolha seu açaí favorito, refeições, bebidas e adicionais.</p>
           </div>
           <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs">
             <p className="font-bold text-purple-900 dark:text-purple-300">💡 Dica de Economia:</p>
             <p className="text-purple-800 dark:text-purple-300 mt-1">Lojas com <strong>Frete Promocional / Subsidiado</strong> assumem parte ou 100% da taxa de entrega para você economizar no pedido!</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'complementos' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <ShoppingBag size={16} className="text-purple-600" /> Os 5 Tipos de Açaí & Complementos de Pratos
+          </h4>
+
+          {/* 5 Tipos de Açaí */}
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
+            <p className="font-bold text-purple-900 dark:text-purple-300 text-sm">🥣 Os 5 Tipos Oficiais de Açaí:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+              <div className="p-2.5 rounded-lg border border-purple-200 dark:border-purple-900/60 bg-purple-50/50 dark:bg-purple-950/30">
+                <span className="font-bold text-purple-900 dark:text-purple-300">🍇 Açaí Popular (1L)</span>
+                <p className="text-zinc-600 dark:text-zinc-400 text-[11px] mt-0.5">Leve, refrescante e acessível para o dia a dia.</p>
+              </div>
+              <div className="p-2.5 rounded-lg border border-purple-200 dark:border-purple-900/60 bg-purple-50/50 dark:bg-purple-950/30">
+                <span className="font-bold text-purple-900 dark:text-purple-300">🍇 Açaí Médio (1L)</span>
+                <p className="text-zinc-600 dark:text-zinc-400 text-[11px] mt-0.5">O clássico equilíbrio paraense. Textura padrão de alta aceitação.</p>
+              </div>
+              <div className="p-2.5 rounded-lg border border-purple-200 dark:border-purple-900/60 bg-purple-50/50 dark:bg-purple-950/30">
+                <span className="font-bold text-purple-900 dark:text-purple-300">🍇 Açaí Grosso (1L)</span>
+                <p className="text-zinc-600 dark:text-zinc-400 text-[11px] mt-0.5">Polpa densa, encorpada e super concentrada para quem ama açaí raiz.</p>
+              </div>
+              <div className="p-2.5 rounded-lg border border-purple-200 dark:border-purple-900/60 bg-purple-50/50 dark:bg-purple-950/30">
+                <span className="font-bold text-purple-900 dark:text-purple-300">🥥 Açaí Branco (1L)</span>
+                <p className="text-zinc-600 dark:text-zinc-400 text-[11px] mt-0.5">Raridade amazônica. Frutos verdes com sabor suave, fino e amanteigado.</p>
+              </div>
+              <div className="sm:col-span-2 p-2.5 rounded-lg border border-teal-200 dark:border-teal-900/60 bg-teal-50/60 dark:bg-teal-950/30">
+                <span className="font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1">❄️ Açaí Congelado para Viagem (1L)</span>
+                <p className="text-zinc-600 dark:text-zinc-400 text-[11px] mt-0.5">
+                  Especial para transporte e viagens de longa distância. Já embalado e ultra-congelado para chegar intacto e gelado ao seu destino final, sem necessitar de personalização.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Complementos e Pratos */}
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
+            <p className="font-bold text-zinc-900 dark:text-white text-sm">🍽️ Como Escolher Opções e Acompanhamentos de Pratos:</p>
+            <p>Em pratos executivos, churrascos e refeições, os produtos exibem o selo <strong>🍽️ Opções</strong>. Ao clicar em <strong>🛒 + (Adicionar)</strong>, abre a janela <em>"Personalize seu Prato"</em>:</p>
+            <div className="space-y-2 pl-2 border-l-2 border-purple-500">
+              <p>🥩 <strong>1. Ponto da Carne</strong>: Selecione seu ponto preferido (<em>Ao ponto</em>, <em>Bem assado</em> ou <em>Mal passado</em>).</p>
+              <p>🍚 <strong>2. Acompanhamentos</strong>: Marque os itens desejados respeitando o limite máximo configurado pela loja (ex: até 2 entre <em>Arroz branco</em>, <em>Baião de dois</em>, <em>Salada de maionese</em>, <em>Farofa crocante</em> ou <em>Vinagrete</em>).</p>
+              <p>✍️ <strong>3. Observações Especiais</strong>: Escreva instruções pontuais para a cozinha (ex: <em>"sem cebola"</em>, <em>"vinagrete em potinho separado"</em>).</p>
+            </div>
+            <p className="text-zinc-600 dark:text-zinc-400 mt-1">
+              Todas as escolhas aparecem detalhadas na sua sacola, no comprovante e saem impressas diretamente na comanda da cozinha do restaurante!
+            </p>
           </div>
         </div>
       )}
@@ -129,12 +188,13 @@ function ManualCliente() {
 
 // ===================== BATEDEIRA =====================
 function ManualBatedeira() {
-  const [tab, setTab] = useState<'operacao' | 'impressao' | 'b2b' | 'financeiro'>('operacao');
+  const [tab, setTab] = useState<'operacao' | 'cardapio' | 'impressao' | 'b2b' | 'financeiro'>('operacao');
   return (
     <div className="space-y-4 text-sm">
       <div className="flex gap-2 flex-wrap">
         {[
           ['operacao','📦 Operação B2C & Radar'],
+          ['cardapio','🍽️ Cardápio & Opções de Pratos'],
           ['impressao','🖨️ Impressão Térmica & PIN Balcão'],
           ['b2b','🏭 Abastecimento B2B & Coleta'],
           ['financeiro','💰 Financeiro, Saques & Asaas']
@@ -154,14 +214,58 @@ function ManualBatedeira() {
             <p>1. 🔔 <strong>Chegada de Pedido</strong>: O pedido chega com status <strong>Pagamento Confirmado (Pix Pago)</strong> e emite aviso sonoro.</p>
             <p>2. 👨‍🍳 <strong>Aceitar e Preparar</strong>: Clique em <em>Aceitar e Preparar</em>. O pedido passa para o status <code>preparo</code>.</p>
             <p>3. 🔑 <strong>PIN de Balcão (Retirada Segura)</strong>: A comanda e o app geram o PIN de Balcão da loja. Ao entregar o pacote ao motoboy, confirme este código.</p>
-            <p>4. 🏍️ <strong>Acionamento sob Demanda (Chamar Moto)</strong>: Quando o açaí estiver embalado e pronto, clique em <strong>"Chamar Moto"</strong>. O pedido entra no radar dos entregadores disponíveis.</p>
+            <p>4. 🏍️ <strong>Acionamento sob Demanda (Chamar Moto)</strong>: Quando o açaí e os pratos estiverem embalados e prontos, clique em <strong>"Chamar Moto"</strong>. O pedido entra no radar dos entregadores disponíveis da praça.</p>
             <p>5. 🗺️ <strong>Acompanhamento no Mapa</strong>: Visualize em tempo real o trajeto real do motoboy até sua loja e da loja até o cliente.</p>
             <p>6. 💬 <strong>Chat Integrado & Suporte</strong>: Comunique-se com o cliente/motoboy pelo chat do pedido ou acione o suporte central.</p>
             <p>7. ↩️ <strong>Cancelamento com Estorno</strong>: Você pode recusar ou cancelar até o pedido ficar pronto (antes da retirada). O Asaas devolve 100% ao cliente a partir da sua conta, e a comissão do app volta junto.</p>
           </div>
           <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs">
-            <p className="font-bold text-purple-900 dark:text-purple-300">💡 Gestão da Vitrine & Frete Promocional:</p>
-            <p className="text-purple-800 dark:text-purple-300 mt-1">Na aba <em>Visão Geral</em>, ajuste preços (Popular, Médio, Grosso, Branco), adicione produtos extras (carnes, frutas, bebidas) e configure o <strong>Subsídio de Frete</strong> (de 0% a 100%): a parte subsidiada sai do seu valor de venda. O app não aceita pedidos em que o seu valor não cubra a corrida e as taxas.</p>
+            <p className="font-bold text-purple-900 dark:text-purple-300">💡 Gestão de Frete Promocional:</p>
+            <p className="text-purple-800 dark:text-purple-300 mt-1">Na aba <em>Cardápio & Preços</em>, configure o <strong>Subsídio de Frete</strong> (de 0% a 100%): a parte subsidiada sai do seu valor de venda para atrair mais clientes na sua região.</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'cardapio' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <Store size={16} className="text-purple-600" /> Cardápio dos 5 Açaís & Personalização de Pratos
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-3">
+            <div>
+              <p className="font-bold text-purple-900 dark:text-purple-300 text-sm">🥣 1. Tabela dos 5 Tipos Oficiais de Açaí (Por Litro):</p>
+              <p className="text-zinc-600 dark:text-zinc-400 mt-1">
+                Na aba <em>Cardápio & Preços</em>, você ativa/desativa com 1 clique e define o preço por litro (R$/L) dos 5 padrões:
+              </p>
+              <ul className="pl-4 mt-1.5 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
+                <li><strong>Popular</strong>: Opção mais econômica e fluida.</li>
+                <li><strong>Médio</strong>: O equilíbrio clássico do açaí paraense batido no dia.</li>
+                <li><strong>Grosso</strong>: Polpa concentrada e de alta viscosidade.</li>
+                <li><strong>Branco</strong>: Fruto verde especial de sabor amanteigado.</li>
+                <li><strong>❄️ Congelado (P/ Viagem)</strong>: Tipo especial pronto e ultra-congelado para transporte de longa distância, sem necessidade de complementos.</li>
+              </ul>
+            </div>
+
+            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-3">
+              <p className="font-bold text-purple-900 dark:text-purple-300 text-sm">🍽️ 2. Pratos Extras & Complementos (Churrasco, Carnes, Peixes):</p>
+              <p className="text-zinc-600 dark:text-zinc-400 mt-1">
+                Na seção <em>"📦 PRODUTOS EXTRAS & CARDÁPIO COMPLETO"</em>, cadastre suas refeições com complementos:
+              </p>
+              <div className="space-y-2 mt-2 pl-2 border-l-2 border-purple-500">
+                <p>⚡ <strong>Atalho Modelo Churrasco</strong>: Ao clicar em <em>"⚡ Modelo Churrasco"</em> no modal de edição, o app já cria automaticamente:</p>
+                <ul className="pl-4 space-y-0.5 list-disc text-zinc-500 dark:text-zinc-400">
+                  <li><strong>Ponto da Carne</strong> (Obrigatório, Escolha 1): <em>Ao ponto, Bem assado, Mal passado</em>.</li>
+                  <li><strong>Acompanhamentos</strong> (Opcional, Até 2 escolhas): <em>Arroz branco, Baião de dois, Salada de maionese, Vinagrete, Farofa crocante</em>.</li>
+                </ul>
+                <p>➕ <strong>Criação de Grupos Livres</strong>: Use o botão <em>"+ Grupo"</em> para criar opções exclusivas do seu restaurante, definindo:</p>
+                <ul className="pl-4 space-y-0.5 list-disc text-zinc-500 dark:text-zinc-400">
+                  <li>Se a seleção é obrigatória ou opcional.</li>
+                  <li>Limite máximo de itens que o cliente pode marcar.</li>
+                  <li>Preço adicional para cada opção (ex: + R$ 3,00) ou sem custo extra (+ R$ 0,00).</li>
+                </ul>
+                <p>🤖 <strong>Anexo Inteligente</strong>: Ao cadastrar um produto novo com nomes como "churrasco", "maminha" ou "picanha", o sistema já anexa o modelo de acompanhamentos para você economizar tempo!</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -178,7 +282,8 @@ function ManualBatedeira() {
             <p>4. 📋 <strong>Elementos Oficiais no Cupom</strong>:</p>
             <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
               <li>Nome do Cliente, Telefone e Endereço com Ponto de Referência</li>
-              <li>Itens, adicionais e valor total pago via Pix</li>
+              <li>Itens detalhados com <strong>Ponto da Carne, Acompanhamentos e Observações da Cozinha</strong> com recuo especial</li>
+              <li>Valor total pago via Pix dinâmico Asaas</li>
               <li><strong>🔑 PIN DE RETIRADA (BALCÃO)</strong> em destaque no cupom</li>
               <li>Identificação oficial: <strong>[ PAGAMENTO PROCESSADO VIA ASAAS ]</strong></li>
             </ul>
@@ -235,29 +340,97 @@ function ManualBatedeira() {
 
 // ===================== FORNECEDOR =====================
 function ManualFornecedor() {
+  const [tab, setTab] = useState<'catalogo' | 'despacho' | 'impressao' | 'financeiro'>('catalogo');
+
   return (
-    <div className="space-y-3 text-sm animate-in fade-in duration-150">
-      <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-        <Factory size={16} className="text-emerald-600" /> Operação do Fornecedor de Frutos (B2B)
-      </h4>
-      <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
-        <p>1. 📦 <strong>Catálogo Atacadista</strong>: Configure preços por lata, paneiro ou saca, além de insumos adicionais.</p>
-        <p>2. 🔔 <strong>Recebimento de Pedido B2B</strong>: Ao receber uma ordem de compra com Pix confirmado, separe o lote no armazém ou porto.</p>
-        <p>3. 🚛 <strong>Despacho com "Chamar Caminhão"</strong>: Após a carga estar pronta, clique em <strong>"Chamar Caminhão"</strong> para que a rota apareça no radar dos caminhoneiros credenciados.</p>
-        <p>4. 🖨️ <strong>Comanda de Saída B2B</strong>: Imprima o romaneio de expedição com dados completos da batedeira compradora e identificação Asaas.</p>
-        <p>5. 💬 <strong>Chat do Transporte & Suporte</strong>: Comunique-se em tempo real com o motorista e a loja compradora.</p>
-        <p>6. 🔐 <strong>Conclusão e PIN</strong>: O caminhoneiro valida a entrega no destino mediante o PIN fornecido pela batedeira, concluindo a entrega. Logo após o PIN, o app paga automaticamente o frete do caminhoneiro a partir da sua conta Asaas.</p>
+    <div className="space-y-4 text-sm">
+      <div className="flex gap-2 flex-wrap">
+        {[
+          ['catalogo', '📦 Sacas & Catálogo B2B'],
+          ['despacho', '🚛 Despacho & Chamar Caminhão'],
+          ['impressao', '🖨️ Romaneio & Impressão'],
+          ['financeiro', '💰 Split Asaas & Saques Pix']
+        ].map(([k, l]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k as any)}
+            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${
+              tab === k
+                ? 'bg-emerald-600 text-white'
+                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-emerald-100 dark:hover:bg-zinc-700'
+            }`}
+          >
+            {l}
+          </button>
+        ))}
       </div>
-      <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1">
-        <p className="font-bold text-emerald-900 dark:text-emerald-300">📌 Escopo do Fornecedor:</p>
-        <p className="text-emerald-700 dark:text-emerald-300">O fornecedor atua exclusivamente na venda dos frutos frescos colhidos e <strong>não recebe caroços de volta</strong>.</p>
-      </div>
-      <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-        <p className="font-bold">💰 Recebimento e Saque (conta Asaas própria):</p>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          A batedeira compradora paga o Pix direto na <strong>sua conta Asaas</strong>, com a comissão do AçaíFood separada automaticamente (split). O valor fica reservado até a entrega; depois do PIN, o frete é pago ao caminhoneiro e o restante vira saldo livre. O saque vai por Pix para chave CPF/CNPJ do mesmo titular, com a tarifa Pix do Asaas descontada.
-        </p>
-      </div>
+
+      {tab === 'catalogo' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <Factory size={16} className="text-emerald-600" /> Catálogo Atacadista de Sacas & Frutos
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
+            <p>1. 📦 <strong>Tabela de Sacas e Lotes</strong>: Na aba <em>Catálogo & Preços</em>, configure os tipos de frutos colhidos (Padrão, Chumbinho, BRS Pará, etc.), definindo:</p>
+            <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
+              <li>Preço por saca (60kg) ou por lata/paneiro.</li>
+              <li>Quantidade em estoque disponível para venda imediata.</li>
+              <li>Status de disponibilidade ativa ou pausada.</li>
+            </ul>
+            <p>2. 🌿 <strong>Produtos & Insumos Extras</strong>: Você também pode cadastrar sacarias extras, gelo, aditivos autorizados e embalagens para as batedeiras.</p>
+          </div>
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1">
+            <p className="font-bold text-emerald-900 dark:text-emerald-300">📌 Escopo do Fornecedor:</p>
+            <p className="text-emerald-700 dark:text-emerald-300">O fornecedor atua exclusivamente na colheita e venda dos frutos frescos e <strong>não recebe caroços de volta</strong>. O caroço é recolhido por caçambas da batedeira para destinação ecológica.</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'despacho' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <Truck size={16} className="text-emerald-600" /> Pedidos B2B & Acionamento de Caminhão
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
+            <p>1. 🔔 <strong>Alerta de Ordem de Compra</strong>: Quando uma batedeira realiza o pagamento via Pix Asaas, seu painel avisa com sinal sonoro e a ordem entra com status <code>pago</code>.</p>
+            <p>2. 📦 <strong>Separar o Lote</strong>: Faça a pesagem e amarração das sacas no armazém ou porto.</p>
+            <p>3. 🚛 <strong>Chamar Caminhão</strong>: Clique em <strong>"Chamar Caminhão"</strong> para lançar o chamado no radar dos caminhoneiros pesados disponíveis na sua praça.</p>
+            <p>4. 💬 <strong>Comunicação em Tempo Real</strong>: Use o chat integrado para alinhar portão de embarque e doca com o caminhoneiro.</p>
+            <p>5. 🔑 <strong>Entrega Concluída com PIN</strong>: A batedeira confere as sacas na descarga e digita seu PIN de 4 dígitos. A entrega fecha no ato.</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'impressao' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <Printer size={16} className="text-emerald-600" /> Romaneio de Carga & Comanda Térmica
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
+            <p>1. 📄 <strong>Romaneio de Expedição</strong>: Imprima o cupom térmico (58mm/80mm) para entregar ao caminhoneiro no momento do carregamento.</p>
+            <p>2. 📋 <strong>Dados Inclusos no Documento</strong>:</p>
+            <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
+              <li>Dados do Fornecedor e da Batedeira Compradora (Endereço, Contato e Responsável).</li>
+              <li>Quantidade exata de sacas, peso estimado e valor total pago via Pix.</li>
+              <li>Instruções de rota e identificação oficial do processamento Asaas.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {tab === 'financeiro' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <DollarSign size={16} className="text-emerald-600" /> Split Asaas, PIN B2B & Saques Pix
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
+            <p>• <strong>Pix Direto na Conta</strong>: A batedeira compradora paga o Pix direto para a sua conta Asaas. A comissão da plataforma AçaíFood é retida no mesmo split automático.</p>
+            <p>• <strong>Valor Reservado</strong>: O saldo fica reservado durante o transporte e se torna livre no momento em que a batedeira valida o PIN do caminhoneiro.</p>
+            <p>• <strong>Pagamento do Frete Pesado</strong>: Logo após o PIN, o app transfere automaticamente o valor do frete para o caminhoneiro a partir da sua conta Asaas.</p>
+            <p>• <strong>Saques por Pix</strong>: Solicite saques a qualquer momento para sua chave Pix (mesmo CPF ou CNPJ de cadastro, conforme normas do Banco Central).</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -366,8 +539,8 @@ function ManualLogin() {
           <p className="text-xs text-zinc-600 dark:text-zinc-400">Plataforma multisserviço integrada que conecta o consumidor, as batedeiras de açaí, os produtores atacadistas, a logística urbana/pesada e a sustentabilidade ecológica no Brasil.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <div className="bg-purple-50 dark:bg-purple-950/30 p-3 rounded-xl border border-purple-200 dark:border-purple-800">
-              <span className="font-bold block mb-1">🛒 1. Varejo B2C</span>
-              <p className="text-zinc-600 dark:text-zinc-400">Clientes compram açaí fresco direto das batedeiras locais com entrega ágil via Motoboys e segurança de PIN.</p>
+              <span className="font-bold block mb-1">🛒 1. Varejo B2C Completo</span>
+              <p className="text-zinc-600 dark:text-zinc-400">Clientes compram os 5 tipos de açaí (incluindo Congelado para Viagem), refeições com complementos (churrascos ao ponto, acompanhamentos) e recebem com motoboy via GPS e validação de PIN.</p>
             </div>
             <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800">
               <span className="font-bold block mb-1">🏭 2. Atacado B2B</span>

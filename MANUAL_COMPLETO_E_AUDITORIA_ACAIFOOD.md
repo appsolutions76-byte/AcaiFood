@@ -67,6 +67,21 @@ flowchart TD
 
 ## 3. Ciclo de Vida B2C: Consumidor Final & Batedeira
 
+### 🥣 Os 5 Tipos Oficiais de Açaí
+O catálogo base de açaí é padronizado em 5 opções distintas por litro (1L):
+1. **Açaí Popular:** Opção mais leve e acessível do cardápio.
+2. **Açaí Médio:** O clássico equilíbrio paraense consumido diariamente.
+3. **Açaí Grosso:** Polpa concentrada, de alta viscosidade e densidade.
+4. **Açaí Branco:** Raridade botânica da Amazônia colhida de frutos verdes, com sabor amanteigado e suave.
+5. **Açaí Congelado para Viagem (1 Litro):** Desenvolvido especificamente para transporte e viagens de longa distância. Já embalado e ultra-congelado para chegar intacto e gelado ao destino, sem necessidade de customização.
+
+### 🍽️ Pratos Extras, Carnes & Sistema de Complementos
+Para refeições e pratos complementares (Churrascos, Carnes, Peixes e Pratos Executivos):
+- **Ponto da Carne:** Seleção exclusiva (obrigatória): *Ao ponto*, *Bem assado*, *Mal passado*.
+- **Acompanhamentos:** Seleção múltipla com controle de limite configurável pela loja (ex: até 2 entre *Arroz branco*, *Baião de dois*, *Salada de maionese*, *Vinagrete* e *Farofa crocante*).
+- **Observações do Prato:** Campo de texto livre para instruções ao chapeiro/cozinha (ex: *"sem cebola"*, *"vinagrete à parte"*).
+- **Impressão Térmica (58mm/80mm):** O sistema imprime na comanda da cozinha os acompanhamentos e observações com recuo e destaque visual para evitar erros no preparo.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -76,13 +91,13 @@ sequenceDiagram
     actor B as Batedeira (Loja)
     actor M as Motoboy
 
-    C->>App: Seleciona tipo de açaí (Popular/Médio/Grosso) e endereço
+    C->>App: Escolhe Açaí (5 tipos) ou Pratos com Complementos
     App->>DB: Gera cobrança PIX com Split automático
     C->>DB: Efetua o pagamento PIX no seu banco
     DB->>App: Webhook confirma pagamento (Status: PAID)
     DB->>C: Exibe o PIN de Segurança (4 dígitos)
-    B->>App: Notificação sonora & Impressão da comanda térmica
-    B->>App: Prepara o açaí e clica em "Chamar Moto"
+    B->>App: Notificação sonora & Impressão da comanda térmica com complementos
+    B->>App: Prepara o pedido e clica em "Chamar Moto"
     M->>App: Aceita a corrida no Radar
     M->>B: Navega via GPS e retira o pedido na loja
     M->>C: Navega via GPS até o cliente
