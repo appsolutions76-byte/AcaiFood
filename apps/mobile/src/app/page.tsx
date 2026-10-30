@@ -1029,7 +1029,7 @@ export default function StorefrontPage() {
               className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3.5 py-2 rounded-xl shadow-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer shrink-0"
               title="Calibrar sua localização GPS para ver distâncias exatas"
             >
-              {isLocating ? '⏳ GPS...' : gpsLocation ? `📍 GPS Ativo (${gpsLocation.lat.toFixed(2)}, ${gpsLocation.lng.toFixed(2)})` : '🛰️ Localizar Mais Próximas'}
+              {isLocating ? 'Buscando GPS...' : gpsLocation ? `GPS Ativo (${gpsLocation.lat.toFixed(2)}, ${gpsLocation.lng.toFixed(2)})` : 'Localizar Mais Próximas'}
             </button>
           </div>
         </div>
@@ -1062,7 +1062,7 @@ export default function StorefrontPage() {
    </div>
                           <div>
                             <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider">
-                              {selLoja.role === 'fornecedor' ? '🏭 Fornecedor / Produtor Oficial' : '🏪 Loja Selecionada'}
+                              {selLoja.role === 'fornecedor' ? 'Fornecedor / Produtor Oficial' : 'Loja Selecionada'}
                             </span>
                             <h3 className="text-xl sm:text-2xl font-black text-zinc-950 dark:text-white leading-tight mt-0.5">{selLoja.name}</h3>
                             <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 font-semibold mt-0.5">• Bairro: {selLoja.bairro || 'Central'} • {selLoja.cidade || 'Belém'}</p>
@@ -1433,10 +1433,10 @@ export default function StorefrontPage() {
                               setSearchQuery(e.target.value);
                               setVisibleStoreLimit(12);
                             }}
-                            placeholder="🔍 Buscar loja, bairro ou produto..."
+                            placeholder="Buscar loja, bairro ou produto..."
                             className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl py-2 pl-9 pr-8 text-xs font-medium text-zinc-800 dark:text-white outline-none focus:border-purple-500 shadow-sm"
                           />
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-60">🔍</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400"><Search size={14} /></span>
                           {searchQuery && (
                             <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400 hover:text-zinc-600 bg-zinc-100 dark:bg-zinc-800 rounded-full w-5 h-5 flex items-center justify-center">✕</button>
                           )}
@@ -2467,7 +2467,7 @@ export default function StorefrontPage() {
                   type="text"
                   value={historySearchQuery}
                   onChange={(e) => setHistorySearchQuery(e.target.value)}
-                  placeholder="🔍 Buscar por loja, código (#) ou endereço..."
+                  placeholder="Buscar por loja, código (#) ou endereço..."
                   className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition"
                 />
                 {historySearchQuery && (

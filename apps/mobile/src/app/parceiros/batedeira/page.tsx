@@ -1392,51 +1392,37 @@ export default function BatedeiraDashboard() {
                   </div>
                 </div>
 
-                {/* 2. PREÇOS BASE DO AÇAÍ */}
+                {/* 2. PREÇOS BASE DO AÇAÍ - RESUMO */}
                 <div className="bg-white/5 dark:bg-black/30 backdrop-blur-md p-4 sm:p-4.5 rounded-2xl border border-white/10 flex flex-col justify-between gap-3.5">
                   <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="p-1.5 rounded-lg bg-pink-500/20 text-pink-300">
-                          <Tag size={16} />
-                        </div>
-                        <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wide text-zinc-100">
-                          Preços Base de Venda (1 Litro)
-                        </h4>
+                    <div className="flex items-center gap-1.5">
+                      <div className="p-1.5 rounded-lg bg-pink-500/20 text-pink-300">
+                        <Tag size={16} />
                       </div>
-                      
-                      <button
-                        type="button"
-                        onClick={() => setPriceModalOpen(true)}
-                        className="bg-white/15 hover:bg-white/25 text-white border border-white/20 px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer"
-                      >
-                        <Edit2 size={12} />
-                        <span>Editar Todos</span>
-                      </button>
+                      <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wide text-zinc-100">
+                        Preços Atuais de Venda (1 Litro)
+                      </h4>
                     </div>
                     
                     <p className="text-[11px] text-zinc-300 mt-1.5 leading-relaxed">
-                      Preços exibidos aos clientes no cardápio online. Toque em qualquer tipo para editar na hora:
+                      Visão rápida dos valores ativos no cardápio online do cliente:
                     </p>
                   </div>
 
                   {/* Grid dos 4 Preços */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
-                      { tipo: 'popular' as const, label: 'Popular', price: prices.popular || 20, icon: '🥣' },
-                      { tipo: 'medio' as const, label: 'Médio', price: prices.medio || 26, icon: '🥣' },
-                      { tipo: 'grosso' as const, label: 'Grosso', price: prices.grosso || 35, icon: '🥣' },
-                      { tipo: 'branco' as const, label: 'Branco', price: prices.branco ?? 38, icon: '🥥' }
+                      { tipo: 'popular' as const, label: 'Popular', price: prices.popular || 20 },
+                      { tipo: 'medio' as const, label: 'Médio', price: prices.medio || 26 },
+                      { tipo: 'grosso' as const, label: 'Grosso', price: prices.grosso || 35 },
+                      { tipo: 'branco' as const, label: 'Branco', price: prices.branco ?? 38 }
                     ].map(item => (
                       <div
                         key={item.tipo}
-                        onClick={() => handleStartInlineEdit(item.tipo, item.price)}
-                        className="p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 cursor-pointer transition flex flex-col justify-between group active:scale-95"
-                        title={`Clique para editar preço do ${item.label}`}
+                        className="p-2.5 rounded-xl bg-white/10 border border-white/10 flex flex-col justify-between"
                       >
-                        <div className="flex items-center justify-between text-[11px] text-zinc-300">
-                          <span>{item.icon} {item.label}</span>
-                          <span className="opacity-70 group-hover:opacity-100 text-[10px] text-purple-300 font-bold transition">✏️</span>
+                        <div className="text-[11px] text-zinc-300 font-bold">
+                          {item.label}
                         </div>
                         <div className="text-sm sm:text-base font-black text-white mt-1 tracking-tight">
                           R$ {item.price.toFixed(2)}
@@ -1445,18 +1431,10 @@ export default function BatedeiraDashboard() {
                     ))}
                   </div>
 
-                  {/* Dica / Botão de Ação */}
                   <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-zinc-300">
-                    <span className="text-[11px] text-purple-200 flex items-center gap-1">
-                      💡 Toque no card para editar inline
+                    <span className="text-[11px] text-purple-200">
+                      • Altere valores e estoque diretamente em cada produto abaixo
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setPriceModalOpen(true)}
-                      className="text-purple-300 hover:text-white font-bold underline text-xs cursor-pointer"
-                    >
-                      Descrições & Detalhes →
-                    </button>
                   </div>
                 </div>
 
@@ -1468,7 +1446,7 @@ export default function BatedeiraDashboard() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
                 <div>
                   <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
-                    <span>🏪</span> Status de Funcionamento
+                    <Store size={16} className="text-purple-600 dark:text-purple-400" /> Status de Funcionamento
                   </h3>
                   <p className="text-xs text-zinc-500">Abra ou feche sua loja para receber novos pedidos.</p>
                 </div>
@@ -1483,86 +1461,6 @@ export default function BatedeiraDashboard() {
                   >
                     {isPaused ? '🔴 Loja Fechada (Clique para Abrir)' : '🟢 Loja Aberta (Recebendo Pedidos)'}
                   </button>
-                  <button 
-                    onClick={() => setPriceModalOpen(true)} 
-                    className="bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm border border-purple-200 dark:border-purple-800 flex items-center gap-1"
-                  >
-                    <span>✏️</span> Editar Preços Base
-                  </button>
-                </div>
-              </div>
-
-              
-              {/* FOTO DO ANÚNCIO DA LOJA / FACHADA */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-white to-purple-50/50 dark:from-purple-950/40 dark:via-zinc-900 dark:to-purple-950/20 border border-purple-200/80 dark:border-purple-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div 
-                    onClick={() => setPhotoModalData({
-                      open: true,
-                      title: 'Foto do Anúncio da sua Loja',
-                      category: 'store' as any,
-                      currentUrl: currentUser?.photo,
-                      onSelect: (url) => {
-                        if (currentUser) store.updateStorePhoto(currentUser.id, url);
-                      }
-                    })}
-                    className="w-16 h-16 rounded-2xl bg-white dark:bg-zinc-800 border-2 border-purple-300 dark:border-purple-700 overflow-hidden flex items-center justify-center cursor-pointer shadow-xs hover:border-purple-500 relative group shrink-0"
-                    title="Clique para escolher a foto de capa da loja"
-                  >
-                    {currentUser?.photo ? (
-                      <img src={currentUser.photo} alt={currentUser.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-purple-600 dark:text-purple-400">
-                        <Store className="w-7 h-7" />
-                        <span className="text-[9px] font-bold mt-0.5">Sem foto</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                      <Camera className="w-5 h-5 text-white" />
-                    </div>
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white flex items-center gap-2">
-                      <Camera size={16} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                      <span>Foto do Anúncio da sua Loja</span>
-                    </h4>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 max-w-lg leading-relaxed">
-                      Esta foto é exibida no card do seu estabelecimento na vitrine inicial do AçaíFood para todos os clientes verem sua fachada ou logo.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setPhotoModalData({
-                      open: true,
-                      title: 'Foto do Anúncio da sua Loja',
-                      category: 'store' as any,
-                      currentUrl: currentUser?.photo,
-                      onSelect: (url) => {
-                        if (currentUser) store.updateStorePhoto(currentUser.id, url);
-                      }
-                    })}
-                    className="flex-1 sm:flex-none px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                  >
-                    <Camera size={14} />
-                    <span>{currentUser?.photo ? 'Alterar Foto' : 'Adicionar Foto'}</span>
-                  </button>
-                  {currentUser?.photo && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm('Deseja remover a foto do anúncio da sua loja?')) {
-                          if (currentUser) store.updateStorePhoto(currentUser.id, undefined);
-                        }
-                      }}
-                      className="px-3 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold border border-red-200 dark:border-red-900/40 transition cursor-pointer"
-                      title="Remover foto da loja"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -1571,17 +1469,10 @@ export default function BatedeiraDashboard() {
                 <div className="flex justify-between items-center mb-3">
                   <div>
                     <h4 className="font-bold text-xs uppercase text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <span>🥣</span> Cardápio Base de Açaí (1 Litro)
+                      <span>•</span> Cardápio Base de Açaí (1 Litro)
                     </h4>
                     <p className="text-[11px] text-zinc-500">Controle preço direto, disponibilidade e foto de cada ponto de açaí.</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setPriceModalOpen(true)}
-                    className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold"
-                  >
-                    Editar Todos
-                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

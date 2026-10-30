@@ -656,9 +656,6 @@ export default function FornecedorDashboard() {
                     <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">Lata:</span>
                     <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">{formatMoney(b2bPrice)}</span>
                   </div>
-                  <button onClick={() => setPriceModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm">
-                    ✏️ Editar Preço
-                  </button>
                 </div>
               </div>
 
