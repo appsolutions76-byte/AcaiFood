@@ -45,14 +45,63 @@ export function extractStorefront(sfData: any): any {
 
 export function mapDbProducts(rawProducts: any[]): Product[] {
   if (!Array.isArray(rawProducts)) return [];
-  return rawProducts.map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    price: Number(p.price || 0),
-    description: p.description || p.desc || undefined,
-    imageUrl: p.image_url || undefined,
-    isAvailable: p.is_active !== false
-  }));
+  return rawProducts.map((p: any) => {
+    let comps = p.complements;
+    let cleanDesc = p.description || p.desc || undefined;
+
+    if (typeof cleanDesc === 'string' && cleanDesc.includes('<!--COMPS:')) {
+      try {
+        const parts = cleanDesc.split('<!--COMPS:');
+        cleanDesc = parts[0].trim() || undefined;
+        const jsonStr = parts[1].split('-->')[0];
+        comps = JSON.parse(jsonStr);
+      } catch (_) {}
+    }
+
+    if (typeof comps === 'string') {
+      try { comps = JSON.parse(comps); } catch (_) { comps = undefined; }
+    }
+
+    // Fallback inteligente para pratos que são carnes/churrascos/refeições
+    if ((!comps || comps.length === 0) && /churrasco|espetinho|maminha|picanha|alcatra|frango|carne|peixe|almoco|almoço|bacon/i.test(p.name || '')) {
+      comps = [
+        {
+          id: 'ponto_carne_' + (p.id || 'meat'),
+          title: 'Ponto da Carne',
+          required: true,
+          maxSelections: 1,
+          options: [
+            { id: 'p1', name: 'Ao ponto', price: 0 },
+            { id: 'p2', name: 'Bem assado', price: 0 },
+            { id: 'p3', name: 'Mal passado', price: 0 }
+          ]
+        },
+        {
+          id: 'acomp_' + (p.id || 'acomp'),
+          title: 'Acompanhamentos (Escolha até 2)',
+          required: false,
+          maxSelections: 2,
+          options: [
+            { id: 'a1', name: 'Arroz branco', price: 0 },
+            { id: 'a2', name: 'Baião de dois', price: 0 },
+            { id: 'a3', name: 'Salada de maionese', price: 0 },
+            { id: 'a4', name: 'Vinagrete da casa', price: 0 },
+            { id: 'a5', name: 'Farofa crocante', price: 0 }
+          ]
+        }
+      ];
+    }
+
+    return {
+      id: p.id,
+      name: p.name,
+      price: Number(p.price || 0),
+      description: cleanDesc,
+      imageUrl: p.image_url || undefined,
+      isAvailable: p.is_active !== false,
+      complements: comps && comps.length > 0 ? comps : undefined
+    };
+  });
 }
 
 export interface StorefrontMeta {

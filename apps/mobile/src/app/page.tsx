@@ -1407,17 +1407,48 @@ export default function StorefrontPage() {
                             isTeal: true,
                             isCongelado: true
                           },
-                          ...(selLoja.products || []).map((p: any) => ({
-                            key: p.id,
-                            name: p.name,
-                            desc: p.description || (p as any).desc || 'Produto de alta qualidade preparado com ingredientes selecionados pela loja.',
-                            price: p.price,
-                            isAvail: p.isAvailable !== false,
-                            photo: p.imageUrl,
-                            emoji: '📦',
-                            isTeal: false,
-                            complements: p.complements || []
-                          }))
+                          ...(selLoja.products || []).map((p: any) => {
+                            let comps = p.complements;
+                            if ((!comps || comps.length === 0) && /churrasco|espetinho|maminha|picanha|alcatra|frango|carne|peixe|almoco|almoço|bacon/i.test(p.name || '')) {
+                              comps = [
+                                {
+                                  id: 'ponto_carne_' + (p.id || 'meat'),
+                                  title: 'Ponto da Carne',
+                                  required: true,
+                                  maxSelections: 1,
+                                  options: [
+                                    { id: 'p1', name: 'Ao ponto', price: 0 },
+                                    { id: 'p2', name: 'Bem assado', price: 0 },
+                                    { id: 'p3', name: 'Mal passado', price: 0 }
+                                  ]
+                                },
+                                {
+                                  id: 'acomp_' + (p.id || 'acomp'),
+                                  title: 'Acompanhamentos (Escolha até 2)',
+                                  required: false,
+                                  maxSelections: 2,
+                                  options: [
+                                    { id: 'a1', name: 'Arroz branco', price: 0 },
+                                    { id: 'a2', name: 'Baião de dois', price: 0 },
+                                    { id: 'a3', name: 'Salada de maionese', price: 0 },
+                                    { id: 'a4', name: 'Vinagrete da casa', price: 0 },
+                                    { id: 'a5', name: 'Farofa crocante', price: 0 }
+                                  ]
+                                }
+                              ];
+                            }
+                            return {
+                              key: p.id,
+                              name: p.name,
+                              desc: p.description || (p as any).desc || 'Produto de alta qualidade preparado com ingredientes selecionados pela loja.',
+                              price: p.price,
+                              isAvail: p.isAvailable !== false,
+                              photo: p.imageUrl,
+                              emoji: '📦',
+                              isTeal: false,
+                              complements: comps || []
+                            };
+                          })
                         ].sort((a: any, b: any) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
                         return (
@@ -1436,7 +1467,11 @@ export default function StorefrontPage() {
                                       : 'bg-zinc-100/80 dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-850 opacity-60'
                                   }`}>
                                     <div className="flex items-start justify-between gap-3 min-w-0">
-                                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                                      <div 
+                                        onClick={() => setExpandedProductDesc(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                                        className="flex items-start gap-3 min-w-0 flex-1 cursor-pointer select-none group"
+                                        title="Clique sobre o produto para ver detalhes e marcar opções"
+                                      >
                                         <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl ${item.isTeal ? 'bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800' : 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800'} overflow-hidden shrink-0 border flex items-center justify-center shadow-xs`}>
                                           {item.photo ? (
                                             <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
