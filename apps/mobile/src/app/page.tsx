@@ -71,7 +71,14 @@ export default function StorefrontPage() {
     destino: MapPoint | null;
     motorista?: MapPoint | null;
   }>({ open: false, origem: null, destino: null, motorista: null });
-  const [productSelectModal, setProductSelectModal] = useState<{ open: boolean; lojaId: string; tipo: string; quantity: number }>({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
+  const [productSelectModal, setProductSelectModal] = useState<{
+    open: boolean;
+    lojaId: string;
+    tipo: string;
+    quantity: number;
+    selectedComplements?: Record<string, string[]>;
+    notes?: string;
+  }>({ open: false, lojaId: '', tipo: 'medio', quantity: 1, selectedComplements: {}, notes: '' });
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string; isSandbox?: boolean; paymentId?: string; totalValue?: number }>({ open: false });
   const [pixPaid, setPixPaid] = useState(false);
@@ -431,6 +438,8 @@ export default function StorefrontPage() {
     let price = 0;
     let name = '';
 
+    let chosenComplementsList: string[] = [];
+
     if (tipo === 'lata') {
       if (loja.availabilityB2B?.lata === false) {
         alert('Este item está esgotado neste fornecedor.');
@@ -438,6 +447,13 @@ export default function StorefrontPage() {
       }
       price = loja.priceB2B ?? 140;
       name = 'Lata de Açaí Fruto';
+    } else if (tipo === 'congelado') {
+      if (loja.availabilityB2C?.congelado === false) {
+        alert('Este item está esgotado nesta loja.');
+        return;
+      }
+      price = (loja.priceB2C as any)?.congelado || 30;
+      name = 'Açaí Congelado para Viagem (1L)';
     } else if (['popular', 'medio', 'grosso', 'branco'].includes(tipo)) {
       if (loja.availabilityB2C?.[tipo as keyof typeof loja.availabilityB2C] === false) {
         alert('Este item está esgotado nesta loja.');
@@ -454,12 +470,31 @@ export default function StorefrontPage() {
         }
         price = customProd.price;
         name = customProd.name;
+
+        // Validar e coletar complementos obrigatórios
+        if (customProd.complements && customProd.complements.length > 0) {
+          for (const grp of customProd.complements) {
+            const selectedInGrp = productSelectModal.selectedComplements?.[grp.id] || [];
+            if (grp.required && selectedInGrp.length === 0) {
+              alert(`Por favor, selecione uma opção em "${grp.title}".`);
+              return;
+            }
+            chosenComplementsList.push(...selectedInGrp);
+          }
+        }
       }
     }
 
     if (price > 0) {
-      addToCart(lojaId, { id: tipo, name, price, quantity });
-      setProductSelectModal({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
+      addToCart(lojaId, {
+        id: tipo,
+        name,
+        price,
+        quantity,
+        selectedComplements: chosenComplementsList,
+        notes: productSelectModal.notes?.trim() || undefined
+      });
+      setProductSelectModal({ open: false, lojaId: '', tipo: 'medio', quantity: 1, selectedComplements: {}, notes: '' });
       setSelectedStoreId(lojaId);
     }
   };
@@ -1298,6 +1333,17 @@ export default function StorefrontPage() {
                             emoji: '🥥', 
                             isTeal: true 
                           },
+                          { 
+                            key: 'congelado', 
+                            name: 'Açaí Congelado para Viagem (1L)', 
+                            desc: selLoja.descriptionsB2C?.congelado || 'Açaí batido puro e congelado em embalagem térmica própria para viagens e transporte (1 Litro)',
+                            price: selLoja.priceB2C?.congelado ?? 30, 
+                            isAvail: selLoja.availabilityB2C?.congelado !== false, 
+                            photo: selLoja.imagesB2C?.congelado, 
+                            emoji: '❄️', 
+                            isTeal: true,
+                            isCongelado: true
+                          },
                           ...(selLoja.products || []).map((p: any) => ({
                             key: p.id,
                             name: p.name,
@@ -1306,7 +1352,8 @@ export default function StorefrontPage() {
                             isAvail: p.isAvailable !== false,
                             photo: p.imageUrl,
                             emoji: '📦',
-                            isTeal: false
+                            isTeal: false,
+                            complements: p.complements || []
                           }))
                         ].sort((a: any, b: any) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
@@ -1349,6 +1396,16 @@ export default function StorefrontPage() {
                                             <p className="text-sm sm:text-base font-black text-zinc-950 dark:text-white tracking-tight">
                                               {formatMoney(item.price)}
                                             </p>
+                                             {(item as any).isCongelado && (
+                                               <span className="text-[9px] font-black bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                                                 ❄️ P/ Viagem
+                                               </span>
+                                             )}
+                                             {(item as any).complements?.length > 0 && (
+                                               <span className="text-[9px] font-black bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                                                 🍽️ Opções
+                                               </span>
+                                             )}
                                             {item.desc && (
                                               <button
                                                 type="button"
@@ -2289,15 +2346,20 @@ export default function StorefrontPage() {
                         );
                       }
 
+                      const priceCongelado = (loja?.priceB2C as any)?.congelado ?? 30;
+                      const isCongAvail = (loja?.availabilityB2C as any)?.congelado !== false;
+
                       const storeSelectItems = [
                         { key: 'popular', label: `Açaí Popular (1L) - ${formatMoney(pricePopular)}`, isAvail: isPopAvail },
                         { key: 'medio', label: `Açaí Médio (1L) - ${formatMoney(priceMedio)}`, isAvail: isMedAvail },
                         { key: 'grosso', label: `Açaí Grosso Especial (1L) - ${formatMoney(priceGrosso)}`, isAvail: isGroAvail },
                         { key: 'branco', label: `Açaí Branco Especial (1L) - ${formatMoney(priceBranco)}`, isAvail: isBraAvail },
+                        { key: 'congelado', label: `❄️ Açaí Congelado p/ Viagem (1L) - ${formatMoney(priceCongelado)}`, isAvail: isCongAvail },
                         ...(loja?.products || []).map((p: any) => ({
                           key: p.id,
                           label: `${p.name} - ${formatMoney(p.price)}`,
-                          isAvail: p.isAvailable !== false
+                          isAvail: p.isAvailable !== false,
+                          complements: p.complements || []
                         }))
                       ].sort((a: any, b: any) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
@@ -2314,6 +2376,106 @@ export default function StorefrontPage() {
                           ))}
                         </select>
                       );
+                  })()}
+
+                  {/* RENDERIZADOR DE COMPLEMENTOS / OPÇÕES SE O PRODUTO TIVER */}
+                  {(() => {
+                    const loja = store.users?.[productSelectModal.lojaId];
+                    const selectedProd = loja?.products?.find((p: any) => p.id === productSelectModal.tipo);
+                    if (!selectedProd || !selectedProd.complements || selectedProd.complements.length === 0) {
+                      return null;
+                    }
+
+                    return (
+                      <div className="space-y-3.5 mb-5 p-3.5 bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                        <div className="border-b border-zinc-200/80 dark:border-zinc-800 pb-2">
+                          <h5 className="font-extrabold text-xs uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                            <span>🍽️</span> Personalize seu Prato
+                          </h5>
+                          <p className="text-[11px] text-zinc-500">Escolha as opções de preparo e acompanhamentos abaixo.</p>
+                        </div>
+
+                        {selectedProd.complements.map((group: any) => {
+                          const currentSelected = productSelectModal.selectedComplements?.[group.id] || [];
+                          const isSingleChoice = group.required || group.maxSelections === 1;
+
+                          return (
+                            <div key={group.id} className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                                <span>{group.title}</span>
+                                {group.required ? (
+                                  <span className="text-[10px] text-red-500 font-extrabold bg-red-50 dark:bg-red-950/40 px-1.5 py-0.2 rounded border border-red-200 dark:border-red-900/40">
+                                    * Obrigatório
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-zinc-400 font-medium">
+                                    {group.maxSelections ? `Escolha até ${group.maxSelections}` : 'Opcional'}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap gap-1.5">
+                                {group.options.map((opt: any) => {
+                                  const isChecked = currentSelected.includes(opt.name);
+                                  return (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setProductSelectModal(prev => {
+                                          const prevComps = { ...(prev.selectedComplements || {}) };
+                                          let updatedList = [...(prevComps[group.id] || [])];
+
+                                          if (isSingleChoice) {
+                                            updatedList = [opt.name];
+                                          } else {
+                                            if (isChecked) {
+                                              updatedList = updatedList.filter(n => n !== opt.name);
+                                            } else {
+                                              const max = group.maxSelections || 99;
+                                              if (updatedList.length < max) {
+                                                updatedList.push(opt.name);
+                                              } else {
+                                                alert(`Você só pode escolher até ${max} opções em "${group.title}".`);
+                                              }
+                                            }
+                                          }
+
+                                          prevComps[group.id] = updatedList;
+                                          return { ...prev, selectedComplements: prevComps };
+                                        });
+                                      }}
+                                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 border ${
+                                        isChecked
+                                          ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                                          : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-purple-300'
+                                      }`}
+                                    >
+                                      <span>{isChecked ? '✓' : '○'}</span>
+                                      <span>{opt.name}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Campo de Observação opcional */}
+                        <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800">
+                          <label className="block text-[11px] font-bold text-zinc-600 dark:text-zinc-400 mb-1">
+                            Alguma observação para o preparo? (Opcional)
+                          </label>
+                          <input
+                            type="text"
+                            value={productSelectModal.notes || ''}
+                            onChange={(e) => setProductSelectModal(prev => ({ ...prev, notes: e.target.value }))}
+                            placeholder="Ex: sem cebola, vinagrete à parte..."
+                            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-purple-500 font-medium"
+                          />
+                        </div>
+                      </div>
+                    );
                   })()}
 
                   <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">Quantidade:</label>
@@ -2356,9 +2518,19 @@ export default function StorefrontPage() {
                       {cart.items.map((item: any) => (
                           <div key={item.id} className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3">
                               <div className="flex-1">
-                                  <p className="font-bold text-zinc-800 dark:text-white">{item.name}</p>
-                                  <p className="text-xs text-zinc-500">{formatMoney(item.price)} un</p>
-                              </div>
+                                   <p className="font-bold text-zinc-800 dark:text-white">{item.name}</p>
+                                   {item.selectedComplements && item.selectedComplements.length > 0 && (
+                                     <p className="text-[11px] text-purple-700 dark:text-purple-300 font-bold mt-0.5">
+                                       • {item.selectedComplements.join(' • ')}
+                                     </p>
+                                   )}
+                                   {item.notes && (
+                                     <p className="text-[10px] text-zinc-500 italic mt-0.5">
+                                       Obs: {item.notes}
+                                     </p>
+                                   )}
+                                   <p className="text-xs text-zinc-500 mt-0.5">{formatMoney(item.price)} un</p>
+                               </div>
                               <div className="flex items-center gap-3">
                                   <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg px-2 py-1">
                                       <button onClick={() => updateCartQuantity(item.id, item.quantity - 1)} className="w-6 h-6 rounded-full font-bold bg-white dark:bg-zinc-700 flex items-center justify-center shadow-sm">-</button>

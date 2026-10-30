@@ -362,7 +362,11 @@ export function generateSingleTicketHTML(
           <tbody>
             ${itemsList.map(item => `
               <tr style="vertical-align: top;">
-                <td style="padding: 1px 0; font-weight: bold;">${item.quantity}x ${(item.name || 'Produto').replace(/^\d+x\s*/i, '').trim()}</td>
+                <td style="padding: 1px 0; font-weight: bold;">
+                  ${item.quantity}x ${(item.name || 'Produto').replace(/^\d+x\s*/i, '').trim()}
+                  ${(item as any).selectedComplements?.length ? `<div style="font-size: 85%; font-weight: normal; color: #222; margin-top: 1px;">• ${(item as any).selectedComplements.join(' • ')}</div>` : ''}
+                  ${(item as any).notes ? `<div style="font-size: 80%; font-weight: normal; font-style: italic; color: #444; margin-top: 1px;">Obs: ${(item as any).notes}</div>` : ''}
+                </td>
                 <td style="padding: 1px 0; text-align: right; font-weight: bold;">R$ ${(item.price * item.quantity).toFixed(2)}</td>
               </tr>
             `).join('')}

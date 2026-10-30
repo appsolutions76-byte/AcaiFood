@@ -120,10 +120,10 @@ export default function BatedeiraDashboard() {
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
   const [priceModalOpen, setPriceModalOpen] = useState(false);
-  const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33, branco: 38 });
-  const [acaiDescriptions, setAcaiDescriptions] = useState<{ popular?: string; medio?: string; grosso?: string; branco?: string }>(() => currentUser?.descriptionsB2C || {});
+  const [prices, setPrices] = useState(() => currentUser?.priceB2C || { popular: 18, medio: 25, grosso: 33, branco: 38, congelado: 30 });
+  const [acaiDescriptions, setAcaiDescriptions] = useState<{ popular?: string; medio?: string; grosso?: string; branco?: string; congelado?: string }>(() => currentUser?.descriptionsB2C || {});
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
-  const [editingInlineType, setEditingInlineType] = useState<'popular' | 'medio' | 'grosso' | 'branco' | null>(null);
+  const [editingInlineType, setEditingInlineType] = useState<'popular' | 'medio' | 'grosso' | 'branco' | 'congelado' | null>(null);
   const [inlinePriceInput, setInlinePriceInput] = useState<string>('');
   const [subsidyFeedback, setSubsidyFeedback] = useState<string | null>(null);
 
@@ -174,6 +174,13 @@ export default function BatedeiraDashboard() {
     description?: string;
     imageUrl?: string;
     isAvailable?: boolean;
+    complements?: {
+      id: string;
+      title: string;
+      required?: boolean;
+      maxSelections?: number;
+      options: { id: string; name: string; price?: number }[];
+    }[];
   } | null>(null);
   const { cart, addToCart, removeFromCart, updateCartQuantity, clearCart } = store;
   const [productSelectModalB2B, setProductSelectModalB2B] = useState<{
@@ -355,7 +362,8 @@ export default function BatedeiraDashboard() {
       price: p.price,
       description: p.description || p.desc || '',
       imageUrl: p.imageUrl,
-      isAvailable: p.isAvailable !== false
+      isAvailable: p.isAvailable !== false,
+      complements: p.complements ? JSON.parse(JSON.stringify(p.complements)) : []
     });
   };
 
@@ -370,7 +378,8 @@ export default function BatedeiraDashboard() {
       price: editingProduct.price,
       description: editingProduct.description?.trim() || undefined,
       imageUrl: editingProduct.imageUrl,
-      isAvailable: editingProduct.isAvailable !== false
+      isAvailable: editingProduct.isAvailable !== false,
+      complements: editingProduct.complements || []
     });
     setEditingProduct(null);
   };
@@ -1084,12 +1093,12 @@ export default function BatedeiraDashboard() {
     setTimeout(() => setSubsidyFeedback(null), 3500);
   };
 
-  const handleStartInlineEdit = (tipo: 'popular' | 'medio' | 'grosso' | 'branco', currentVal: number) => {
+  const handleStartInlineEdit = (tipo: 'popular' | 'medio' | 'grosso' | 'branco' | 'congelado', currentVal: number) => {
     setEditingInlineType(tipo);
     setInlinePriceInput(currentVal.toString());
   };
 
-  const handleSaveInlinePrice = (tipo: 'popular' | 'medio' | 'grosso' | 'branco') => {
+  const handleSaveInlinePrice = (tipo: 'popular' | 'medio' | 'grosso' | 'branco' | 'congelado') => {
     if (!currentUser) return;
     const val = parseFloat(inlinePriceInput.replace(',', '.'));
     if (isNaN(val) || val <= 0) {
@@ -1362,22 +1371,23 @@ export default function BatedeiraDashboard() {
               </div>
             </div>
 
-            {/* 2. CARDÁPIO BASE DE AÇAÍ (1 LITRO) */}
+            {/* 2. CARDÁPIO BASE DE AÇAÍ (1 LITRO & CONGELADO P/ VIAGEM) */}
             <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
               <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-zinc-800">
                 <div>
                   <h3 className="font-extrabold text-base sm:text-lg text-zinc-900 dark:text-white tracking-tight">
-                    Cardápio Base de Açaí (1 Litro)
+                    Cardápio Base de Açaí (Fresco & Congelado p/ Viagem)
                   </h3>
                   <p className="text-xs text-zinc-500">Controle preço direto, disponibilidade e foto de cada ponto de açaí.</p>
                 </div>
-                <span className="text-xs font-bold text-zinc-400">4 tipos oficiais</span>
+                <span className="text-xs font-bold text-zinc-400">5 tipos oficiais</span>
               </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {(['popular', 'medio', 'grosso', 'branco'] as const).map((tipo) => {
-                    const label = tipo === 'popular' ? 'Açaí Popular' : tipo === 'medio' ? 'Açaí Médio' : tipo === 'grosso' ? 'Açaí Grosso' : 'Açaí Branco';
-                    const price = prices[tipo] || (tipo === 'popular' ? 20 : tipo === 'medio' ? 26 : tipo === 'grosso' ? 35 : 38);
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  {(['popular', 'medio', 'grosso', 'branco', 'congelado'] as const).map((tipo) => {
+                    const label = tipo === 'popular' ? 'Açaí Popular' : tipo === 'medio' ? 'Açaí Médio' : tipo === 'grosso' ? 'Açaí Grosso' : tipo === 'branco' ? 'Açaí Branco' : 'Açaí Congelado';
+                    const subLabel = tipo === 'congelado' ? 'P/ Viagem' : '1 Litro';
+                    const price = prices[tipo] || (tipo === 'popular' ? 20 : tipo === 'medio' ? 26 : tipo === 'grosso' ? 35 : tipo === 'branco' ? 38 : 30);
                     const isAvailable = currentUser?.availabilityB2C?.[tipo] !== false;
                     const photo = currentUser?.imagesB2C?.[tipo];
                     const isEditingThis = editingInlineType === tipo;
@@ -2915,6 +2925,201 @@ export default function BatedeiraDashboard() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* COMPLEMENTOS & OPÇÕES DO PRATO / PRODUTO */}
+              <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <h5 className="text-xs font-extrabold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <span>🍽️</span> Complementos & Opções do Prato
+                    </h5>
+                    <p className="text-[11px] text-zinc-500">
+                      Configure escolhas para o cliente (ex: ponto da carne, acompanhamentos, molhos).
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Template Rápido Churrasco */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const churrascoGroups = [
+                          {
+                            id: 'ponto_carne_' + Date.now(),
+                            title: 'Ponto da Carne',
+                            required: true,
+                            maxSelections: 1,
+                            options: [
+                              { id: 'p1', name: 'Ao ponto', price: 0 },
+                              { id: 'p2', name: 'Bem assado', price: 0 },
+                              { id: 'p3', name: 'Mal passado', price: 0 }
+                            ]
+                          },
+                          {
+                            id: 'acomp_' + (Date.now() + 1),
+                            title: 'Acompanhamentos (Escolha até 2)',
+                            required: false,
+                            maxSelections: 2,
+                            options: [
+                              { id: 'a1', name: 'Arroz branco', price: 0 },
+                              { id: 'a2', name: 'Baião de dois', price: 0 },
+                              { id: 'a3', name: 'Salada de maionese', price: 0 },
+                              { id: 'a4', name: 'Vinagrete da casa', price: 0 },
+                              { id: 'a5', name: 'Farofa crocante', price: 0 }
+                            ]
+                          }
+                        ];
+                        setEditingProduct(prev => prev ? { ...prev, complements: churrascoGroups } : null);
+                      }}
+                      className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                      title="Preencher com o modelo completo de churrasco"
+                    >
+                      <span>⚡</span> Modelo Churrasco
+                    </button>
+
+                    {/* Botão Novo Grupo Personalizado */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newGroup = {
+                          id: 'group_' + Date.now(),
+                          title: 'Novo Grupo de Opções',
+                          required: false,
+                          maxSelections: 1,
+                          options: [{ id: 'opt_' + Date.now(), name: 'Opção 1', price: 0 }]
+                        };
+                        setEditingProduct(prev => prev ? { ...prev, complements: [...(prev.complements || []), newGroup] } : null);
+                      }}
+                      className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Grupo
+                    </button>
+                  </div>
+                </div>
+
+                {/* Lista de Grupos de Opções */}
+                {(!editingProduct.complements || editingProduct.complements.length === 0) ? (
+                  <div className="p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-800 text-center text-xs text-zinc-500">
+                    Nenhum complemento cadastrado para este produto. Use o botão <strong>&quot;⚡ Modelo Churrasco&quot;</strong> ou <strong>&quot;+ Grupo&quot;</strong> para adicionar.
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    {editingProduct.complements.map((group, gIdx) => (
+                      <div key={group.id} className="p-3 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="text"
+                            value={group.title}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditingProduct(prev => {
+                                if (!prev) return null;
+                                const updated = [...(prev.complements || [])];
+                                updated[gIdx] = { ...updated[gIdx], title: val };
+                                return { ...prev, complements: updated };
+                              });
+                            }}
+                            placeholder="Nome do Grupo (ex: Ponto da Carne)"
+                            className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg px-2.5 py-1 text-xs font-extrabold text-zinc-900 dark:text-white outline-none focus:border-purple-500"
+                          />
+
+                          <div className="flex items-center gap-2">
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-zinc-600 dark:text-zinc-400 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={group.required}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setEditingProduct(prev => {
+                                    if (!prev) return null;
+                                    const updated = [...(prev.complements || [])];
+                                    updated[gIdx] = { ...updated[gIdx], required: checked };
+                                    return { ...prev, complements: updated };
+                                  });
+                                }}
+                                className="rounded text-purple-600"
+                              />
+                              Obrigatório
+                            </label>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingProduct(prev => {
+                                  if (!prev) return null;
+                                  const updated = (prev.complements || []).filter((_, idx) => idx !== gIdx);
+                                  return { ...prev, complements: updated };
+                                });
+                              }}
+                              className="text-red-500 hover:text-red-700 text-xs p-1"
+                              title="Excluir este grupo"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Opções dentro do Grupo */}
+                        <div className="space-y-1.5 pl-2 border-l-2 border-purple-200 dark:border-purple-900">
+                          {group.options.map((opt, oIdx) => (
+                            <div key={opt.id} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={opt.name}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setEditingProduct(prev => {
+                                    if (!prev) return null;
+                                    const updated = [...(prev.complements || [])];
+                                    const opts = [...updated[gIdx].options];
+                                    opts[oIdx] = { ...opts[oIdx], name: val };
+                                    updated[gIdx] = { ...updated[gIdx], options: opts };
+                                    return { ...prev, complements: updated };
+                                  });
+                                }}
+                                placeholder="Nome da opção (ex: Ao ponto)"
+                                className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-purple-500 font-medium"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingProduct(prev => {
+                                    if (!prev) return null;
+                                    const updated = [...(prev.complements || [])];
+                                    const opts = updated[gIdx].options.filter((_, idx) => idx !== oIdx);
+                                    updated[gIdx] = { ...updated[gIdx], options: opts };
+                                    return { ...prev, complements: updated };
+                                  });
+                                }}
+                                className="text-zinc-400 hover:text-red-500 text-xs px-1"
+                                title="Remover opção"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingProduct(prev => {
+                                if (!prev) return null;
+                                const updated = [...(prev.complements || [])];
+                                const opts = [...updated[gIdx].options, { id: 'opt_' + Date.now(), name: '', price: 0 }];
+                                updated[gIdx] = { ...updated[gIdx], options: opts };
+                                return { ...prev, complements: updated };
+                              });
+                            }}
+                            className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 pt-1 cursor-pointer"
+                          >
+                            <Plus size={11} /> Adicionar Opção
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Disponibilidade Switch */}

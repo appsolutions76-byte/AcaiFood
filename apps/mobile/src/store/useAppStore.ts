@@ -61,7 +61,7 @@ export interface StorefrontMeta {
   priceB2C?: { popular?: number; medio?: number; grosso?: number; branco?: number };
   availabilityB2C?: { popular?: boolean; medio?: boolean; grosso?: boolean; branco?: boolean };
   imagesB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string };
-  descriptionsB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string };
+  descriptionsB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string; congelado?: string };
   availabilityB2B?: { lata: boolean };
   imagesB2B?: { lata?: string };
   descriptionsB2B?: { lata?: string };
@@ -82,6 +82,20 @@ export type Role = 'admin' | 'loja' | 'cliente' | 'motorista' | 'fornecedor' | '
 
 let lastSweepDate: string = '';
 
+export interface ProductOptionItem {
+  id: string;
+  name: string;
+  price?: number;
+}
+
+export interface ProductOptionGroup {
+  id: string;
+  title: string;
+  required?: boolean;
+  maxSelections?: number;
+  options: ProductOptionItem[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -89,6 +103,7 @@ export interface Product {
   description?: string;
   imageUrl?: string;
   isAvailable?: boolean;
+  complements?: ProductOptionGroup[];
 }
 
 export interface User {
@@ -104,10 +119,10 @@ export interface User {
   lat?: number;
   lng?: number;
   veiculo?: string;
-  priceB2C?: { popular: number; medio: number; grosso: number; branco?: number };
-  availabilityB2C?: { popular?: boolean; medio?: boolean; grosso?: boolean; branco?: boolean };
-  imagesB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string };
-  descriptionsB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string };
+  priceB2C?: { popular: number; medio: number; grosso: number; branco?: number; congelado?: number };
+  availabilityB2C?: { popular?: boolean; medio?: boolean; grosso?: boolean; branco?: boolean; congelado?: boolean };
+  imagesB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string; congelado?: string };
+  descriptionsB2C?: { popular?: string; medio?: string; grosso?: string; branco?: string; congelado?: string };
   priceB2B?: number;
   availabilityB2B?: { lata: boolean };
   imagesB2B?: { lata?: string };
@@ -339,7 +354,14 @@ interface AppState {
   clearPassword?: string;
   cart: {
     storeId: string | null;
-    items: { id: string; name: string; quantity: number; price: number }[];
+    items: {
+      id: string;
+      name: string;
+      quantity: number;
+      price: number;
+      selectedComplements?: string[];
+      notes?: string;
+    }[];
   };
   
   // Ações
@@ -360,15 +382,15 @@ interface AppState {
   deleteUser: (userId: string) => Promise<void>;
   changePassword: (userId: string, newPassword: string) => void;
   updateCpfCnpj: (cpfCnpj: string) => Promise<void>;
-  updateUserPrice: (userId: string, b2cPrices?: { popular?: number; medio?: number; grosso?: number; branco?: number }, b2bPrice?: number) => Promise<void>;
+  updateUserPrice: (userId: string, b2cPrices?: { popular?: number; medio?: number; grosso?: number; branco?: number; congelado?: number }, b2bPrice?: number) => Promise<void>;
   addProduct: (userId: string, product: Product) => Promise<void>;
   updateProduct: (userId: string, productId: string, updatedData: Partial<Product>) => Promise<void>;
   removeProduct: (userId: string, productId: string) => Promise<void>;
   toggleProductAvailability: (userId: string, productId: string) => Promise<void>;
-  toggleAcaiAvailability: (userId: string, type: 'popular' | 'medio' | 'grosso' | 'branco') => Promise<void>;
-  updateAcaiImage: (userId: string, type: 'popular' | 'medio' | 'grosso' | 'branco', imageUrl?: string) => Promise<void>;
+  toggleAcaiAvailability: (userId: string, type: 'popular' | 'medio' | 'grosso' | 'branco' | 'congelado') => Promise<void>;
+  updateAcaiImage: (userId: string, type: 'popular' | 'medio' | 'grosso' | 'branco' | 'congelado', imageUrl?: string) => Promise<void>;
   updateStorePhoto: (userId: string, photoUrl?: string) => Promise<void>;
-  updateAcaiDescriptions: (userId: string, descriptions: { popular?: string; medio?: string; grosso?: string; branco?: string }) => Promise<void>;
+  updateAcaiDescriptions: (userId: string, descriptions: { popular?: string; medio?: string; grosso?: string; branco?: string; congelado?: string }) => Promise<void>;
   toggleB2BAvailability: (userId: string) => Promise<void>;
   updateB2BImage: (userId: string, imageUrl?: string) => Promise<void>;
   fetchOrders: (userId: string, force?: boolean) => Promise<void>;
@@ -391,7 +413,7 @@ interface AppState {
   stopAutoRefresh: () => void;
   
   // Carrinho
-  addToCart: (storeId: string, item: { id: string; name: string; price: number; quantity?: number }) => void;
+  addToCart: (storeId: string, item: { id: string; name: string; price: number; quantity?: number; selectedComplements?: string[]; notes?: string }) => void;
   removeFromCart: (itemId: string) => void;
   updateCartQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -697,15 +719,29 @@ export const useAppStore = create<AppState>()(
       
       addToCart: (storeId, item) => {
         set(state => {
-          // If trying to add from a different store, clear the cart first
           const currentStoreId = state.cart.storeId;
           const newItems = currentStoreId === storeId ? [...state.cart.items] : [];
           
-          const existingItemIndex = newItems.findIndex(i => i.id === item.id);
+          const itemCompKey = (item.selectedComplements || []).slice().sort().join('|');
+          const itemNoteKey = (item.notes || '').trim().toLowerCase();
+          
+          const existingItemIndex = newItems.findIndex(i => {
+            const iCompKey = (i.selectedComplements || []).slice().sort().join('|');
+            const iNoteKey = (i.notes || '').trim().toLowerCase();
+            return i.id === item.id && iCompKey === itemCompKey && iNoteKey === itemNoteKey;
+          });
+
           if (existingItemIndex >= 0) {
             newItems[existingItemIndex].quantity += (item.quantity || 1);
           } else {
-            newItems.push({ ...item, quantity: item.quantity || 1 });
+            newItems.push({
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity || 1,
+              selectedComplements: item.selectedComplements || [],
+              notes: item.notes || ''
+            });
           }
           
           return { cart: { storeId, items: newItems } };
@@ -1671,18 +1707,19 @@ export const useAppStore = create<AppState>()(
       },
 
       toggleAcaiAvailability: async (userId, type) => {
-        let updatedAvail: { popular: boolean; medio: boolean; grosso: boolean; branco?: boolean } = { popular: true, medio: true, grosso: true, branco: true };
+        let updatedAvail: { popular: boolean; medio: boolean; grosso: boolean; branco?: boolean; congelado?: boolean } = { popular: true, medio: true, grosso: true, branco: true, congelado: true };
         let updatedImages = {};
         set((state) => {
           const user = state.users[userId] || (state.currentUser?.id === userId ? state.currentUser : null);
           if (!user) return state;
-          const currentAvail = user.availabilityB2C || { popular: true, medio: true, grosso: true, branco: true };
+          const currentAvail = user.availabilityB2C || { popular: true, medio: true, grosso: true, branco: true, congelado: true };
           updatedAvail = {
             popular: currentAvail.popular !== false,
             medio: currentAvail.medio !== false,
             grosso: currentAvail.grosso !== false,
             branco: currentAvail.branco !== false,
-            [type]: currentAvail[type] === false ? true : false
+            congelado: (currentAvail as any).congelado !== false,
+            [type]: (currentAvail as any)[type] === false ? true : false
           };
           updatedImages = user.imagesB2C || {};
           const updatedUser = { ...user, availabilityB2C: updatedAvail };
