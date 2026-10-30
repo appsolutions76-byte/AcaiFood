@@ -1,6 +1,6 @@
 export interface PhotoPreset {
   id: string;
-  category: 'acai' | 'adicional' | 'b2b' | 'store';
+  category: 'acai' | 'adicional' | 'b2b' | 'store' | 'transport';
   title: string;
   url: string;
   thumbnail: string;
@@ -138,6 +138,50 @@ export const PHOTO_PRESETS: PhotoPreset[] = [
     title: 'Casa do Açaí & Lanches',
     url: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=400&q=80',
     thumbnail: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=150&q=70',
+  },
+
+  // TRANSPORTES (MOTOBOY, ENTREGADOR & CAMINHÃO FRETE)
+  {
+    id: 'motoboy-bau-delivery',
+    category: 'transport',
+    title: 'Moto com Baú Delivery',
+    url: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=400&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=150&q=70',
+  },
+  {
+    id: 'motoboy-profissional',
+    category: 'transport',
+    title: 'Entregador de Moto Profissional',
+    url: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=400&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=150&q=70',
+  },
+  {
+    id: 'entregador-bike',
+    category: 'transport',
+    title: 'Entregador Ciclista / Bike',
+    url: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=400&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=150&q=70',
+  },
+  {
+    id: 'caminhao-frete-regional',
+    category: 'transport',
+    title: 'Caminhão de Carga Regional (B2B)',
+    url: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=400&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=150&q=70',
+  },
+  {
+    id: 'caminhao-bau-refrigerado',
+    category: 'transport',
+    title: 'Caminhão Baú / Térmico',
+    url: 'https://images.unsplash.com/photo-1586191582056-a64b9b9a6745?auto=format&fit=crop&w=400&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1586191582056-a64b9b9a6745?auto=format&fit=crop&w=150&q=70',
+  },
+  {
+    id: 'caminhao-cacamba-caroco',
+    category: 'transport',
+    title: 'Caminhão Caçamba / Coleta Ecológica',
+    url: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=400&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=150&q=70',
   }
 ];
 

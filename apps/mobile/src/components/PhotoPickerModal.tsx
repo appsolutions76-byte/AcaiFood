@@ -10,7 +10,7 @@ interface PhotoPickerModalProps {
   currentImageUrl?: string;
   onSelectPhoto: (url: string | undefined) => void;
   title?: string;
-  category?: 'acai' | 'adicional' | 'b2b' | 'store';
+  category?: 'acai' | 'adicional' | 'b2b' | 'store' | 'transport';
 }
 
 export function PhotoPickerModal({
@@ -29,7 +29,7 @@ export function PhotoPickerModal({
   if (!isOpen) return null;
 
   const filteredPresets = category 
-    ? PHOTO_PRESETS.filter((p: any) => p.category === category || (category !== 'store' && (p.category === 'acai' || p.category === 'adicional')))
+    ? PHOTO_PRESETS.filter((p: any) => p.category === category || (category !== 'store' && category !== 'transport' && (p.category === 'acai' || p.category === 'adicional')))
     : PHOTO_PRESETS;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

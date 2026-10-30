@@ -18,6 +18,7 @@ import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 import { PartnerDashboardLayout } from "@/components/PartnerDashboardLayout";
+import { PhotoPickerModal } from "@/components/PhotoPickerModal";
 
 export default function MotoboyDashboard() {
   const router = useRouter();
@@ -37,6 +38,13 @@ export default function MotoboyDashboard() {
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
+  const [photoModalData, setPhotoModalData] = useState<{
+    open: boolean;
+    title: string;
+    category?: 'acai' | 'adicional' | 'b2b' | 'store' | 'transport';
+    currentUrl?: string;
+    onSelect: (url?: string) => void;
+  }>({ open: false, title: '', onSelect: () => {} });
   const [serverBalance, setServerBalance] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -218,6 +226,16 @@ export default function MotoboyDashboard() {
       themeColor="amber"
       partnerId={currentUser?.id || ''}
       partnerName={`${currentUser?.name || 'Entregador Motoboy'} (${currentUser?.veiculo || 'Moto'})`}
+      partnerPhoto={currentUser?.photo}
+      onEditPhoto={() => setPhotoModalData({
+        open: true,
+        title: 'Foto do Entregador / Moto',
+        category: 'transport',
+        currentUrl: currentUser?.photo,
+        onSelect: (url) => {
+          if (currentUser?.id) store.updateStorePhoto(currentUser.id, url);
+        }
+      })}
       locationText={`Base: ${currentUser?.bairro || currentUser?.cidade || 'Belém'}`}
       pixKeyInfo={currentUser?.cpfCnpj || currentUser?.pixKey}
       statusLabel={isPaused ? 'Pausado (Fora de Serviço)' : 'Online (Recebendo Corridas)'}
@@ -724,6 +742,19 @@ export default function MotoboyDashboard() {
 
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
+
+      {/* Modal de Escolha de Foto do Entregador/Veículo */}
+      <PhotoPickerModal
+        isOpen={photoModalData.open}
+        onClose={() => setPhotoModalData(prev => ({ ...prev, open: false }))}
+        title={photoModalData.title}
+        category={photoModalData.category}
+        currentImageUrl={photoModalData.currentUrl}
+        onSelectPhoto={(url) => {
+          photoModalData.onSelect(url);
+          setPhotoModalData(prev => ({ ...prev, open: false }));
+        }}
+      />
       
       <div className="mt-12 mb-6 flex flex-col items-center justify-center">
         <AppSolutionsBrandCard />

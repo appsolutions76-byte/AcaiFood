@@ -410,6 +410,7 @@ interface AppState {
   toggleAcaiAvailability: (userId: string, type: 'popular' | 'medio' | 'grosso' | 'branco' | 'congelado') => Promise<void>;
   updateAcaiImage: (userId: string, type: 'popular' | 'medio' | 'grosso' | 'branco' | 'congelado', imageUrl?: string) => Promise<void>;
   updateStorePhoto: (userId: string, photoUrl?: string) => Promise<void>;
+  updateUserPhoto: (userId: string, photoUrl?: string) => Promise<void>;
   updateAcaiDescriptions: (userId: string, descriptions: { popular?: string; medio?: string; grosso?: string; branco?: string; congelado?: string }) => Promise<void>;
   toggleB2BAvailability: (userId: string) => Promise<void>;
   updateB2BImage: (userId: string, imageUrl?: string) => Promise<void>;
@@ -1821,6 +1822,9 @@ export const useAppStore = create<AppState>()(
         } catch (err) {
           console.error("Exceção ao persistir foto da loja:", err);
         }
+      },
+      updateUserPhoto: async (userId, photoUrl) => {
+        return get().updateStorePhoto(userId, photoUrl);
       },
       updateAcaiImage: async (userId, type, imageUrl) => {
         let updatedAvail: { popular: boolean; medio: boolean; grosso: boolean; branco?: boolean } = { popular: true, medio: true, grosso: true, branco: true };
