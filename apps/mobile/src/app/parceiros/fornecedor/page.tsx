@@ -110,6 +110,10 @@ export default function FornecedorDashboard() {
   const [showAddB2BForm, setShowAddB2BForm] = useState(false);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [b2bPrice, setB2bPrice] = useState(() => currentUser?.priceB2B ?? 140);
+  const [editingInlineLataPrice, setEditingInlineLataPrice] = useState(false);
+  const [inlineLataPriceInput, setInlineLataPriceInput] = useState<string>('');
+  const [editingExtraPriceId, setEditingExtraPriceId] = useState<string | null>(null);
+  const [inlineExtraPriceInput, setInlineExtraPriceInput] = useState<string>('');
   
   // Não sobrescrever o preço enquanto o fornecedor está editando (a lista de usuários recarrega a cada 4 s)
   useEffect(() => {
@@ -196,6 +200,39 @@ export default function FornecedorDashboard() {
     store.updateUserPrice(currentUser.id, undefined, b2bPrice);
     setPriceModalOpen(false);
     alert('Preço da Lata Açaí atualizado com sucesso!');
+  };
+
+  const handleStartInlineLataEdit = () => {
+    setEditingInlineLataPrice(true);
+    setInlineLataPriceInput(b2bPrice.toString());
+  };
+
+  const handleSaveInlineLataPrice = () => {
+    if (!currentUser) return;
+    const val = parseFloat(inlineLataPriceInput.replace(',', '.'));
+    if (isNaN(val) || val <= 0) {
+      alert('Por favor, informe um valor válido para a lata/paneiro.');
+      return;
+    }
+    setB2bPrice(val);
+    store.updateUserPrice(currentUser.id, undefined, val);
+    setEditingInlineLataPrice(false);
+  };
+
+  const handleStartExtraInlineEdit = (id: string, currentVal: number) => {
+    setEditingExtraPriceId(id);
+    setInlineExtraPriceInput(currentVal.toString());
+  };
+
+  const handleSaveExtraInlinePrice = (id: string) => {
+    if (!currentUser) return;
+    const val = parseFloat(inlineExtraPriceInput.replace(',', '.'));
+    if (isNaN(val) || val < 0) {
+      alert('Por favor, informe um valor válido para o produto B2B.');
+      return;
+    }
+    store.updateProduct(currentUser.id, id, { price: val });
+    setEditingExtraPriceId(null);
   };
 
   const handleAddProduct = (presetName?: string, presetPrice?: number, presetDesc?: string) => {
@@ -838,9 +875,60 @@ export default function FornecedorDashboard() {
                           )}
                         </div>
                         <p className="text-xs text-zinc-500">Frutos in natura padrão (por lata)</p>
-                        <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">
-                          {formatMoney(b2bPrice)} <span className="text-xs font-normal text-zinc-400">/ lata</span>
-                        </p>
+
+                        {/* PREÇO COM EDIÇÃO INLINE OU DISPLAY */}
+                        {editingInlineLataPrice ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-xs font-bold text-zinc-500">R$</span>
+                            <input
+                              type="number"
+                              step="1"
+                              autoFocus
+                              value={inlineLataPriceInput}
+                              onChange={e => setInlineLataPriceInput(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSaveInlineLataPrice();
+                                if (e.key === 'Escape') setEditingInlineLataPrice(false);
+                              }}
+                              className="w-20 bg-white dark:bg-zinc-900 border-2 border-emerald-500 rounded-lg px-2 py-0.5 text-xs font-black text-zinc-900 dark:text-white outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleSaveInlineLataPrice}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded-lg text-xs font-bold shadow-xs cursor-pointer"
+                              title="Salvar Preço"
+                            >
+                              <Check size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingInlineLataPrice(false)}
+                              className="bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-300 p-1 rounded-lg text-xs font-bold cursor-pointer"
+                              title="Cancelar"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span 
+                              onClick={handleStartInlineLataEdit}
+                              className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+                              title="Clique para alterar preço da lata"
+                            >
+                              {formatMoney(b2bPrice)}
+                            </span>
+                            <span className="text-xs font-normal text-zinc-400">/ lata</span>
+                            <button
+                              type="button"
+                              onClick={handleStartInlineLataEdit}
+                              className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-xs transition cursor-pointer"
+                              title="Editar este preço"
+                            >
+                              ✏️
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -873,13 +961,6 @@ export default function FornecedorDashboard() {
                       >
                         <Camera size={13} />
                         <span>Foto</span>
-                      </button>
-                      <button 
-                        onClick={() => setPriceModalOpen(true)} 
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
-                      >
-                        <Edit3 size={13} />
-                        <span>Preço</span>
                       </button>
                     </div>
                   </div>
@@ -1140,6 +1221,7 @@ export default function FornecedorDashboard() {
                   .sort((a: any, b: any) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0)))
                   .map((p: any) => {
                     const isAvail = p.isAvailable !== false;
+                    const isEditingExtraThis = editingExtraPriceId === p.id;
                     return (
                       <div 
                         key={p.id} 
@@ -1178,11 +1260,62 @@ export default function FornecedorDashboard() {
                             <p className={`font-extrabold text-sm sm:text-base leading-tight line-clamp-2 ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`} title={p.name}>
                               {p.name}
                             </p>
-                            <p className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-400 mt-1 tracking-tight">
-                              R$ {p.price.toFixed(2)}
-                            </p>
+
+                            {/* PREÇO COM EDIÇÃO INLINE IDÊNTICA AO PRODUTO PRINCIPAL */}
+                            {isEditingExtraThis ? (
+                              <div className="flex items-center gap-1 mt-1">
+                                <span className="text-xs font-bold text-zinc-500">R$</span>
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  autoFocus
+                                  value={inlineExtraPriceInput}
+                                  onChange={e => setInlineExtraPriceInput(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSaveExtraInlinePrice(p.id);
+                                    if (e.key === 'Escape') setEditingExtraPriceId(null);
+                                  }}
+                                  className="w-18 bg-white dark:bg-zinc-900 border-2 border-emerald-500 rounded-lg px-1.5 py-0.5 text-xs font-black text-zinc-900 dark:text-white outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveExtraInlinePrice(p.id)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded-lg text-xs font-bold shadow-xs cursor-pointer"
+                                  title="Salvar Preço"
+                                >
+                                  <Check size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingExtraPriceId(null)}
+                                  className="bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-300 p-1 rounded-lg text-xs font-bold cursor-pointer"
+                                  title="Cancelar"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span 
+                                  onClick={() => handleStartExtraInlineEdit(p.id, p.price)}
+                                  className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-400 tracking-tight cursor-pointer hover:underline"
+                                  title="Clique para alterar preço"
+                                >
+                                  R$ {p.price.toFixed(2)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartExtraInlineEdit(p.id, p.price)}
+                                  className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-xs transition cursor-pointer"
+                                  title="Editar este preço"
+                                >
+                                  ✏️
+                                </button>
+                              </div>
+                            )}
+
                             {p.description && (
-                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 mt-1 leading-snug italic" title={p.description}>
+                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-1 leading-snug italic" title={p.description}>
                                 {p.description}
                               </p>
                             )}
@@ -1205,19 +1338,20 @@ export default function FornecedorDashboard() {
                             {isAvail ? '🟢 Ativo' : '🔴 Esgotado'}
                           </button>
 
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <button 
                               type="button"
                               onClick={() => handleOpenEditProduct(p)} 
-                              className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl border border-emerald-200 dark:border-emerald-800/60 transition shadow-xs cursor-pointer active:scale-95" 
-                              title="Editar nome, preço e foto"
+                              className="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 rounded-xl border border-emerald-200 dark:border-emerald-800/60 text-xs font-bold transition shadow-xs cursor-pointer active:scale-95 flex items-center gap-1" 
+                              title="Editar detalhes e foto"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Detalhes</span>
                             </button>
                             <button 
                               type="button"
                               onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} 
-                              className="text-red-500 hover:text-red-700 p-2 bg-red-50 dark:bg-red-900/30 rounded-xl border border-red-200 dark:border-red-800/60 transition shadow-xs cursor-pointer active:scale-95" 
+                              className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-xl border border-red-200 dark:border-red-800/60 transition shadow-xs cursor-pointer active:scale-95" 
                               title="Excluir produto"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
