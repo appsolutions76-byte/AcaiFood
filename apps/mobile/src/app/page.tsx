@@ -1258,10 +1258,19 @@ export default function StorefrontPage() {
                                           <button
                                             onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })}
                                             className="bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-black px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition shadow-sm shrink-0 active:scale-95 cursor-pointer flex items-center gap-1 text-xs sm:text-sm hover:brightness-110"
-                                            title="Adicionar ao pedido"
+                                            title={(item as any).complements?.length > 0 ? "Escolher complementos e adicionar" : "Adicionar ao pedido"}
                                           >
-                                            <span className="text-sm leading-none">🛒</span>
-                                            <span className="text-base font-black leading-none">+</span>
+                                            {(item as any).complements?.length > 0 ? (
+                                              <>
+                                                <span className="text-xs leading-none">🍽️</span>
+                                                <span className="text-xs font-black leading-none">Escolher</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <span className="text-sm leading-none">🛒</span>
+                                                <span className="text-base font-black leading-none">+</span>
+                                              </>
+                                            )}
                                           </button>
                                         ) : (
                                           <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 rounded-lg shrink-0">
@@ -1272,8 +1281,20 @@ export default function StorefrontPage() {
                                     </div>
 
                                     {item.desc && isExpanded && (
-                                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50/80 dark:bg-zinc-900/60 p-2.5 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
+                                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50/80 dark:bg-zinc-900/60 p-2.5 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150 space-y-1.5">
                                         <p className="leading-relaxed">{item.desc}</p>
+                                        {(item as any).complements?.length > 0 && (
+                                          <div className="pt-1.5 border-t border-zinc-200 dark:border-zinc-800 space-y-1">
+                                            <p className="font-bold text-[10px] text-amber-700 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1">
+                                              <span>🍽️</span> Opções & Complementos disponíveis:
+                                            </p>
+                                            {(item as any).complements.map((grp: any) => (
+                                              <p key={grp.id} className="text-[11px] text-zinc-700 dark:text-zinc-300">
+                                                <strong>• {grp.title}:</strong> {grp.options?.map((o: any) => o.name + (o.price > 0 ? ` (+R$ ${o.price.toFixed(2)})` : '')).join(', ')}
+                                              </p>
+                                            ))}
+                                          </div>
+                                        )}
                                       </div>
                                     )}
                                   </div>
