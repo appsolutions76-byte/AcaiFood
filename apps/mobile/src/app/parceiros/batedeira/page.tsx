@@ -341,13 +341,42 @@ export default function BatedeiraDashboard() {
       alert("Informe o nome e um preço válido para o produto extra.");
       return;
     }
+    const isMeatDish = /churrasco|maminha|picanha|alcatra|frango|carne|peixe/i.test(nameToAdd);
+    const defaultComplements = isMeatDish ? [
+      {
+        id: 'ponto_carne_' + Date.now(),
+        title: 'Ponto da Carne',
+        required: true,
+        maxSelections: 1,
+        options: [
+          { id: 'p1', name: 'Ao ponto', price: 0 },
+          { id: 'p2', name: 'Bem assado', price: 0 },
+          { id: 'p3', name: 'Mal passado', price: 0 }
+        ]
+      },
+      {
+        id: 'acomp_' + (Date.now() + 1),
+        title: 'Acompanhamentos (Escolha até 2)',
+        required: false,
+        maxSelections: 2,
+        options: [
+          { id: 'a1', name: 'Arroz branco', price: 0 },
+          { id: 'a2', name: 'Baião de dois', price: 0 },
+          { id: 'a3', name: 'Salada de maionese', price: 0 },
+          { id: 'a4', name: 'Vinagrete da casa', price: 0 },
+          { id: 'a5', name: 'Farofa crocante', price: 0 }
+        ]
+      }
+    ] : undefined;
+
     store.addProduct(currentUser.id, {
       id: generateUUID(),
       name: nameToAdd,
       price: rawPrice,
       description: descToAdd || undefined,
       imageUrl: newProductImage,
-      isAvailable: true
+      isAvailable: true,
+      complements: defaultComplements
     });
     setNewProductName('');
     setNewProductPrice('');
@@ -1839,6 +1868,13 @@ export default function BatedeiraDashboard() {
                               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 mt-1 leading-snug italic" title={p.description}>
                                 📝 {p.description}
                               </p>
+                            )}
+                            {p.complements && p.complements.length > 0 && (
+                              <div className="mt-1.5 flex items-center gap-1">
+                                <span className="text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                                  🍽️ {p.complements.length} grupo(s) de opções ativas
+                                </span>
+                              </div>
                             )}
                           </div>
                         </div>
