@@ -115,6 +115,9 @@ export function PartnerDashboardLayout({
       statusBtnInactive: 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400 hover:bg-zinc-300 dark:hover:bg-zinc-700',
       cardBorder: 'border-purple-200 dark:border-purple-900/40 bg-white dark:bg-zinc-900/90',
       vaultText: 'text-emerald-600 dark:text-emerald-400',
+      avatarBg: 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400',
+      avatarBorder: 'border-purple-300 dark:border-purple-700/80 hover:border-purple-500',
+      cameraBadge: 'bg-purple-600',
     },
     emerald: {
       bgHeader: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40',
@@ -123,6 +126,9 @@ export function PartnerDashboardLayout({
       statusBtnInactive: 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400 hover:bg-zinc-300 dark:hover:bg-zinc-700',
       cardBorder: 'border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-zinc-900/90',
       vaultText: 'text-emerald-600 dark:text-emerald-400',
+      avatarBg: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400',
+      avatarBorder: 'border-emerald-300 dark:border-emerald-700/80 hover:border-emerald-500',
+      cameraBadge: 'bg-emerald-600',
     },
     amber: {
       bgHeader: 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40',
@@ -131,6 +137,9 @@ export function PartnerDashboardLayout({
       statusBtnInactive: 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400 hover:bg-zinc-300 dark:hover:bg-zinc-700',
       cardBorder: 'border-amber-200 dark:border-amber-900/40 bg-white dark:bg-zinc-900/90',
       vaultText: 'text-emerald-600 dark:text-emerald-400',
+      avatarBg: 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400',
+      avatarBorder: 'border-amber-300 dark:border-amber-700/80 hover:border-amber-500',
+      cameraBadge: 'bg-amber-600',
     }
   }[themeColor];
 
@@ -158,8 +167,8 @@ export function PartnerDashboardLayout({
                 <div className="flex items-start sm:items-center gap-3.5">
                   <div 
                     onClick={onEditPhoto}
-                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-purple-100 dark:bg-purple-950/60 border-2 border-purple-300 dark:border-purple-700/80 text-purple-700 dark:text-purple-400 shrink-0 flex items-center justify-center overflow-hidden shadow-sm relative group mt-0.5 sm:mt-0 ${onEditPhoto ? 'cursor-pointer hover:border-purple-500 hover:shadow-md transition-all active:scale-95' : ''}`}
-                    title={onEditPhoto ? "Clique para adicionar ou trocar a foto da sua loja" : undefined}
+                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl ${themeClasses.avatarBg} border-2 ${themeClasses.avatarBorder} shrink-0 flex items-center justify-center overflow-hidden shadow-sm relative group mt-0.5 sm:mt-0 ${onEditPhoto ? 'cursor-pointer hover:shadow-md transition-all active:scale-95' : ''}`}
+                    title={onEditPhoto ? "Clique para adicionar ou trocar a foto do seu estabelecimento" : undefined}
                   >
                     {partnerPhoto ? (
                       <img 
@@ -181,7 +190,7 @@ export function PartnerDashboardLayout({
                     )}
 
                     {onEditPhoto && (
-                      <div className="absolute bottom-1 right-1 w-5 h-5 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-xs border border-white dark:border-zinc-900 group-hover:scale-110 transition-transform">
+                      <div className={`absolute bottom-1 right-1 w-5 h-5 ${themeClasses.cameraBadge} text-white rounded-full flex items-center justify-center shadow-xs border border-white dark:border-zinc-900 group-hover:scale-110 transition-transform`}>
                         <Camera size={10} />
                       </div>
                     )}
@@ -308,8 +317,8 @@ export function PartnerDashboardLayout({
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div 
                   onClick={onEditPhoto}
-                  className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-purple-100 dark:bg-purple-950/60 border-2 border-purple-300 dark:border-purple-700/80 text-purple-700 dark:text-purple-400 shrink-0 flex items-center justify-center overflow-hidden shadow-xs relative group ${onEditPhoto ? 'cursor-pointer active:scale-95' : ''}`}
-                  title={onEditPhoto ? "Toque para alterar a foto da loja" : undefined}
+                  className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl ${themeClasses.avatarBg} border-2 ${themeClasses.avatarBorder} shrink-0 flex items-center justify-center overflow-hidden shadow-xs relative group ${onEditPhoto ? 'cursor-pointer active:scale-95' : ''}`}
+                  title={onEditPhoto ? "Toque para alterar a foto do estabelecimento" : undefined}
                 >
                   {partnerPhoto ? (
                     <img 
@@ -324,7 +333,7 @@ export function PartnerDashboardLayout({
                   )}
 
                   {onEditPhoto && (
-                    <div className="absolute bottom-0.5 right-0.5 w-4 h-4 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-xs border border-white dark:border-zinc-900">
+                    <div className={`absolute bottom-0.5 right-0.5 w-4 h-4 ${themeClasses.cameraBadge} text-white rounded-full flex items-center justify-center shadow-xs border border-white dark:border-zinc-900`}>
                       <Camera size={9} />
                     </div>
                   )}

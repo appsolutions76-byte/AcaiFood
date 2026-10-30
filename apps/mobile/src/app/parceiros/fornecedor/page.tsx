@@ -2,7 +2,11 @@
 
 import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { PackageOpen, Printer, BookOpen, Share2 } from "lucide-react";
+import { 
+  PackageOpen, Printer, BookOpen, Share2, Camera, Edit3, Trash2, 
+  CheckCircle2, XCircle, Sparkles, Plus, Search, Tag, Factory, 
+  Truck, Package, BarChart3, History, Wallet, Check, X, AlertCircle 
+} from "lucide-react";
 import { useAppStore, getRatesForCity, generateUUID } from "@/store/useAppStore";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
@@ -118,10 +122,25 @@ export default function FornecedorDashboard() {
   const [newProductPrice, setNewProductPrice] = useState('');
   const [newProductDesc, setNewProductDesc] = useState('');
   const [newProductImage, setNewProductImage] = useState<string | undefined>(undefined);
+  
+  // Filtros e busca de produtos extras B2B
+  const [extraFilterStatus, setExtraFilterStatus] = useState<'all' | 'available' | 'unavailable'>('all');
+  const [extraSearchQuery, setExtraSearchQuery] = useState('');
+
+  // Modal de edição completa de produto extra B2B (sem prompt)
+  const [editingProduct, setEditingProduct] = useState<{
+    id: string;
+    name: string;
+    price: number;
+    description?: string;
+    imageUrl?: string;
+    isAvailable?: boolean;
+  } | null>(null);
+
   const [photoModalData, setPhotoModalData] = useState<{
     open: boolean;
     title: string;
-    category?: 'acai' | 'adicional' | 'b2b';
+    category?: 'acai' | 'adicional' | 'b2b' | 'store';
     currentUrl?: string;
     onSelect: (url?: string) => void;
   }>({ open: false, title: '', onSelect: () => {} });
@@ -177,37 +196,65 @@ export default function FornecedorDashboard() {
     alert('Preço da Lata Açaí atualizado com sucesso!');
   };
 
-  const handleAddProduct = () => {
-      if (!currentUser || !newProductName || !newProductPrice) return;
-      store.addProduct(currentUser.id, {
-          id: generateUUID(),
-          name: newProductName.trim(),
-          price: Number(newProductPrice),
-          description: newProductDesc.trim() || undefined,
-          imageUrl: newProductImage,
-          isAvailable: true
-      });
-      setNewProductName('');
-      setNewProductPrice('');
-      setNewProductDesc('');
-      setNewProductImage(undefined);
-  };
-
-  const handleEditProduct = (p: any) => {
+  const handleAddProduct = (presetName?: string, presetPrice?: number, presetDesc?: string) => {
     if (!currentUser) return;
-    const newName = prompt("Editar nome do produto extra B2B:", p.name);
-    if (newName === null) return;
-    const newPriceStr = prompt("Editar preço do produto extra (R$):", p.price.toString());
-    if (newPriceStr === null) return;
-    const newPrice = parseFloat(newPriceStr.replace(',', '.'));
-    if (isNaN(newPrice) || newPrice < 0) {
-      alert("Preço inválido.");
+    const nameToAdd = (presetName || newProductName).trim();
+    const rawPrice = presetPrice !== undefined ? presetPrice : Number(newProductPrice);
+    const descToAdd = (presetDesc !== undefined ? presetDesc : newProductDesc).trim();
+
+    if (!nameToAdd || isNaN(rawPrice) || rawPrice < 0) {
+      alert("Informe o nome e um preço válido para o produto extra B2B.");
       return;
     }
-    const newDesc = prompt("Editar descrição / detalhes do produto:", p.description || p.desc || '');
-    if (newDesc === null) return;
-    const cleanName = newName.trim() || p.name;
-    store.updateProduct(currentUser.id, p.id, { name: cleanName, price: newPrice, description: newDesc.trim() || undefined });
+
+    store.addProduct(currentUser.id, {
+      id: generateUUID(),
+      name: nameToAdd,
+      price: rawPrice,
+      description: descToAdd || undefined,
+      imageUrl: newProductImage,
+      isAvailable: true
+    });
+    setNewProductName('');
+    setNewProductPrice('');
+    setNewProductDesc('');
+    setNewProductImage(undefined);
+  };
+
+  const handleOpenEditProduct = (p: any) => {
+    setEditingProduct({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      description: p.description || p.desc || '',
+      imageUrl: p.imageUrl,
+      isAvailable: p.isAvailable !== false
+    });
+  };
+
+  const handleSaveEditProduct = () => {
+    if (!currentUser || !editingProduct) return;
+    if (!editingProduct.name.trim() || isNaN(editingProduct.price) || editingProduct.price < 0) {
+      alert("Informe um nome válido e um preço maior ou igual a zero.");
+      return;
+    }
+    store.updateProduct(currentUser.id, editingProduct.id, {
+      name: editingProduct.name.trim(),
+      price: editingProduct.price,
+      description: editingProduct.description?.trim() || undefined,
+      imageUrl: editingProduct.imageUrl,
+      isAvailable: editingProduct.isAvailable !== false
+    });
+    setEditingProduct(null);
+  };
+
+  const handleBulkToggleExtras = (isAvailable: boolean) => {
+    if (!currentUser) return;
+    const prods = currentUser.products || [];
+    if (prods.length === 0) return;
+    prods.forEach((p: any) => {
+      store.updateProduct(currentUser.id, p.id, { isAvailable });
+    });
   };
 
   const linkAsaasAccount = store.linkAsaasAccount;
@@ -541,6 +588,16 @@ export default function FornecedorDashboard() {
       themeColor="emerald"
       partnerId={currentUser.id}
       partnerName={currentUser.name || 'Fornecedor B2B'}
+      partnerPhoto={currentUser.photo}
+      onEditPhoto={() => setPhotoModalData({
+        open: true,
+        title: 'Foto da Usina / Fornecedor',
+        category: 'store' as any,
+        currentUrl: currentUser?.photo,
+        onSelect: (url) => {
+          if (currentUser) store.updateStorePhoto(currentUser.id, url);
+        }
+      })}
       locationText={`Bairro: ${currentUser.bairro || currentUser.cidade || 'Central'}`}
       pixKeyInfo={currentUser.cpfCnpj || currentUser.pixKey}
       statusLabel={isPaused ? 'Pausado (Abrir)' : 'Operando'}
@@ -573,7 +630,8 @@ export default function FornecedorDashboard() {
                   : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
-              <span>📊 Visão Geral</span>
+              <BarChart3 size={15} />
+              <span>Visão Geral & Produtos</span>
             </button>
 
             <button 
@@ -584,7 +642,8 @@ export default function FornecedorDashboard() {
                   : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
-              <span>📦 Pedidos Ativos</span>
+              <PackageOpen size={15} />
+              <span>Pedidos Ativos</span>
               {fornActiveOrders.length > 0 && (
                 <span className="bg-emerald-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
                   {fornActiveOrders.length}
@@ -600,7 +659,8 @@ export default function FornecedorDashboard() {
                   : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
-              <span>📋 Histórico</span>
+              <History size={15} />
+              <span>Histórico</span>
               <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === 'historico' ? 'bg-emerald-800 text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}>
                 {fornHistoryOrders.length}
               </span>
@@ -614,7 +674,8 @@ export default function FornecedorDashboard() {
                   : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
-              <span>💳 Carteira Digital</span>
+              <Wallet size={15} />
+              <span>Carteira Digital</span>
               <span className="text-[10px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
                 {formatMoney((vendasHoje && vendasHoje > 0) ? vendasHoje : (emProcessamento || 0))}
               </span>
@@ -637,7 +698,7 @@ export default function FornecedorDashboard() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
                 <div>
                   <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase flex items-center gap-2">
-                    <span>🏭</span> Status da Usina / Fornecedor
+                    <Factory size={16} className="text-emerald-600 dark:text-emerald-400" /> Status da Usina / Fornecedor
                   </h3>
                   <p className="text-[10px] text-zinc-500">Controle se seu estabelecimento está operando e recebendo pedidos das lojas.</p>
                 </div>
@@ -663,7 +724,7 @@ export default function FornecedorDashboard() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-1">
                 <div>
                   <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase flex items-center gap-1.5">
-                    <span>🚚</span> Participação no Frete do Caminhão (%)
+                    <Truck size={16} className="text-emerald-600 dark:text-emerald-400" /> Participação no Frete do Caminhão (%)
                   </h3>
                   <p className="text-[10px] text-zinc-500">Defina a porcentagem do frete que você quer subsidiar para atrair batedeiras.</p>
                 </div>
@@ -671,7 +732,7 @@ export default function FornecedorDashboard() {
                   <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Você Paga:</label>
                   <input type="number" min="0" max="100" value={subsidyInput} onChange={e => setSubsidyInput(e.target.value)} className="w-16 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-1.5 text-center font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
                   <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">%</span>
-                  <button onClick={handleSaveSubsidy} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ml-1">Salvar</button>
+                  <button onClick={handleSaveSubsidy} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ml-1 cursor-pointer">Salvar</button>
                 </div>
               </div>
             </div>
@@ -681,7 +742,7 @@ export default function FornecedorDashboard() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
                 <div>
                   <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
-                    <span>🧺</span> Produto Principal (Frutos In Natura)
+                    <Package size={16} className="text-emerald-600 dark:text-emerald-400" /> Produto Principal (Frutos In Natura)
                   </h3>
                   <p className="text-xs text-zinc-500">Matéria-prima e latas de açaí vendidas diretamente para as batedeiras.</p>
                 </div>
@@ -715,7 +776,7 @@ export default function FornecedorDashboard() {
                       >
                         <img src={lataPhoto} alt="Lata Açaí" className="w-full h-full object-cover" />
                         <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition">
-                          📷
+                          <Camera size={18} />
                         </span>
                       </div>
 
@@ -743,7 +804,7 @@ export default function FornecedorDashboard() {
                         onClick={() => {
                           if (currentUser) store.toggleB2BAvailability(currentUser.id);
                         }}
-                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition shadow-sm ${
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition shadow-sm cursor-pointer active:scale-95 ${
                           isLataAvail
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:border-emerald-700 dark:text-emerald-200'
                             : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200 dark:bg-red-950 dark:border-red-800 dark:text-red-300'
@@ -762,15 +823,17 @@ export default function FornecedorDashboard() {
                             if (currentUser) store.updateB2BImage(currentUser.id, url);
                           }
                         })}
-                        className="bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 px-3 py-2 rounded-xl text-xs font-bold transition border border-zinc-200 dark:border-zinc-700"
+                        className="bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 px-3 py-2 rounded-xl text-xs font-bold transition border border-zinc-200 dark:border-zinc-700 flex items-center gap-1 cursor-pointer active:scale-95"
                       >
-                        📷 Foto
+                        <Camera size={13} />
+                        <span>Foto</span>
                       </button>
                       <button 
                         onClick={() => setPriceModalOpen(true)} 
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1 cursor-pointer active:scale-95"
                       >
-                        ✏️ Editar Preço
+                        <Edit3 size={13} />
+                        <span>Preço</span>
                       </button>
                     </div>
                   </div>
@@ -778,129 +841,335 @@ export default function FornecedorDashboard() {
               })()}
             </div>
 
-            {/* Card 3: Cadastro & Lista de Produtos Extras / Insumos B2B */}
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
-              <div className="border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
-                  <span>📦</span> Produtos & Insumos Extras B2B
-                </h3>
-                <p className="text-xs text-zinc-500">Cadastre outros produtos como sacas, frutos selecionados, polpas, insumos, etc.</p>
+            {/* Card 3: PRODUTOS EXTRAS & INSUMOS B2B - VISÃO LARGA E AMPLA */}
+            <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+              {/* Header com Totais e Ações Rápidas em Lote */}
+              <div className="border-b border-zinc-100 dark:border-zinc-800 pb-3 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <PackageOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    <h3 className="font-extrabold text-zinc-900 dark:text-zinc-100 text-base sm:text-lg uppercase tracking-tight">
+                      Produtos & Insumos Extras B2B
+                    </h3>
+                    <span className="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-black text-xs px-2.5 py-0.5 rounded-full">
+                      {(currentUser?.products || []).length} { (currentUser?.products || []).length === 1 ? 'item' : 'itens' }
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-zinc-500 mt-0.5">
+                    Sacas de frutos selecionados, açaí branco, polpas concentradas, paneiros e insumos com controle de estoque.
+                  </p>
+                </div>
+
+                {/* Ações em Lote */}
+                {(currentUser?.products?.length || 0) > 0 && (
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => handleBulkToggleExtras(true)}
+                      className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1.5 transition shadow-xs active:scale-95 cursor-pointer"
+                      title="Marcar todos os produtos extras como disponíveis"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Todos Ativos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkToggleExtras(false)}
+                      className="px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 transition shadow-xs active:scale-95 cursor-pointer"
+                      title="Pausar todos os extras"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Todos Esgotados
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Form de cadastro com foto */}
-              <div className="bg-zinc-50 dark:bg-zinc-950/60 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-2 items-center">
-                <button
-                  type="button"
-                  onClick={() => setPhotoModalData({
-                    open: true,
-                    title: 'Foto do Produto B2B',
-                    category: 'b2b',
-                    currentUrl: newProductImage,
-                    onSelect: (url) => setNewProductImage(url)
-                  })}
-                  className="w-full sm:w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 hover:bg-emerald-200 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-300 dark:border-emerald-700 transition"
-                  title="Escolher Foto"
-                >
-                  {newProductImage ? (
-                    <img src={newProductImage} alt="Extra" className="w-full h-full object-cover rounded-lg" />
-                  ) : (
-                    <span>📸</span>
-                  )}
-                </button>
-                <div className="flex-1 flex flex-col gap-1.5 w-full">
-                  <div className="flex gap-2 w-full">
+              {/* Sugestões Rápidas de 1 Clique (Presets B2B) */}
+              <div className="bg-gradient-to-br from-emerald-50/80 via-teal-50/40 to-zinc-50 dark:from-emerald-950/40 dark:via-zinc-900 dark:to-zinc-950 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/50">
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="text-xs font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">
+                    Adicionar Rápido com 1 Clique (Sugestões B2B)
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-1">
+                  {[
+                    { name: 'Saca de Açaí de Várzea (50kg)', price: 280, description: 'Frutos frescos colhidos no mesmo dia direto dos ribeirinhos de várzea' },
+                    { name: 'Saca de Açaí Selecionado (50kg)', price: 340, description: 'Frutos graúdos de alto rendimento para batedeiras e indústrias' },
+                    { name: 'Saca de Açaí Branco Raro (50kg)', price: 420, description: 'Frutos raros de açaí branco da Amazônia para cardápios premium' },
+                    { name: 'Polpa de Açaí Puro B2B (10kg)', price: 160, description: 'Polpa concentrada 100% pura congelada sem adição de água' },
+                    { name: 'Paneiros de Palha Vazios (Fardo c/ 10)', price: 50, description: 'Paneiros artesanais tradicionais para transporte e armazenamento' },
+                    { name: 'Gelo em Barra para Transporte (20kg)', price: 25, description: 'Barras de gelo para conservação térmica do fruto na viagem' },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setNewProductName(preset.name);
+                        setNewProductPrice(preset.price.toString());
+                        setNewProductDesc(preset.description || '');
+                      }}
+                      className="group flex items-center gap-2 bg-white dark:bg-zinc-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 border border-emerald-200/90 dark:border-emerald-800/60 hover:border-emerald-400 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 dark:text-zinc-200 transition shadow-xs hover:shadow-sm cursor-pointer active:scale-95"
+                      title={`Clique para preencher "${preset.name}" por R$ ${preset.price.toFixed(2)}`}
+                    >
+                      <Package className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{preset.name}</span>
+                      <span className="font-black text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md text-[11px]">
+                        R$ {preset.price.toFixed(2)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Form de Cadastro Amplo */}
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAddProduct();
+                }}
+                className="bg-zinc-50 dark:bg-zinc-950/80 p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2.5"
+              >
+                <div className="flex flex-col sm:flex-row gap-2.5 items-center w-full">
+                  <button
+                    type="button"
+                    onClick={() => setPhotoModalData({
+                      open: true,
+                      title: 'Foto do Produto B2B',
+                      category: 'b2b',
+                      currentUrl: newProductImage,
+                      onSelect: (url) => setNewProductImage(url)
+                    })}
+                    className="w-full sm:w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 hover:bg-emerald-200 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-300 dark:border-emerald-700 transition cursor-pointer"
+                    title="Escolher Foto do Produto"
+                  >
+                    {newProductImage ? (
+                      <img src={newProductImage} alt="Foto" className="w-full h-full object-cover rounded-xl" />
+                    ) : (
+                      <Camera size={18} />
+                    )}
+                  </button>
+                  <div className="relative flex-1 w-full">
                     <input 
                       type="text" 
-                      placeholder="Nome (ex: Saca de Açaí Selecionado)" 
+                      placeholder="Nome do produto extra B2B (ex: Saca de Fruto Selecionado, Polpa 10kg...)" 
                       value={newProductName} 
                       onChange={e => setNewProductName(e.target.value)} 
-                      className="flex-1 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-emerald-500 font-semibold" 
+                      className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl py-3 px-3.5 text-xs sm:text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-medium" 
                     />
+                    {newProductName && (
+                      <button
+                        type="button"
+                        onClick={() => setNewProductName('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative w-full sm:w-36">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">R$</span>
                     <input 
                       type="number" 
-                      step="0.1" 
-                      placeholder="R$" 
+                      step="0.01" 
+                      placeholder="0,00" 
                       value={newProductPrice} 
                       onChange={e => setNewProductPrice(e.target.value)} 
-                      className="w-24 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:border-emerald-500 font-bold" 
+                      className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl py-3 pl-8 pr-3 text-xs sm:text-sm font-black outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-zinc-900 dark:text-white" 
                     />
                   </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2.5 items-center w-full">
                   <input 
                     type="text" 
-                    placeholder="Descrição / Detalhes (ex: Saca com 50kg de açaí de várzea selecionado...)" 
+                    placeholder="Descrição / Detalhes (ex: Frutos colhidos em Igarapé-Miri com polpa grossa...)" 
                     value={newProductDesc} 
                     onChange={e => setNewProductDesc(e.target.value)} 
-                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg p-1.5 text-xs outline-none focus:border-emerald-500 text-zinc-600 dark:text-zinc-300" 
+                    className="flex-1 w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl py-2 px-3 text-xs outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-zinc-600 dark:text-zinc-300" 
                   />
+                  <button 
+                    type="submit" 
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+                  >
+                    <Plus size={14} />
+                    <span>Adicionar Produto</span>
+                  </button>
                 </div>
-                <button 
-                  onClick={handleAddProduct} 
-                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs transition shrink-0 shadow-sm self-stretch sm:self-auto flex items-center justify-center cursor-pointer"
-                >
-                  + Adicionar
-                </button>
+              </form>
+
+              {/* Barra de Filtros e Busca */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="relative w-full sm:w-64">
+                  <input
+                    type="text"
+                    value={extraSearchQuery}
+                    onChange={(e) => setExtraSearchQuery(e.target.value)}
+                    placeholder="Buscar nos produtos B2B..."
+                    className="w-full pl-8 pr-7 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs outline-none focus:border-emerald-500"
+                  />
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  {extraSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setExtraSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                  <button
+                    type="button"
+                    onClick={() => setExtraFilterStatus('all')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                      extraFilterStatus === 'all'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
+                    }`}
+                  >
+                    Todos ({(currentUser?.products || []).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExtraFilterStatus('available')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                      extraFilterStatus === 'available'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-400 border border-zinc-200 dark:border-zinc-800'
+                    }`}
+                  >
+                    🟢 Ativos ({(currentUser?.products || []).filter((p: any) => p.isAvailable !== false).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExtraFilterStatus('unavailable')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                      extraFilterStatus === 'unavailable'
+                        ? 'bg-red-600 text-white shadow-xs'
+                        : 'bg-white dark:bg-zinc-900 text-red-700 dark:text-red-400 border border-zinc-200 dark:border-zinc-800'
+                    }`}
+                  >
+                    🔴 Esgotados ({(currentUser?.products || []).filter((p: any) => p.isAvailable === false).length})
+                  </button>
+                </div>
               </div>
 
-              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 mt-2">
-                {[...(currentUser?.products || [])].sort((a: any, b: any) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0))).map((p: any) => {
-                  const isAvail = p.isAvailable !== false;
-                  return (
-                    <li key={p.id} className="flex justify-between items-center py-2.5 gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div 
-                          onClick={() => setPhotoModalData({
-                            open: true,
-                            title: `Foto de ${p.name}`,
-                            category: 'b2b',
-                            currentUrl: p.imageUrl,
-                            onSelect: (url) => {
-                              if (currentUser) store.updateProduct(currentUser.id, p.id, { imageUrl: url });
-                            }
-                          })}
-                          className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 cursor-pointer flex items-center justify-center"
-                          title="Trocar Foto"
-                        >
-                          {p.imageUrl ? (
-                            <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-sm">🌿</span>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className={`font-extrabold text-sm sm:text-base truncate ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`}>{p.name}</p>
-                          <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">R$ {p.price.toFixed(2)}</p>
-                          {p.description && (
-                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1 italic">
-                              📝 {p.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+              {/* Grid de Cards de Produtos Extras B2B */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 max-h-[580px] overflow-y-auto pr-1">
+                {[...(currentUser?.products || [])]
+                  .filter((p: any) => {
+                    if (extraFilterStatus === 'available' && p.isAvailable === false) return false;
+                    if (extraFilterStatus === 'unavailable' && p.isAvailable !== false) return false;
+                    if (extraSearchQuery.trim()) {
+                      const q = extraSearchQuery.toLowerCase().trim();
+                      return p.name.toLowerCase().includes(q);
+                    }
+                    return true;
+                  })
+                  .sort((a: any, b: any) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0)))
+                  .map((p: any) => {
+                    const isAvail = p.isAvailable !== false;
+                    return (
+                      <div 
+                        key={p.id} 
+                        className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                          isAvail
+                            ? 'bg-white dark:bg-zinc-900/90 border-zinc-200 dark:border-zinc-800 hover:border-emerald-300 dark:hover:border-emerald-700/60 shadow-xs hover:shadow-md'
+                            : 'bg-zinc-50 dark:bg-zinc-950/60 border-zinc-200/60 dark:border-zinc-800/60 opacity-60'
+                        }`}
+                      >
+                        {/* Topo do Card: Foto + Nome + Preço */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div 
+                            onClick={() => setPhotoModalData({
+                              open: true,
+                              title: `Foto de ${p.name}`,
+                              category: 'b2b',
+                              currentUrl: p.imageUrl,
+                              onSelect: (url) => {
+                                if (currentUser) store.updateProduct(currentUser.id, p.id, { imageUrl: url });
+                              }
+                            })}
+                            className="w-14 h-14 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 cursor-pointer flex items-center justify-center hover:opacity-80 transition relative group"
+                            title="Clique para alterar foto"
+                          >
+                            {p.imageUrl ? (
+                              <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                            ) : (
+                              <Package className="w-6 h-6 text-zinc-400" />
+                            )}
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold">
+                              <Camera size={14} />
+                            </div>
+                          </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (currentUser) store.toggleProductAvailability(currentUser.id, p.id);
-                          }}
-                          className={`px-2 py-1 rounded-md text-[10px] font-bold border transition ${
-                            isAvail
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800'
-                              : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-800'
-                          }`}
-                        >
-                          {isAvail ? '🟢 Disponível' : '🔴 Esgotado'}
-                        </button>
-                        <button onClick={() => handleEditProduct(p)} className="text-emerald-600 hover:text-emerald-800 p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg transition" title="Editar produto extra">✏️</button>
-                        <button onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg transition" title="Excluir produto extra">🗑️</button>
+                          <div className="min-w-0 flex-1">
+                            <p className={`font-extrabold text-sm sm:text-base leading-tight line-clamp-2 ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`} title={p.name}>
+                              {p.name}
+                            </p>
+                            <p className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-400 mt-1 tracking-tight">
+                              R$ {p.price.toFixed(2)}
+                            </p>
+                            {p.description && (
+                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 mt-1 leading-snug italic" title={p.description}>
+                                {p.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Rodapé do Card: Switch de Disponibilidade + Botões de Ação ao Lado do Produto */}
+                        <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800/80 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (currentUser) store.toggleProductAvailability(currentUser.id, p.id);
+                            }}
+                            className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black border transition shadow-xs flex items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                              isAvail
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-700'
+                                : 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-700'
+                            }`}
+                          >
+                            {isAvail ? '🟢 Ativo' : '🔴 Esgotado'}
+                          </button>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button 
+                              type="button"
+                              onClick={() => handleOpenEditProduct(p)} 
+                              className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl border border-emerald-200 dark:border-emerald-800/60 transition shadow-xs cursor-pointer active:scale-95" 
+                              title="Editar nome, preço e foto"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} 
+                              className="text-red-500 hover:text-red-700 p-2 bg-red-50 dark:bg-red-900/30 rounded-xl border border-red-200 dark:border-red-800/60 transition shadow-xs cursor-pointer active:scale-95" 
+                              title="Excluir produto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </li>
-                  );
-                })}
-                {(!currentUser?.products || currentUser.products.length === 0) && (
-                  <p className="text-xs text-zinc-500 text-center py-4">Nenhum produto extra cadastrado.</p>
-                )}
-              </ul>
+                    );
+                  })}
+              </div>
+
+              {(!currentUser?.products || currentUser.products.length === 0) && (
+                <div className="text-center py-8 bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                  <PackageOpen className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
+                  <p className="text-xs text-zinc-500 font-medium">Nenhum produto extra B2B cadastrado ainda.</p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">Use as sugestões rápidas acima para cadastrar sacas e polpas com 1 clique.</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -966,12 +1235,193 @@ export default function FornecedorDashboard() {
         motorista={mapModal.motorista} 
       />
 
+      {/* Modal de Edição de Produto Extra B2B */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-md shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            <div className="p-4 bg-emerald-600 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-emerald-100" />
+                <h3 className="font-extrabold text-sm sm:text-base">
+                  Editar Produto B2B
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingProduct(null)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Foto do Produto */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 uppercase tracking-wider">
+                  Foto do Produto
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0">
+                    {editingProduct.imageUrl ? (
+                      <img src={editingProduct.imageUrl} alt={editingProduct.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="w-6 h-6 text-zinc-400" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => setPhotoModalData({
+                        open: true,
+                        title: `Foto de ${editingProduct.name}`,
+                        category: 'b2b',
+                        currentUrl: editingProduct.imageUrl,
+                        onSelect: (url) => setEditingProduct(prev => prev ? { ...prev, imageUrl: url } : null)
+                      })}
+                      className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 border border-emerald-200 dark:border-emerald-800 cursor-pointer"
+                    >
+                      <Camera size={13} />
+                      <span>Alterar Foto</span>
+                    </button>
+                    {editingProduct.imageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingProduct(prev => prev ? { ...prev, imageUrl: undefined } : null)}
+                        className="text-red-500 hover:text-red-700 text-[11px] font-semibold text-left px-1 cursor-pointer"
+                      >
+                        Remover foto
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Nome */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1 uppercase tracking-wider">
+                  Nome do Produto
+                </label>
+                <input
+                  type="text"
+                  value={editingProduct.name}
+                  onChange={(e) => setEditingProduct(prev => prev ? { ...prev, name: e.target.value } : null)}
+                  className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm font-semibold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  placeholder="Nome do produto"
+                />
+              </div>
+
+              {/* Descrição */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1 uppercase tracking-wider">
+                  Descrição / Detalhes
+                </label>
+                <textarea
+                  rows={3}
+                  value={editingProduct.description || ''}
+                  onChange={(e) => setEditingProduct(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  className="w-full p-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-medium outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none leading-relaxed"
+                  placeholder="Ex: Sacas com 50kg colhidas no mesmo dia..."
+                />
+              </div>
+
+              {/* Preço com Botões de Ajuste Rápido */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1 uppercase tracking-wider">
+                  Preço de Venda (R$)
+                </label>
+                <div className="relative mb-2">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingProduct.price}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setEditingProduct(prev => prev ? { ...prev, price: isNaN(val) ? 0 : val } : null);
+                    }}
+                    className="w-full pl-10 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl text-base font-black outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+
+                {/* Ajustes rápidos de preço */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] font-bold text-zinc-400 mr-1">Ajuste rápido:</span>
+                  {[
+                    { label: '+R$ 5', delta: 5 },
+                    { label: '+R$ 10', delta: 10 },
+                    { label: '+R$ 20', delta: 20 },
+                    { label: '+R$ 50', delta: 50 },
+                    { label: '-R$ 10', delta: -10 },
+                  ].map((btn, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setEditingProduct(prev => {
+                          if (!prev) return null;
+                          const newP = Math.max(0, Number((prev.price + btn.delta).toFixed(2)));
+                          return { ...prev, price: newP };
+                        });
+                      }}
+                      className="px-2 py-1 rounded-md text-[11px] font-extrabold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 transition cursor-pointer active:scale-95"
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Switch de Disponibilidade */}
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Disponibilidade no Catálogo</p>
+                  <p className="text-[11px] text-zinc-500">Batedeiras só podem pedir se estiver disponível.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(prev => prev ? { ...prev, isAvailable: !prev.isAvailable } : null)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                    editingProduct.isAvailable !== false
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      : 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950/60 dark:text-red-300'
+                  }`}
+                >
+                  {editingProduct.isAvailable !== false ? '🟢 Disponível' : '🔴 Esgotado'}
+                </button>
+              </div>
+            </div>
+
+            {/* Rodapé com Ações */}
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingProduct(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditProduct}
+                className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition active:scale-95 cursor-pointer"
+              >
+                Salvar Alterações
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {priceModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
             <div className="bg-emerald-900 text-white p-5 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-lg">✏️ Editar Preço da Lata Açaí</h3>
-                <button onClick={() => setPriceModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
+                <div className="flex items-center gap-2">
+                  <Edit3 size={18} className="text-emerald-400" />
+                  <h3 className="font-bold text-lg">Editar Preço da Lata Açaí</h3>
+                </div>
+                <button onClick={() => setPriceModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none cursor-pointer">&times;</button>
             </div>
             
             <div className="p-6 space-y-4">
@@ -982,8 +1432,8 @@ export default function FornecedorDashboard() {
             </div>
 
             <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
-                <button onClick={() => setPriceModalOpen(false)} className="px-5 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
-                <button onClick={handleSavePrices} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition">Salvar Preço</button>
+                <button onClick={() => setPriceModalOpen(false)} className="px-5 py-2.5 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition cursor-pointer">Cancelar</button>
+                <button onClick={handleSavePrices} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition cursor-pointer active:scale-95">Salvar Preço</button>
             </div>
           </div>
         </div>
