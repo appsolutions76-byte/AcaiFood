@@ -857,9 +857,16 @@ export default function FornecedorDashboard() {
                         className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 overflow-hidden shrink-0 border border-emerald-300 dark:border-emerald-700 cursor-pointer flex items-center justify-center relative group shadow-xs"
                         title="Trocar Foto da Lata"
                       >
-                        <img src={lataPhoto} alt="Lata Açaí" className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        {currentUser?.imagesB2B?.lata ? (
+                          <img src={currentUser.imagesB2B.lata} alt="Lata Açaí" className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                            <span>📸</span>
+                            <span className="text-[8px]">Foto</span>
+                          </div>
+                        )}
                         <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition">
-                          <Camera size={16} />
+                          ✏️
                         </span>
                       </div>
 
@@ -944,7 +951,7 @@ export default function FornecedorDashboard() {
                             : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200 dark:bg-red-950 dark:border-red-800 dark:text-red-300'
                         }`}
                       >
-                        {isLataAvail ? '🟢 Fruto Disponível' : '🔴 Fruto Esgotado'}
+                        {isLataAvail ? '🟢 Disponível' : '🔴 Esgotado'}
                       </button>
                     </div>
                   </div>
@@ -1227,7 +1234,7 @@ export default function FornecedorDashboard() {
                                 if (currentUser) store.updateProduct(currentUser.id, p.id, { imageUrl: url });
                               }
                             })}
-                            className="w-14 h-14 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 cursor-pointer flex items-center justify-center hover:opacity-80 transition relative group"
+                            className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 overflow-hidden shrink-0 border border-emerald-300 dark:border-emerald-700 cursor-pointer flex items-center justify-center hover:opacity-80 transition relative group"
                             title="Clique para alterar foto"
                           >
                             {p.imageUrl ? (
@@ -1239,7 +1246,7 @@ export default function FornecedorDashboard() {
                               </div>
                             )}
                             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold">
-                              <Camera size={14} />
+                              ✏️
                             </div>
                           </div>
 
