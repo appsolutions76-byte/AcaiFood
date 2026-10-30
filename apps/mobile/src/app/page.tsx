@@ -124,6 +124,8 @@ export default function StorefrontPage() {
   };
 
   const [expandedProductDesc, setExpandedProductDesc] = useState<Record<string, boolean>>({});
+  const [inlineComplements, setInlineComplements] = useState<Record<string, Record<string, string[]>>>({});
+  const [inlineNotes, setInlineNotes] = useState<Record<string, string>>({});
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategoryChip, setSelectedCategoryChip] = useState<'all' | 'open' | 'free_frete' | 'nearest' | 'grosso' | 'branco' | 'lowest_price'>('all');
@@ -497,6 +499,46 @@ export default function StorefrontPage() {
       setProductSelectModal({ open: false, lojaId: '', tipo: 'medio', quantity: 1, selectedComplements: {}, notes: '' });
       setSelectedStoreId(lojaId);
     }
+  };
+
+  const handleQuickAddWithComplements = (lojaId: string, item: any) => {
+    const loja = store.users?.[lojaId];
+    if (!loja) return;
+    if (loja.status === 'paused') {
+      alert(`⚠️ "${loja.name}" está fechada no momento.`);
+      return;
+    }
+
+    let chosenComplementsList: string[] = [];
+    if (item.complements && item.complements.length > 0) {
+      const itemSelections = inlineComplements[item.key] || {};
+      for (const grp of item.complements) {
+        const selectedInGrp = itemSelections[grp.id] || [];
+        if (grp.required && selectedInGrp.length === 0) {
+          setExpandedProductDesc(prev => ({ ...prev, [item.key]: true }));
+          alert(`Por favor, marque uma opção obrigatória em "${grp.title}".`);
+          return;
+        }
+        chosenComplementsList.push(...selectedInGrp);
+      }
+    }
+
+    let price = item.price;
+    let name = item.name;
+    if (['popular', 'medio', 'grosso', 'branco', 'congelado'].includes(item.key)) {
+      price = (loja.priceB2C as any)?.[item.key] || item.price;
+      name = item.key === 'branco' ? 'Açaí Branco Especial (1L)' : item.key === 'congelado' ? 'Açaí Congelado para Viagem (1L)' : `Açaí ${item.key.charAt(0).toUpperCase() + item.key.slice(1)} (1L)`;
+    }
+
+    addToCart(lojaId, {
+      id: item.key,
+      name,
+      price,
+      quantity: 1,
+      selectedComplements: chosenComplementsList.length > 0 ? chosenComplementsList : undefined,
+      notes: inlineNotes[item.key]?.trim() || undefined
+    });
+    setSelectedStoreId(lojaId);
   };
 
   const isValidCpfCnpj = (val?: string | null) => {
@@ -1423,50 +1465,162 @@ export default function StorefrontPage() {
                                                </span>
                                              )}
                                              {(item as any).complements?.length > 0 && (
-                                               <span className="text-[9px] font-black bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
-                                                 🍽️ Opções
-                                               </span>
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setExpandedProductDesc(prev => ({ ...prev, [item.key]: !prev[item.key] }));
+                                                  }}
+                                                  className="text-[9px] font-black bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded border border-amber-300 dark:border-amber-700 flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                                                  title="Marcar complementos"
+                                                >
+                                                  <span>🍽️</span>
+                                                  <span>{isExpanded ? 'Ocultar Opções ▲' : 'Marcar Opções ▼'}</span>
+                                                </button>
+                                              )}
+                                             {item.desc && !(item as any).complements?.length && (
+                                               <button
+                                                 type="button"
+                                                 onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   setExpandedProductDesc(prev => ({ ...prev, [item.key]: !prev[item.key] }));
+                                                 }}
+                                                 className="inline-flex items-center gap-0.5 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 py-0.5 cursor-pointer select-none"
+                                                 title={isExpanded ? "Ocultar detalhes" : "Ver detalhes do produto"}
+                                               >
+                                                 <span>Detalhes</span>
+                                                 <span className="text-[8px] leading-none">{isExpanded ? '▲' : '▼'}</span>
+                                               </button>
                                              )}
-                                            {item.desc && (
-                                              <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setExpandedProductDesc(prev => ({ ...prev, [item.key]: !prev[item.key] }));
-                                                }}
-                                                className="inline-flex items-center gap-0.5 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 py-0.5 cursor-pointer select-none"
-                                                title={isExpanded ? "Ocultar detalhes" : "Ver detalhes do produto"}
-                                              >
-                                                <span>Detalhes</span>
-                                                <span className="text-[8px] leading-none">{isExpanded ? '▲' : '▼'}</span>
-                                              </button>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="shrink-0 flex items-center pt-0.5">
-                                        {item.isAvail && selLoja.status !== 'paused' ? (
-                                          <button
-                                            onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })}
-                                            className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800' : 'bg-purple-600 hover:bg-purple-700 active:bg-purple-800'} text-white font-black px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition shadow-sm shrink-0 active:scale-95 cursor-pointer flex items-center gap-1 text-xs sm:text-sm hover:brightness-110`}
-                                            title="Adicionar ao pedido"
-                                          >
-                                            <span className="text-sm leading-none">🛒</span>
-                                            <span className="text-base font-black leading-none">+</span>
-                                          </button>
-                                        ) : (
-                                          <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 rounded-lg shrink-0">
-                                            {selLoja.status === 'paused' ? 'Fechado' : 'Esgotado'}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
+                                           </div>
+                                         </div>
+                                       </div>
+                                       <div className="shrink-0 flex items-center pt-0.5">
+                                         {item.isAvail && selLoja.status !== 'paused' ? (
+                                           <button
+                                             onClick={() => handleQuickAddWithComplements(selLoja.id, item)}
+                                             className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800' : 'bg-purple-600 hover:bg-purple-700 active:bg-purple-800'} text-white font-black px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition shadow-sm shrink-0 active:scale-95 cursor-pointer flex items-center gap-1 text-xs sm:text-sm hover:brightness-110`}
+                                             title={(item as any).complements?.length > 0 ? "Adicionar ao carrinho com complementos marcados" : "Adicionar ao pedido"}
+                                           >
+                                             <span className="text-sm leading-none">🛒</span>
+                                             <span className="text-base font-black leading-none">+</span>
+                                           </button>
+                                         ) : (
+                                           <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 rounded-lg shrink-0">
+                                             {selLoja.status === 'paused' ? 'Fechado' : 'Esgotado'}
+                                           </span>
+                                         )}
+                                       </div>
+                                     </div>
 
-                                    {item.desc && isExpanded && (
-                                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50/80 dark:bg-zinc-900/60 p-2.5 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
-                                        <p className="leading-relaxed">{item.desc}</p>
-                                      </div>
-                                    )}
+                                     {isExpanded && (
+                                       <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 text-[11px] sm:text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-50/80 dark:bg-zinc-900/60 p-3 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150 space-y-2.5">
+                                         {item.desc && <p className="leading-relaxed text-zinc-700 dark:text-zinc-300">{item.desc}</p>}
+                                         
+                                         {(item as any).complements?.length > 0 && (
+                                           <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+                                             <div className="flex items-center justify-between">
+                                               <span className="font-extrabold text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5 uppercase tracking-wide">
+                                                 <span>🍽️</span> Complementos Disponíveis (Marque o que deseja):
+                                               </span>
+                                             </div>
+
+                                             {(item as any).complements.map((grp: any) => {
+                                               const itemSelections = inlineComplements[item.key] || {};
+                                               const currentSelected = itemSelections[grp.id] || [];
+                                               const isSingleChoice = grp.required || grp.maxSelections === 1;
+
+                                               return (
+                                                 <div key={grp.id} className="space-y-1.5 bg-white dark:bg-zinc-950 p-2.5 rounded-lg border border-zinc-200/90 dark:border-zinc-800/80">
+                                                   <div className="flex items-center justify-between text-[11px] font-bold text-zinc-800 dark:text-zinc-200">
+                                                     <span>{grp.title}</span>
+                                                     {grp.required ? (
+                                                       <span className="text-[9px] text-red-600 font-black bg-red-50 dark:bg-red-950/50 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900/40">
+                                                         * Obrigatório (Escolha 1)
+                                                       </span>
+                                                     ) : (
+                                                       <span className="text-[9px] text-zinc-500 font-medium">
+                                                         {grp.maxSelections ? `Escolha até ${grp.maxSelections}` : 'Opcional'} ({currentSelected.length}/{grp.maxSelections || '∞'})
+                                                       </span>
+                                                     )}
+                                                   </div>
+
+                                                   <div className="flex flex-wrap gap-1.5 pt-1">
+                                                     {grp.options?.map((opt: any) => {
+                                                       const isChecked = currentSelected.includes(opt.name);
+                                                       return (
+                                                         <button
+                                                           key={opt.id}
+                                                           type="button"
+                                                           onClick={(e) => {
+                                                             e.stopPropagation();
+                                                             setInlineComplements(prev => {
+                                                               const itemMap = { ...(prev[item.key] || {}) };
+                                                               let list = [...(itemMap[grp.id] || [])];
+                                                               if (isSingleChoice) {
+                                                                 list = isChecked ? [] : [opt.name];
+                                                               } else {
+                                                                 if (isChecked) {
+                                                                   list = list.filter(n => n !== opt.name);
+                                                                 } else {
+                                                                   const max = grp.maxSelections || 99;
+                                                                   if (list.length < max) {
+                                                                     list.push(opt.name);
+                                                                   } else {
+                                                                     alert(`Você só pode marcar até ${max} opções em "${grp.title}".`);
+                                                                   }
+                                                                 }
+                                                               }
+                                                               itemMap[grp.id] = list;
+                                                               return { ...prev, [item.key]: itemMap };
+                                                             });
+                                                           }}
+                                                           className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 border ${
+                                                             isChecked
+                                                               ? 'bg-purple-600 text-white border-purple-600 shadow-2xs font-extrabold'
+                                                               : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-purple-300 hover:bg-purple-50/50'
+                                                           }`}
+                                                         >
+                                                           <span className="text-sm font-black leading-none">{isChecked ? '☑' : '☐'}</span>
+                                                           <span>{opt.name}</span>
+                                                           {opt.price > 0 && <span className="opacity-80 text-[10px] font-normal">(+R$ ${opt.price.toFixed(2)})</span>}
+                                                         </button>
+                                                       );
+                                                     })}
+                                                   </div>
+                                                 </div>
+                                               );
+                                             })}
+
+                                             {/* Campo de Observação opcional */}
+                                             <div className="pt-1">
+                                               <input
+                                                 type="text"
+                                                 placeholder="📝 Observação para a cozinha (ex: sem cebola, vinagrete separado)..."
+                                                 value={inlineNotes[item.key] || ''}
+                                                 onClick={(e) => e.stopPropagation()}
+                                                 onChange={(e) => setInlineNotes(prev => ({ ...prev, [item.key]: e.target.value }))}
+                                                 className="w-full text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-1.5 text-zinc-800 dark:text-white outline-none focus:border-purple-500 font-medium"
+                                               />
+                                             </div>
+
+                                             {/* Botão de Adicionar direto */}
+                                             <div className="pt-1 flex justify-end">
+                                               <button
+                                                 type="button"
+                                                 onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   handleQuickAddWithComplements(selLoja.id, item);
+                                                 }}
+                                                 className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition"
+                                               >
+                                                 <span>🛒 Adicionar ao Carrinho com Opções Marcadas</span>
+                                               </button>
+                                             </div>
+                                           </div>
+                                         )}
+                                       </div>
+                                      )}
                                   </div>
                                 );
                               })}
