@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
-import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw, Menu, X, Home, Search, ClipboardList, User, ChevronRight, Store, MapPin, Zap, Navigation, Clock } from "lucide-react";
+import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw, Menu, X, Home, Search, ClipboardList, User, ChevronRight, Store, MapPin, Zap, Navigation, Clock, LayoutGrid, List, Star, SlidersHorizontal, ArrowUpDown, Sparkles } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
 import { MapModal, MapPoint } from "@/components/MapModal";
@@ -122,6 +122,8 @@ export default function StorefrontPage() {
   const [selectedCategoryChip, setSelectedCategoryChip] = useState<'all' | 'open' | 'free_frete' | 'nearest' | 'grosso' | 'branco' | 'lowest_price'>('all');
   const [selectedBairro, setSelectedBairro] = useState<string>('all');
   const [visibleStoreLimit, setVisibleStoreLimit] = useState<number>(12);
+  const [storeViewMode, setStoreViewMode] = useState<'compact' | 'grid'>('compact');
+  const [sortOrder, setSortOrder] = useState<'nearest' | 'lowest_price' | 'fastest'>('nearest');
 
   useEffect(() => {
     if (selectedStoreId && store.users?.[selectedStoreId]) {
@@ -359,8 +361,8 @@ export default function StorefrontPage() {
     const bOpen = b.status !== 'paused' ? 1 : 0;
     if (aOpen !== bOpen) return bOpen - aOpen;
 
-    // 2. Ordenação secundária por filtro ou distância
-    if (selectedCategoryChip === 'lowest_price') {
+    // 2. Ordenação secundária por filtro ou seletor
+    if (selectedCategoryChip === 'lowest_price' || sortOrder === 'lowest_price') {
       const priceA = a.priceB2C?.medio ?? a.priceB2C?.popular ?? 999;
       const priceB = b.priceB2C?.medio ?? b.priceB2C?.popular ?? 999;
       return priceA - priceB;
@@ -1498,7 +1500,219 @@ export default function StorefrontPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+                    {/* ========================================================= */}
+                    {/* PRATELEIRAS INTELIGENTES (ATIVADAS QUANDO HÁ MAIS DE 2 LOJAS) */}
+                    {/* ========================================================= */}
+                    {!searchQuery.trim() && selectedCategoryChip === 'all' && selectedBairro === 'all' && batedeirasAll.length > 2 && (
+                      <div className="space-y-6 mb-7 animate-in fade-in duration-300">
+                        {/* 1. PRATELEIRA: MAIS PRÓXIMAS (GPS) */}
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">⚡</span>
+                              <h4 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-zinc-900 dark:text-white">
+                                Mais Próximas de Você
+                              </h4>
+                              <span className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                GPS
+                              </span>
+                            </div>
+                            <span className="text-xs text-zinc-400 font-bold">Entrega Expressa</span>
+                          </div>
+
+                          <div className="flex gap-3 overflow-x-auto pb-2 pt-0.5 no-scrollbar scrollbar-none">
+                            {batedeirasAll
+                              .filter((l: any) => l.status !== 'paused')
+                              .sort((a: any, b: any) => {
+                                const distA = (a.lat && currentUser?.lat) ? haversineKm(a.lat, a.lng!, currentUser!.lat, currentUser!.lng!) : 999;
+                                const distB = (b.lat && currentUser?.lat) ? haversineKm(b.lat, b.lng!, currentUser!.lat, currentUser!.lng!) : 999;
+                                return distA - distB;
+                              })
+                              .slice(0, 6)
+                              .map((loja: any) => {
+                                const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
+                                const minTime = Math.max(15, Math.min(50, 15 + Math.round(dist * 3.5)));
+                                const maxTime = Math.max(25, Math.min(65, 25 + Math.round(dist * 3.5)));
+                                const pricePopular = loja.priceB2C?.popular || loja.priceB2C?.medio || 0;
+
+                                return (
+                                  <div
+                                    key={loja.id}
+                                    onClick={() => handleSelectStore(loja.id)}
+                                    className="w-40 sm:w-44 shrink-0 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-purple-500 rounded-2xl p-3 flex flex-col justify-between transition cursor-pointer active:scale-95 shadow-xs hover:shadow-md"
+                                  >
+                                    <div>
+                                      <div className="h-20 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-100 dark:border-purple-900/40 mb-2 overflow-hidden flex items-center justify-center relative">
+                                        {loja.photo ? (
+                                          <img src={loja.photo} alt={loja.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <Store className="w-6 h-6 text-purple-700 dark:text-purple-300" />
+                                        )}
+                                        <span className="absolute top-1 right-1 bg-zinc-900/85 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-2xs">
+                                          {dist.toFixed(1)} km
+                                        </span>
+                                      </div>
+                                      <h5 className="font-extrabold text-xs text-zinc-900 dark:text-white truncate" title={loja.name}>
+                                        {loja.name}
+                                      </h5>
+                                      <div className="flex items-center gap-1 text-[10px] text-zinc-500 mt-0.5">
+                                        <span className="text-amber-500 font-bold">★ 4.9</span>
+                                        <span>•</span>
+                                        <span className="truncate">{loja.bairro || 'Centro'}</span>
+                                      </div>
+                                    </div>
+                                    <div className="mt-2.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                                      <span className="text-[10px] text-zinc-400">{minTime}-{maxTime}m</span>
+                                      <span className="text-xs font-black text-zinc-900 dark:text-white">
+                                        {formatMoney(pricePopular)}<span className="text-[9px] font-normal text-zinc-400">/L</span>
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+
+                        {/* 2. PRATELEIRA: FRETE COM DESCONTO / SUBSIDIADO */}
+                        {batedeirasAll.some((l: any) => (l.freteSubsidyPct || 0) > 0) && (
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-base">🏷️</span>
+                                <h4 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-zinc-900 dark:text-white">
+                                  Frete com Desconto
+                                </h4>
+                                <span className="bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-orange-500/20">
+                                  Economia
+                                </span>
+                              </div>
+                              <span className="text-xs text-zinc-400 font-bold">Pago pela Loja</span>
+                            </div>
+
+                            <div className="flex gap-3 overflow-x-auto pb-2 pt-0.5 no-scrollbar scrollbar-none">
+                              {batedeirasAll
+                                .filter((l: any) => l.status !== 'paused' && (l.freteSubsidyPct || 0) > 0)
+                                .slice(0, 6)
+                                .map((loja: any) => {
+                                  const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
+                                  const pricePopular = loja.priceB2C?.popular || loja.priceB2C?.medio || 0;
+
+                                  return (
+                                    <div
+                                      key={loja.id}
+                                      onClick={() => handleSelectStore(loja.id)}
+                                      className="w-44 sm:w-48 shrink-0 bg-white dark:bg-zinc-900 border border-orange-200 dark:border-orange-900/40 hover:border-orange-500 rounded-2xl p-3 flex flex-col justify-between transition cursor-pointer active:scale-95 shadow-xs hover:shadow-md"
+                                    >
+                                      <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                          <span className="bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[9px] font-black px-2 py-0.5 rounded-md border border-orange-500/20">
+                                            {subsidy === 100 ? 'FRETE GRÁTIS' : `FRETE -${subsidy}%`}
+                                          </span>
+                                          <span className="text-[10px] text-zinc-400 font-bold">{dist.toFixed(1)} km</span>
+                                        </div>
+                                        <h5 className="font-extrabold text-xs text-zinc-900 dark:text-white truncate" title={loja.name}>
+                                          {loja.name}
+                                        </h5>
+                                        <p className="text-[10px] text-zinc-500">{loja.bairro || 'Centro'} • ★ 4.9</p>
+                                      </div>
+                                      <div className="mt-2.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                                        <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                                          {freteCliente === 0 ? 'Grátis' : formatMoney(freteCliente)}
+                                        </span>
+                                        <span className="text-xs font-black text-zinc-900 dark:text-white">
+                                          {formatMoney(pricePopular)}/L
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ========================================================= */}
+                    {/* FEED PRINCIPAL: CONTROLES DE VISUALIZAÇÃO E ORDENAÇÃO */}
+                    {/* ========================================================= */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 pb-3 border-b border-zinc-200 dark:border-zinc-800 mb-4">
+                      <div>
+                        <h4 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white flex items-center gap-1.5">
+                          <span>🏪</span> Todas as Batedeiras
+                        </h4>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">
+                          Exibindo {Math.min(batedeiras.length, batedeirasFiltered.length)} de {batedeirasFiltered.length} {batedeirasFiltered.length === 1 ? 'loja' : 'lojas'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-auto">
+                        {/* Seletor de Ordenação */}
+                        <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 px-2 py-1 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                          <ArrowUpDown size={12} className="text-zinc-500" />
+                          <select
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(e.target.value as any)}
+                            aria-label="Ordenar Lojas"
+                            className="bg-transparent text-zinc-800 dark:text-zinc-200 text-xs font-bold outline-none cursor-pointer"
+                          >
+                            <option value="nearest">Mais Próximas</option>
+                            <option value="lowest_price">Menor Preço /L</option>
+                            <option value="fastest">Mais Rápidas</option>
+                          </select>
+                        </div>
+
+                        {/* Alternar Modo de Visualização: Lista Compacta vs Grade */}
+                        <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 p-0.5 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                          <button
+                            type="button"
+                            onClick={() => setStoreViewMode('compact')}
+                            className={`p-1.5 rounded-lg text-xs font-bold transition ${
+                              storeViewMode === 'compact'
+                                ? 'bg-purple-600 text-white shadow-xs'
+                                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                            }`}
+                            title="Visualização em Lista Compacta (Rápida)"
+                          >
+                            <List size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStoreViewMode('grid')}
+                            className={`p-1.5 rounded-lg text-xs font-bold transition ${
+                              storeViewMode === 'grid'
+                                ? 'bg-purple-600 text-white shadow-xs'
+                                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                            }`}
+                            title="Visualização em Grade de Cards"
+                          >
+                            <LayoutGrid size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* MENSAGEM QUANDO HÁ POUCAS LOJAS CADASTRADAS */}
+                    {batedeirasAll.length <= 2 && (
+                      <div className="bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-transparent border border-purple-500/20 rounded-2xl p-3 sm:p-4 mb-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-xl">📍</span>
+                          <div>
+                            <p className="text-xs font-bold text-purple-900 dark:text-purple-300">
+                              Batedeira Oficial Cadastrada na sua Região
+                            </p>
+                            <p className="text-[11px] text-zinc-500">
+                              Estamos expandindo e credenciando novos pontos de açaí diariamente na rede.
+                            </p>
+                          </div>
+                        </div>
+                        <span className="bg-purple-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0">
+                          Oficial
+                        </span>
+                      </div>
+                    )}
+
+                    {/* CONTAINER DE CARDS: COMPACTO (LISTA) OU GRADE */}
+                    <div className={storeViewMode === 'compact' ? "space-y-2.5" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5"}>
                       {batedeirasFiltered.length === 0 ? (
                         <div className="col-span-full p-8 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 text-zinc-500 text-sm">
                           <p className="text-3xl mb-2">🔍</p>
@@ -1523,7 +1737,144 @@ export default function StorefrontPage() {
                         const isLojaPaused = loja.status === 'paused';
                         const minTime = Math.max(15, Math.min(50, 15 + Math.round(dist * 3.5)));
                         const maxTime = Math.max(25, Math.min(65, 25 + Math.round(dist * 3.5)));
+                        const pricePopular = loja.priceB2C?.popular || loja.priceB2C?.medio || 0;
 
+                        if (storeViewMode === 'compact') {
+                          return (
+                            <div
+                              key={loja.id}
+                              onClick={() => {
+                                if (!isLojaPaused) handleSelectStore(loja.id);
+                                else alert(`⛔ A batedeira "${loja.name}" está FECHADA no momento.`);
+                              }}
+                              className={`group bg-white dark:bg-zinc-900 border rounded-2xl p-3.5 transition-all duration-150 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs hover:shadow-md cursor-pointer relative overflow-hidden ${
+                                isSelectedLoja
+                                  ? 'border-purple-500 ring-2 ring-purple-500/30'
+                                  : isLojaPaused
+                                  ? 'border-zinc-200 dark:border-zinc-800 opacity-60 bg-zinc-50 dark:bg-zinc-950'
+                                  : 'border-zinc-200 dark:border-zinc-800 hover:border-purple-400 dark:hover:border-purple-600'
+                              }`}
+                            >
+                              {isSelectedLoja && (
+                                <div className="absolute top-0 right-0 bg-purple-600 text-white text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-bl-lg shadow-2xs">
+                                  No Carrinho ({cartTotalQuantity})
+                                </div>
+                              )}
+
+                              {/* Lado Esquerdo: Foto/Logo + Dados */}
+                              <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+                                <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-purple-50 dark:bg-purple-950/60 border border-purple-100 dark:border-purple-900/40 shrink-0 overflow-hidden flex items-center justify-center relative shadow-2xs group-hover:scale-105 transition">
+                                  {loja.photo ? (
+                                    <img src={loja.photo} alt={loja.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <Store className="w-6 h-6 text-purple-700 dark:text-purple-300" />
+                                  )}
+                                  <span className={`absolute bottom-0 inset-x-0 h-1.5 ${isLojaPaused ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white truncate" title={loja.name}>
+                                      {loja.name}
+                                    </h4>
+                                    {currentUser && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const latOrig = loja?.lat || 0;
+                                          const lngOrig = loja?.lng || 0;
+                                          const latDest = currentUser?.lat || (latOrig ? latOrig + 0.0045 : -1.455);
+                                          const lngDest = currentUser?.lng || (lngOrig ? lngOrig + 0.0045 : -48.490);
+                                          setMapModal({
+                                            open: true,
+                                            origem: { lat: latOrig, lng: lngOrig, name: loja.name || 'Retirada' },
+                                            destino: { lat: latDest, lng: lngDest, name: currentUser.name || 'Entrega' },
+                                            motorista: null
+                                          });
+                                        }}
+                                        className="text-[10px] font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 hover:bg-purple-100 cursor-pointer"
+                                        title="Ver no mapa"
+                                      >
+                                        <MapPin size={10} /> {dist.toFixed(1)} km
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-2 text-xs text-zinc-500 mt-1 flex-wrap">
+                                    <span className="text-amber-500 font-bold flex items-center gap-0.5">
+                                      <Star size={11} className="fill-amber-400 text-amber-400" /> 4.9
+                                    </span>
+                                    <span>•</span>
+                                    <span className="truncate">{loja.bairro || 'Centro'}</span>
+                                    <span>•</span>
+                                    <span>{minTime}-{maxTime} min</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                    {isLojaPaused ? (
+                                      <span className="text-[10px] font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md">
+                                        • Fechada
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">
+                                        • Aberta
+                                      </span>
+                                    )}
+                                    {subsidy > 0 && (
+                                      <span className="text-[10px] font-extrabold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900/40 px-2 py-0.5 rounded-md">
+                                        ⚡ Frete -{subsidy}%
+                                      </span>
+                                    )}
+                                    {loja.availabilityB2C?.grosso !== false && (
+                                      <span className="text-[9px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 rounded">
+                                        Grosso
+                                      </span>
+                                    )}
+                                    {loja.availabilityB2C?.branco !== false && (
+                                      <span className="text-[9px] font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 px-1.5 py-0.5 rounded">
+                                        Branco
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Lado Direito: Preço & Ação */}
+                              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 shrink-0 gap-2">
+                                <div className="text-left sm:text-right">
+                                  <span className="text-[10px] text-zinc-400 block font-medium">A partir de</span>
+                                  <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">
+                                    {formatMoney(pricePopular)}
+                                    <span className="text-xs font-normal text-zinc-400">/L</span>
+                                  </span>
+                                  <span className="text-[11px] text-zinc-500 block">
+                                    Entrega: {freteCliente === 0 ? <strong className="text-emerald-600 dark:text-emerald-400">Grátis</strong> : formatMoney(freteCliente)}
+                                  </span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isLojaPaused) alert(`⛔ A batedeira "${loja.name}" está FECHADA no momento.`);
+                                    else handleSelectStore(loja.id);
+                                  }}
+                                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 ${
+                                    isLojaPaused
+                                      ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                                      : 'bg-purple-600 hover:bg-purple-700 text-white'
+                                  }`}
+                                >
+                                  <ShoppingCart size={13} />
+                                  <span>{isLojaPaused ? 'Fechada' : 'Ver Cardápio'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Modo Grade Padrão
                         return (
                           <div 
                             key={loja.id} 
