@@ -982,7 +982,7 @@ export default function FornecedorDashboard() {
                         title="Marcar todos os produtos extras como disponíveis"
                       >
                         <CheckCircle2 className="w-4 h-4" />
-                        Todos Ativos
+                        Todos Disponíveis
                       </button>
                       <button
                         type="button"
@@ -1174,7 +1174,7 @@ export default function FornecedorDashboard() {
                         : 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-400 border border-zinc-200 dark:border-zinc-800'
                     }`}
                   >
-                    🟢 Ativos ({(currentUser?.products || []).filter((p: any) => p.isAvailable !== false).length})
+                    🟢 Disponíveis ({(currentUser?.products || []).filter((p: any) => p.isAvailable !== false).length})
                   </button>
                   <button
                     type="button"
@@ -1233,7 +1233,10 @@ export default function FornecedorDashboard() {
                             {p.imageUrl ? (
                               <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
                             ) : (
-                              <Package className="w-6 h-6 text-zinc-400" />
+                              <div className="w-full h-full flex flex-col items-center justify-center text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                                <span>📸</span>
+                                <span className="text-[8px]">Foto</span>
+                              </div>
                             )}
                             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold">
                               <Camera size={14} />
@@ -1319,7 +1322,7 @@ export default function FornecedorDashboard() {
                                 : 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-700'
                             }`}
                           >
-                            {isAvail ? '🟢 Ativo' : '🔴 Esgotado'}
+                            {isAvail ? '🟢 Disponível' : '🔴 Esgotado'}
                           </button>
 
                           <div className="flex items-center gap-1.5 shrink-0">

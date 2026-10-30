@@ -1586,7 +1586,7 @@ export default function BatedeiraDashboard() {
                         title="Marcar todos os produtos extras como disponíveis"
                       >
                         <CheckCircle2 className="w-4 h-4" />
-                        Todos Ativos
+                        Todos Disponíveis
                       </button>
                       <button
                         type="button"
@@ -1793,7 +1793,7 @@ export default function BatedeiraDashboard() {
                         : 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-400 border border-zinc-200 dark:border-zinc-800'
                     }`}
                   >
-                    🟢 Ativos ({(currentUser?.products || []).filter((p: any) => p.isAvailable !== false).length})
+                    🟢 Disponíveis ({(currentUser?.products || []).filter((p: any) => p.isAvailable !== false).length})
                   </button>
                   <button
                     type="button"
@@ -1846,13 +1846,16 @@ export default function BatedeiraDashboard() {
                                 if (currentUser) store.updateProduct(currentUser.id, p.id, { imageUrl: url });
                               }
                             })}
-                            className="w-14 h-14 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 cursor-pointer flex items-center justify-center hover:opacity-80 transition relative group"
+                            className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-purple-200 dark:bg-purple-900 overflow-hidden shrink-0 border border-purple-300 dark:border-purple-700 cursor-pointer flex items-center justify-center hover:opacity-80 transition relative group"
                             title="Clique para alterar foto"
                           >
                             {p.imageUrl ? (
                               <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
                             ) : (
-                              <span className="text-2xl">📦</span>
+                              <div className="w-full h-full flex flex-col items-center justify-center text-purple-700 dark:text-purple-300 text-xs font-bold">
+                                <span>📸</span>
+                                <span className="text-[8px]">Foto</span>
+                              </div>
                             )}
                             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold">
                               ✏️
@@ -1945,7 +1948,7 @@ export default function BatedeiraDashboard() {
                                 : 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-700'
                             }`}
                           >
-                            {isAvail ? '🟢 Ativo' : '🔴 Esgotado'}
+                            {isAvail ? '🟢 Disponível' : '🔴 Esgotado'}
                           </button>
 
                           <div className="flex items-center gap-1.5 shrink-0">
