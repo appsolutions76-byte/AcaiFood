@@ -1532,7 +1532,8 @@ export default function StorefrontPage() {
                                              {(item as any).complements.map((grp: any) => {
                                                const itemSelections = inlineComplements[item.key] || {};
                                                const currentSelected = itemSelections[grp.id] || [];
-                                               const isSingleChoice = grp.required || grp.maxSelections === 1;
+                                                const limit = grp.maxSelections !== undefined ? grp.maxSelections : (grp.required ? 1 : 2);
+                                                const isSingleChoice = limit === 1;
 
                                                return (
                                                  <div key={grp.id} className="space-y-1.5 bg-white dark:bg-zinc-950 p-2.5 rounded-lg border border-zinc-200/90 dark:border-zinc-800/80">
@@ -1540,11 +1541,11 @@ export default function StorefrontPage() {
                                                      <span>{grp.title}</span>
                                                      {grp.required ? (
                                                        <span className="text-[9px] text-red-600 font-black bg-red-50 dark:bg-red-950/50 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900/40">
-                                                         * Obrigatório (Escolha 1)
+                                                          {limit === 1 ? '* Obrigatório (Escolha 1)' : `* Obrigatório (Até ${limit})`}
                                                        </span>
                                                      ) : (
                                                        <span className="text-[9px] text-zinc-500 font-medium">
-                                                         {grp.maxSelections ? `Escolha até ${grp.maxSelections}` : 'Opcional'} ({currentSelected.length}/{grp.maxSelections || '∞'})
+                                                          {limit === 0 ? 'Opcional (Livre)' : `Escolha até ${limit}`} ({currentSelected.length}/{limit === 0 ? '∞' : limit})
                                                        </span>
                                                      )}
                                                    </div>
@@ -1567,7 +1568,7 @@ export default function StorefrontPage() {
                                                                  if (isChecked) {
                                                                    list = list.filter(n => n !== opt.name);
                                                                  } else {
-                                                                   const max = grp.maxSelections || 99;
+                                                                  const max = limit > 0 ? limit : 99;
                                                                    if (list.length < max) {
                                                                      list.push(opt.name);
                                                                    } else {

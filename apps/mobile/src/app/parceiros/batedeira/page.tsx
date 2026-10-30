@@ -3089,10 +3089,63 @@ export default function BatedeiraDashboard() {
                                   return { ...prev, complements: updated };
                                 });
                               }}
-                              className="text-red-500 hover:text-red-700 text-xs p-1"
+                              className="text-red-500 hover:text-red-700 text-xs p-1 font-bold"
                               title="Excluir este grupo"
                             >
                               ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Seletor de Limite de Escolhas pela Loja: 1, 2 ou 3 opções */}
+                        <div className="flex items-center justify-between gap-2 px-2 py-1.5 bg-zinc-100/90 dark:bg-zinc-900 rounded-lg text-xs border border-zinc-200 dark:border-zinc-800">
+                          <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300">
+                            Cliente pode escolher:
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3].map((num) => {
+                              const active = (group.maxSelections ?? (group.required ? 1 : 2)) === num;
+                              return (
+                                <button
+                                  key={num}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingProduct(prev => {
+                                      if (!prev) return null;
+                                      const updated = [...(prev.complements || [])];
+                                      updated[gIdx] = { ...updated[gIdx], maxSelections: num };
+                                      return { ...prev, complements: updated };
+                                    });
+                                  }}
+                                  className={`px-2.5 py-0.5 rounded-md text-[11px] font-black transition cursor-pointer active:scale-95 ${
+                                    active
+                                      ? 'bg-purple-600 text-white shadow-xs'
+                                      : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-200'
+                                  }`}
+                                  title={`Cliente pode marcar até ${num} opção(ões)`}
+                                >
+                                  {num} {num === 1 ? 'opção' : 'opções'}
+                                </button>
+                              );
+                            })}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingProduct(prev => {
+                                  if (!prev) return null;
+                                  const updated = [...(prev.complements || [])];
+                                  updated[gIdx] = { ...updated[gIdx], maxSelections: 0 };
+                                  return { ...prev, complements: updated };
+                                });
+                              }}
+                              className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer active:scale-95 ${
+                                group.maxSelections === 0
+                                  ? 'bg-purple-600 text-white shadow-xs'
+                                  : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-200'
+                              }`}
+                              title="Cliente pode marcar quantas opções quiser"
+                            >
+                              Todas
                             </button>
                           </div>
                         </div>
