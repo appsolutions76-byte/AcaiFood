@@ -62,36 +62,7 @@ export function mapDbProducts(rawProducts: any[]): Product[] {
       try { comps = JSON.parse(comps); } catch (_) { comps = undefined; }
     }
 
-    // Fallback inteligente para pratos que são carnes/churrascos/refeições
-    if ((!comps || comps.length === 0) && /churrasco|espetinho|maminha|picanha|alcatra|frango|carne|peixe|almoco|almoço|bacon/i.test(p.name || '')) {
-      comps = [
-        {
-          id: 'ponto_carne_' + (p.id || 'meat'),
-          title: 'Ponto da Carne',
-          required: true,
-          maxSelections: 1,
-          options: [
-            { id: 'p1', name: 'Ao ponto', price: 0 },
-            { id: 'p2', name: 'Bem assado', price: 0 },
-            { id: 'p3', name: 'Mal passado', price: 0 }
-          ]
-        },
-        {
-          id: 'acomp_' + (p.id || 'acomp'),
-          title: 'Acompanhamentos (Escolha até 2)',
-          required: false,
-          maxSelections: 2,
-          options: [
-            { id: 'a1', name: 'Arroz branco', price: 0 },
-            { id: 'a2', name: 'Baião de dois', price: 0 },
-            { id: 'a3', name: 'Salada de maionese', price: 0 },
-            { id: 'a4', name: 'Vinagrete da casa', price: 0 },
-            { id: 'a5', name: 'Farofa crocante', price: 0 }
-          ]
-        }
-      ];
-    }
-
+    // Se o dono da loja excluiu todos os complementos (array vazio ou indefinido), não exibe nenhum complemento!
     return {
       id: p.id,
       name: p.name,
@@ -99,7 +70,7 @@ export function mapDbProducts(rawProducts: any[]): Product[] {
       description: cleanDesc,
       imageUrl: p.image_url || undefined,
       isAvailable: p.is_active !== false,
-      complements: comps && comps.length > 0 ? comps : undefined
+      complements: Array.isArray(comps) && comps.length > 0 ? comps : undefined
     };
   });
 }
@@ -1686,7 +1657,14 @@ export const useAppStore = create<AppState>()(
                 storefront_id: sfId,
                 name: product.name,
                 price: product.price,
-                description: product.description || null,
+                description: (() => {
+                let baseDesc = product.description || '';
+                if (baseDesc.includes('<!--COMPS:')) baseDesc = baseDesc.split('<!--COMPS:')[0].trim();
+                const compsTag = product.complements && product.complements.length > 0
+                  ? ' <!--COMPS:' + JSON.stringify(product.complements) + '-->'
+                  : ' <!--COMPS:[]-->';
+                return (baseDesc + compsTag).trim() || null;
+             })(),
                 image_url: product.imageUrl || null,
                 is_active: product.isAvailable !== false
              });
@@ -1736,7 +1714,14 @@ export const useAppStore = create<AppState>()(
           const updatePayload: any = {};
           if (updatedData.name !== undefined) updatePayload.name = updatedData.name;
           if (updatedData.price !== undefined) updatePayload.price = updatedData.price;
-          if (updatedData.description !== undefined) updatePayload.description = updatedData.description || null;
+          if (updatedData.description !== undefined || updatedData.complements !== undefined) {
+            let baseDesc = updatedData.description !== undefined ? (updatedData.description || '') : '';
+            if (baseDesc.includes('<!--COMPS:')) baseDesc = baseDesc.split('<!--COMPS:')[0].trim();
+            const compsTag = updatedData.complements && updatedData.complements.length > 0
+              ? ' <!--COMPS:' + JSON.stringify(updatedData.complements) + '-->'
+              : ' <!--COMPS:[]-->';
+            updatePayload.description = (baseDesc + compsTag).trim() || null;
+          }
           if (updatedData.imageUrl !== undefined) updatePayload.image_url = updatedData.imageUrl || null;
           if (updatedData.isAvailable !== undefined) updatePayload.is_active = updatedData.isAvailable;
 

@@ -410,6 +410,7 @@ export default function BatedeiraDashboard() {
       isAvailable: editingProduct.isAvailable !== false,
       complements: editingProduct.complements || []
     });
+    alert("✅ Produto e opções salvos com sucesso!");
     setEditingProduct(null);
   };
 

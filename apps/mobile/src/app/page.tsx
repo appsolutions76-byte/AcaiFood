@@ -1407,48 +1407,17 @@ export default function StorefrontPage() {
                             isTeal: true,
                             isCongelado: true
                           },
-                          ...(selLoja.products || []).map((p: any) => {
-                            let comps = p.complements;
-                            if ((!comps || comps.length === 0) && /churrasco|espetinho|maminha|picanha|alcatra|frango|carne|peixe|almoco|almoço|bacon/i.test(p.name || '')) {
-                              comps = [
-                                {
-                                  id: 'ponto_carne_' + (p.id || 'meat'),
-                                  title: 'Ponto da Carne',
-                                  required: true,
-                                  maxSelections: 1,
-                                  options: [
-                                    { id: 'p1', name: 'Ao ponto', price: 0 },
-                                    { id: 'p2', name: 'Bem assado', price: 0 },
-                                    { id: 'p3', name: 'Mal passado', price: 0 }
-                                  ]
-                                },
-                                {
-                                  id: 'acomp_' + (p.id || 'acomp'),
-                                  title: 'Acompanhamentos (Escolha até 2)',
-                                  required: false,
-                                  maxSelections: 2,
-                                  options: [
-                                    { id: 'a1', name: 'Arroz branco', price: 0 },
-                                    { id: 'a2', name: 'Baião de dois', price: 0 },
-                                    { id: 'a3', name: 'Salada de maionese', price: 0 },
-                                    { id: 'a4', name: 'Vinagrete da casa', price: 0 },
-                                    { id: 'a5', name: 'Farofa crocante', price: 0 }
-                                  ]
-                                }
-                              ];
-                            }
-                            return {
-                              key: p.id,
-                              name: p.name,
-                              desc: p.description || (p as any).desc || 'Produto de alta qualidade preparado com ingredientes selecionados pela loja.',
-                              price: p.price,
-                              isAvail: p.isAvailable !== false,
-                              photo: p.imageUrl,
-                              emoji: '📦',
-                              isTeal: false,
-                              complements: comps || []
-                            };
-                          })
+                          ...(selLoja.products || []).map((p: any) => ({
+                            key: p.id,
+                            name: p.name,
+                            desc: p.description || (p as any).desc || 'Produto de alta qualidade preparado com ingredientes selecionados pela loja.',
+                            price: p.price,
+                            isAvail: p.isAvailable !== false,
+                            photo: p.imageUrl,
+                            emoji: '📦',
+                            isTeal: false,
+                            complements: Array.isArray(p.complements) ? p.complements : []
+                          }))
                         ].sort((a: any, b: any) => (b.isAvail ? 1 : 0) - (a.isAvail ? 1 : 0));
 
                         return (
