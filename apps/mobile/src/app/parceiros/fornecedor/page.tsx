@@ -106,6 +106,8 @@ export default function FornecedorDashboard() {
   }, [store.orders, currentUser, printerConfig, mounted, store.users]);
 
   const [subsidyInput, setSubsidyInput] = useState(() => currentUser?.freteSubsidyPct?.toString() || "0");
+  const [subsidyFeedback, setSubsidyFeedback] = useState<string | null>(null);
+  const [showAddB2BForm, setShowAddB2BForm] = useState(false);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [b2bPrice, setB2bPrice] = useState(() => currentUser?.priceB2B ?? 140);
   
@@ -362,9 +364,12 @@ export default function FornecedorDashboard() {
   const fornHistoryOrders = meusPedidosAll.filter((o: any) => isCompleted(o.status) || o.status === 'cancelado' || o.status === 'arquivado');
   const meusPedidos = [...fornActiveOrders, ...fornHistoryOrders];
 
-  const handleSaveSubsidy = () => {
-    store.setFreteSubsidy(currentUser.id, parseFloat(subsidyInput) || 0);
-    alert('Subsídio salvo com sucesso!');
+  const handleSaveSubsidy = (val?: number) => {
+    const valueToSave = val !== undefined ? val : (parseFloat(subsidyInput) || 0);
+    store.setFreteSubsidy(currentUser.id, valueToSave);
+    setSubsidyInput(valueToSave.toString());
+    setSubsidyFeedback(`Subsídio salvo: ${valueToSave}%`);
+    setTimeout(() => setSubsidyFeedback(null), 3000);
   };
 
 
@@ -692,62 +697,103 @@ export default function FornecedorDashboard() {
       />
 
         {activeTab === 'geral' && (
-          <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
-            {/* Card 1: Status de Funcionamento & Lata Açaí */}
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center gap-3">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                <div>
-                  <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase flex items-center gap-2">
-                    <Factory size={16} className="text-emerald-600 dark:text-emerald-400" /> Status da Usina / Fornecedor
-                  </h3>
-                  <p className="text-[10px] text-zinc-500">Controle se seu estabelecimento está operando e recebendo pedidos das lojas.</p>
+          <div className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
+            {/* 1. BARRA SUPERIOR INTEGRADA: STATUS OPERACIONAL & FRETE DO CAMINHÃO */}
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              {/* Status Usina Operando / Pausada */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 flex items-center justify-center shrink-0">
+                  <Factory size={18} className="text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <div className="flex items-center gap-2 flex-wrap mt-2 sm:mt-0">
-                  <button 
-                    onClick={handleToggleStatus} 
-                    className={`px-4 py-2.5 rounded-xl text-xs font-black transition shadow-sm border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                      isPaused 
-                        ? 'bg-red-500 hover:bg-red-600 text-white border-red-400 animate-pulse' 
-                        : 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-400'
-                    }`}
-                  >
-                    {isPaused ? '🔴 Pausado (Clique para Abrir)' : '🟢 Operando (Recebendo Pedidos)'}
-                  </button>
-                  <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700">
-                    <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">Lata:</span>
-                    <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">{formatMoney(b2bPrice)}</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white">Status da Usina</h3>
+                    <button
+                      onClick={handleToggleStatus}
+                      className={`px-3 py-1 rounded-full text-xs font-extrabold transition border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                        isPaused
+                          ? 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30'
+                          : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${isPaused ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                      <span>{isPaused ? 'Pausada (Reabrir)' : 'Operando (Recebendo)'}</span>
+                    </button>
                   </div>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    {isPaused ? 'Usina pausada para novos pedidos.' : 'Recebendo pedidos B2B normalmente das lojas.'}
+                  </p>
                 </div>
               </div>
 
-              {/* Participação no Frete */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-1">
-                <div>
-                  <h3 className="font-bold text-zinc-700 dark:text-zinc-200 text-sm uppercase flex items-center gap-1.5">
-                    <Truck size={16} className="text-emerald-600 dark:text-emerald-400" /> Participação no Frete do Caminhão (%)
-                  </h3>
-                  <p className="text-[10px] text-zinc-500">Defina a porcentagem do frete que você quer subsidiar para atrair batedeiras.</p>
+              {/* Participação no Frete do Caminhão */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 w-full md:w-auto">
+                <div className="flex items-center gap-1.5">
+                  <Truck size={14} className="text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Frete Caminhão:</span>
                 </div>
-                <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                  <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Você Paga:</label>
-                  <input type="number" min="0" max="100" value={subsidyInput} onChange={e => setSubsidyInput(e.target.value)} className="w-16 border border-zinc-300 dark:border-zinc-700 bg-transparent rounded-lg p-1.5 text-center font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
-                  <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">%</span>
-                  <button onClick={handleSaveSubsidy} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ml-1 cursor-pointer">Salvar</button>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[0, 15, 25, 50, 100].map(pct => {
+                    const isSelected = Math.round(Number(subsidyInput) || 0) === pct;
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => {
+                          setSubsidyInput(pct.toString());
+                          handleSaveSubsidy(pct);
+                        }}
+                        className={`px-2 py-1 rounded-lg text-xs font-black transition cursor-pointer active:scale-95 ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-emerald-50 dark:hover:bg-zinc-700'
+                        }`}
+                      >
+                        {pct}%
+                      </button>
+                    );
+                  })}
+                  <div className="flex items-center gap-1 ml-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={subsidyInput}
+                      onChange={e => setSubsidyInput(e.target.value)}
+                      className="w-12 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg py-1 text-center font-black text-xs text-zinc-900 dark:text-white outline-none focus:border-emerald-500"
+                      title="Porcentagem livre de frete"
+                    />
+                    <span className="text-[11px] font-bold text-zinc-400">%</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveSubsidy()}
+                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                    >
+                      Salvar
+                    </button>
+                  </div>
                 </div>
+
+                {subsidyFeedback && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                    <Check size={12} /> {subsidyFeedback}
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Card 2: PRODUTO PRINCIPAL B2B: LATA / PANEIRO DE AÇAÍ (FRUTO IN NATURA) */}
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+            {/* 2. PRODUTO PRINCIPAL B2B: LATA / PANEIRO DE AÇAÍ */}
+            <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+              <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-zinc-800">
                 <div>
-                  <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
-                    <Package size={16} className="text-emerald-600 dark:text-emerald-400" /> Produto Principal (Frutos In Natura)
+                  <h3 className="font-extrabold text-base sm:text-lg text-zinc-900 dark:text-white tracking-tight">
+                    Matéria-Prima B2B (Frutos In Natura)
                   </h3>
-                  <p className="text-xs text-zinc-500">Matéria-prima e latas de açaí vendidas diretamente para as batedeiras.</p>
+                  <p className="text-xs text-zinc-500">Controle preço por lata, estoque e foto do produto base para batedeiras.</p>
                 </div>
-                <span className="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-2.5 py-1 rounded-full">
-                  Base B2B
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/40">
+                  Base Oficial B2B
                 </span>
               </div>
 
@@ -755,10 +801,10 @@ export default function FornecedorDashboard() {
                 const isLataAvail = currentUser?.availabilityB2B?.lata !== false;
                 const lataPhoto = currentUser?.imagesB2B?.lata || 'https://images.unsplash.com/photo-1628557044797-f21a177c37ec?auto=format&fit=crop&w=400&q=80';
                 return (
-                  <div className={`p-4 rounded-2xl border transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
+                  <div className={`p-4 rounded-xl border transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
                     isLataAvail 
-                      ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60' 
-                      : 'bg-zinc-100/80 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 opacity-70'
+                      ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60' 
+                      : 'bg-zinc-100/70 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800 opacity-70'
                   }`}>
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div 
@@ -771,12 +817,12 @@ export default function FornecedorDashboard() {
                             if (currentUser) store.updateB2BImage(currentUser.id, url);
                           }
                         })}
-                        className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 overflow-hidden shrink-0 border border-emerald-300 dark:border-emerald-700 cursor-pointer flex items-center justify-center relative group shadow-sm"
+                        className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 overflow-hidden shrink-0 border border-emerald-300 dark:border-emerald-700 cursor-pointer flex items-center justify-center relative group shadow-xs"
                         title="Trocar Foto da Lata"
                       >
-                        <img src={lataPhoto} alt="Lata Açaí" className="w-full h-full object-cover" />
+                        <img src={lataPhoto} alt="Lata Açaí" className="w-full h-full object-cover group-hover:scale-105 transition" />
                         <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition">
-                          <Camera size={18} />
+                          <Camera size={16} />
                         </span>
                       </div>
 
@@ -786,7 +832,7 @@ export default function FornecedorDashboard() {
                             Paneiro / Lata de Açaí (In Natura)
                           </h4>
                           {!isLataAvail && (
-                            <span className="text-[9px] bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">
+                            <span className="text-[10px] bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">
                               Esgotado
                             </span>
                           )}
@@ -804,7 +850,7 @@ export default function FornecedorDashboard() {
                         onClick={() => {
                           if (currentUser) store.toggleB2BAvailability(currentUser.id);
                         }}
-                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition shadow-sm cursor-pointer active:scale-95 ${
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition shadow-xs cursor-pointer active:scale-95 ${
                           isLataAvail
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:border-emerald-700 dark:text-emerald-200'
                             : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200 dark:bg-red-950 dark:border-red-800 dark:text-red-300'
@@ -830,7 +876,7 @@ export default function FornecedorDashboard() {
                       </button>
                       <button 
                         onClick={() => setPriceModalOpen(true)} 
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1 cursor-pointer active:scale-95"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
                       >
                         <Edit3 size={13} />
                         <span>Preço</span>
@@ -860,31 +906,49 @@ export default function FornecedorDashboard() {
                   </p>
                 </div>
 
-                {/* Ações em Lote */}
-                {(currentUser?.products?.length || 0) > 0 && (
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <button
-                      type="button"
-                      onClick={() => handleBulkToggleExtras(true)}
-                      className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1.5 transition shadow-xs active:scale-95 cursor-pointer"
-                      title="Marcar todos os produtos extras como disponíveis"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      Todos Ativos
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleBulkToggleExtras(false)}
-                      className="px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 transition shadow-xs active:scale-95 cursor-pointer"
-                      title="Pausar todos os extras"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Todos Esgotados
-                    </button>
-                  </div>
-                )}
+                {/* Ações e Botão Novo Item B2B */}
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                  {(currentUser?.products?.length || 0) > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkToggleExtras(true)}
+                        className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1.5 transition shadow-xs active:scale-95 cursor-pointer"
+                        title="Marcar todos os produtos extras como disponíveis"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Todos Ativos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkToggleExtras(false)}
+                        className="px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 transition shadow-xs active:scale-95 cursor-pointer"
+                        title="Pausar todos os extras"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Todos Esgotados
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAddB2BForm(prev => !prev)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 ${
+                      showAddB2BForm
+                        ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    }`}
+                  >
+                    {showAddB2BForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    <span>{showAddB2BForm ? 'Fechar Cadastro' : '+ Novo Item B2B'}</span>
+                  </button>
+                </div>
               </div>
 
+              {/* Bloco Retrátil: Presets B2B + Formulário de Cadastro */}
+              {showAddB2BForm && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
               {/* Sugestões Rápidas de 1 Clique (Presets B2B) */}
               <div className="bg-gradient-to-br from-emerald-50/80 via-teal-50/40 to-zinc-50 dark:from-emerald-950/40 dark:via-zinc-900 dark:to-zinc-950 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/50">
                 <div className="flex items-center gap-1.5 mb-2.5">
@@ -999,6 +1063,8 @@ export default function FornecedorDashboard() {
                   </button>
                 </div>
               </form>
+                </div>
+              )}
 
               {/* Barra de Filtros e Busca */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">

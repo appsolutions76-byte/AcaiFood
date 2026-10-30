@@ -166,6 +166,7 @@ export default function BatedeiraDashboard() {
   const [extraSearchQuery, setExtraSearchQuery] = useState('');
   const [extraFilterStatus, setExtraFilterStatus] = useState<'all' | 'available' | 'unavailable'>('all');
   const [extraPresetCategory, setExtraPresetCategory] = useState<'acai' | 'carnes' | 'bebidas' | 'outros'>('acai');
+  const [showAddExtraForm, setShowAddExtraForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<{
     id: string;
     name: string;
@@ -1268,212 +1269,110 @@ export default function BatedeiraDashboard() {
         )}
 
         {activeTab === 'geral' && (
-          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-            {/* WIDGET HERO: GESTÃO EXPRESSA DE PREÇOS E PARTICIPAÇÃO NO FRETE */}
-            <div className="bg-gradient-to-br from-purple-900 via-indigo-950 to-zinc-950 text-white p-4 sm:p-6 rounded-3xl shadow-xl border-2 border-purple-500/30 flex flex-col gap-5 relative overflow-hidden">
-              {/* Glow decorativo de fundo */}
-              <div className="absolute -top-12 -right-12 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-              {/* Cabeçalho do Widget */}
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-white/10 pb-3">
+          <div className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
+            {/* 1. BARRA SUPERIOR INTEGRADA: STATUS OPERACIONAL & PARTICIPAÇÃO NO FRETE */}
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              {/* Status Aberta / Fechada */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40 flex items-center justify-center shrink-0">
+                  <Store size={18} className="text-purple-600 dark:text-purple-400" />
+                </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xl sm:text-2xl">⚡</span>
-                    <h3 className="font-black text-sm sm:text-base tracking-tight uppercase flex items-center gap-2 text-white">
-                      Gestão Expressa: Preços & Frete
-                    </h3>
-                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
-                      Ao Vivo
-                    </span>
+                    <h3 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white">Status da Loja</h3>
+                    <button
+                      onClick={handleToggleStatus}
+                      className={`px-3 py-1 rounded-full text-xs font-extrabold transition border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                        isPaused
+                          ? 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30'
+                          : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${isPaused ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                      <span>{isPaused ? 'Fechada (Abrir)' : 'Aberta (Recebendo)'}</span>
+                    </button>
                   </div>
-                  <p className="text-xs text-purple-200/80 mt-0.5">
-                    Defina quanto sua loja paga da entrega e altere preços de venda instantaneamente no app.
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    {isPaused ? 'Sua loja está oculta para novos pedidos.' : 'Recebendo pedidos normalmente no app.'}
                   </p>
+                </div>
+              </div>
+
+              {/* Participação no Frete Compacta e Direta */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 pt-3 md:pt-0 border-t md:border-t-0 border-zinc-100 dark:border-zinc-800 w-full md:w-auto">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Truck size={14} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Frete Subsidiado:</span>
+                  {Number(subsidyInput) > 0 ? (
+                    <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-300/40">
+                      {subsidyInput}%
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
+                      0%
+                    </span>
+                  )}
+                </div>
+
+                {/* Atalhos Rápidos */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  {[0, 15, 25, 50, 100].map(pct => {
+                    const isActive = Number(subsidyInput) === pct;
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => handleQuickSetSubsidy(pct)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                          isActive
+                            ? 'bg-purple-600 text-white shadow-xs'
+                            : 'bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700'
+                        }`}
+                      >
+                        {pct}%
+                      </button>
+                    );
+                  })}
+                  <div className="flex items-center gap-1 ml-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={subsidyInput}
+                      onChange={e => { subsidyDirtyRef.current = true; setSubsidyInput(e.target.value); }}
+                      className="w-12 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg py-1 text-center font-black text-xs text-zinc-900 dark:text-white outline-none focus:border-purple-500"
+                      title="Porcentagem livre de frete"
+                    />
+                    <span className="text-[11px] font-bold text-zinc-400">%</span>
+                    <button
+                      type="button"
+                      onClick={handleSaveSubsidy}
+                      className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                    >
+                      Salvar
+                    </button>
+                  </div>
                 </div>
 
                 {subsidyFeedback && (
-                  <div className="self-start sm:self-auto bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold px-3 py-1.5 rounded-xl animate-in fade-in slide-in-from-top-2 flex items-center gap-1.5 shadow-sm">
-                    <Check size={14} />
-                    <span>{subsidyFeedback}</span>
-                  </div>
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                    <Check size={12} /> {subsidyFeedback}
+                  </span>
                 )}
-              </div>
-
-              {/* Grid de 2 Colunas: Frete e Preços */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                
-                {/* 1. PARTICIPAÇÃO NO FRETE */}
-                <div className="bg-white/5 dark:bg-black/30 backdrop-blur-md p-4 sm:p-4.5 rounded-2xl border border-white/10 flex flex-col justify-between gap-3.5">
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-300">
-                          <Truck size={16} />
-                        </div>
-                        <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wide text-zinc-100">
-                          Participação no Frete
-                        </h4>
-                      </div>
-                      
-                      {/* Badge do Status Atual */}
-                      {Number(subsidyInput) > 0 ? (
-                        <span className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                          🟢 Pagando {subsidyInput}%
-                        </span>
-                      ) : (
-                        <span className="bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                          🔴 0% (Cliente paga tudo)
-                        </span>
-                      )}
-                    </div>
-                    
-                    <p className="text-[11px] text-zinc-300 mt-1.5 leading-relaxed">
-                      {Number(subsidyInput) > 0 
-                        ? `Sua loja está pagando ${subsidyInput}% da entrega do cliente. Lojas com entrega subsidiada vendem até 3x mais!`
-                        : "Ao subsidiar parte ou 100% da entrega, seus produtos ganham muito mais conversão e clientes fiéis."}
-                    </p>
-                  </div>
-
-                  {/* Atalhos Rápidos de 1 Clique */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
-                      <span>Atalhos Rápidos:</span>
-                      <span className="text-[10px] text-purple-300">1 toque para aplicar</span>
-                    </div>
-                    <div className="grid grid-cols-5 gap-1.5">
-                      {[
-                        { pct: 0, label: '0%' },
-                        { pct: 15, label: '15%' },
-                        { pct: 25, label: '25%' },
-                        { pct: 50, label: '50%' },
-                        { pct: 100, label: '100%' }
-                      ].map(item => {
-                        const isActive = Number(subsidyInput) === item.pct;
-                        return (
-                          <button
-                            key={item.pct}
-                            type="button"
-                            onClick={() => handleQuickSetSubsidy(item.pct)}
-                            className={`py-2 px-1 rounded-xl text-xs font-black transition-all cursor-pointer text-center shadow-sm ${
-                              isActive
-                                ? 'bg-purple-500 text-white ring-2 ring-purple-300 shadow-md scale-102'
-                                : 'bg-white/10 hover:bg-white/20 text-zinc-200 border border-white/10'
-                            }`}
-                          >
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Input Manual Livre */}
-                  <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
-                    <span className="text-xs text-zinc-300 font-medium">Porcentagem Livre (%):</span>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={subsidyInput}
-                        onChange={e => { subsidyDirtyRef.current = true; setSubsidyInput(e.target.value); }}
-                        className="w-16 bg-black/40 border border-purple-400/40 rounded-xl py-1.5 text-center font-black text-sm text-white outline-none focus:ring-2 focus:ring-purple-400"
-                      />
-                      <span className="text-xs font-bold text-zinc-300">%</span>
-                      <button
-                        type="button"
-                        onClick={handleSaveSubsidy}
-                        className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-xl text-xs font-extrabold transition shadow-md active:scale-95 cursor-pointer ml-1"
-                      >
-                        Salvar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. PREÇOS BASE DO AÇAÍ - RESUMO */}
-                <div className="bg-white/5 dark:bg-black/30 backdrop-blur-md p-4 sm:p-4.5 rounded-2xl border border-white/10 flex flex-col justify-between gap-3.5">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="p-1.5 rounded-lg bg-pink-500/20 text-pink-300">
-                        <Tag size={16} />
-                      </div>
-                      <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wide text-zinc-100">
-                        Preços Atuais de Venda (1 Litro)
-                      </h4>
-                    </div>
-                    
-                    <p className="text-[11px] text-zinc-300 mt-1.5 leading-relaxed">
-                      Visão rápida dos valores ativos no cardápio online do cliente:
-                    </p>
-                  </div>
-
-                  {/* Grid dos 4 Preços */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      { tipo: 'popular' as const, label: 'Popular', price: prices.popular || 20 },
-                      { tipo: 'medio' as const, label: 'Médio', price: prices.medio || 26 },
-                      { tipo: 'grosso' as const, label: 'Grosso', price: prices.grosso || 35 },
-                      { tipo: 'branco' as const, label: 'Branco', price: prices.branco ?? 38 }
-                    ].map(item => (
-                      <div
-                        key={item.tipo}
-                        className="p-2.5 rounded-xl bg-white/10 border border-white/10 flex flex-col justify-between"
-                      >
-                        <div className="text-[11px] text-zinc-300 font-bold">
-                          {item.label}
-                        </div>
-                        <div className="text-sm sm:text-base font-black text-white mt-1 tracking-tight">
-                          R$ {item.price.toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-zinc-300">
-                    <span className="text-[11px] text-purple-200">
-                      • Altere valores e estoque diretamente em cada produto abaixo
-                    </span>
-                  </div>
-                </div>
-
               </div>
             </div>
 
-            {/* Controles da Loja e Status Geral */}
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+            {/* 2. CARDÁPIO BASE DE AÇAÍ (1 LITRO) */}
+            <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
+              <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-zinc-800">
                 <div>
-                  <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm uppercase flex items-center gap-2">
-                    <Store size={16} className="text-purple-600 dark:text-purple-400" /> Status de Funcionamento
+                  <h3 className="font-extrabold text-base sm:text-lg text-zinc-900 dark:text-white tracking-tight">
+                    Cardápio Base de Açaí (1 Litro)
                   </h3>
-                  <p className="text-xs text-zinc-500">Abra ou feche sua loja para receber novos pedidos.</p>
+                  <p className="text-xs text-zinc-500">Controle preço direto, disponibilidade e foto de cada ponto de açaí.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={handleToggleStatus} 
-                    className={`px-4 py-2.5 rounded-xl text-xs font-black transition shadow-sm border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                      isPaused 
-                        ? 'bg-red-500 hover:bg-red-600 text-white border-red-400 animate-pulse' 
-                        : 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-400'
-                    }`}
-                  >
-                    {isPaused ? '🔴 Loja Fechada (Clique para Abrir)' : '🟢 Loja Aberta (Recebendo Pedidos)'}
-                  </button>
-                </div>
+                <span className="text-xs font-bold text-zinc-400">4 tipos oficiais</span>
               </div>
-
-              {/* AÇAÍ BASE (POPULAR, MÉDIO, GROSSO) COM FLAGS E FOTOS */}
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <div>
-                    <h4 className="font-bold text-xs uppercase text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <span>•</span> Cardápio Base de Açaí (1 Litro)
-                    </h4>
-                    <p className="text-[11px] text-zinc-500">Controle preço direto, disponibilidade e foto de cada ponto de açaí.</p>
-                  </div>
-                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {(['popular', 'medio', 'grosso', 'branco'] as const).map((tipo) => {
@@ -1615,7 +1514,6 @@ export default function BatedeiraDashboard() {
                     );
                   })}
                 </div>
-              </div>
             </div>
 
             {/* PRODUTOS EXTRAS & ADICIONAIS - VISÃO TOTALMENTE LARGA E AMPLA */}
@@ -1637,31 +1535,49 @@ export default function BatedeiraDashboard() {
                   </p>
                 </div>
 
-                {/* Ações em Lote */}
-                {(currentUser?.products?.length || 0) > 0 && (
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <button
-                      type="button"
-                      onClick={() => handleBulkToggleExtras(true)}
-                      className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1.5 transition shadow-xs active:scale-95"
-                      title="Marcar todos os produtos extras como disponíveis"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      Todos Ativos
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleBulkToggleExtras(false)}
-                      className="px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 transition shadow-xs active:scale-95"
-                      title="Pausar todos os extras (ex: ao encerrar estoque)"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Todos Esgotados
-                    </button>
-                  </div>
-                )}
+                {/* Ações e Botão Novo Produto */}
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                  {(currentUser?.products?.length || 0) > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkToggleExtras(true)}
+                        className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1.5 transition shadow-xs active:scale-95"
+                        title="Marcar todos os produtos extras como disponíveis"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Todos Ativos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkToggleExtras(false)}
+                        className="px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 transition shadow-xs active:scale-95"
+                        title="Pausar todos os extras (ex: ao encerrar estoque)"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Todos Esgotados
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAddExtraForm(prev => !prev)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 ${
+                      showAddExtraForm
+                        ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300'
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    }`}
+                  >
+                    {showAddExtraForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    <span>{showAddExtraForm ? 'Fechar Cadastro' : '+ Novo Produto'}</span>
+                  </button>
+                </div>
               </div>
 
+              {/* Bloco Retrátil: Presets + Formulário de Cadastro */}
+              {showAddExtraForm && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
               {/* Sugestões Rápidas de 1 Clique (Preset Chips) */}
               <div className="bg-gradient-to-br from-purple-50/80 via-indigo-50/40 to-pink-50/30 dark:from-purple-950/40 dark:via-zinc-900 dark:to-zinc-950 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/50">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 mb-3">
@@ -1791,6 +1707,8 @@ export default function BatedeiraDashboard() {
                   />
                 </div>
               </form>
+                </div>
+              )}
 
               {/* Barra de Busca e Filtros de Status */}
               <div className="flex flex-col sm:flex-row gap-2.5 justify-between items-center bg-zinc-50 dark:bg-zinc-950/40 p-2.5 rounded-2xl border border-zinc-100 dark:border-zinc-800">
