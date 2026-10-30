@@ -104,7 +104,8 @@ export default function MotoboyDashboard() {
   const availableRadarCount = (store.orders || []).filter((o: any) => {
     if (!o) return false;
     const st = String(o.status || '').toLowerCase().trim();
-    return (st === 'pronto' || st === 'ready' || st === 'searching_operator') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
+    // R35: pedido que o próprio entregador comprou não entra no radar dele
+    return (st === 'pronto' || st === 'ready' || st === 'searching_operator') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type) && o.clienteId !== currentUser?.id;
   }).length;
 
   useEffect(() => {
@@ -172,6 +173,7 @@ export default function MotoboyDashboard() {
     const st = String(o.status || '').toLowerCase().trim();
     const isReady = (st === 'pronto' || st === 'ready' || st === 'searching_operator') && (!o.motoristaId || o.motoristaId === null) && (o.type === 'B2C' || !o.type);
     if (!isReady) return false;
+    if (currentUser?.id && o.clienteId === currentUser.id) return false; // R35: compra do próprio entregador
     return true;
   });
   const minhasCorridasAll = (store.orders || []).filter((o: any) => o && currentUser?.id && o.motoristaId === currentUser.id);

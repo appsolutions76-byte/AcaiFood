@@ -126,6 +126,8 @@ export async function GET(request: Request) {
 
                 try { await supabase.rpc('generate_delivery_pin', { p_order_id: targetOrderId }); } catch (_e) {}
                 try { await supabase.rpc('generate_pickup_pin', { p_order_id: targetOrderId }); } catch (_e) {}
+                // R35: novo aviso em tempo real depois dos PINs, para a loja não ver "Indisponível"
+                try { await supabase.from('orders').update({ asaas_charge_status: status }).eq('id', targetOrderId); } catch (_e) {}
                 // Coleta de caroço não tem loja vendedora: paga, já vai para o radar dos caminhões
                 try { await supabase.from('orders').update({ status: 'READY', ready_at: new Date().toISOString() }).eq('id', targetOrderId).eq('order_type', 'COLETA').eq('status', 'PAID'); } catch (_e) {}
               } else if (dbOrder && isValueValid) {
@@ -189,6 +191,8 @@ export async function GET(request: Request) {
 
             try { await supabase.rpc('generate_delivery_pin', { p_order_id: orderId }); } catch (_e) {}
             try { await supabase.rpc('generate_pickup_pin', { p_order_id: orderId }); } catch (_e) {}
+            // R35: novo aviso em tempo real depois dos PINs, para a loja não ver "Indisponível"
+            try { await supabase.from('orders').update({ asaas_charge_status: paidPayment.status }).eq('id', orderId); } catch (_e) {}
             // Coleta de caroço não tem loja vendedora: paga, já vai para o radar dos caminhões
             try { await supabase.from('orders').update({ status: 'READY', ready_at: new Date().toISOString() }).eq('id', orderId).eq('order_type', 'COLETA').eq('status', 'PAID'); } catch (_e) {}
           } else if (dbOrder && isValueValid) {
@@ -416,6 +420,8 @@ export async function POST(request: Request) {
               try {
                 await supabase.rpc('generate_pickup_pin', { p_order_id: finalOrderId });
               } catch (_e) {}
+              // R35: novo aviso em tempo real depois dos PINs, para a loja não ver "Indisponível"
+              try { await supabase.from('orders').update({ asaas_charge_status: status }).eq('id', finalOrderId); } catch (_e) {}
               // Coleta de caroço não tem loja vendedora: paga, já vai para o radar dos caminhões
               try { await supabase.from('orders').update({ status: 'READY', ready_at: new Date().toISOString() }).eq('id', finalOrderId).eq('order_type', 'COLETA').eq('status', 'PAID'); } catch (_e) {}
             }

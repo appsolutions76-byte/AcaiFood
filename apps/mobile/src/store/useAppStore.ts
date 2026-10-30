@@ -446,6 +446,7 @@ interface AppState {
 
 // Para manter referência ao channel e evitar duplicatas
 let autoRefreshInterval: any = null;
+let visibilityRefreshBound = false;
 let supabaseChannel: any = null;
 let ordersDebounceTimer: any = null;
 let lastFetchAllUsersTime = 0;
@@ -2767,7 +2768,8 @@ export const useAppStore = create<AppState>()(
              sfIds.push(currentUser.id);
              query = query.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
           } else if (isDriverRole) {
-             query = query.eq('driver_id', currentUser.id);
+             // R35: entregador também pode comprar; vê as corridas dele e os próprios pedidos
+             query = query.or(`driver_id.eq.${currentUser.id},buyer_id.eq.${currentUser.id}`);
           } else if (roleLower === 'cliente' || roleLower === 'client') {
              query = query.eq('buyer_id', currentUser.id);
           } else if (roleLower === 'admin') {
@@ -2805,7 +2807,7 @@ export const useAppStore = create<AppState>()(
                 sfIds.push(currentUser.id);
                 fallbackQuery = fallbackQuery.or(`seller_storefront_id.in.(${sfIds.join(',')}),buyer_id.eq.${currentUser.id}`);
              } else if (isDriverRole) {
-                fallbackQuery = fallbackQuery.eq('driver_id', currentUser.id);
+                fallbackQuery = fallbackQuery.or(`driver_id.eq.${currentUser.id},buyer_id.eq.${currentUser.id}`);
              } else if (roleLower === 'cliente' || roleLower === 'client') {
                 fallbackQuery = fallbackQuery.eq('buyer_id', currentUser.id);
              }
@@ -3328,6 +3330,16 @@ export const useAppStore = create<AppState>()(
 
       startAutoRefresh: () => {
          if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+
+         // R35: ao voltar para a aba do app, recarrega na hora (pedidos e PINs que chegaram enquanto estava oculta)
+         if (typeof document !== 'undefined' && !visibilityRefreshBound) {
+             visibilityRefreshBound = true;
+             document.addEventListener('visibilitychange', () => {
+                 if (document.hidden) return;
+                 const u = get().currentUser;
+                 if (u) get().fetchOrders(u.id, true).catch(() => {});
+             });
+         }
          
          // Polling inteligente de fallback a cada 15 segundos (Realtime via WebSocket já atualiza instantaneamente)
          autoRefreshInterval = setInterval(async () => {
