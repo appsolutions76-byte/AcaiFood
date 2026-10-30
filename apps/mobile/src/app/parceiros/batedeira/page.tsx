@@ -125,6 +125,8 @@ export default function BatedeiraDashboard() {
   const [shareLandingModalOpen, setShareLandingModalOpen] = useState(false);
   const [editingInlineType, setEditingInlineType] = useState<'popular' | 'medio' | 'grosso' | 'branco' | 'congelado' | null>(null);
   const [inlinePriceInput, setInlinePriceInput] = useState<string>('');
+  const [editingExtraPriceId, setEditingExtraPriceId] = useState<string | null>(null);
+  const [inlineExtraPriceInput, setInlineExtraPriceInput] = useState<string>('');
   const [subsidyFeedback, setSubsidyFeedback] = useState<string | null>(null);
 
   const [photoModalData, setPhotoModalData] = useState<{
@@ -1141,6 +1143,22 @@ export default function BatedeiraDashboard() {
     setEditingInlineType(null);
   };
 
+  const handleStartExtraInlineEdit = (id: string, currentVal: number) => {
+    setEditingExtraPriceId(id);
+    setInlineExtraPriceInput(currentVal.toString());
+  };
+
+  const handleSaveExtraInlinePrice = (id: string) => {
+    if (!currentUser) return;
+    const val = parseFloat(inlineExtraPriceInput.replace(',', '.'));
+    if (isNaN(val) || val < 0) {
+      alert('Por favor, informe um valor válido para o produto.');
+      return;
+    }
+    store.updateProduct(currentUser.id, id, { price: val });
+    setEditingExtraPriceId(null);
+  };
+
 
   return (
     <PartnerDashboardLayout
@@ -1471,7 +1489,11 @@ export default function BatedeiraDashboard() {
                                   autoFocus
                                   value={inlinePriceInput}
                                   onChange={e => setInlinePriceInput(e.target.value)}
-                                  className="w-16 bg-white dark:bg-zinc-900 border-2 border-purple-500 rounded-lg px-1.5 py-0.5 text-xs font-black text-zinc-900 dark:text-white outline-none"
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSaveInlinePrice(tipo);
+                                    if (e.key === 'Escape') setEditingInlineType(null);
+                                  }}
+                                  className="w-18 bg-white dark:bg-zinc-900 border-2 border-purple-500 rounded-lg px-1.5 py-0.5 text-xs font-black text-zinc-900 dark:text-white outline-none"
                                 />
                                 <button
                                   type="button"
@@ -1492,7 +1514,11 @@ export default function BatedeiraDashboard() {
                               </div>
                             ) : (
                               <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">
+                                <span 
+                                  onClick={() => handleStartInlineEdit(tipo, price)}
+                                  className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition"
+                                  title="Clique para alterar preço"
+                                >
                                   R$ {price.toFixed(2)}
                                 </span>
                                 <button
@@ -1514,23 +1540,13 @@ export default function BatedeiraDashboard() {
                             onClick={() => {
                               if (currentUser) store.toggleAcaiAvailability(currentUser.id, tipo);
                             }}
-                            className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 border shadow-xs ${
+                            className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 border shadow-xs cursor-pointer active:scale-95 ${
                               isAvailable
                                 ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-600'
                                 : 'bg-red-500 hover:bg-red-600 text-white border-red-600'
                             }`}
                           >
                             {isAvailable ? '🟢 Disponível' : '🔴 Esgotado'}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleStartInlineEdit(tipo, price)}
-                            className="p-1.5 rounded-lg bg-white dark:bg-zinc-800 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-bold border border-zinc-200 dark:border-zinc-700 shadow-xs flex items-center gap-1"
-                            title="Editar Preço"
-                          >
-                            <span>✏️</span>
-                            <span className="text-[10px]">Preço</span>
                           </button>
                           
                           <button
@@ -1544,10 +1560,11 @@ export default function BatedeiraDashboard() {
                                 if (currentUser) store.updateAcaiImage(currentUser.id, tipo, url);
                               }
                             })}
-                            className="p-1.5 rounded-lg bg-white dark:bg-zinc-800 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-bold border border-zinc-200 dark:border-zinc-700 shadow-xs"
+                            className="p-1.5 px-2 rounded-lg bg-white dark:bg-zinc-800 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-bold border border-zinc-200 dark:border-zinc-700 shadow-xs cursor-pointer flex items-center gap-1"
                             title="Trocar Foto"
                           >
-                            📸
+                            <span>📸</span>
+                            <span className="text-[10px]">Foto</span>
                           </button>
                         </div>
                       </div>
@@ -1824,6 +1841,7 @@ export default function BatedeiraDashboard() {
                   .sort((a: any, b: any) => ((b.isAvailable !== false ? 1 : 0) - (a.isAvailable !== false ? 1 : 0)))
                   .map((p: any) => {
                     const isAvail = p.isAvailable !== false;
+                    const isEditingExtraThis = editingExtraPriceId === p.id;
                     return (
                       <div 
                         key={p.id} 
@@ -1862,18 +1880,69 @@ export default function BatedeiraDashboard() {
                             <p className={`font-extrabold text-sm sm:text-base leading-tight line-clamp-2 ${isAvail ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 line-through'}`} title={p.name}>
                               {p.name}
                             </p>
-                            <p className="text-base sm:text-lg font-black text-purple-700 dark:text-purple-400 mt-1 tracking-tight">
-                              R$ {p.price.toFixed(2)}
-                            </p>
+
+                            {/* PREÇO COM EDIÇÃO INLINE IDÊNTICA AO AÇAÍ */}
+                            {isEditingExtraThis ? (
+                              <div className="flex items-center gap-1 mt-1">
+                                <span className="text-xs font-bold text-zinc-500">R$</span>
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  autoFocus
+                                  value={inlineExtraPriceInput}
+                                  onChange={e => setInlineExtraPriceInput(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSaveExtraInlinePrice(p.id);
+                                    if (e.key === 'Escape') setEditingExtraPriceId(null);
+                                  }}
+                                  className="w-18 bg-white dark:bg-zinc-900 border-2 border-purple-500 rounded-lg px-1.5 py-0.5 text-xs font-black text-zinc-900 dark:text-white outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveExtraInlinePrice(p.id)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded-lg text-xs font-bold shadow-xs cursor-pointer"
+                                  title="Salvar Preço"
+                                >
+                                  <Check size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingExtraPriceId(null)}
+                                  className="bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-300 p-1 rounded-lg text-xs font-bold cursor-pointer"
+                                  title="Cancelar"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span 
+                                  onClick={() => handleStartExtraInlineEdit(p.id, p.price)}
+                                  className="text-base sm:text-lg font-black text-purple-700 dark:text-purple-400 tracking-tight cursor-pointer hover:underline"
+                                  title="Clique para alterar preço"
+                                >
+                                  R$ {p.price.toFixed(2)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartExtraInlineEdit(p.id, p.price)}
+                                  className="p-1 rounded-md text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-xs transition cursor-pointer"
+                                  title="Editar este preço"
+                                >
+                                  ✏️
+                                </button>
+                              </div>
+                            )}
+
                             {p.description && (
-                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 mt-1 leading-snug italic" title={p.description}>
+                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-1 leading-snug italic" title={p.description}>
                                 📝 {p.description}
                               </p>
                             )}
                             {p.complements && p.complements.length > 0 && (
-                              <div className="mt-1.5 flex items-center gap-1">
-                                <span className="text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 flex items-center gap-1">
-                                  🍽️ {p.complements.length} grupo(s) de opções ativas
+                              <div className="mt-1 flex items-center gap-1">
+                                <span className="text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                                  🍽️ {p.complements.length} grupo(s)
                                 </span>
                               </div>
                             )}
@@ -1896,19 +1965,20 @@ export default function BatedeiraDashboard() {
                             {isAvail ? '🟢 Ativo' : '🔴 Esgotado'}
                           </button>
 
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <button 
                               type="button"
                               onClick={() => handleOpenEditProduct(p)} 
-                              className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 p-2 bg-purple-50 dark:bg-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-800/60 transition shadow-xs cursor-pointer active:scale-95" 
-                              title="Editar nome, preço e foto"
+                              className="px-2.5 py-1.5 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 rounded-xl border border-purple-200 dark:border-purple-800/60 text-xs font-bold transition shadow-xs cursor-pointer active:scale-95 flex items-center gap-1" 
+                              title="Configurar opções e complementos"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">Opções</span>
                             </button>
                             <button 
                               type="button"
                               onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} 
-                              className="text-red-500 hover:text-red-700 p-2 bg-red-50 dark:bg-red-900/30 rounded-xl border border-red-200 dark:border-red-800/60 transition shadow-xs cursor-pointer active:scale-95" 
+                              className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-xl border border-red-200 dark:border-red-800/60 transition shadow-xs cursor-pointer active:scale-95" 
                               title="Excluir produto"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
