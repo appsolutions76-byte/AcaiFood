@@ -1437,9 +1437,9 @@ export default function FornecedorDashboard() {
 
       {/* Modal de Edição de Produto Extra B2B */}
       {editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-md shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-            <div className="p-4 bg-emerald-600 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-lg shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]">
+            <div className="p-3.5 sm:p-4 bg-emerald-600 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Edit3 className="w-5 h-5 text-emerald-100" />
                 <h3 className="font-extrabold text-sm sm:text-base">
@@ -1455,7 +1455,7 @@ export default function FornecedorDashboard() {
               </button>
             </div>
 
-            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 overscroll-contain">
               {/* Foto do Produto */}
               <div>
                 <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 uppercase tracking-wider">
@@ -1592,21 +1592,22 @@ export default function FornecedorDashboard() {
               </div>
             </div>
 
-            {/* Rodapé com Ações */}
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-2">
+            {/* Rodapé Fixo com Ações */}
+            <div className="p-3 sm:p-4 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-2 shrink-0 sticky bottom-0 z-10 shadow-lg">
               <button
                 type="button"
                 onClick={() => setEditingProduct(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleSaveEditProduct}
-                className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition active:scale-95 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition active:scale-95 cursor-pointer flex items-center gap-1.5"
               >
-                Salvar Alterações
+                <Check size={14} />
+                <span>Salvar Alterações</span>
               </button>
             </div>
           </div>

@@ -2907,10 +2907,10 @@ export default function BatedeiraDashboard() {
       />
       {/* Modal de Edição de Produto Extra */}
       {editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-md shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-            {/* Header */}
-            <div className="p-4 bg-gradient-to-r from-purple-700 to-indigo-700 text-white flex justify-between items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-lg shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]">
+            {/* Header Fixo */}
+            <div className="p-3.5 sm:p-4 bg-gradient-to-r from-purple-700 to-indigo-700 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-xl">✏️</span>
                 <h3 className="font-extrabold text-base">Editar Produto Extra</h3>
@@ -2918,14 +2918,14 @@ export default function BatedeiraDashboard() {
               <button
                 type="button"
                 onClick={() => setEditingProduct(null)}
-                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            {/* Body */}
-            <div className="p-5 space-y-4">
+            {/* Body com Scroll Suave no Celular */}
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 overscroll-contain">
               {/* Foto do Produto */}
               <div className="flex items-center gap-3">
                 <div className="w-16 h-16 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
@@ -3304,8 +3304,8 @@ export default function BatedeiraDashboard() {
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/60 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2">
+            {/* Footer Fixo Sempre Visível na Tela do Celular */}
+            <div className="p-3 sm:p-4 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2 shrink-0 shadow-lg sticky bottom-0 z-10">
               <button
                 type="button"
                 onClick={() => {
@@ -3314,26 +3314,27 @@ export default function BatedeiraDashboard() {
                     setEditingProduct(null);
                   }
                 }}
-                className="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                className="px-2.5 sm:px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Excluir
+                <span className="hidden sm:inline">Excluir</span>
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-end">
                 <button
                   type="button"
                   onClick={() => setEditingProduct(null)}
-                  className="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-bold transition"
+                  className="px-3 sm:px-4 py-2.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveEditProduct}
-                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                  className="px-4 sm:px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs sm:text-sm font-black transition shadow-md cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
                 >
-                  Salvar Alterações
+                  <Check size={14} />
+                  <span>Salvar Alterações</span>
                 </button>
               </div>
             </div>
