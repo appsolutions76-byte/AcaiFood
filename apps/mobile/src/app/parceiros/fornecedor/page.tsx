@@ -878,8 +878,8 @@ export default function FornecedorDashboard() {
 
                         {/* PREÇO COM EDIÇÃO INLINE OU DISPLAY */}
                         {editingInlineLataPrice ? (
-                          <div className="flex items-center gap-1 mt-1">
-                            <span className="text-xs font-bold text-zinc-500">R$</span>
+                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            <span className="text-xs font-extrabold text-zinc-500">R$</span>
                             <input
                               type="number"
                               step="1"
@@ -890,27 +890,27 @@ export default function FornecedorDashboard() {
                                 if (e.key === 'Enter') handleSaveInlineLataPrice();
                                 if (e.key === 'Escape') setEditingInlineLataPrice(false);
                               }}
-                              className="w-20 bg-white dark:bg-zinc-900 border-2 border-emerald-500 rounded-lg px-2 py-0.5 text-xs font-black text-zinc-900 dark:text-white outline-none"
+                              className="w-22 bg-white dark:bg-zinc-900 border-2 border-emerald-500 rounded-xl px-2 py-1 text-sm font-black text-zinc-900 dark:text-white outline-none shadow-xs"
                             />
                             <button
                               type="button"
                               onClick={handleSaveInlineLataPrice}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded-lg text-xs font-bold shadow-xs cursor-pointer"
-                              title="Salvar Preço"
+                              className="w-8 h-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center justify-center font-black shadow-sm cursor-pointer active:scale-95 shrink-0"
+                              title="Confirmar Preço"
                             >
-                              <Check size={12} />
+                              <Check size={16} strokeWidth={3} />
                             </button>
                             <button
                               type="button"
                               onClick={() => setEditingInlineLataPrice(false)}
-                              className="bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-300 p-1 rounded-lg text-xs font-bold cursor-pointer"
+                              className="w-8 h-8 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-200 rounded-xl flex items-center justify-center font-black cursor-pointer active:scale-95 shrink-0"
                               title="Cancelar"
                             >
-                              <X size={12} />
+                              <X size={16} strokeWidth={3} />
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className="flex items-center gap-2 mt-0.5">
                             <span 
                               onClick={handleStartInlineLataEdit}
                               className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition"
@@ -922,10 +922,10 @@ export default function FornecedorDashboard() {
                             <button
                               type="button"
                               onClick={handleStartInlineLataEdit}
-                              className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-xs transition cursor-pointer"
+                              className="p-1.5 px-2 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 rounded-lg text-xs font-black transition cursor-pointer active:scale-95 flex items-center gap-1 shadow-2xs"
                               title="Editar este preço"
                             >
-                              ✏️
+                              <span>✏️</span>
                             </button>
                           </div>
                         )}
@@ -938,29 +938,13 @@ export default function FornecedorDashboard() {
                         onClick={() => {
                           if (currentUser) store.toggleB2BAvailability(currentUser.id);
                         }}
-                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition shadow-xs cursor-pointer active:scale-95 ${
+                        className={`px-4 py-2 rounded-xl text-xs font-bold border transition shadow-xs cursor-pointer active:scale-95 ${
                           isLataAvail
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:border-emerald-700 dark:text-emerald-200'
                             : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200 dark:bg-red-950 dark:border-red-800 dark:text-red-300'
                         }`}
                       >
                         {isLataAvail ? '🟢 Fruto Disponível' : '🔴 Fruto Esgotado'}
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setPhotoModalData({
-                          open: true,
-                          title: 'Foto da Lata de Açaí (Fruto In Natura)',
-                          category: 'b2b',
-                          currentUrl: currentUser?.imagesB2B?.lata,
-                          onSelect: (url) => {
-                            if (currentUser) store.updateB2BImage(currentUser.id, url);
-                          }
-                        })}
-                        className="bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 px-3 py-2 rounded-xl text-xs font-bold transition border border-zinc-200 dark:border-zinc-700 flex items-center gap-1 cursor-pointer active:scale-95"
-                      >
-                        <Camera size={13} />
-                        <span>Foto</span>
                       </button>
                     </div>
                   </div>
@@ -1263,8 +1247,8 @@ export default function FornecedorDashboard() {
 
                             {/* PREÇO COM EDIÇÃO INLINE IDÊNTICA AO PRODUTO PRINCIPAL */}
                             {isEditingExtraThis ? (
-                              <div className="flex items-center gap-1 mt-1">
-                                <span className="text-xs font-bold text-zinc-500">R$</span>
+                              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                <span className="text-xs font-extrabold text-zinc-500">R$</span>
                                 <input
                                   type="number"
                                   step="0.5"
@@ -1275,27 +1259,27 @@ export default function FornecedorDashboard() {
                                     if (e.key === 'Enter') handleSaveExtraInlinePrice(p.id);
                                     if (e.key === 'Escape') setEditingExtraPriceId(null);
                                   }}
-                                  className="w-18 bg-white dark:bg-zinc-900 border-2 border-emerald-500 rounded-lg px-1.5 py-0.5 text-xs font-black text-zinc-900 dark:text-white outline-none"
+                                  className="w-20 bg-white dark:bg-zinc-900 border-2 border-emerald-500 rounded-xl px-2 py-1 text-sm font-black text-zinc-900 dark:text-white outline-none shadow-xs"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => handleSaveExtraInlinePrice(p.id)}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded-lg text-xs font-bold shadow-xs cursor-pointer"
-                                  title="Salvar Preço"
+                                  className="w-8 h-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center justify-center font-black shadow-sm cursor-pointer active:scale-95 shrink-0"
+                                  title="Confirmar Preço"
                                 >
-                                  <Check size={12} />
+                                  <Check size={16} strokeWidth={3} />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setEditingExtraPriceId(null)}
-                                  className="bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-300 p-1 rounded-lg text-xs font-bold cursor-pointer"
+                                  className="w-8 h-8 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-200 rounded-xl flex items-center justify-center font-black cursor-pointer active:scale-95 shrink-0"
                                   title="Cancelar"
                                 >
-                                  <X size={12} />
+                                  <X size={16} strokeWidth={3} />
                                 </button>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1.5 mt-0.5">
+                              <div className="flex items-center gap-2 mt-0.5">
                                 <span 
                                   onClick={() => handleStartExtraInlineEdit(p.id, p.price)}
                                   className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-400 tracking-tight cursor-pointer hover:underline"
@@ -1306,10 +1290,10 @@ export default function FornecedorDashboard() {
                                 <button
                                   type="button"
                                   onClick={() => handleStartExtraInlineEdit(p.id, p.price)}
-                                  className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-xs transition cursor-pointer"
+                                  className="p-1.5 px-2 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 rounded-lg text-xs font-black transition cursor-pointer active:scale-95 flex items-center gap-1 shadow-2xs"
                                   title="Editar este preço"
                                 >
-                                  ✏️
+                                  <span>✏️</span>
                                 </button>
                               </div>
                             )}
