@@ -20,7 +20,8 @@ import {
   Home,
   Settings,
   ChevronRight,
-  Camera
+  Camera,
+  Pencil
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AsaasPartnerBadge } from '@/components/AsaasPartnerBadge';
@@ -28,6 +29,7 @@ import { PartnerWithdrawalSection } from '@/components/PartnerWithdrawalSection'
 import { PartnerManualModal, PartnerRole } from '@/components/PartnerManualModal';
 import PartnerActivationGuard from '@/components/PartnerActivationGuard';
 import { AsaasAccountStatusCard } from '@/components/AsaasAccountStatusCard';
+import { EditPartnerNameModal } from '@/components/EditPartnerNameModal';
 
 export interface PartnerDashboardLayoutProps {
   role: 'loja' | 'fornecedor' | 'motorista' | 'caminhao';
@@ -38,6 +40,7 @@ export interface PartnerDashboardLayoutProps {
   partnerName: string;
   partnerPhoto?: string;
   onEditPhoto?: () => void;
+  onEditName?: (newName: string) => Promise<void> | void;
   locationText?: string;
   pixKeyInfo?: string;
   statusLabel: string;
@@ -65,6 +68,7 @@ export function PartnerDashboardLayout({
   partnerName,
   partnerPhoto,
   onEditPhoto,
+  onEditName,
   locationText,
   pixKeyInfo,
   statusLabel,
@@ -85,8 +89,10 @@ export function PartnerDashboardLayout({
   const router = useRouter();
   const logout = useAppStore((state: any) => state.logout);
   const currentUser = useAppStore((state: any) => state.currentUser);
+  const updateUserName = useAppStore((state: any) => state.updateUserName);
   const [manualOpen, setManualOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isEditNameModalOpen, setIsEditNameModalOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -96,6 +102,21 @@ export function PartnerDashboardLayout({
   const handleLogout = () => {
     logout();
     router.push('/login');
+  };
+
+  const handleSaveName = async (newName: string) => {
+    try {
+      if (onEditName) {
+        await onEditName(newName);
+      } else if (partnerId) {
+        await updateUserName(partnerId, newName);
+      }
+      showToast("✏️ Nome da loja atualizado com sucesso!");
+    } catch (err: any) {
+      console.error("Erro ao salvar nome:", err);
+      showToast("❌ Erro ao atualizar nome.");
+      throw err;
+    }
   };
 
   const handleHeaderRefresh = async () => {
@@ -118,6 +139,7 @@ export function PartnerDashboardLayout({
       avatarBg: 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400',
       avatarBorder: 'border-purple-300 dark:border-purple-700/80 hover:border-purple-500',
       cameraBadge: 'bg-purple-600',
+      nameEditHover: 'hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40',
     },
     emerald: {
       bgHeader: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40',
@@ -129,6 +151,7 @@ export function PartnerDashboardLayout({
       avatarBg: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400',
       avatarBorder: 'border-emerald-300 dark:border-emerald-700/80 hover:border-emerald-500',
       cameraBadge: 'bg-emerald-600',
+      nameEditHover: 'hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40',
     },
     amber: {
       bgHeader: 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40',
@@ -140,6 +163,7 @@ export function PartnerDashboardLayout({
       avatarBg: 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400',
       avatarBorder: 'border-amber-300 dark:border-amber-700/80 hover:border-amber-500',
       cameraBadge: 'bg-amber-600',
+      nameEditHover: 'hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40',
     }
   }[themeColor];
 
@@ -156,6 +180,14 @@ export function PartnerDashboardLayout({
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 pb-24 font-sans">
         <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role={manualRole} />
         {shareModal}
+        <EditPartnerNameModal
+          isOpen={isEditNameModalOpen}
+          onClose={() => setIsEditNameModalOpen(false)}
+          currentName={currentUser?.name || partnerName || ''}
+          role={role}
+          themeColor={themeColor}
+          onSave={handleSaveName}
+        />
 
         {/* Top Header Sticky */}
         <header className="bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/90 sticky top-0 z-40 p-2 sm:p-4 shadow-md">
@@ -197,11 +229,23 @@ export function PartnerDashboardLayout({
                   </div>
                   
                   <div className="space-y-1">
-                    {/* Nome da Loja / Parceiro como Título Principal + Status Operacional + Asaas */}
+                    {/* Nome da Loja / Parceiro como Título Principal + Lápis de Edição + Status Operacional + Asaas */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h1 className="text-lg sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
-                        {partnerName || title}
-                      </h1>
+                      <div className="flex items-center gap-1.5 group">
+                        <h1 className="text-lg sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
+                          {partnerName || title}
+                        </h1>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsEditNameModalOpen(true)}
+                          className={`p-1.5 rounded-xl border border-transparent text-zinc-400 hover:border-zinc-200 dark:hover:border-zinc-800 ${themeClasses.nameEditHover} transition-all duration-150 active:scale-90 cursor-pointer flex items-center justify-center`}
+                          title="Editar nome da loja"
+                          aria-label="Editar nome da loja"
+                        >
+                          <Pencil size={16} className="transition-transform group-hover:scale-110" />
+                        </button>
+                      </div>
 
                       {onToggleStatus && (
                         <button
@@ -339,9 +383,20 @@ export function PartnerDashboardLayout({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white truncate leading-tight">
-                    {partnerName || title}
-                  </h1>
+                  <div className="flex items-center gap-1.5">
+                    <h1 className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white truncate leading-tight">
+                      {partnerName || title}
+                    </h1>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditNameModalOpen(true)}
+                      className={`p-1 rounded-md text-zinc-400 ${themeClasses.nameEditHover} active:scale-90 shrink-0 cursor-pointer`}
+                      title="Editar nome da loja"
+                      aria-label="Editar nome da loja"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
                     {locationText && <span className="truncate">{locationText}</span>}
                   </div>
@@ -394,13 +449,25 @@ export function PartnerDashboardLayout({
               <div className="space-y-3.5">
                 {/* Header do Menu */}
                 <div className="flex justify-between items-center pb-3 border-b border-zinc-200 dark:border-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="p-1 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400 shrink-0">
                       {roleIcon}
                     </div>
-                    <span className="font-black text-sm text-zinc-900 dark:text-white truncate max-w-[190px]">
+                    <span className="font-black text-sm text-zinc-900 dark:text-white truncate max-w-[160px]">
                       {partnerName || title}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditNameModalOpen(true);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`p-1 text-zinc-400 ${themeClasses.nameEditHover} active:scale-90 shrink-0 cursor-pointer rounded-md`}
+                      title="Editar nome da loja"
+                      aria-label="Editar nome da loja"
+                    >
+                      <Pencil size={13} />
+                    </button>
                   </div>
                   <button
                     onClick={() => setMobileMenuOpen(false)}

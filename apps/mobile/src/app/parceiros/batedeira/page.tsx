@@ -1169,6 +1169,9 @@ export default function BatedeiraDashboard() {
       partnerId={currentUser.id}
       partnerName={currentUser.name}
       partnerPhoto={currentUser.photo}
+      onEditName={(newName) => {
+        if (currentUser) store.updateUserName(currentUser.id, newName);
+      }}
       onEditPhoto={() => setPhotoModalData({
         open: true,
         title: 'Foto do Anúncio da sua Loja',
