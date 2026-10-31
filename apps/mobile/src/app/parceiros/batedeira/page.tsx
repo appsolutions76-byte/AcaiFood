@@ -1833,14 +1833,14 @@ export default function BatedeiraDashboard() {
                     return (
                       <div 
                         key={p.id} 
-                        className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                        className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between gap-2.5 ${
                           isAvail
-                            ? 'bg-white dark:bg-zinc-900/90 border-zinc-200 dark:border-zinc-800 hover:border-purple-300 dark:hover:border-purple-700/60 shadow-xs hover:shadow-md'
-                            : 'bg-zinc-50 dark:bg-zinc-950/60 border-zinc-200/60 dark:border-zinc-800/60 opacity-60'
+                            ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/60'
+                            : 'bg-zinc-100/70 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800 opacity-70'
                         }`}
                       >
                         {/* Topo do Card: Foto + Nome + Preço */}
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <div 
                             onClick={() => setPhotoModalData({
                               open: true,
@@ -1851,7 +1851,7 @@ export default function BatedeiraDashboard() {
                                 if (currentUser) store.updateProduct(currentUser.id, p.id, { imageUrl: url });
                               }
                             })}
-                            className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-purple-200 dark:bg-purple-900 overflow-hidden shrink-0 border border-purple-300 dark:border-purple-700 cursor-pointer flex items-center justify-center hover:opacity-80 transition relative group"
+                            className="w-12 h-12 rounded-lg bg-purple-200 dark:bg-purple-900 overflow-hidden shrink-0 border border-purple-300 dark:border-purple-700 cursor-pointer flex items-center justify-center relative group"
                             title="Clique para alterar foto"
                           >
                             {p.imageUrl ? (
@@ -1909,7 +1909,7 @@ export default function BatedeiraDashboard() {
                               <div className="flex items-center gap-2 mt-0.5">
                                 <span 
                                   onClick={() => handleStartExtraInlineEdit(p.id, p.price)}
-                                  className="text-base sm:text-lg font-black text-purple-700 dark:text-purple-400 tracking-tight cursor-pointer hover:underline"
+                                  className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition"
                                   title="Clique para alterar preço"
                                 >
                                   R$ {p.price.toFixed(2)}
@@ -1926,7 +1926,7 @@ export default function BatedeiraDashboard() {
                             )}
 
                             {p.description && (
-                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-1 leading-snug italic" title={p.description}>
+                              <p className="text-[11px] text-zinc-700 dark:text-zinc-300 line-clamp-1 mt-1 leading-snug" title={p.description}>
                                 📝 {p.description}
                               </p>
                             )}
@@ -1941,16 +1941,16 @@ export default function BatedeiraDashboard() {
                         </div>
 
                         {/* Rodapé do Card: Switch de Disponibilidade + Botões de Ação */}
-                        <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800/80 gap-2">
+                        <div className="flex items-center justify-between pt-2 border-t border-purple-100 dark:border-purple-900/40 gap-2">
                           <button
                             type="button"
                             onClick={() => {
                               if (currentUser) store.toggleProductAvailability(currentUser.id, p.id);
                             }}
-                            className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black border transition shadow-xs flex items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border shadow-xs cursor-pointer active:scale-95 ${
                               isAvail
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-700'
-                                : 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-700'
+                                ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-600'
+                                : 'bg-red-500 hover:bg-red-600 text-white border-red-600'
                             }`}
                           >
                             {isAvail ? '🟢 Disponível' : '🔴 Esgotado'}
@@ -1960,7 +1960,7 @@ export default function BatedeiraDashboard() {
                             <button 
                               type="button"
                               onClick={() => handleOpenEditProduct(p)} 
-                              className="px-2.5 py-1.5 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 rounded-xl border border-purple-200 dark:border-purple-800/60 text-xs font-bold transition shadow-xs cursor-pointer active:scale-95 flex items-center gap-1" 
+                              className="px-2.5 py-2 bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-white hover:bg-purple-200 dark:hover:bg-purple-800/60 rounded-xl border border-purple-200 dark:border-purple-700/60 text-xs font-bold transition shadow-xs cursor-pointer active:scale-95 flex items-center gap-1" 
                               title="Configurar opções e complementos"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
@@ -1969,7 +1969,7 @@ export default function BatedeiraDashboard() {
                             <button 
                               type="button"
                               onClick={() => { if (confirm(`Deseja excluir "${p.name}"?`)) store.removeProduct(currentUser.id, p.id); }} 
-                              className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-xl border border-red-200 dark:border-red-800/60 transition shadow-xs cursor-pointer active:scale-95" 
+                              className="text-red-600 dark:text-red-300 hover:text-red-700 p-2 bg-red-50 dark:bg-red-900/40 rounded-xl border border-red-200 dark:border-red-800/60 transition shadow-xs cursor-pointer active:scale-95" 
                               title="Excluir produto"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
