@@ -4345,10 +4345,10 @@ function AdminDashboardContent() {
                           if (mode === 'MIN_KM') { setLocalRates({...localRates, courier_payment_mode: mode}); return; }
                           const fee = mode === 'FIXED' ? (localRates?.courier_fixed_fee ?? localRates?.b2c_km ?? 8) : (localRates?.b2c_km ?? 2);
                           setLocalRates({...localRates, courier_payment_mode: mode, courier_fixed_fee: fee, b2c_km: fee});
-                        }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
-                          <option value="KM">Por KM</option>
-                          <option value="FIXED">Valor Fixo</option>
-                          <option value="MIN_KM">Mínima + km</option>
+                        }} className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                          <option value="KM" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Por KM</option>
+                          <option value="FIXED" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Valor Fixo</option>
+                          <option value="MIN_KM" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Mínima + km</option>
                         </select>
                       </div>
                       <div className={localRates?.courier_payment_mode === 'MIN_KM' ? 'hidden' : ''}>
@@ -4379,10 +4379,10 @@ function AdminDashboardContent() {
                           if (mode === 'MIN_KM') { setLocalRates({...localRates, transporter_payment_mode: mode}); return; }
                           const fee = mode === 'FIXED' ? (localRates?.transporter_fixed_fee ?? localRates?.b2b_km ?? 150) : (localRates?.b2b_km ?? 4);
                           setLocalRates({...localRates, transporter_payment_mode: mode, transporter_fixed_fee: fee, b2b_km: fee});
-                        }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
-                          <option value="KM">Por KM</option>
-                          <option value="FIXED">Valor Fixo</option>
-                          <option value="MIN_KM">Mínima + km</option>
+                        }} className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                          <option value="KM" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Por KM</option>
+                          <option value="FIXED" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Valor Fixo</option>
+                          <option value="MIN_KM" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Mínima + km</option>
                         </select>
                       </div>
                       <div className={localRates?.transporter_payment_mode === 'MIN_KM' ? 'hidden' : ''}>
@@ -4412,10 +4412,10 @@ function AdminDashboardContent() {
                           if (mode === 'MIN_KM') { setLocalRates({...localRates, ecopoint_payment_mode: mode}); return; }
                           const fee = mode === 'FIXED' ? (localRates?.ecopoint_fixed_fee ?? localRates?.col_km ?? 50) : (localRates?.col_km ?? 8);
                           setLocalRates({...localRates, ecopoint_payment_mode: mode, ecopoint_fixed_fee: fee, col_km: fee});
-                        }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
-                          <option value="KM">Por KM</option>
-                          <option value="FIXED">Valor Fixo</option>
-                          <option value="MIN_KM">Mínima + km</option>
+                        }} className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
+                          <option value="KM" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Por KM</option>
+                          <option value="FIXED" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Valor Fixo</option>
+                          <option value="MIN_KM" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">Mínima + km</option>
                         </select>
                       </div>
                       <div className={localRates?.ecopoint_payment_mode === 'MIN_KM' ? 'hidden' : ''}>
@@ -4512,10 +4512,10 @@ function AdminDashboardContent() {
                         <select 
                           value={localRates?.auto_payout_enabled !== false ? 'true' : 'false'} 
                           onChange={e => setLocalRates({...localRates, auto_payout_enabled: e.target.value === 'true'})} 
-                          className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 font-bold text-zinc-800 dark:text-zinc-200"
+                          className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 font-bold text-zinc-900 dark:text-zinc-100"
                         >
-                          <option value="true">⚡ Ativado (Envio Diário)</option>
-                          <option value="false">⏸️ Pausado (Somente Manual)</option>
+                          <option value="true" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">⚡ Ativado (Envio Diário)</option>
+                          <option value="false" className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">⏸️ Pausado (Somente Manual)</option>
                         </select>
                       </div>
                       <div>

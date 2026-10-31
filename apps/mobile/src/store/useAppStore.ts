@@ -229,6 +229,9 @@ export interface Order {
   paymentId?: string | null;
   asaasChargeStatus?: string | null;
   cidadeOrigem?: string;
+  driverRating?: number;
+  driverRatingComment?: string;
+  driverRatedAt?: string;
 }
 
 export interface CityRates {
@@ -432,6 +435,7 @@ interface AppState {
   updateUserPixKey: (userId: string, pixKey: string) => Promise<void>;
   updateUserName: (userId: string, name: string) => Promise<void>;
   markPayoutDone: (orderIds: string[], role: 'seller' | 'driver', partnerId?: string) => Promise<void>;
+  rateDriver: (orderId: string, rating: number, comment?: string) => Promise<void>;
 
   // Cidades
   fetchCities: () => Promise<void>;
@@ -3110,6 +3114,9 @@ export const useAppStore = create<AppState>()(
                         refundE2eId: dbOrder.refund_e2e_id || null,
                         cancellationReason: dbOrder.cancellation_reason || null,
                         cancelledAt: dbOrder.cancelled_at || null,
+                        driverRating: dbOrder.pricing_snapshot?.driverRating?.rating !== undefined ? Number(dbOrder.pricing_snapshot.driverRating.rating) : localOrder?.driverRating,
+                        driverRatingComment: dbOrder.pricing_snapshot?.driverRating?.comment || localOrder?.driverRatingComment,
+                        driverRatedAt: dbOrder.pricing_snapshot?.driverRating?.ratedAt || localOrder?.driverRatedAt,
                        confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
                        taxas: {
                           entregaTotal: finalEntregaTotal,
@@ -3314,6 +3321,34 @@ export const useAppStore = create<AppState>()(
             });
          } catch (e) {
             console.warn("Aviso ao atualizar payout_done no servidor:", e);
+         }
+      },
+
+      rateDriver: async (orderId: string, rating: number, comment?: string) => {
+         const cleanRating = Math.max(0, Math.min(5, Math.round(rating)));
+         const ratedAt = new Date().toISOString();
+
+         set((state) => ({
+            orders: state.orders.map((o) =>
+               o.id === orderId
+                  ? {
+                      ...o,
+                      driverRating: cleanRating,
+                      driverRatingComment: (comment || '').trim(),
+                      driverRatedAt: ratedAt
+                    }
+                  : o
+            )
+         }));
+
+         try {
+            await fetch('/api/orders/rate-driver', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ orderId, rating: cleanRating, comment: (comment || '').trim() })
+            });
+         } catch (e) {
+            console.warn("Aviso ao salvar avaliação do motorista na API:", e);
          }
       },
 

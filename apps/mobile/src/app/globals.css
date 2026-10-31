@@ -67,3 +67,20 @@ body {
   margin: 5mm;
 }
 
+/* Correção de contraste e visibilidade dos menus dropdown nativos (select/option) */
+select {
+  color-scheme: light dark;
+}
+
+select option {
+  background-color: #ffffff;
+  color: #18181b;
+}
+
+.dark select option,
+:is(.dark *) select option {
+  background-color: #18181b;
+  color: #f4f4f5;
+}
+
+

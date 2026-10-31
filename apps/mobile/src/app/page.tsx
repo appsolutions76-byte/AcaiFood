@@ -19,6 +19,7 @@ import { validateCpfCnpjDigits } from "@/lib/pix";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { OrderReceiptModal } from "@/components/OrderReceiptModal";
 import { RefundInfo } from "@/components/RefundInfo";
+import { RateDriverModal } from "@/components/RateDriverModal";
 
 const emptySubscribe = () => () => {};
 
@@ -87,6 +88,7 @@ export default function StorefrontPage() {
   const [manualOpen, setManualOpen] = useState(false);
   const [chatModalData, setChatModalData] = useState<{ open: boolean; orderId: string; otherName?: string; otherPhone?: string; otherRole?: string; initialMode?: 'chat' | 'report' }>({ open: false, orderId: "" });
   const [orderHistoryModalOpen, setOrderHistoryModalOpen] = useState(false);
+  const [ratingModalData, setRatingModalData] = useState<{ open: boolean; order: any | null }>({ open: false, order: null });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [receiptModalOrder, setReceiptModalOrder] = useState<any | null>(null);
   const [historySearchQuery, setHistorySearchQuery] = useState("");
@@ -2377,6 +2379,16 @@ export default function StorefrontPage() {
                               >
                                 Comprovante Asaas
                               </button>
+                              {o.status === 'entregue' && (
+                                <button
+                                  onClick={() => setRatingModalData({ open: true, order: o })}
+                                  className="text-[11px] font-extrabold text-amber-800 dark:text-amber-200 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-900/70 border border-amber-300 dark:border-amber-700 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-2xs cursor-pointer active:scale-95 animate-pulse"
+                                  title="Avaliar motoboy de 0 a 5 estrelas"
+                                >
+                                  <Star size={13} className="text-amber-500 fill-amber-500" />
+                                  <span>{o.driverRating !== undefined && o.driverRating !== null ? `Avaliado (${o.driverRating}★)` : 'Avaliar Motoboy'}</span>
+                                </button>
+                              )}
                             </div>
                         </div>
                         
@@ -2454,6 +2466,16 @@ export default function StorefrontPage() {
                   title="Ver comprovante do último pedido"
                 >
                   📄 Último Comprovante
+                </button>
+              )}
+              {clientHistoryOrders[0] && (clientHistoryOrders[0].status === 'entregue' || clientHistoryOrders[0].status === 'arquivado') && (clientHistoryOrders[0].driverRating === undefined || clientHistoryOrders[0].driverRating === null) && (
+                <button
+                  onClick={() => setRatingModalData({ open: true, order: clientHistoryOrders[0] })}
+                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer animate-pulse"
+                  title="Avaliar a entrega do motoboy de 0 a 5 estrelas"
+                >
+                  <Star size={14} className="fill-white" />
+                  <span>Avaliar Motoboy (0 a 5★)</span>
                 </button>
               )}
               <button
@@ -3331,6 +3353,34 @@ export default function StorefrontPage() {
                             >
                               📄 Comprovante Asaas
                             </button>
+                            {(o.status === 'entregue' || o.status === 'arquivado') && (
+                              o.driverRating !== undefined && o.driverRating !== null ? (
+                                <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 px-2.5 py-1.5 rounded-lg text-xs">
+                                  <span className="flex text-amber-500 font-black">
+                                    {'★'.repeat(Math.max(0, Math.min(5, Number(o.driverRating))))}{'☆'.repeat(Math.max(0, 5 - Math.max(0, Math.min(5, Number(o.driverRating)))))}
+                                  </span>
+                                  <span className="font-bold text-amber-900 dark:text-amber-200 text-[11px]">
+                                    {o.driverRating}/5
+                                  </span>
+                                  <button
+                                    onClick={() => setRatingModalData({ open: true, order: o })}
+                                    className="text-[10px] text-amber-700 dark:text-amber-300 underline font-bold ml-1 cursor-pointer hover:text-amber-900"
+                                    title="Editar avaliação do motoboy"
+                                  >
+                                    Alterar
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setRatingModalData({ open: true, order: o })}
+                                  className="text-[11px] font-extrabold text-amber-800 dark:text-amber-200 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-900/70 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-lg inline-flex items-center gap-1 transition shadow-2xs active:scale-95 cursor-pointer animate-pulse"
+                                  title="Avaliar o motoboy de 0 a 5 estrelas"
+                                >
+                                  <Star size={13} className="text-amber-500 fill-amber-500" />
+                                  <span>Avaliar Motoboy (0 a 5★)</span>
+                                </button>
+                              )
+                            )}
                           </div>
 
                           {isCanceled && (
@@ -3365,6 +3415,19 @@ export default function StorefrontPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de Avaliação do Motoboy */}
+      <RateDriverModal
+        isOpen={ratingModalData.open}
+        onClose={() => setRatingModalData({ open: false, order: null })}
+        order={ratingModalData.order}
+        driverName={ratingModalData.order?.motoristaNome || (ratingModalData.order?.motoristaId ? store.users[ratingModalData.order.motoristaId]?.name : undefined)}
+        driverPhoto={ratingModalData.order?.motoristaId ? store.users[ratingModalData.order.motoristaId]?.photo : undefined}
+        onRate={async (orderId, rating, comment) => {
+          await store.rateDriver(orderId, rating, comment);
+          showToast(`⭐ Avaliação de ${rating} estrela(s) registrada com sucesso!`);
+        }}
+      />
 
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />
