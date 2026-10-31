@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useSyncExternalStore } from "react";
+import { MinKmFreightFields } from '@/components/admin/MinKmFreightFields';
 import { useRouter } from "next/navigation";
 import { 
   Settings, Trash2, Search, BookOpen, Zap, ShieldAlert,
@@ -4340,15 +4341,17 @@ function AdminDashboardContent() {
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">Modalidade</label>
                         <select value={localRates?.courier_payment_mode || 'KM'} onChange={e => {
-                          const mode = e.target.value as 'KM' | 'FIXED';
+                          const mode = e.target.value as 'KM' | 'FIXED' | 'MIN_KM';
+                          if (mode === 'MIN_KM') { setLocalRates({...localRates, courier_payment_mode: mode}); return; }
                           const fee = mode === 'FIXED' ? (localRates?.courier_fixed_fee ?? localRates?.b2c_km ?? 8) : (localRates?.b2c_km ?? 2);
                           setLocalRates({...localRates, courier_payment_mode: mode, courier_fixed_fee: fee, b2c_km: fee});
                         }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
                           <option value="KM">Por KM</option>
                           <option value="FIXED">Valor Fixo</option>
+                          <option value="MIN_KM">Mínima + km</option>
                         </select>
                       </div>
-                      <div>
+                      <div className={localRates?.courier_payment_mode === 'MIN_KM' ? 'hidden' : ''}>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates?.courier_payment_mode === 'FIXED' ? 'Frete Fixo (R$)' : 'Valor por KM (R$)'}</label>
                         <input type="number" step="0.1" value={localRates?.courier_payment_mode === 'FIXED' ? (localRates?.courier_fixed_fee ?? 8) : (localRates?.b2c_km ?? 2)} onChange={e => {
                           const val = Number(e.target.value);
@@ -4361,6 +4364,9 @@ function AdminDashboardContent() {
                       </div>
                       <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates?.b2c_mot_plat ?? 10} onChange={e => setLocalRates({...localRates, b2c_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
+                  {localRates?.courier_payment_mode === 'MIN_KM' && (
+                    <MinKmFreightFields prefix="courier" rates={localRates} defaults={{ minFee: 6, minKm: 3, extraKmFee: 1.5 }} onChange={(patch) => setLocalRates({...localRates, ...patch})} />
+                  )}
               </div>
               <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>🚚</span> B2B (Fruto - Caminhão)</h4>
@@ -4369,15 +4375,17 @@ function AdminDashboardContent() {
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">Modalidade</label>
                         <select value={localRates?.transporter_payment_mode || 'KM'} onChange={e => {
-                          const mode = e.target.value as 'KM' | 'FIXED';
+                          const mode = e.target.value as 'KM' | 'FIXED' | 'MIN_KM';
+                          if (mode === 'MIN_KM') { setLocalRates({...localRates, transporter_payment_mode: mode}); return; }
                           const fee = mode === 'FIXED' ? (localRates?.transporter_fixed_fee ?? localRates?.b2b_km ?? 150) : (localRates?.b2b_km ?? 4);
                           setLocalRates({...localRates, transporter_payment_mode: mode, transporter_fixed_fee: fee, b2b_km: fee});
                         }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
                           <option value="KM">Por KM</option>
                           <option value="FIXED">Valor Fixo</option>
+                          <option value="MIN_KM">Mínima + km</option>
                         </select>
                       </div>
-                      <div>
+                      <div className={localRates?.transporter_payment_mode === 'MIN_KM' ? 'hidden' : ''}>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates?.transporter_payment_mode === 'FIXED' ? 'Frete Fixo (R$)' : 'Valor por KM (R$)'}</label>
                         <input type="number" step="0.1" value={localRates?.transporter_payment_mode === 'FIXED' ? (localRates?.transporter_fixed_fee ?? 150) : (localRates?.b2b_km ?? 4)} onChange={e => {
                           const val = Number(e.target.value);
@@ -4390,6 +4398,9 @@ function AdminDashboardContent() {
                       </div>
                       <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates?.b2b_mot_plat ?? 10} onChange={e => setLocalRates({...localRates, b2b_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
+                  {localRates?.transporter_payment_mode === 'MIN_KM' && (
+                    <MinKmFreightFields prefix="transporter" rates={localRates} defaults={{ minFee: 150, minKm: 3, extraKmFee: 4 }} onChange={(patch) => setLocalRates({...localRates, ...patch})} />
+                  )}
               </div>
               <div className="pb-2">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-3 flex items-center gap-2"><span>🚛</span> Coleta Log. Reversa (Caroço - EcoPoint)</h4>
@@ -4397,15 +4408,17 @@ function AdminDashboardContent() {
                       <div>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">Modalidade</label>
                         <select value={localRates?.ecopoint_payment_mode || 'KM'} onChange={e => {
-                          const mode = e.target.value as 'KM' | 'FIXED';
+                          const mode = e.target.value as 'KM' | 'FIXED' | 'MIN_KM';
+                          if (mode === 'MIN_KM') { setLocalRates({...localRates, ecopoint_payment_mode: mode}); return; }
                           const fee = mode === 'FIXED' ? (localRates?.ecopoint_fixed_fee ?? localRates?.col_km ?? 50) : (localRates?.col_km ?? 8);
                           setLocalRates({...localRates, ecopoint_payment_mode: mode, ecopoint_fixed_fee: fee, col_km: fee});
                         }} className="w-full border dark:border-zinc-700 bg-transparent rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500">
                           <option value="KM">Por KM</option>
                           <option value="FIXED">Valor Fixo</option>
+                          <option value="MIN_KM">Mínima + km</option>
                         </select>
                       </div>
-                      <div>
+                      <div className={localRates?.ecopoint_payment_mode === 'MIN_KM' ? 'hidden' : ''}>
                         <label className="text-[10px] uppercase text-zinc-500 font-bold">{localRates?.ecopoint_payment_mode === 'FIXED' ? 'Coleta Fixa (R$)' : 'Valor por KM (R$)'}</label>
                         <input type="number" step="0.1" value={localRates?.ecopoint_payment_mode === 'FIXED' ? (localRates?.ecopoint_fixed_fee ?? 50) : (localRates?.col_km ?? 8)} onChange={e => {
                           const val = Number(e.target.value);
@@ -4418,6 +4431,9 @@ function AdminDashboardContent() {
                       </div>
                       <div><label className="text-[10px] uppercase text-purple-600 font-bold">App no Frete (%)</label><input type="number" value={localRates?.col_mot_plat ?? 10} onChange={e => setLocalRates({...localRates, col_mot_plat: Number(e.target.value)})} className="w-full border border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"/></div>
                   </div>
+                  {localRates?.ecopoint_payment_mode === 'MIN_KM' && (
+                    <MinKmFreightFields prefix="ecopoint" rates={localRates} defaults={{ minFee: 50, minKm: 3, extraKmFee: 8 }} onChange={(patch) => setLocalRates({...localRates, ...patch})} />
+                  )}
               </div>
               <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>💳</span> Rateio de Custos das Taxas do Asaas (1, 2 ou 3 Atores)</h4>

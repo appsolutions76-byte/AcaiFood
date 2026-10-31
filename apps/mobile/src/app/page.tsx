@@ -389,7 +389,7 @@ export default function StorefrontPage() {
     const orderType = isSupplier ? 'B2B' : 'B2C';
     const userLat = currentUser?.lat || gpsLocation?.lat || (loja?.lat ? loja.lat + 0.015 : -1.455);
     const userLng = currentUser?.lng || gpsLocation?.lng || (loja?.lng ? loja.lng + 0.015 : -48.490);
-    if (!loja || !loja.lat) return { freteCliente: rates.courier_payment_mode === 'FIXED' ? (rates.courier_fixed_fee || 6) : 6, dist: 2.0, subsidy: 0 };
+    if (!loja || !loja.lat) return { freteCliente: rates.courier_payment_mode === 'FIXED' ? (rates.courier_fixed_fee || 6) : rates.courier_payment_mode === 'MIN_KM' ? calculateOrderFreight(orderType, 0, rates) : 6, dist: 2.0, subsidy: 0 };
     const dist = getEstimatedRouteDistanceSync(loja.lat, loja.lng!, userLat, userLng);
     const freteTotal = calculateOrderFreight(orderType, dist, rates);
     const subsidy = loja.freteSubsidyPct || 0;
@@ -2907,7 +2907,7 @@ export default function StorefrontPage() {
                           <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(cartItemsTotal)}</span>
                       </div>
                       <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                          <span>Frete ({rates.courier_payment_mode === 'FIXED' ? 'Valor Fixo' : 'Estimativa por KM'}):</span>
+                          <span>Frete ({rates.courier_payment_mode === 'FIXED' ? 'Valor Fixo' : rates.courier_payment_mode === 'MIN_KM' ? 'Mínima + km' : 'Estimativa por KM'}):</span>
                           <span className="font-bold text-zinc-800 dark:text-white">{formatMoney(cartFrete)}</span>
                       </div>
                       <div className="flex justify-between pt-2 text-lg">

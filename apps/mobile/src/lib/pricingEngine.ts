@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { computeFreight, getFreightParams } from '@/lib/freightCalc';
 
 export interface PricingInput {
   orderType?: 'B2C' | 'B2B' | 'COLETA' | string;
@@ -16,7 +17,7 @@ export interface PricingResult {
   cityName: string | null;
 
   // Rates applied
-  courierPaymentMode: 'KM' | 'FIXED';
+  courierPaymentMode: 'KM' | 'FIXED' | 'MIN_KM';
   deliveryFeePerKm: number;
   deliveryFixedFee: number;
   platformSalesFeePercent: number;
@@ -140,7 +141,7 @@ export async function calculateOrderPricing(
     }
   }
 
-  let paymentMode: 'KM' | 'FIXED' = 'KM';
+  let paymentMode: 'KM' | 'FIXED' | 'MIN_KM' = 'KM';
   let feePerKm = 0;
   let fixedFee = 0;
   let platSalesFeePct = 10;
@@ -148,14 +149,14 @@ export async function calculateOrderPricing(
 
   if (orderType === 'COLETA') {
     const rawMode = String(rates.ecopoint_payment_mode || rates.col_payment_mode || 'FIXED').toUpperCase();
-    paymentMode = rawMode === 'FIXED' ? 'FIXED' : 'KM';
+    paymentMode = rawMode === 'FIXED' ? 'FIXED' : rawMode === 'MIN_KM' ? 'MIN_KM' : 'KM';
     fixedFee = Number(rates.ecopoint_fixed_fee ?? rates.col_fixed_price ?? rates.col_valor ?? rates.col_km ?? 50.00);
     feePerKm = Number(rates.col_km ?? rates.col_fee_per_km ?? 8.00);
     platSalesFeePct = Number(rates.col_plat ?? rates.col_fee_percentage ?? 10);
     platDeliveryFeePct = Number(rates.col_mot_plat ?? rates.col_platform_fee_percentage ?? 10);
   } else if (orderType === 'B2B') {
     const rawMode = String(rates.transporter_payment_mode || rates.b2b_payment_mode || 'FIXED').toUpperCase();
-    paymentMode = rawMode === 'FIXED' ? 'FIXED' : 'KM';
+    paymentMode = rawMode === 'FIXED' ? 'FIXED' : rawMode === 'MIN_KM' ? 'MIN_KM' : 'KM';
     fixedFee = Number(rates.transporter_fixed_fee ?? rates.b2b_km ?? 150.00);
     feePerKm = Number(rates.b2b_km ?? rates.truck_fee_per_km ?? 4.00);
     platSalesFeePct = Number(rates.b2b_plat ?? rates.b2b_fee_percentage ?? 10);
@@ -163,7 +164,7 @@ export async function calculateOrderPricing(
   } else {
     // B2C
     const rawMode = String(rates.courier_payment_mode || rates.b2c_payment_mode || 'FIXED').toUpperCase();
-    paymentMode = rawMode === 'FIXED' ? 'FIXED' : 'KM';
+    paymentMode = rawMode === 'FIXED' ? 'FIXED' : rawMode === 'MIN_KM' ? 'MIN_KM' : 'KM';
     fixedFee = Number(rates.courier_fixed_fee ?? rates.b2c_km ?? 4.00);
     feePerKm = Number(rates.b2c_km ?? rates.motoboy_fee_per_km ?? 4.00);
     platSalesFeePct = Number(rates.b2c_plat ?? rates.b2c_fee_percentage ?? 15);
@@ -172,7 +173,10 @@ export async function calculateOrderPricing(
 
   // Total de entrega
   let deliveryTotal = 0;
-  if (distKm > 0 || paymentMode === 'FIXED') {
+  if (paymentMode === 'MIN_KM') {
+    // R36: taxa mínima cobre os primeiros km; acima disso soma o valor por km excedente
+    deliveryTotal = computeFreight(getFreightParams(orderType, rates), distKm);
+  } else if (distKm > 0 || paymentMode === 'FIXED') {
     if (paymentMode === 'FIXED') {
       deliveryTotal = fixedFee;
     } else {

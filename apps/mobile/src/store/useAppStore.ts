@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { computeFreight, getFreightParams } from '@/lib/freightCalc';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabase';
 import { validateCpfCnpjDigits } from '@/lib/pix';
@@ -236,12 +237,16 @@ export interface CityRates {
   col_plat?: number; col_km?: number; col_mot_plat?: number; col_valor?: number;
   payout_time?: string;
   auto_payout_enabled?: boolean;
-  courier_payment_mode?: 'KM' | 'FIXED';
+  courier_payment_mode?: 'KM' | 'FIXED' | 'MIN_KM';
   courier_fixed_fee?: number;
-  transporter_payment_mode?: 'KM' | 'FIXED';
+  transporter_payment_mode?: 'KM' | 'FIXED' | 'MIN_KM';
   transporter_fixed_fee?: number;
-  ecopoint_payment_mode?: 'KM' | 'FIXED';
+  ecopoint_payment_mode?: 'KM' | 'FIXED' | 'MIN_KM';
   ecopoint_fixed_fee?: number;
+  // R36: modalidade "Mínima + km"
+  courier_min_fee?: number; courier_min_km?: number; courier_extra_km_fee?: number;
+  transporter_min_fee?: number; transporter_min_km?: number; transporter_extra_km_fee?: number;
+  ecopoint_min_fee?: number; ecopoint_min_km?: number; ecopoint_extra_km_fee?: number;
   asaas_fee_split_actors?: number;
   asaas_pix_fee_fixed?: number;
 }
@@ -276,6 +281,12 @@ export function calculateOrderFreight(
 ): number {
   const dist = Math.max(0, distanceKm || 0);
   const oType = String(type || 'B2C').toUpperCase();
+
+  // R36: "Mínima + km" (mesmo cálculo do servidor)
+  if (oType === 'B2C' || oType === 'B2B' || oType === 'COLETA') {
+    const fp = getFreightParams(oType, rates);
+    if (fp.mode === 'MIN_KM') return computeFreight(fp, dist);
+  }
 
   if (oType === 'B2C') {
     const isFixed = String(rates?.courier_payment_mode || 'FIXED').toUpperCase() === 'FIXED';
@@ -1262,7 +1273,7 @@ export const useAppStore = create<AppState>()(
          try {
            const { data, error } = await supabase
              .from('platform_settings')
-             .select('id, b2c_fee_percentage, motoboy_fee_per_km, motoboy_platform_fee_percentage, b2b_fee_percentage, truck_fee_per_km, truck_platform_fee_percentage, col_fee_percentage, col_fee_per_km, col_platform_fee_percentage, col_fixed_price, payout_time, courier_payment_mode, courier_fixed_fee, transporter_payment_mode, transporter_fixed_fee, ecopoint_payment_mode, ecopoint_fixed_fee, asaas_fee_split_actors, asaas_pix_fee_fixed')
+             .select('id, b2c_fee_percentage, motoboy_fee_per_km, motoboy_platform_fee_percentage, b2b_fee_percentage, truck_fee_per_km, truck_platform_fee_percentage, col_fee_percentage, col_fee_per_km, col_platform_fee_percentage, col_fixed_price, payout_time, courier_payment_mode, courier_fixed_fee, transporter_payment_mode, transporter_fixed_fee, ecopoint_payment_mode, ecopoint_fixed_fee, asaas_fee_split_actors, asaas_pix_fee_fixed, courier_min_fee, courier_min_km, courier_extra_km_fee, transporter_min_fee, transporter_min_km, transporter_extra_km_fee, ecopoint_min_fee, ecopoint_min_km, ecopoint_extra_km_fee')
              .limit(1)
              .maybeSingle();
            if (data && !error) {
@@ -1287,7 +1298,16 @@ export const useAppStore = create<AppState>()(
                    ecopoint_payment_mode: data.ecopoint_payment_mode || state.rates.ecopoint_payment_mode || 'FIXED',
                    ecopoint_fixed_fee: data.ecopoint_fixed_fee ?? state.rates.ecopoint_fixed_fee ?? 7.5,
                    asaas_fee_split_actors: Number(data.asaas_fee_split_actors ?? state.rates.asaas_fee_split_actors ?? 3),
-                   asaas_pix_fee_fixed: Number(data.asaas_pix_fee_fixed ?? state.rates.asaas_pix_fee_fixed ?? 0.99)
+                   asaas_pix_fee_fixed: Number(data.asaas_pix_fee_fixed ?? state.rates.asaas_pix_fee_fixed ?? 0.99),
+                   courier_min_fee: (data as any).courier_min_fee ?? state.rates.courier_min_fee,
+                   courier_min_km: (data as any).courier_min_km ?? state.rates.courier_min_km,
+                   courier_extra_km_fee: (data as any).courier_extra_km_fee ?? state.rates.courier_extra_km_fee,
+                   transporter_min_fee: (data as any).transporter_min_fee ?? state.rates.transporter_min_fee,
+                   transporter_min_km: (data as any).transporter_min_km ?? state.rates.transporter_min_km,
+                   transporter_extra_km_fee: (data as any).transporter_extra_km_fee ?? state.rates.transporter_extra_km_fee,
+                   ecopoint_min_fee: (data as any).ecopoint_min_fee ?? state.rates.ecopoint_min_fee,
+                   ecopoint_min_km: (data as any).ecopoint_min_km ?? state.rates.ecopoint_min_km,
+                   ecopoint_extra_km_fee: (data as any).ecopoint_extra_km_fee ?? state.rates.ecopoint_extra_km_fee
                } }));
            }
          } catch (error) {
@@ -1333,7 +1353,16 @@ export const useAppStore = create<AppState>()(
              ecopoint_payment_mode: mergedRates.ecopoint_payment_mode,
              ecopoint_fixed_fee: mergedRates.ecopoint_fixed_fee,
              asaas_fee_split_actors: mergedRates.asaas_fee_split_actors,
-             asaas_pix_fee_fixed: mergedRates.asaas_pix_fee_fixed
+             asaas_pix_fee_fixed: mergedRates.asaas_pix_fee_fixed,
+             courier_min_fee: mergedRates.courier_min_fee,
+             courier_min_km: mergedRates.courier_min_km,
+             courier_extra_km_fee: mergedRates.courier_extra_km_fee,
+             transporter_min_fee: mergedRates.transporter_min_fee,
+             transporter_min_km: mergedRates.transporter_min_km,
+             transporter_extra_km_fee: mergedRates.transporter_extra_km_fee,
+             ecopoint_min_fee: mergedRates.ecopoint_min_fee,
+             ecopoint_min_km: mergedRates.ecopoint_min_km,
+             ecopoint_extra_km_fee: mergedRates.ecopoint_extra_km_fee
          };
          
          // Remove undefined values
