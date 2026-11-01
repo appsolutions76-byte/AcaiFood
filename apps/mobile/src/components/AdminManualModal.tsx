@@ -90,6 +90,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
               <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
                 <p className="font-bold text-zinc-800 dark:text-white mb-2">🖥️ Abas Principais de Controle:</p>
                 <p>📊 <strong>Visão Geral & Balanços</strong>: KPIs de volume transacionado, receita líquida da plataforma e saldo acumulado.</p>
+                <p>📊 <strong>Simulador</strong>: Simulação de viabilidade: comissão na venda e no frete, tarifa Pix (R$ 0,99/R$ 1,99) e divisão, adesão e rampa, imposto e custos fixos. Não altera as taxas reais.</p>
                 <p>💸 <strong>Gestão de Saques</strong>: Esteira de aprovação/rejeição de saques solicitados pelos parceiros.</p>
                 <p>👥 <strong>Usuários</strong>: Gestão de cadastros com liquidação manual e em lote.</p>
                 <p>🛒 <strong>Histórico de Pedidos</strong>: Auditoria completa, rotas no mapa, comprovantes e baixa de contingência.</p>

@@ -1,9 +1,24 @@
 import { create } from 'zustand';
 import { computeFreight, getFreightParams } from '@/lib/freightCalc';
 import { persist } from 'zustand/middleware';
+
 import { supabase } from '@/lib/supabase';
 import { validateCpfCnpjDigits } from '@/lib/pix';
 import { initAudioUnlock, playNewOrderChime, playDeliveryAlertTone } from '@/lib/soundAlerts';
+
+// R37 (segurança): chaves/segredos que NUNCA podem ficar no estado do app, no
+// localStorage nem ser gravados em cities.rates. A chave do Asaas vive só na
+// variável de ambiente ASAAS_API_KEY do servidor.
+const SECRET_RATE_KEYS = ['asaas_api_key', 'asaasApiKey', 'api_key', 'apiKey', 'access_token', 'asaas_account_api_key'];
+function stripSecretKeys<T>(obj: T): T {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  const clean: any = { ...(obj as any) };
+  for (const k of SECRET_RATE_KEYS) delete clean[k];
+  return clean as T;
+}
+function stripSecretsFromCities<T extends { rates?: any }>(list: T[] | null | undefined): T[] {
+  return (Array.isArray(list) ? list : []).map(c => (c && c.rates ? { ...c, rates: stripSecretKeys(c.rates) } : c));
+}
 
 // --- UTILITÁRIOS: Haversine e Coordenadas de Belém ---
 export function generateUUID(): string {
@@ -1282,7 +1297,7 @@ export const useAppStore = create<AppState>()(
              .maybeSingle();
            if (data && !error) {
                set((state) => ({ rates: { 
-                   ...state.rates,
+                   ...stripSecretKeys(state.rates),
                    id: data.id,
                    b2c_plat: data.b2c_fee_percentage ?? state.rates.b2c_plat,
                    b2c_km: data.motoboy_fee_per_km ?? state.rates.b2c_km,
@@ -1321,7 +1336,7 @@ export const useAppStore = create<AppState>()(
 
       saveRates: async (newRates) => {
          const currentRates = get().rates;
-         const mergedRates = { ...currentRates, ...newRates };
+         const mergedRates = stripSecretKeys({ ...currentRates, ...newRates });
          
          // Se o modo for Fixo, sincroniza o valor fixo também com a coluna legada de valor/km para garantir persistência mesmo em bancos legados
          if (mergedRates.courier_payment_mode === 'FIXED' && mergedRates.courier_fixed_fee !== undefined) {
@@ -3355,7 +3370,7 @@ export const useAppStore = create<AppState>()(
       fetchCities: async () => {
          const { data, error } = await supabase.from('cities').select('*').order('name', { ascending: true });
          if (!error && data) {
-            set({ cities: data });
+            set({ cities: stripSecretsFromCities(data) });
          }
       },
       addCity: async (name) => {
@@ -3372,9 +3387,10 @@ export const useAppStore = create<AppState>()(
             }));
          }
       },
-      saveCityRates: async (cityId, cityRates) => {
+      saveCityRates: async (cityId, rawCityRates) => {
+         const cityRates = stripSecretKeys(rawCityRates);
          set((state) => ({
-            cities: state.cities.map(c => c.id === cityId ? { ...c, rates: { ...c.rates, ...cityRates } } : c)
+            cities: state.cities.map(c => c.id === cityId ? { ...c, rates: stripSecretKeys({ ...c.rates, ...cityRates }) } : c)
          }));
          try {
             const { error } = await supabase.from('cities').update({ rates: cityRates }).eq('id', cityId);
@@ -3484,7 +3500,14 @@ export const useAppStore = create<AppState>()(
 
           invoiceUrl: undefined,
         }));
-        return { ...rest, orders: safeOrders, users: safeUsers, currentUser: safeCurrentUser };
+        return {
+          ...rest,
+          rates: stripSecretKeys(rest.rates),
+          cities: stripSecretsFromCities(rest.cities),
+          orders: safeOrders,
+          users: safeUsers,
+          currentUser: safeCurrentUser,
+        };
       },
       onRehydrateStorage: () => (state, error) => {
         if (!error && state) {
@@ -3492,6 +3515,9 @@ export const useAppStore = create<AppState>()(
           if (!Array.isArray(state.orders)) (state as any).orders = [];
           if (!state.users || typeof state.users !== 'object') (state as any).users = {};
           if (!state.rates || typeof state.rates !== 'object') (state as any).rates = DB_DEFAULTS.rates;
+          // R37: apaga do navegador qualquer chave antiga que tenha ficado salva no localStorage
+          (state as any).rates = stripSecretKeys(state.rates);
+          (state as any).cities = stripSecretsFromCities(state.cities);
 
           if (state.currentUser && state.currentUser.id) {
             setTimeout(() => {

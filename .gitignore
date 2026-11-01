@@ -125,3 +125,8 @@ asaas.txt
 
 .vercel
 .env*
+
+# Saídas de diagnóstico (podem conter dados do banco/segredos)
+_claude_tmp/
+Claude outputs/
+apps/mobile/scripts/

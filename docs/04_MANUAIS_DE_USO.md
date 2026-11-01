@@ -187,6 +187,7 @@ Acesso restrito a administradores verificados no banco (`is_admin = true` / `rol
 | Aba | Principais ações |
 |---|---|
 | **Visão Geral** | GMV, receita da plataforma, pedidos ativos e balanços |
+| **Simulador** | Simulação de viabilidade: comissão na venda e no frete, tarifa Pix (R$ 0,99/R$ 1,99) e divisão, adesão e rampa, imposto e custos fixos. Não altera as taxas reais. |
 | **Saques** | Aprovar ou recusar saques. O Pix sai da conta Asaas do próprio parceiro para chave CPF/CNPJ do mesmo titular, com valor limitado ao saldo livre (descontadas as reservas); "Liquidar Pix / Sincronizar" consulta o Asaas sem duplicar |
 | **Usuários** | Filtros por perfil e cidade, bloqueio/desbloqueio. **Excluir** é recusado se a conta tem pedido pago ou saque (use **Bloquear**); quando permitido, a subconta Asaas é encerrada antes e, se o Asaas recusar, o usuário não é excluído |
 | **Pedidos** | Pedidos em andamento, comprovantes Asaas, histórico de status, **gerar novo PIN** (destrava o pedido bloqueado; o admin não vê o PIN), conciliação manual (só pedido aguardando pagamento e com valor recebido ≥ valor do pedido) e estornos (valor sempre informado pelo Asaas) |

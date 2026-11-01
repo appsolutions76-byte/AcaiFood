@@ -21,6 +21,7 @@ import { AdminSupportSection } from "@/components/admin/AdminSupportSection";
 import { AdminComplianceSection, RootBalanceBanner } from "@/components/admin/AdminComplianceSection";
 import { AdminWithdrawalsSection } from "@/components/admin/AdminWithdrawalsSection";
 import { AdminReconciliationSection } from "@/components/admin/AdminReconciliationSection";
+import { AdminSimulatorTab } from "@/components/admin/AdminSimulatorTab";
 import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
@@ -114,7 +115,7 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState<CityRates>(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'conformidade'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'simulador' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'conformidade'>('dashboard');
   const [selectedSupportUserId, setSelectedSupportUserId] = useState<string | null>(null);
   const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
   const [activationConfig, setActivationConfig] = useState<{
@@ -1847,6 +1848,7 @@ function AdminDashboardContent() {
         {/* Linha Inferior do Admin: Abas de Navegação 100% Congeladas / Fixas no Topo */}
         <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 flex overflow-x-auto no-scrollbar gap-1">
             <button onClick={() => setActiveTab('dashboard')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'dashboard' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>📊 Visão Geral</button>
+            <button onClick={() => setActiveTab('simulador')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'simulador' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>📊 Simulador</button>
             <button onClick={() => setActiveTab('usuarios')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'usuarios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>👥 Usuários</button>
             <button onClick={() => setActiveTab('ativacoes')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'ativacoes' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
               <span>🛡️ Ativação de Parceiros</span>
@@ -2145,6 +2147,10 @@ function AdminDashboardContent() {
             </div>
           </div>
           </div>
+        )}
+
+        {activeTab === 'simulador' && (
+          <AdminSimulatorTab />
         )}
 
         {activeTab === 'pedidos' && (
