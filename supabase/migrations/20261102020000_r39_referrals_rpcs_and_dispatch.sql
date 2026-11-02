@@ -1196,11 +1196,11 @@ BEGIN
   END IF;
 
   IF v_caller_id IS NOT NULL THEN
-    SELECT COALESCE(serve_mode, 'ALL'),
-           (COALESCE(is_admin, false) OR lower(COALESCE(role, '')) = 'admin')
+    SELECT COALESCE(u.serve_mode, 'ALL'),
+           (COALESCE(u.is_admin, false) OR lower(COALESCE(u.role, '')) = 'admin')
       INTO v_serve_mode, v_is_admin
-      FROM public.users
-     WHERE id = v_caller_id;
+      FROM public.users u
+     WHERE u.id = v_caller_id;
   END IF;
 
   RETURN QUERY
