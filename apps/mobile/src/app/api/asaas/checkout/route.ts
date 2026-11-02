@@ -201,7 +201,8 @@ export async function POST(request: Request) {
         distanceKm: serverDistanceKm,
         cityName: orderCity,
         productsSubtotal: serverSubtotal,
-        sellerStorefrontId
+        sellerStorefrontId,
+        buyerId: validBuyerId
       }, supabase);
 
       const isFixedFreight = prePricing.courierPaymentMode === 'FIXED';
@@ -235,7 +236,13 @@ export async function POST(request: Request) {
         pricing_snapshot: prePricing
       };
 
-      const fullPayload = { ...basePayload, pickup_pin: pickupPin };
+      const fullPayload = {
+        ...basePayload,
+        pickup_pin: pickupPin,
+        dispatch_mode: prePricing.dispatchModeSnapshot || 'ALL',
+        dispatch_mode_snapshot: prePricing.dispatchModeSnapshot || 'ALL',
+        delivery_platform_fee_pct_applied: prePricing.deliveryPlatformFeePctApplied ?? prePricing.platformDeliveryFeePercent
+      };
       const ORDER_RETURN_COLS = 'id, buyer_id, seller_storefront_id, status, order_type, products_subtotal, delivery_distance_km, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro, seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount, pricing_snapshot, created_at';
       const ORDER_RETURN_COLS_LEGACY = 'id, buyer_id, seller_storefront_id, status, order_type, products_subtotal, delivery_distance_km, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro, created_at';
 
@@ -333,7 +340,8 @@ export async function POST(request: Request) {
       distanceKm: order.delivery_distance_km,
       cityName,
       productsSubtotal: order.products_subtotal,
-      sellerStorefrontId: order.seller_storefront_id
+      sellerStorefrontId: order.seller_storefront_id,
+      buyerId: order.buyer_id
     }, supabase);
 
     const calculatedValue = pricing.buyerTotal > 0 ? pricing.buyerTotal : Number(order.products_subtotal || 0);
@@ -603,6 +611,9 @@ export async function POST(request: Request) {
       platform_fee_amount: (pricing.platformSalesFee || 0) + (pricing.platformDeliveryFee || 0),
       delivery_fee_amount: pricing.deliveryTotal || pricing.clientDeliveryFee || 0,
       asaas_fee_amount: pricing.asaasPixFeeFixed || 0,
+      dispatch_mode: pricing.dispatchModeSnapshot || 'ALL',
+      dispatch_mode_snapshot: pricing.dispatchModeSnapshot || 'ALL',
+      delivery_platform_fee_pct_applied: pricing.deliveryPlatformFeePctApplied ?? pricing.platformDeliveryFeePercent,
       pricing_snapshot: pricingSnapshot
     };
     const updRes = await supabase.from('orders').update(updPayload).eq('id', order.id);

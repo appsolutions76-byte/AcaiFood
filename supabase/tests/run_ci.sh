@@ -12,15 +12,18 @@ for m in 20261006010000_r15_pin_hardening.sql \
          20261006040000_r16_platform_config_and_sla.sql \
          20261008010000_public_store_list.sql \
          20261102010000_r39_indicacoes_e_avaliacoes_schema.sql \
-         20261102010100_r39_f1b_ratings_views_privacy.sql; do
+         20261102010100_r39_f1b_ratings_views_privacy.sql \
+         20261102020000_r39_referrals_rpcs_and_dispatch.sql; do
   echo "→ migration $m"
   run "$DIR/migrations/$m"
 done
-echo "→ rollback + reapply R39 F1/F1b"
+echo "→ rollback + reapply R39 F1/F1b/F2"
+run "$DIR/rollback/20261102020000_r39_referrals_rpcs_and_dispatch_rollback.sql"
 run "$DIR/rollback/20261102010100_r39_f1b_ratings_views_privacy_rollback.sql"
 run "$DIR/rollback/20261102010000_r39_indicacoes_e_avaliacoes_schema_rollback.sql"
 run "$DIR/migrations/20261102010000_r39_indicacoes_e_avaliacoes_schema.sql"
 run "$DIR/migrations/20261102010100_r39_f1b_ratings_views_privacy.sql"
+run "$DIR/migrations/20261102020000_r39_referrals_rpcs_and_dispatch.sql"
 shopt -s nullglob
 for t in "$DIR"/tests/*.test.sql; do
   echo "→ teste $(basename "$t")"

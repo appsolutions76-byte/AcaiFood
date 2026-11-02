@@ -1,14 +1,19 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { computeFreight, getFreightParams } from '@/lib/freightCalc';
 
+export type DispatchMode = 'ALL' | 'REFERRED_FIRST' | 'REFERRED_ONLY';
+
 export interface PricingInput {
   orderType?: 'B2C' | 'B2B' | 'COLETA' | string;
   distanceKm?: number;
   cityName?: string | null;
   productsSubtotal?: number;
   sellerStorefrontId?: string | null;
+  buyerId?: string | null;
   driverId?: string | null;
   freteSubsidyPct?: number;
+  dispatchMode?: DispatchMode | string | null;
+  ratesOverride?: Record<string, any> | null;
 }
 
 export interface PricingResult {
@@ -22,6 +27,10 @@ export interface PricingResult {
   deliveryFixedFee: number;
   platformSalesFeePercent: number;
   platformDeliveryFeePercent: number;
+
+  // R39: dispatch mode & applied delivery fee percent snapshot
+  dispatchModeSnapshot: DispatchMode;
+  deliveryPlatformFeePctApplied: number;
 
   // Financial breakdown
   productsSubtotal: number;
@@ -70,16 +79,29 @@ export async function getMergedRatesForCity(cityName?: string | null, supabaseCl
   const targetName = norm(cityName);
   if (!targetName) return baseRates;
 
-  // 2. Buscar cidade no banco para mesclar rates
+  // 2. Buscar cidade no banco para mesclar rates e flags por cidade
   try {
     const { data: cities } = await supabase
       .from('cities')
-      .select('id, name, rates, status');
+      .select('*');
 
     if (cities && cities.length > 0) {
       const match = cities.find((c: any) => norm(c.name) === targetName);
-      if (match && match.rates && typeof match.rates === 'object' && Object.keys(match.rates).length > 0) {
-        return { ...baseRates, ...match.rates };
+      if (match) {
+        const cityCols: Record<string, any> = {};
+        if (typeof match.referrals_enabled === 'boolean') cityCols.referrals_enabled = match.referrals_enabled;
+        if (typeof match.ratings_enabled === 'boolean') cityCols.ratings_enabled = match.ratings_enabled;
+        if (match.b2c_delivery_platform_fee_pct_referred !== undefined && match.b2c_delivery_platform_fee_pct_referred !== null) {
+          cityCols.b2c_delivery_platform_fee_pct_referred = Number(match.b2c_delivery_platform_fee_pct_referred);
+        }
+        if (match.b2b_delivery_platform_fee_pct_referred !== undefined && match.b2b_delivery_platform_fee_pct_referred !== null) {
+          cityCols.b2b_delivery_platform_fee_pct_referred = Number(match.b2b_delivery_platform_fee_pct_referred);
+        }
+        if (match.col_delivery_platform_fee_pct_referred !== undefined && match.col_delivery_platform_fee_pct_referred !== null) {
+          cityCols.col_delivery_platform_fee_pct_referred = Number(match.col_delivery_platform_fee_pct_referred);
+        }
+        const jsonRates = (match.rates && typeof match.rates === 'object') ? match.rates : {};
+        return { ...baseRates, ...cityCols, ...jsonRates };
       }
     }
   } catch (err) {
@@ -89,6 +111,20 @@ export async function getMergedRatesForCity(cityName?: string | null, supabaseCl
   return baseRates;
 }
 
+function parseOptionalPct(raw: unknown): number | null {
+  if (raw === null || raw === undefined || raw === '') return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 100) return null;
+  return n;
+}
+
+function normalizeDispatchMode(raw: unknown, referralsEnabled: boolean): DispatchMode {
+  if (!referralsEnabled) return 'ALL';
+  const upper = String(raw || 'ALL').trim().toUpperCase();
+  if (upper === 'REFERRED_FIRST' || upper === 'REFERRED_ONLY') return upper;
+  return 'ALL';
+}
+
 /**
  * Função autoritativa do servidor que calcula todos os totais, taxas e repasses de um pedido.
  */
@@ -96,13 +132,17 @@ export async function calculateOrderPricing(
   input: PricingInput,
   supabaseClient?: any
 ): Promise<PricingResult> {
-  const supabase = supabaseClient || getSupabaseAdmin();
+  const supabase = input.ratesOverride ? null : (supabaseClient || getSupabaseAdmin());
   const orderType = String(input.orderType || 'B2C').toUpperCase();
   const distKm = Math.max(0, Number(input.distanceKm || 0));
   const productsSubtotal = Math.max(0, Number(input.productsSubtotal || 0));
 
-  // Buscar taxas mescladas (global + cidade)
-  const rates = await getMergedRatesForCity(input.cityName, supabase);
+  // Buscar taxas mescladas (global + cidade) ou usar override de teste
+  const rates = input.ratesOverride
+    ? { ...input.ratesOverride }
+    : await getMergedRatesForCity(input.cityName, supabase);
+
+  const referralsEnabled = Boolean(rates.referrals_enabled);
 
   // Configuracao de rateio do Asaas (1, 2 ou 3 atores)
   const rawActors = Number(rates.asaas_fee_split_actors ?? rates.asaas_actors ?? 1);
@@ -123,29 +163,58 @@ export async function calculateOrderPricing(
     asaasFeePlatform = Number((asaasPixFeeFixed - asaasFeeSeller - asaasFeeDriver).toFixed(2));
   }
 
-  // Buscar subsídio da loja se storefrontId fornecido e freteSubsidyPct não informado
+  // Buscar subsídio da loja e/ou dispatch_mode do vendedor se necessário
   let subsidyPct = Number(input.freteSubsidyPct ?? 0);
-  if (input.sellerStorefrontId && input.freteSubsidyPct === undefined) {
+  let resolvedDispatchMode: unknown = input.dispatchMode;
+
+  if (supabase && input.sellerStorefrontId && (input.freteSubsidyPct === undefined || (referralsEnabled && resolvedDispatchMode === undefined))) {
     try {
       const { data: sf } = await supabase
         .from('storefronts')
-        .select('frete_subsidy_pct')
+        .select('frete_subsidy_pct, partner_id')
         .eq('id', input.sellerStorefrontId)
         .maybeSingle();
 
-      if (sf && sf.frete_subsidy_pct !== undefined && sf.frete_subsidy_pct !== null) {
+      if (sf && input.freteSubsidyPct === undefined && sf.frete_subsidy_pct !== undefined && sf.frete_subsidy_pct !== null) {
         subsidyPct = Number(sf.frete_subsidy_pct || 0);
       }
+
+      if (referralsEnabled && resolvedDispatchMode === undefined && sf?.partner_id) {
+        const { data: partnerUser } = await supabase
+          .from('users')
+          .select('dispatch_mode')
+          .eq('id', sf.partner_id)
+          .maybeSingle();
+        if (partnerUser?.dispatch_mode) {
+          resolvedDispatchMode = partnerUser.dispatch_mode;
+        }
+      }
     } catch (err) {
-      console.warn('[pricingEngine] Erro ao buscar storefront para subsídio:', err);
+      console.warn('[pricingEngine] Erro ao buscar storefront para subsídio/dispatch_mode:', err);
+    }
+  } else if (supabase && referralsEnabled && resolvedDispatchMode === undefined && orderType === 'COLETA' && input.buyerId) {
+    try {
+      const { data: buyerUser } = await supabase
+        .from('users')
+        .select('dispatch_mode')
+        .eq('id', input.buyerId)
+        .maybeSingle();
+      if (buyerUser?.dispatch_mode) {
+        resolvedDispatchMode = buyerUser.dispatch_mode;
+      }
+    } catch (err) {
+      console.warn('[pricingEngine] Aviso ao ler dispatch_mode na Coleta:', err);
     }
   }
+
+  const dispatchModeSnapshot = normalizeDispatchMode(resolvedDispatchMode, referralsEnabled);
 
   let paymentMode: 'KM' | 'FIXED' | 'MIN_KM' = 'KM';
   let feePerKm = 0;
   let fixedFee = 0;
   let platSalesFeePct = 10;
   let platDeliveryFeePct = 10;
+  let referredFeePct: number | null = null;
 
   if (orderType === 'COLETA') {
     const rawMode = String(rates.ecopoint_payment_mode || rates.col_payment_mode || 'FIXED').toUpperCase();
@@ -154,6 +223,9 @@ export async function calculateOrderPricing(
     feePerKm = Number(rates.col_km ?? rates.col_fee_per_km ?? 8.00);
     platSalesFeePct = Number(rates.col_plat ?? rates.col_fee_percentage ?? 10);
     platDeliveryFeePct = Number(rates.col_mot_plat ?? rates.col_platform_fee_percentage ?? 10);
+    referredFeePct = parseOptionalPct(
+      rates.col_mot_plat_referred ?? rates.col_delivery_platform_fee_pct_referred ?? rates.delivery_platform_fee_pct_referred
+    );
   } else if (orderType === 'B2B') {
     const rawMode = String(rates.transporter_payment_mode || rates.b2b_payment_mode || 'FIXED').toUpperCase();
     paymentMode = rawMode === 'FIXED' ? 'FIXED' : rawMode === 'MIN_KM' ? 'MIN_KM' : 'KM';
@@ -161,6 +233,9 @@ export async function calculateOrderPricing(
     feePerKm = Number(rates.b2b_km ?? rates.truck_fee_per_km ?? 4.00);
     platSalesFeePct = Number(rates.b2b_plat ?? rates.b2b_fee_percentage ?? 10);
     platDeliveryFeePct = Number(rates.b2b_mot_plat ?? rates.truck_platform_fee_percentage ?? 10);
+    referredFeePct = parseOptionalPct(
+      rates.b2b_mot_plat_referred ?? rates.b2b_delivery_platform_fee_pct_referred ?? rates.delivery_platform_fee_pct_referred
+    );
   } else {
     // B2C
     const rawMode = String(rates.courier_payment_mode || rates.b2c_payment_mode || 'FIXED').toUpperCase();
@@ -169,6 +244,15 @@ export async function calculateOrderPricing(
     feePerKm = Number(rates.b2c_km ?? rates.motoboy_fee_per_km ?? 4.00);
     platSalesFeePct = Number(rates.b2c_plat ?? rates.b2c_fee_percentage ?? 15);
     platDeliveryFeePct = Number(rates.b2c_mot_plat ?? rates.motoboy_platform_fee_percentage ?? 12);
+    referredFeePct = parseOptionalPct(
+      rates.b2c_mot_plat_referred ?? rates.b2c_delivery_platform_fee_pct_referred ?? rates.delivery_platform_fee_pct_referred
+    );
+  }
+
+  // R39 (2.3): Comissão de frete reduzida aplica-se SOMENTE quando referrals_enabled = true,
+  // dispatch_mode_snapshot = 'REFERRED_ONLY' e delivery_platform_fee_pct_referred não é null.
+  if (referralsEnabled && dispatchModeSnapshot === 'REFERRED_ONLY' && referredFeePct !== null) {
+    platDeliveryFeePct = referredFeePct;
   }
 
   // Total de entrega
@@ -212,6 +296,9 @@ export async function calculateOrderPricing(
     platformSalesFeePercent: platSalesFeePct,
     platformDeliveryFeePercent: platDeliveryFeePct,
 
+    dispatchModeSnapshot,
+    deliveryPlatformFeePctApplied: platDeliveryFeePct,
+
     productsSubtotal,
     deliveryTotal,
     clientDeliveryFee,
@@ -230,4 +317,3 @@ export async function calculateOrderPricing(
     buyerTotal
   };
 }
-
