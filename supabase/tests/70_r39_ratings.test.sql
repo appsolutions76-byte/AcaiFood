@@ -276,7 +276,13 @@ BEGIN
   -- Reabre a denúncia em uma nova denúncia para testar manter visível (VISIBLE -> RESOLVED_KEPT)
   r_mod_keep := public.rating_report_create(v_rating_id, 'Revisão solicitada');
   r_mod_keep := public.admin_rating_moderate(v_rating_id, 'VISIBLE', 'Mantida após revisão');
-  SELECT status INTO v_rep_st FROM public.rating_reports WHERE rating_id = v_rating_id ORDER BY created_at DESC LIMIT 1;
+  -- As duas denúncias nascem na mesma transação (mesmo created_at); por isso checamos pelo conjunto:
+  -- nenhuma denúncia continua OPEN e existe pelo menos uma RESOLVED_KEPT.
+  SELECT CASE
+           WHEN EXISTS (SELECT 1 FROM public.rating_reports WHERE rating_id = v_rating_id AND status = 'OPEN') THEN 'OPEN'
+           WHEN EXISTS (SELECT 1 FROM public.rating_reports WHERE rating_id = v_rating_id AND status = 'RESOLVED_KEPT') THEN 'RESOLVED_KEPT'
+           ELSE 'NONE'
+         END INTO v_rep_st;
   SELECT hidden_reason, hidden_by INTO v_h_reason, v_h_by FROM public.ratings WHERE id = v_rating_id;
   PERFORM tests.assert(
     (r_mod_keep->>'success')::boolean = true
