@@ -235,7 +235,7 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
         const deliveredStatuses = ['RECEIVED', 'received', 'entregue', 'arquivado', 'concluido', 'CONCLUIDO', 'ARQUIVADO', 'COMPLETED', 'completed'];
         const { data: splitOrders } = await adminSupabase
           .from('orders')
-          .select('id, status, driver_id, driver_payout_amount, pricing_snapshot')
+          .select('id, status, driver_id, self_delivery, driver_payout_amount, pricing_snapshot')
           .in('seller_storefront_id', sfIds)
           .eq('pricing_snapshot->>paymentModel', 'SELLER_SPLIT')
           .not('status', 'in', `(${notPaidOrClosed.map(x => `"${x}"`).join(',')})`)
@@ -244,7 +244,7 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
         // Corrida só deixa de ser reservada quando o repasse da moto está DONE em settlements
         // (a flag payout_driver_done é marcada pelo gatilho do banco antes da transferência).
         const deliveredIds = (splitOrders || [])
-          .filter((o: any) => deliveredStatuses.includes(String(o.status || '').trim()) && o.driver_id)
+          .filter((o: any) => deliveredStatuses.includes(String(o.status || '').trim()) && o.driver_id && !o.self_delivery)
           .map((o: any) => o.id);
         const rideDone = new Set<string>();
         if (deliveredIds.length > 0) {
@@ -260,7 +260,7 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
         for (const o of splitOrders || []) {
           const st = String(o.status || '').trim();
           if (deliveredStatuses.includes(st)) {
-            if (o.driver_id && !rideDone.has(o.id)) reservedBalance += Math.max(0, Number(o.driver_payout_amount || 0));
+            if (o.driver_id && !o.self_delivery && !rideDone.has(o.id)) reservedBalance += Math.max(0, Number(o.driver_payout_amount || 0));
           } else {
             const snap: any = o.pricing_snapshot || {};
             const net = snap.sellerSplitNet !== null && snap.sellerSplitNet !== undefined

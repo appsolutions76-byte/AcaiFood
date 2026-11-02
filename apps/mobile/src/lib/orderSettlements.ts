@@ -430,7 +430,7 @@ export async function settleOrderPayouts(orderId: string): Promise<SettleOrderRe
 
     const { data: order, error: oErr } = await supabase
       .from('orders')
-      .select('id, status, seller_storefront_id, driver_id, seller_payout_amount, driver_payout_amount, pricing_snapshot, payout_seller_done, payout_driver_done')
+      .select('id, status, seller_storefront_id, driver_id, self_delivery, seller_payout_amount, driver_payout_amount, pricing_snapshot, payout_seller_done, payout_driver_done')
       .eq('id', orderId)
       .maybeSingle();
 
@@ -470,7 +470,8 @@ export async function settleOrderPayouts(orderId: string): Promise<SettleOrderRe
     }
 
     // Moto / Motorista (modelo novo: sai da subconta da loja; antigo: da conta raiz)
-    if (order.driver_id) {
+    // R39 (4.3): em self_delivery = true não há repasse de motorista
+    if (order.driver_id && !(order as any).self_delivery) {
       const r = await settleRole(order, 'driver', order.driver_id, ctx);
       result.driverTransferred = r.done;
       result.driverAmount = r.amount;
