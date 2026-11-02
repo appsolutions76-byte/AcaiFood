@@ -3,7 +3,10 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Bike, BookOpen, Share2 } from "lucide-react";
-import { useAppStore, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
+import { useAppStore, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
+import { DriverReferralsSection } from "@/components/referrals/DriverReferralsSection";
+import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
+import { MyReceivedRatingsSection } from "@/components/ratings/MyReceivedRatingsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -48,6 +51,7 @@ export default function MotoboyDashboard() {
   const [serverBalance, setServerBalance] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [myReferrals, setMyReferrals] = useState<any[]>([]);
   const lastAvailableCountRef = React.useRef(0);
 
   useEffect(() => {
@@ -61,6 +65,9 @@ export default function MotoboyDashboard() {
     if (typeof s.fetchCities === 'function') s.fetchCities();
     if (typeof s.fetchRates === 'function') s.fetchRates();
     s.startRealtime();
+    supabase.rpc('get_my_referrals', { p_flow: 'B2C' }).then(({ data }) => {
+      if (Array.isArray(data)) setMyReferrals(data);
+    });
   }, []);
 
   // Polling contínuo do radar de entregas a cada 3.5 segundos para garantir que chamadas toquem e apareçam instantaneamente
@@ -147,6 +154,10 @@ export default function MotoboyDashboard() {
   }
 
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates || {};
+  const referralsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'referrals_enabled');
+  const ratingsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'ratings_enabled');
+  const referredPartnerNames = new Set(myReferrals.filter((r: any) => r.status === 'ACTIVE').map((r: any) => String(r.partner_name || '').toLowerCase().trim()));
+  const referredPartnerIds = new Set(myReferrals.filter((r: any) => r.status === 'ACTIVE').map((r: any) => String(r.partner_id || '')));
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const getMotoboyFee = (o: any) => {
     if (!o) return 0;
@@ -309,6 +320,19 @@ export default function MotoboyDashboard() {
                 {formatMoney(ganhosHoje)}
               </span>
             </button>
+
+            {referralsEnabled && (
+              <button 
+                onClick={() => setActiveTab('indicacoes')} 
+                className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  activeTab === 'indicacoes' 
+                    ? 'bg-purple-600 text-white shadow-md' 
+                    : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
+                }`}
+              >
+                <span>🤝 Indicações</span>
+              </button>
+            )}
           </div>
         </div>
       }
@@ -337,7 +361,12 @@ export default function MotoboyDashboard() {
                     return (
                       <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-blue-100 dark:border-blue-900/50">
                           <div className="flex justify-between items-center mb-2">
-                              <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">Nova Rota B2C</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">Nova Rota B2C</span>
+                                {referralsEnabled && ((o.origemId && referredPartnerIds.has(String(o.origemId))) || (o.lojaId && referredPartnerIds.has(String(o.lojaId))) || (o.lojaNome && referredPartnerNames.has(String(o.lojaNome).toLowerCase().trim()))) && (
+                                  <span className="text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 border border-purple-300 dark:border-purple-800 px-2 py-0.5 rounded-full">🤝 Te indicou</span>
+                                )}
+                              </div>
                               <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">Líquido: {formatMoney(getMotoboyFee(o))}</span>
                           </div>
                           <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded text-sm mb-4 flex flex-col gap-1 border border-zinc-100 dark:border-zinc-800">
@@ -679,6 +708,14 @@ export default function MotoboyDashboard() {
                                 >
                                   ⚠️ Reportar Problema
                                 </button>
+                                {ratingsEnabled && currentUser?.id && (
+                                  <OrderRatingCard
+                                    order={o}
+                                    viewerId={currentUser.id}
+                                    viewerRole="motorista"
+                                    ratingsEnabled={ratingsEnabled}
+                                  />
+                                )}
                             </div>
                         ) : isCanceled ? (
                             <div className="flex flex-col gap-2">
@@ -707,6 +744,11 @@ export default function MotoboyDashboard() {
                     </div>
                   )})}
                 </div>
+                {ratingsEnabled && currentUser?.id && (
+                  <div className="mt-6">
+                    <MyReceivedRatingsSection userId={currentUser.id} ratingsEnabled={ratingsEnabled} />
+                  </div>
+                )}
             </div>
         </div>
         )}
@@ -715,6 +757,19 @@ export default function MotoboyDashboard() {
         {activeTab === 'carteira' && (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
             <PartnerWithdrawalSection partnerId={currentUser?.id || ''} role="motorista" onBalanceLoaded={setServerBalance} />
+          </div>
+        )}
+
+        {/* 5. ABA: INDICAÇÕES (R39) */}
+        {referralsEnabled && activeTab === 'indicacoes' && (
+          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+            <DriverReferralsSection
+              flow="B2C"
+              partnerLabel="loja"
+              ratingsEnabled={ratingsEnabled}
+              minCountDisplay={rates?.rating_min_count_display ?? 5}
+              onReferralsChanged={setMyReferrals}
+            />
           </div>
         )}
       </div>

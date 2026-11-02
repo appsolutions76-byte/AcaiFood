@@ -27,7 +27,11 @@ import {
   DollarSign,
   Edit2
 } from "lucide-react";
-import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, generateUUID, calculateOrderFreight } from "@/store/useAppStore";
+import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, generateUUID, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
+import { PartnerReferralsSection } from "@/components/referrals/PartnerReferralsSection";
+import { StuckOrderModal } from "@/components/referrals/StuckOrderModal";
+import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
+import { MyReceivedRatingsSection } from "@/components/ratings/MyReceivedRatingsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
@@ -157,6 +161,8 @@ export default function BatedeiraDashboard() {
     }
   }, [currentUser?.freteSubsidyPct]);
   const [activeTab, setActiveTab] = useState('pedidos');
+  const [referralFlowTab, setReferralFlowTab] = useState<'B2C' | 'COLETA'>('B2C');
+  const [selfPinInputs, setSelfPinInputs] = useState<Record<string, string>>({});
 
   const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(getPrinterConfig);
   const [printerModalOpen, setPrinterModalOpen] = useState(false);
@@ -483,6 +489,8 @@ export default function BatedeiraDashboard() {
   }
 
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
+  const referralsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'referrals_enabled');
+  const ratingsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'ratings_enabled');
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const mySfIds = ((store.users[currentUser.id] as any)?.storefronts || []).map((s: any) => s.id);
@@ -875,13 +883,39 @@ export default function BatedeiraDashboard() {
                       const mUser = o.motoristaId ? store.users[o.motoristaId] : null;
                       const dName = o.motoristaNome || mUser?.name;
                       const isFinished = o.status === 'entregue' || o.status === 'cancelado' || o.status === 'arquivado' || !!o.receivedAt || !!o.deliveredAt;
-                      return dName || (isFinished ? 'Concluído' : 'Aguardando');
+                      return o.self_delivery ? 'Entrega própria pela loja' : (dName || (isFinished ? 'Concluído' : 'Aguardando'));
                     })()}
                   </span>
               </div>
               <p className="text-xs text-zinc-500 mt-1">{financeText}</p>
+              {/* R39: Entrega por conta própria — campo para validar PIN de 4 dígitos do cliente */}
+              {!isCanceled && o.self_delivery && o.status !== 'entregue' && o.status !== 'arquivado' && (o.type === 'B2C' || !o.type) && (
+                 <div className="mt-2 mb-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 p-3 rounded-xl flex flex-col gap-2 shadow-sm">
+                   <div className="flex items-center justify-between">
+                     <span className="text-xs font-black uppercase flex items-center gap-1">🛵 Entrega por conta própria</span>
+                     <span className="text-[10px] font-bold bg-emerald-200/70 dark:bg-emerald-900 px-2 py-0.5 rounded">Confirme com o PIN do cliente</span>
+                   </div>
+                   <div className="flex gap-2">
+                     <input
+                       type="text"
+                       maxLength={4}
+                       placeholder="PIN 4 dígitos"
+                       value={selfPinInputs[o.id] || ''}
+                       onChange={(e) => setSelfPinInputs(prev => ({ ...prev, [o.id]: e.target.value }))}
+                       className="w-28 text-center font-black tracking-widest text-base p-2 rounded-lg border border-emerald-400 dark:border-emerald-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                     />
+                     <button
+                       type="button"
+                       onClick={() => store.acaoPedido(o.id, 'validar_pin', selfPinInputs[o.id])}
+                       className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-lg shadow transition cursor-pointer"
+                     >
+                       Confirmar Entrega (PIN)
+                     </button>
+                   </div>
+                 </div>
+              )}
               {/* PIN de Retirada (Balcão) para B2C */}
-              {!isCanceled && o.status !== 'entregue' && o.status !== 'arquivado' && (o.type === 'B2C' || !o.type) && (
+              {!isCanceled && !o.self_delivery && o.status !== 'entregue' && o.status !== 'arquivado' && (o.type === 'B2C' || !o.type) && (
                  <div className="mt-2 mb-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white p-2.5 rounded-xl flex items-center justify-between shadow-md border border-amber-400">
                      <div>
                          <p className="text-[10px] font-bold uppercase text-amber-100 flex items-center gap-1">
@@ -1032,7 +1066,35 @@ export default function BatedeiraDashboard() {
               )}
 
               {!isCanceled && o.type === 'B2C' && o.status === 'pronto' && !o.motoristaId && (
-                <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                    {referralsEnabled && !o.self_delivery && (o.dispatch_mode === 'REFERRED_ONLY' || o.dispatch_mode_snapshot === 'REFERRED_ONLY') && (!o.radar_open_at || new Date(o.radar_open_at).getTime() > Date.now()) && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const { data, error } = await supabase.rpc('dispatch_open_order_to_app', { p_order_id: o.id });
+                            if (error || !data?.success) alert(data?.error || error?.message || 'Erro ao abrir pedido');
+                            else if (currentUser?.id) store.fetchOrders(currentUser.id, true);
+                          }}
+                          className="bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm"
+                        >
+                          📡 Abrir para o app
+                        </button>
+                        {Boolean(o.stuck_alert_sent_at) && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const { data, error } = await supabase.rpc('dispatch_set_self_delivery', { p_order_id: o.id });
+                              if (error || !data?.success) alert(data?.error || error?.message || 'Erro ao ativar entrega própria');
+                              else if (currentUser?.id) store.fetchOrders(currentUser.id, true);
+                            }}
+                            className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm"
+                          >
+                            🛵 Entregar por conta própria
+                          </button>
+                        )}
+                      </>
+                    )}
                     <button onClick={() => {
                       const reason = prompt("Informe o motivo do cancelamento do pedido:", "Cliente solicitou cancelamento / Motoboy indisponível");
                       if (reason !== null && reason.trim() !== "") {
@@ -1042,6 +1104,19 @@ export default function BatedeiraDashboard() {
                 </div>
               )}
               
+              {!isCanceled && o.type === 'COLETA' && o.status === 'pronto' && !o.motoristaId && referralsEnabled && (o.dispatch_mode === 'REFERRED_ONLY' || o.dispatch_mode_snapshot === 'REFERRED_ONLY') && (!o.radar_open_at || new Date(o.radar_open_at).getTime() > Date.now()) && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const { data, error } = await supabase.rpc('dispatch_open_order_to_app', { p_order_id: o.id });
+                    if (error || !data?.success) alert(data?.error || error?.message || 'Erro ao abrir coleta para o app');
+                    else if (currentUser?.id) store.fetchOrders(currentUser.id, true);
+                  }}
+                  className="bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-bold px-3 py-2 rounded-lg transition w-full sm:w-auto mt-2 sm:mt-0"
+                >
+                  📡 Abrir para o app
+                </button>
+              )}
               {!isCanceled && (o.type === 'B2B' || o.type === 'COLETA') && (o.status === 'pendente' || (o.type === 'COLETA' && o.status === 'preparo' && !o.motoristaId)) && (
                 <button onClick={() => {
                   const reason = prompt("Informe o motivo do cancelamento:", "Cancelamento pela loja");
@@ -1104,6 +1179,14 @@ export default function BatedeiraDashboard() {
                 <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Aguardando caminhão</span>
               )}
           </div>
+          {ratingsEnabled && currentUser?.id && (
+            <OrderRatingCard
+              order={o}
+              viewerId={currentUser.id}
+              viewerRole="loja"
+              ratingsEnabled={ratingsEnabled}
+            />
+          )}
       </div>
     );
   };
@@ -1286,6 +1369,19 @@ export default function BatedeiraDashboard() {
                 {formatMoney(vendasHoje)}
               </span>
             </button>
+
+            {referralsEnabled && (
+              <button 
+                onClick={() => setActiveTab('indicacoes')} 
+                className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  activeTab === 'indicacoes' 
+                    ? 'bg-purple-600 text-white shadow-md' 
+                    : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
+                }`}
+              >
+                <span>🤝 Indicações</span>
+              </button>
+            )}
           </div>
         </div>
       }
@@ -2515,6 +2611,11 @@ export default function BatedeiraDashboard() {
                 batedeiraHistoryOrders.map(renderOrderCard)
               )}
             </div>
+            {ratingsEnabled && currentUser?.id && (
+              <div className="mt-6">
+                <MyReceivedRatingsSection userId={currentUser.id} ratingsEnabled={ratingsEnabled} />
+              </div>
+            )}
           </div>
         )}
 
@@ -2528,6 +2629,48 @@ export default function BatedeiraDashboard() {
             />
           </div>
         )}
+
+        {/* 6. ABA: INDICAÇÕES (R39) */}
+        {referralsEnabled && activeTab === 'indicacoes' && (
+          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 w-fit">
+              <button
+                type="button"
+                onClick={() => setReferralFlowTab('B2C')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  referralFlowTab === 'B2C'
+                    ? 'bg-purple-600 text-white'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                🛵 Entregas B2C (Motoboys)
+              </button>
+              <button
+                type="button"
+                onClick={() => setReferralFlowTab('COLETA')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  referralFlowTab === 'COLETA'
+                    ? 'bg-amber-600 text-white'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                🚛 Coleta de Caroço (Caçambas)
+              </button>
+            </div>
+            <PartnerReferralsSection
+              flow={referralFlowTab}
+              driverLabel={referralFlowTab === 'COLETA' ? 'caçamba' : 'motoboy'}
+              ratingsEnabled={ratingsEnabled}
+              minCountDisplay={rates?.rating_min_count_display ?? 5}
+            />
+          </div>
+        )}
+
+      <StuckOrderModal
+        orders={batedeiraActiveOrders}
+        rates={rates}
+        referralsEnabled={referralsEnabled}
+      />
 
       <MapModal 
         isOpen={mapModal.open} 

@@ -1,5 +1,5 @@
--- Esquema mínimo (só as tabelas/colunas que as migrations R15/R16 usam).
--- Serve para o CI testar PIN, privacidade de users, radar e log de admin
+-- Esquema mínimo (só as tabelas/colunas que as migrations R15/R16/R39 usam).
+-- Serve para o CI testar PIN, privacidade de users, radar, log de admin e R39
 -- sem precisar de um projeto Supabase. NÃO rodar no Supabase.
 
 CREATE TABLE public.users (
@@ -63,7 +63,10 @@ CREATE TABLE public.orders (
   status TEXT,
   order_type TEXT,
   delivery_distance_km NUMERIC,
+  seller_payout_amount NUMERIC,
   driver_payout_amount NUMERIC,
+  payout_seller_done BOOLEAN DEFAULT false,
+  payout_driver_done BOOLEAN DEFAULT false,
   delivery_bairro TEXT,
   delivery_lat NUMERIC,
   delivery_lng NUMERIC,
@@ -123,7 +126,30 @@ CREATE TABLE public.admin_audit_log (
 
 CREATE TABLE public.platform_settings (
   id INTEGER PRIMARY KEY DEFAULT 1,
-  asaas_platform_wallet_id TEXT
+  asaas_platform_wallet_id TEXT,
+  settlements_enabled BOOLEAN DEFAULT false
+);
+
+CREATE TABLE public.settlements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL,
+  partner_id UUID NOT NULL,
+  role TEXT NOT NULL,
+  amount NUMERIC NOT NULL DEFAULT 0,
+  wallet_id TEXT,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  attempt_ref TEXT,
+  last_error TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (order_id, role)
+);
+
+CREATE TABLE public.cities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  rates JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE OR REPLACE FUNCTION public.is_admin() RETURNS BOOLEAN

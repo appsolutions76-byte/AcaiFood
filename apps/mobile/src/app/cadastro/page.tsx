@@ -431,7 +431,8 @@ function CadastroForm() {
     const roleStr = String(role || '').toLowerCase();
     const veicStr = String(veiculo || '').toLowerCase();
 
-    if (roleStr === 'loja') router.push('/parceiros/batedeira');
+    if (returnUrl && returnUrl.startsWith('/convite/')) router.push(returnUrl);
+    else if (roleStr === 'loja') router.push('/parceiros/batedeira');
     else if (roleStr === 'fornecedor') router.push('/parceiros/fornecedor');
     else if (roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb')))) router.push('/parceiros/caminhao');
     else if (roleStr === 'motoboy' || roleStr === 'motorista') router.push('/parceiros/motoboy');

@@ -28,6 +28,7 @@ import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 
 import { AdminMfaGuard } from "@/components/admin/AdminMfaGuard";
 import { RefundInfo } from "@/components/RefundInfo";
+import { AdminRatingsSection } from "@/components/ratings/AdminRatingsSection";
 
 const emptySubscribe = () => () => {};
 
@@ -2984,7 +2985,7 @@ function AdminDashboardContent() {
                             <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                                 <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">
                                     <div>{c.name}</div>
-                                    <div className="text-[10px] font-bold mt-0.5 flex items-center gap-1">
+                                    <div className="text-[10px] font-bold mt-0.5 flex flex-wrap items-center gap-1">
                                         <span className="text-purple-600 dark:text-purple-400">⏰ Pix Automático:</span>
                                         <span className={`px-1.5 py-0.5 rounded border text-[9px] font-bold ${
                                           isAutoPayoutEnabled 
@@ -2992,6 +2993,20 @@ function AdminDashboardContent() {
                                             : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
                                         }`}>
                                             {cityPayoutTime} ({isAutoPayoutEnabled ? '⚡ Ativo' : '⏸️ Pausado'})
+                                        </span>
+                                        <span className={`px-1.5 py-0.5 rounded border text-[9px] font-bold ${
+                                          cityRatesObj.referrals_enabled
+                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                            : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
+                                        }`}>
+                                            🤝 Indicações: {cityRatesObj.referrals_enabled ? 'Ativas' : 'Desligadas'}
+                                        </span>
+                                        <span className={`px-1.5 py-0.5 rounded border text-[9px] font-bold ${
+                                          cityRatesObj.ratings_enabled
+                                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                                            : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
+                                        }`}>
+                                            ⭐ Avaliações: {cityRatesObj.ratings_enabled ? 'Ativas' : 'Desligadas'}
                                         </span>
                                     </div>
                                 </td>
@@ -3045,6 +3060,11 @@ function AdminDashboardContent() {
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* R39: Moderação de Avaliações e Denúncias */}
+            <div className="pt-2">
+              <AdminRatingsSection />
             </div>
           </div>
         )}
@@ -4559,6 +4579,259 @@ function AdminDashboardContent() {
                       </div>
                   </div>
               </div>
+
+              {selectedCityForRates && (
+                <div className="pb-4 border-t border-zinc-200 dark:border-zinc-800 pt-4 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+                        <span>🤝</span> Indicações de Motoristas & Avaliações (R39) nesta Cidade
+                      </h4>
+                      <p className="text-xs text-zinc-500">
+                        Chaves independentes por cidade (desligadas por padrão). Quando desligadas, nada de indicações ou avaliações aparece na cidade.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Duas chaves independentes da cidade */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="flex items-start gap-3 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/40 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(localRates?.referrals_enabled)}
+                        onChange={(e) => setLocalRates({ ...localRates, referrals_enabled: e.target.checked })}
+                        className="mt-0.5 w-4 h-4 accent-purple-600"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block">
+                          Ativar indicação de motoristas nesta cidade
+                        </span>
+                        <span className="text-[11px] text-zinc-500">
+                          Libera convites por link/WhatsApp e modos de chamada (Priorizar indicados / Só indicados).
+                        </span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/40 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(localRates?.ratings_enabled)}
+                        onChange={(e) => setLocalRates({ ...localRates, ratings_enabled: e.target.checked })}
+                        className="mt-0.5 w-4 h-4 accent-purple-600"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block">
+                          Ativar avaliações nesta cidade
+                        </span>
+                        <span className="text-[11px] text-zinc-500">
+                          Libera avaliação de 1 a 5 estrelas após pedido concluído em B2C, B2B e Coleta.
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Parâmetros por fluxo (B2C, B2B e Coleta) */}
+                  <div className="space-y-3 bg-purple-50/40 dark:bg-purple-950/20 p-3.5 rounded-xl border border-purple-200/70 dark:border-purple-900/40">
+                    <div>
+                      <p className="text-xs font-bold text-purple-900 dark:text-purple-200">
+                        Parâmetros de Indicação por Fluxo (B2C, B2B e Coleta)
+                      </p>
+                      <p className="text-[11px] text-purple-700 dark:text-purple-300 font-semibold mt-0.5">
+                        ℹ️ Comissão reduzida no frete para motorista indicado (%): Aplicada só quando o vendedor está em &apos;Só indicados&apos;.
+                      </p>
+                    </div>
+
+                    {/* B2C */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400 font-bold block">
+                          🛵 B2C — Comissão Reduzida Frete (%)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.5"
+                          placeholder={`Padrão (${localRates?.b2c_mot_plat ?? 10}%)`}
+                          value={localRates?.b2c_referred_driver_commission_pct ?? ''}
+                          onChange={(e) =>
+                            setLocalRates({
+                              ...localRates,
+                              b2c_referred_driver_commission_pct: e.target.value === '' ? null : Number(e.target.value),
+                            })
+                          }
+                          className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <span className="text-[10px] text-zinc-500">Aplicada só quando o vendedor está em &apos;Só indicados&apos;</span>
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400 font-bold block">
+                          🛵 B2C — Janela Exclusiva (seg)
+                        </label>
+                        <input
+                          type="number"
+                          min="30"
+                          max="3600"
+                          value={localRates?.b2c_referred_exclusive_seconds ?? 180}
+                          onChange={(e) =>
+                            setLocalRates({
+                              ...localRates,
+                              b2c_referred_exclusive_seconds: Math.max(30, Number(e.target.value) || 180),
+                            })
+                          }
+                          className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <span className="text-[10px] text-zinc-500">Padrão: 180s (3 min) em Priorizar indicados</span>
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400 font-bold block">
+                          🛵 B2C — Alerta Pedido Parado (seg)
+                        </label>
+                        <input
+                          type="number"
+                          min="60"
+                          max="7200"
+                          value={localRates?.b2c_stuck_order_alert_seconds ?? 300}
+                          onChange={(e) =>
+                            setLocalRates({
+                              ...localRates,
+                              b2c_stuck_order_alert_seconds: Math.max(60, Number(e.target.value) || 300),
+                            })
+                          }
+                          className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <span className="text-[10px] text-zinc-500">Padrão: 300s (5 min) em &apos;Só indicados&apos;</span>
+                      </div>
+                    </div>
+
+                    {/* B2B */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-purple-200/50 dark:border-purple-900/30">
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400 font-bold block">
+                          🚚 B2B — Comissão Reduzida Frete (%)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.5"
+                          placeholder={`Padrão (${localRates?.b2b_mot_plat ?? 10}%)`}
+                          value={localRates?.b2b_referred_driver_commission_pct ?? ''}
+                          onChange={(e) =>
+                            setLocalRates({
+                              ...localRates,
+                              b2b_referred_driver_commission_pct: e.target.value === '' ? null : Number(e.target.value),
+                            })
+                          }
+                          className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <span className="text-[10px] text-zinc-500">Aplicada só quando o vendedor está em &apos;Só indicados&apos;</span>
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400 font-bold block">
+                          🚚 B2B — Janela Exclusiva (seg)
+                        </label>
+                        <input
+                          type="number"
+                          min="30"
+                          max="3600"
+                          value={localRates?.b2b_referred_exclusive_seconds ?? 180}
+                          onChange={(e) =>
+                            setLocalRates({
+                              ...localRates,
+                              b2b_referred_exclusive_seconds: Math.max(30, Number(e.target.value) || 180),
+                            })
+                          }
+                          className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <span className="text-[10px] text-zinc-500">Padrão: 180s (3 min)</span>
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400 font-bold block">
+                          🚚 B2B — Alerta Pedido Parado (seg)
+                        </label>
+                        <input
+                          type="number"
+                          min="60"
+                          max="7200"
+                          value={localRates?.b2b_stuck_order_alert_seconds ?? 300}
+                          onChange={(e) =>
+                            setLocalRates({
+                              ...localRates,
+                              b2b_stuck_order_alert_seconds: Math.max(60, Number(e.target.value) || 300),
+                            })
+                          }
+                          className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <span className="text-[10px] text-zinc-500">Padrão: 300s (5 min) em &apos;Só indicados&apos;</span>
+                      </div>
+                    </div>
+
+                    {/* Coleta */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-purple-200/50 dark:border-purple-900/30">
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400 font-bold block">
+                          🚛 Coleta — Comissão Reduzida Frete (%)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.5"
+                          placeholder={`Padrão (${localRates?.col_mot_plat ?? 10}%)`}
+                          value={localRates?.col_referred_driver_commission_pct ?? ''}
+                          onChange={(e) =>
+                            setLocalRates({
+                              ...localRates,
+                              col_referred_driver_commission_pct: e.target.value === '' ? null : Number(e.target.value),
+                            })
+                          }
+                          className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <span className="text-[10px] text-zinc-500">Aplicada só quando o vendedor está em &apos;Só indicados&apos;</span>
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400 font-bold block">
+                          🚛 Coleta — Janela Exclusiva (seg)
+                        </label>
+                        <input
+                          type="number"
+                          min="30"
+                          max="3600"
+                          value={localRates?.col_referred_exclusive_seconds ?? 180}
+                          onChange={(e) =>
+                            setLocalRates({
+                              ...localRates,
+                              col_referred_exclusive_seconds: Math.max(30, Number(e.target.value) || 180),
+                            })
+                          }
+                          className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <span className="text-[10px] text-zinc-500">Padrão: 180s (3 min)</span>
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400 font-bold block">
+                          🚛 Coleta — Alerta Pedido Parado (seg)
+                        </label>
+                        <input
+                          type="number"
+                          min="60"
+                          max="7200"
+                          value={localRates?.col_stuck_order_alert_seconds ?? 300}
+                          onChange={(e) =>
+                            setLocalRates({
+                              ...localRates,
+                              col_stuck_order_alert_seconds: Math.max(60, Number(e.target.value) || 300),
+                            })
+                          }
+                          className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <span className="text-[10px] text-zinc-500">Padrão: 300s (5 min) em &apos;Só indicados&apos;</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>🔒</span> Chave de API Asaas</h4>

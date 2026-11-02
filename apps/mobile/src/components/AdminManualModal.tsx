@@ -123,6 +123,13 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                 <p className="font-bold text-zinc-900 dark:text-white mb-2">🛡️ Taxa de ativação da plataforma AçaíFood:</p>
                 <p>Na aba <em>Ativações</em>, ative ou desative a cobrança de taxa de adesão Pix para novas lojas e configure a quantidade de vagas promocionais gratuitas de fundadores.</p>
               </div>
+
+              <div className="text-xs bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 space-y-1.5">
+                <p className="font-bold text-purple-900 dark:text-purple-300 mb-1">🤝 Indicações de Motoristas & Avaliações por Cidade (R39):</p>
+                <p>• Em <em>Cidades / Expansão → ⚙️ Taxas da Cidade</em>, cada município possui duas chaves independentes (desligadas por padrão): <strong>Ativar indicação de motoristas nesta cidade</strong> e <strong>Ativar avaliações nesta cidade</strong>.</p>
+                <p>• Configure por fluxo (B2C, B2B e Coleta): <strong>comissão reduzida no frete para motorista indicado (%)</strong> (aplicada somente quando o vendedor opera em <em>&apos;Só indicados&apos;</em>), <strong>janela exclusiva dos indicados</strong> (padrão 180s) e <strong>tempo para alerta de pedido parado</strong> em <em>&apos;Só indicados&apos;</em> (padrão 300s).</p>
+                <p>• Na mesma aba <em>Cidades / Expansão</em>, modere avaliações denunciadas (Ocultar ou Manter Visível, com registro em <code>admin_audit_log</code>) e ajuste os parâmetros globais de avaliação.</p>
+              </div>
             </div>
           )}
 
