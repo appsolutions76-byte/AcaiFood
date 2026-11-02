@@ -59,21 +59,45 @@ SELECT tests.assert(NOT has_table_privilege('authenticated', 'public.ratings', '
 SELECT tests.assert(NOT has_table_privilege('authenticated', 'public.ratings', 'UPDATE'), 'authenticated não atualiza ratings');
 SELECT tests.assert(NOT has_table_privilege('authenticated', 'public.rating_reports', 'INSERT'), 'authenticated não insere em rating_reports');
 
--- 5. Sem UPDATE direto nas colunas novas de users e orders
-SELECT tests.assert(NOT has_column_privilege('authenticated', 'public.users', 'dispatch_mode', 'UPDATE'), 'authenticated não atualiza users.dispatch_mode');
-SELECT tests.assert(NOT has_column_privilege('authenticated', 'public.users', 'serve_mode', 'UPDATE'), 'authenticated não atualiza users.serve_mode');
-SELECT tests.assert(NOT has_column_privilege('authenticated', 'public.orders', 'dispatch_mode', 'UPDATE'), 'authenticated não atualiza orders.dispatch_mode');
-SELECT tests.assert(NOT has_column_privilege('authenticated', 'public.orders', 'self_delivery', 'UPDATE'), 'authenticated não atualiza orders.self_delivery');
-SELECT tests.assert(NOT has_column_privilege('authenticated', 'public.orders', 'radar_open_at', 'UPDATE'), 'authenticated não atualiza orders.radar_open_at');
-
--- 6. Teste funcional de RLS e user_rating_summary (média só com >= 5 avaliações VISIBLE)
+-- 5. Dados iniciais para teste funcional de RLS, guarda de colunas e user_rating_summary
 SELECT set_config('request.jwt.claim.role', 'service_role', true);
 INSERT INTO public.users (id, name, role) VALUES
   ('00000000-0000-0000-0000-000000000101', 'Loja R39', 'loja'),
   ('00000000-0000-0000-0000-000000000102', 'Motoboy R39', 'motorista'),
   ('00000000-0000-0000-0000-000000000103', 'Terceiro R39', 'cliente');
 
--- Índice único parcial de partner_referrals (PENDING/ACTIVE)
+INSERT INTO public.orders (id, buyer_id, driver_id, status, order_type) VALUES
+  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'RECEIVED', 'B2C'),
+  ('00000000-0000-0000-0000-000000000202', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'RECEIVED', 'B2C'),
+  ('00000000-0000-0000-0000-000000000203', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'RECEIVED', 'B2C'),
+  ('00000000-0000-0000-0000-000000000204', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'RECEIVED', 'B2C'),
+  ('00000000-0000-0000-0000-000000000205', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'RECEIVED', 'B2C');
+
+-- 6. Bloqueio de UPDATE direto nas colunas novas de users e orders por authenticated
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000101', true),
+       set_config('request.jwt.claim.role', 'authenticated', true);
+UPDATE public.users
+   SET dispatch_mode = 'REFERRED_ONLY', serve_mode = 'SELECTED', name = 'Loja R39 Editada'
+ WHERE id = '00000000-0000-0000-0000-000000000101';
+
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000103', true);
+UPDATE public.orders
+   SET dispatch_mode = 'REFERRED_ONLY', self_delivery = true, radar_open_at = now()
+ WHERE id = '00000000-0000-0000-0000-000000000201';
+RESET ROLE;
+
+SELECT tests.assert(
+  (SELECT dispatch_mode = 'ALL' AND serve_mode = 'ALL' AND name = 'Loja R39 Editada'
+     FROM public.users WHERE id = '00000000-0000-0000-0000-000000000101'),
+  'authenticated não altera users.dispatch_mode nem users.serve_mode diretamente');
+
+SELECT tests.assert(
+  (SELECT dispatch_mode = 'ALL' AND self_delivery = false AND radar_open_at IS NULL
+     FROM public.orders WHERE id = '00000000-0000-0000-0000-000000000201'),
+  'authenticated não altera orders.dispatch_mode, self_delivery nem radar_open_at diretamente');
+
+-- 7. Índice único parcial de partner_referrals (PENDING/ACTIVE)
 INSERT INTO public.partner_referrals (partner_id, driver_id, flow, origin, status)
 VALUES ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000102', 'B2C', 'PARTNER_INVITE', 'PENDING');
 
@@ -98,14 +122,7 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000102
 SELECT tests.assert((SELECT count(*) FROM public.partner_referrals) = 1, 'motorista lê a própria indicação');
 RESET ROLE;
 
--- Avaliações e cálculo de user_rating_summary (mínimo 5 para exibir avg_stars)
-INSERT INTO public.orders (id, buyer_id, driver_id, status, order_type) VALUES
-  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'RECEIVED', 'B2C'),
-  ('00000000-0000-0000-0000-000000000202', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'RECEIVED', 'B2C'),
-  ('00000000-0000-0000-0000-000000000203', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'RECEIVED', 'B2C'),
-  ('00000000-0000-0000-0000-000000000204', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'RECEIVED', 'B2C'),
-  ('00000000-0000-0000-0000-000000000205', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'RECEIVED', 'B2C');
-
+-- 8. Avaliações e cálculo de user_rating_summary (mínimo 5 para exibir avg_stars)
 INSERT INTO public.ratings (order_id, rater_id, ratee_id, rater_role, ratee_role, stars, comment, status) VALUES
   ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'cliente', 'motorista', 5, 'Ótimo', 'VISIBLE'),
   ('00000000-0000-0000-0000-000000000202', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000102', 'cliente', 'motorista', 4, NULL, 'VISIBLE'),
