@@ -190,11 +190,6 @@ DECLARE
   r_non_admin JSONB;
   v_rep_st    TEXT;
 BEGIN
-  SELECT id INTO v_rating_id
-    FROM public.ratings
-   WHERE order_id = '00000000-0000-0000-0000-000000000701'
-     AND ratee_id = '00000000-0000-0000-0000-000000000611';
-
   r_my := public.get_order_ratings_for_me('00000000-0000-0000-0000-000000000706');
   PERFORM tests.assert(
     (r_my->>'success')::boolean = true AND jsonb_array_length(r_my->'ratings') = 2,
@@ -206,6 +201,15 @@ BEGIN
     (r_pub->>'success')::boolean = true AND (r_pub->>'rating_count')::int = 2,
     'get_public_ratings_for_user retorna resumo e comentários públicos'
   );
+
+  -- Loja (611) pega o ID da avaliação recebida pela view pública ratings_public (sem precisar ler public.ratings direto)
+  SELECT id INTO v_rating_id
+    FROM public.ratings_public
+   WHERE ratee_id = '00000000-0000-0000-0000-000000000611'
+     AND comment = 'Excelente açaí grosso!'
+   LIMIT 1;
+
+  PERFORM tests.assert(v_rating_id IS NOT NULL, 'Loja encontra ID da avaliação recebida em ratings_public');
 
   r_rep := public.rating_report_create(v_rating_id, 'Comentário suspeito');
   PERFORM tests.assert((r_rep->>'success')::boolean = true, 'Loja cria denúncia de avaliação');
@@ -269,10 +273,10 @@ BEGIN
    WHERE action = 'ADMIN_RATING_MODERATE' AND target_id = v_rating_id::text;
   PERFORM tests.assert(v_audit_cnt = 1, 'Moderação registrada em admin_audit_log');
 
-  -- Agora testa manter visível (VISIBLE -> RESOLVED_KEPT) em nova denúncia
-  UPDATE public.rating_reports SET status = 'OPEN' WHERE rating_id = v_rating_id;
+  -- Reabre a denúncia em uma nova denúncia para testar manter visível (VISIBLE -> RESOLVED_KEPT)
+  r_mod_keep := public.rating_report_create(v_rating_id, 'Revisão solicitada');
   r_mod_keep := public.admin_rating_moderate(v_rating_id, 'VISIBLE', 'Mantida após revisão');
-  SELECT status INTO v_rep_st FROM public.rating_reports WHERE rating_id = v_rating_id LIMIT 1;
+  SELECT status INTO v_rep_st FROM public.rating_reports WHERE rating_id = v_rating_id ORDER BY created_at DESC LIMIT 1;
   SELECT hidden_reason, hidden_by INTO v_h_reason, v_h_by FROM public.ratings WHERE id = v_rating_id;
   PERFORM tests.assert(
     (r_mod_keep->>'success')::boolean = true
