@@ -185,6 +185,9 @@ export interface User {
   monthlyIncome?: number;
   companyType?: string;
   addressNumber?: string;
+  // R39: Indicações e despacho
+  dispatch_mode?: 'ALL' | 'REFERRED_FIRST' | 'REFERRED_ONLY';
+  serve_mode?: 'ALL' | 'SELECTED';
 }
 
 export interface Order {
@@ -247,6 +250,15 @@ export interface Order {
   driverRating?: number;
   driverRatingComment?: string;
   driverRatedAt?: string;
+  // R39: Indicações, despacho e entrega própria
+  dispatch_mode?: 'ALL' | 'REFERRED_FIRST' | 'REFERRED_ONLY';
+  dispatch_mode_snapshot?: 'ALL' | 'REFERRED_FIRST' | 'REFERRED_ONLY' | null;
+  radar_open_at?: string | null;
+  dispatch_called_at?: string | null;
+  stuck_alert_sent_at?: string | null;
+  self_delivery?: boolean;
+  assigned_via_referral?: boolean;
+  delivery_platform_fee_pct_applied?: number | null;
 }
 
 export interface CityRates {
@@ -267,6 +279,24 @@ export interface CityRates {
   ecopoint_min_fee?: number; ecopoint_min_km?: number; ecopoint_extra_km_fee?: number;
   asaas_fee_split_actors?: number;
   asaas_pix_fee_fixed?: number;
+  // R39: Indicações e avaliações por cidade
+  referrals_enabled?: boolean;
+  ratings_enabled?: boolean;
+  b2c_mot_plat_referred?: number | null;
+  b2b_mot_plat_referred?: number | null;
+  col_mot_plat_referred?: number | null;
+  b2c_delivery_platform_fee_pct_referred?: number | null;
+  b2b_delivery_platform_fee_pct_referred?: number | null;
+  col_delivery_platform_fee_pct_referred?: number | null;
+  b2c_referred_exclusive_seconds?: number;
+  b2b_referred_exclusive_seconds?: number;
+  col_referred_exclusive_seconds?: number;
+  b2c_stuck_order_alert_seconds?: number;
+  b2b_stuck_order_alert_seconds?: number;
+  col_stuck_order_alert_seconds?: number;
+  rating_window_days?: number;
+  rating_min_count_display?: number;
+  rating_comments_enabled?: boolean;
 }
 
 export interface City {
@@ -274,6 +304,36 @@ export interface City {
   name: string;
   status: 'active' | 'paused';
   rates?: CityRates;
+  referrals_enabled?: boolean;
+  ratings_enabled?: boolean;
+  b2c_delivery_platform_fee_pct_referred?: number | null;
+  b2b_delivery_platform_fee_pct_referred?: number | null;
+  col_delivery_platform_fee_pct_referred?: number | null;
+  b2c_referred_exclusive_seconds?: number;
+  b2b_referred_exclusive_seconds?: number;
+  col_referred_exclusive_seconds?: number;
+  b2c_stuck_order_alert_seconds?: number;
+  b2b_stuck_order_alert_seconds?: number;
+  col_stuck_order_alert_seconds?: number;
+}
+
+export function isCityFeatureEnabled(
+  cityName: string | null | undefined,
+  cities: City[] | undefined,
+  feature: 'referrals_enabled' | 'ratings_enabled'
+): boolean {
+  if (!cityName || !Array.isArray(cities) || cities.length === 0) return false;
+  const norm = (str?: string | null) => String(str || '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  const target = norm(cityName);
+  const match = cities.find(c => norm(c.name) === target);
+  if (!match) return false;
+  if (typeof (match as any)[feature] === 'boolean' && (match as any)[feature]) return true;
+  if (match.rates && typeof (match.rates as any)[feature] === 'boolean') return Boolean((match.rates as any)[feature]);
+  return Boolean((match as any)[feature]);
 }
 
 export function getRatesForCity(cityName?: string | null, globalRates?: any, cities?: City[]) {
@@ -286,8 +346,41 @@ export function getRatesForCity(cityName?: string | null, globalRates?: any, cit
 
   const target = norm(cityName);
   const match = cities.find(c => norm(c.name) === target);
-  if (match && match.rates && Object.keys(match.rates).length > 0) {
-    return { ...globalRates, ...match.rates };
+  if (match) {
+    const colOverrides: Record<string, any> = {};
+    if (typeof match.referrals_enabled === 'boolean') colOverrides.referrals_enabled = match.referrals_enabled;
+    if (typeof match.ratings_enabled === 'boolean') colOverrides.ratings_enabled = match.ratings_enabled;
+    if (match.b2c_delivery_platform_fee_pct_referred !== undefined && match.b2c_delivery_platform_fee_pct_referred !== null) {
+      colOverrides.b2c_mot_plat_referred = Number(match.b2c_delivery_platform_fee_pct_referred);
+      colOverrides.b2c_delivery_platform_fee_pct_referred = Number(match.b2c_delivery_platform_fee_pct_referred);
+    }
+    if (match.b2b_delivery_platform_fee_pct_referred !== undefined && match.b2b_delivery_platform_fee_pct_referred !== null) {
+      colOverrides.b2b_mot_plat_referred = Number(match.b2b_delivery_platform_fee_pct_referred);
+      colOverrides.b2b_delivery_platform_fee_pct_referred = Number(match.b2b_delivery_platform_fee_pct_referred);
+    }
+    if (match.col_delivery_platform_fee_pct_referred !== undefined && match.col_delivery_platform_fee_pct_referred !== null) {
+      colOverrides.col_mot_plat_referred = Number(match.col_delivery_platform_fee_pct_referred);
+      colOverrides.col_delivery_platform_fee_pct_referred = Number(match.col_delivery_platform_fee_pct_referred);
+    }
+    if (match.b2c_referred_exclusive_seconds !== undefined && match.b2c_referred_exclusive_seconds !== null) {
+      colOverrides.b2c_referred_exclusive_seconds = Number(match.b2c_referred_exclusive_seconds);
+    }
+    if (match.b2b_referred_exclusive_seconds !== undefined && match.b2b_referred_exclusive_seconds !== null) {
+      colOverrides.b2b_referred_exclusive_seconds = Number(match.b2b_referred_exclusive_seconds);
+    }
+    if (match.col_referred_exclusive_seconds !== undefined && match.col_referred_exclusive_seconds !== null) {
+      colOverrides.col_referred_exclusive_seconds = Number(match.col_referred_exclusive_seconds);
+    }
+    if (match.b2c_stuck_order_alert_seconds !== undefined && match.b2c_stuck_order_alert_seconds !== null) {
+      colOverrides.b2c_stuck_order_alert_seconds = Number(match.b2c_stuck_order_alert_seconds);
+    }
+    if (match.b2b_stuck_order_alert_seconds !== undefined && match.b2b_stuck_order_alert_seconds !== null) {
+      colOverrides.b2b_stuck_order_alert_seconds = Number(match.b2b_stuck_order_alert_seconds);
+    }
+    if (match.col_stuck_order_alert_seconds !== undefined && match.col_stuck_order_alert_seconds !== null) {
+      colOverrides.col_stuck_order_alert_seconds = Number(match.col_stuck_order_alert_seconds);
+    }
+    return { ...globalRates, ...(match.rates || {}), ...colOverrides };
   }
   return globalRates;
 }
@@ -615,7 +708,9 @@ export const useAppStore = create<AppState>()(
             asaasAccountId: userProfile.asaas_account_id,
             asaas_account_status: userProfile.asaas_account_status || undefined,
             products: mapDbProducts(sf?.products),
-            cpfCnpj: userProfile.cpf_cnpj
+            cpfCnpj: userProfile.cpf_cnpj,
+            dispatch_mode: (userProfile.dispatch_mode as any) || 'ALL',
+            serve_mode: (userProfile.serve_mode as any) || 'ALL'
           };
           
           set((state) => ({ currentUser: loggedUser, users: { ...state.users, [loggedUser.id]: loggedUser } }));
@@ -948,7 +1043,7 @@ export const useAppStore = create<AppState>()(
         if (lojasSession) {
             const res = await supabase
                 .from('users')
-                .select('id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, created_at, storefronts(*, products(*))')
+                .select('id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, dispatch_mode, serve_mode, created_at, storefronts(*, products(*))')
                 .or('role.eq.PARTNER,role.eq.loja');
             dbLojas = res.data;
             error = res.error;
@@ -1034,7 +1129,9 @@ export const useAppStore = create<AppState>()(
                         asaasAccountId: dbUser.asaas_account_id,
                         asaas_account_status: dbUser.asaas_account_status || undefined,
                         products: mapDbProducts(sf?.products),
-                        cpfCnpj: dbUser.cpf_cnpj
+                        cpfCnpj: dbUser.cpf_cnpj,
+                        dispatch_mode: (dbUser.dispatch_mode as any) || 'ALL',
+                        serve_mode: (dbUser.serve_mode as any) || 'ALL'
                     };
                     if (state.currentUser && state.currentUser.id === dbUser.id) {
                         updatedCurrentUser = keepLocalPrices(state.currentUser, { ...state.currentUser, ...definedOnly(userObj), status: storeStatus });
@@ -1074,7 +1171,7 @@ export const useAppStore = create<AppState>()(
             if (!usersSession) return;
             const res = await supabase
                 .from('users')
-                .select('id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, created_at, storefronts(*, products(*))');
+                .select('id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, dispatch_mode, serve_mode, created_at, storefronts(*, products(*))');
             dbUsers = res.data;
             error = res.error;
         }
@@ -1163,7 +1260,9 @@ export const useAppStore = create<AppState>()(
                         products: mapDbProducts(sf?.products),
                         cpfCnpj: dbUser.cpf_cnpj,
                         storefrontId: sf?.id,
-                        storefronts: sf ? [sf] : []
+                        storefronts: sf ? [sf] : [],
+                        dispatch_mode: (dbUser.dispatch_mode as any) || 'ALL',
+                        serve_mode: (dbUser.serve_mode as any) || 'ALL'
                     };
                     if (state.currentUser && state.currentUser.id === dbUser.id) {
                         updatedCurrentUser = keepLocalPrices(state.currentUser, { ...state.currentUser, ...definedOnly(userObj), status: storeStatus });
@@ -2799,6 +2898,8 @@ export const useAppStore = create<AppState>()(
              payout_seller_done, payout_driver_done,
              seller_payout_amount, driver_payout_amount, platform_fee_amount, delivery_fee_amount, asaas_fee_amount,
              pricing_snapshot, delivery_address, delivery_lat, delivery_lng, delivery_reference, delivery_bairro,
+             dispatch_mode, dispatch_mode_snapshot, radar_open_at, dispatch_called_at, stuck_alert_sent_at,
+             self_delivery, assigned_via_referral, delivery_platform_fee_pct_applied,
              order_items ( id, product_name, quantity, unit_price_cents, total_price_cents )
           `;
 
@@ -3132,6 +3233,16 @@ export const useAppStore = create<AppState>()(
                         driverRating: dbOrder.pricing_snapshot?.driverRating?.rating !== undefined ? Number(dbOrder.pricing_snapshot.driverRating.rating) : localOrder?.driverRating,
                         driverRatingComment: dbOrder.pricing_snapshot?.driverRating?.comment || localOrder?.driverRatingComment,
                         driverRatedAt: dbOrder.pricing_snapshot?.driverRating?.ratedAt || localOrder?.driverRatedAt,
+                        dispatch_mode: (dbOrder.dispatch_mode as any) || (dbOrder.dispatch_mode_snapshot as any) || localOrder?.dispatch_mode || 'ALL',
+                        dispatch_mode_snapshot: (dbOrder.dispatch_mode_snapshot as any) || localOrder?.dispatch_mode_snapshot || null,
+                        radar_open_at: dbOrder.radar_open_at ?? localOrder?.radar_open_at ?? null,
+                        dispatch_called_at: dbOrder.dispatch_called_at ?? localOrder?.dispatch_called_at ?? null,
+                        stuck_alert_sent_at: dbOrder.stuck_alert_sent_at ?? localOrder?.stuck_alert_sent_at ?? null,
+                        self_delivery: Boolean(dbOrder.self_delivery ?? localOrder?.self_delivery ?? false),
+                        assigned_via_referral: Boolean(dbOrder.assigned_via_referral ?? localOrder?.assigned_via_referral ?? false),
+                        delivery_platform_fee_pct_applied: dbOrder.delivery_platform_fee_pct_applied !== undefined && dbOrder.delivery_platform_fee_pct_applied !== null
+                          ? Number(dbOrder.delivery_platform_fee_pct_applied)
+                          : (localOrder?.delivery_platform_fee_pct_applied ?? null),
                        confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
                        taxas: {
                           entregaTotal: finalEntregaTotal,
@@ -3150,9 +3261,9 @@ export const useAppStore = create<AppState>()(
              if (isDriverRole) {
                try {
                  const { data: radarData, error: radarErr } = await supabase.rpc('get_driver_radar');
-                 let finalRadarList = radarData;
+                 let finalRadarList = Array.isArray(radarData) ? radarData : [];
 
-                 if (radarErr || !Array.isArray(finalRadarList) || finalRadarList.length === 0) {
+                 if (radarErr) {
                    const { data: directRadar } = await supabase
                      .from('orders')
                      .select('id, order_type, status, delivery_distance_km, driver_payout_amount, delivery_bairro, delivery_lat, delivery_lng, created_at')

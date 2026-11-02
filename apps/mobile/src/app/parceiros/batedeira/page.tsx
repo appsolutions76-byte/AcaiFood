@@ -27,7 +27,8 @@ import {
   DollarSign,
   Edit2
 } from "lucide-react";
-import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, generateUUID, calculateOrderFreight } from "@/store/useAppStore";
+import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, generateUUID, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
+import { PartnerReferralsSection } from "@/components/referrals/PartnerReferralsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
@@ -157,6 +158,7 @@ export default function BatedeiraDashboard() {
     }
   }, [currentUser?.freteSubsidyPct]);
   const [activeTab, setActiveTab] = useState('pedidos');
+  const [referralFlowTab, setReferralFlowTab] = useState<'B2C' | 'COLETA'>('B2C');
 
   const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(getPrinterConfig);
   const [printerModalOpen, setPrinterModalOpen] = useState(false);
@@ -483,6 +485,8 @@ export default function BatedeiraDashboard() {
   }
 
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
+  const referralsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'referrals_enabled');
+  const ratingsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'ratings_enabled');
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const mySfIds = ((store.users[currentUser.id] as any)?.storefronts || []).map((s: any) => s.id);
@@ -1286,6 +1290,19 @@ export default function BatedeiraDashboard() {
                 {formatMoney(vendasHoje)}
               </span>
             </button>
+
+            {referralsEnabled && (
+              <button 
+                onClick={() => setActiveTab('indicacoes')} 
+                className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  activeTab === 'indicacoes' 
+                    ? 'bg-purple-600 text-white shadow-md' 
+                    : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
+                }`}
+              >
+                <span>🤝 Indicações</span>
+              </button>
+            )}
           </div>
         </div>
       }
@@ -2525,6 +2542,42 @@ export default function BatedeiraDashboard() {
               partnerId={currentUser.id} 
               role="loja" 
               onBalanceLoaded={setServerBalance}
+            />
+          </div>
+        )}
+
+        {/* 6. ABA: INDICAÇÕES (R39) */}
+        {referralsEnabled && activeTab === 'indicacoes' && (
+          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 w-fit">
+              <button
+                type="button"
+                onClick={() => setReferralFlowTab('B2C')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  referralFlowTab === 'B2C'
+                    ? 'bg-purple-600 text-white'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                🛵 Entregas B2C (Motoboys)
+              </button>
+              <button
+                type="button"
+                onClick={() => setReferralFlowTab('COLETA')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  referralFlowTab === 'COLETA'
+                    ? 'bg-amber-600 text-white'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                🚛 Coleta de Caroço (Caçambas)
+              </button>
+            </div>
+            <PartnerReferralsSection
+              flow={referralFlowTab}
+              driverLabel={referralFlowTab === 'COLETA' ? 'caçamba' : 'motoboy'}
+              ratingsEnabled={ratingsEnabled}
+              minCountDisplay={rates?.rating_min_count_display ?? 5}
             />
           </div>
         )}

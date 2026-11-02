@@ -44,7 +44,9 @@ function LoginForm() {
         }
       }
 
-      if (roleStr === 'admin') router.push('/admin');
+      if (returnUrl && returnUrl.startsWith('/convite/')) {
+        router.push(returnUrl);
+      } else if (roleStr === 'admin') router.push('/admin');
       else if (roleStr === 'loja') router.push('/parceiros/batedeira');
       else if (roleStr === 'fornecedor') router.push('/parceiros/fornecedor');
       else if (roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb')))) router.push('/parceiros/caminhao');
