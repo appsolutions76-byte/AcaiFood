@@ -85,15 +85,20 @@
 ### 2.7 Dinheiro
 - Você recebe na hora do Pix, na sua conta Asaas. Detalhes e exemplo na seção 7.
 
+### 2.8 Motoristas indicados, entrega própria e avaliações (quando ativos na cidade)
+- **Convite por link:** na aba **Motoristas indicados**, gere links de convite (validade de 7 dias) para motoboys (B2C) ou operadores de caçamba (Coleta) e escolha como chamar por fluxo: **Aberto a todos do app**, **Priorizar meus indicados** (janela inicial exclusiva, padrão 3 min) ou **Só meus indicados**. A indicação é apenas preferência de chamada no app, sem exclusividade nem vínculo.
+- **Entrega por conta própria (B2C):** se um pedido em **Só meus indicados** aguardar aceite além do tempo de alerta da cidade (padrão 5 min), você pode abrir o pedido para todos do app, aguardar mais ou assumir a **entrega por conta própria** (confirmando a entrega com o PIN de 4 dígitos do cliente e mantendo o valor líquido do frete na sua conta).
+- **Avaliações (1 a 5 estrelas):** após a conclusão do pedido, avalie o cliente e o entregador (e no B2B/Coleta, o fornecedor e o motorista) em até 7 dias.
+
 ---
 
 ## 3. Fornecedor de Frutos (Atacado B2B)
 
 1. **Catálogo:** cadastre o lote (lata, paneiro ou saca), tipo do fruto, origem e preço.
 2. **Pedido B2B pago:** separe o lote no porto, feira ou armazém.
-3. **Chamar Caminhão:** os caminhoneiros veem a carga no radar.
+3. **Chamar Caminhão:** os caminhoneiros veem a carga no radar. Quando ativo na cidade, você também pode convidar caminhoneiros na aba **Caminhoneiros indicados** (fluxo B2B), escolher o modo de chamada (**Aberto a todos**, **Priorizar meus indicados** ou **Só meus indicados**) e, caso o pedido em **Só meus indicados** aguarde além do tempo de alerta, abrir para todos do app ou assumir a **entrega por conta própria** (validando o PIN de 4 dígitos da loja compradora na descarga).
 4. **Romaneio:** emita o comprovante de saída do lote.
-5. **Conclusão:** a batedeira confirma o recebimento pelo PIN. Logo depois, o app paga o frete do caminhoneiro a partir da sua conta Asaas.
+5. **Conclusão e avaliação:** a batedeira confirma o recebimento pelo PIN. Logo depois, o app paga o frete do caminhoneiro a partir da sua conta Asaas. Após a conclusão, avalie a loja compradora e o caminhoneiro com 1 a 5 estrelas (quando ativo na cidade).
    O Pix da batedeira cai direto na **sua conta Asaas**, com a comissão do app separada no mesmo Pix (split).
 6. Conta Asaas e saque: seções 6 e 7.
 
@@ -125,6 +130,10 @@
 - Se a loja estiver sem saldo naquele momento, a corrida fica pendente e é paga automaticamente assim que entrar saldo (próxima venda ou rotina diária).
 - Saque: seção 7.
 
+### 4.6 Lojas que me indicam e avaliações (quando ativos na cidade)
+- Na aba **Lojas que me indicam**, aceite ou encerre convites de lojas quando quiser, sem exclusividade nem punição. Chamados de lojas que te indicam exibem o selo **"🤝 Te indicou"** no radar.
+- Após concluir a entrega (`RECEIVED`), avalie o cliente e a loja com 1 a 5 estrelas.
+
 ---
 
 ## 5. Caminhoneiro / Caçamba (Carga)
@@ -132,7 +141,8 @@
 1. **Radar de cargas:** fretes B2B (fornecedor → batedeira) e coletas de caroço (batedeira → destino).
 2. O ganho é por km ou valor fixo, conforme a cidade. **Frete B2B:** pago após o PIN, da conta do fornecedor para a sua. **Coleta de caroço:** a loja paga o frete à plataforma, que paga você após o PIN no destino.
 3. **PIN:** no destino, o responsável informa o PIN e você confirma. Mesma regra de 5 tentativas.
-4. Conta Asaas e saque: seções 6 e 7.
+4. **Quem me indica e avaliações (quando ativos na cidade):** na aba **Quem me indica**, gerencie convites separados de Fornecedores (**B2B**) e Lojas (**Coleta**) e avalie as partes com 1 a 5 estrelas após concluir a operação.
+5. Conta Asaas e saque: seções 6 e 7.
 
 ---
 
@@ -192,7 +202,7 @@ Acesso restrito a administradores verificados no banco (`is_admin = true` / `rol
 | **Usuários** | Filtros por perfil e cidade, bloqueio/desbloqueio. **Excluir** é recusado se a conta tem pedido pago ou saque (use **Bloquear**); quando permitido, a subconta Asaas é encerrada antes e, se o Asaas recusar, o usuário não é excluído |
 | **Pedidos** | Pedidos em andamento, comprovantes Asaas, histórico de status, **gerar novo PIN** (destrava o pedido bloqueado; o admin não vê o PIN), conciliação manual (só pedido aguardando pagamento e com valor recebido ≥ valor do pedido) e estornos (valor sempre informado pelo Asaas) |
 | **Baixa Forçada** | Dar baixa em pedido travado, com **justificativa obrigatória de no mínimo 10 caracteres**, registrada com IP e usuário |
-| **Cidades / Tarifas** | Valor por km, frete mínimo, **App na Venda (%)**, **App no Frete (%)**, valor da corrida e divisão da tarifa Pix por município. Cada pedido grava as taxas do momento (snapshot) |
+| **Cidades / Tarifas** | Valor por km, frete mínimo, **App na Venda (%)**, **App no Frete (%)**, valor da corrida, divisão da tarifa Pix e controles R39 por município (**Ativar indicação de motoristas nesta cidade**, **Ativar avaliações nesta cidade**, comissão reduzida no frete para motorista indicado em *'Só indicados'*, janela exclusiva e alerta de pedido parado por fluxo B2C/B2B/Coleta, além de moderação de denúncias de avaliações). Cada pedido grava as taxas do momento (snapshot) |
 | **Ativações** | Taxa de ativação da plataforma (liga/desliga, com log) e vagas de fundadores |
 | **Suporte** | Atendimento em tempo real, **encaminhar ao Asaas** reclamações sobre serviço financeiro, marcar se a reclamação foi **procedente** e baixar o **Relatório mensal** (mês AAAA-MM: chamados, procedentes, encaminhados ao Asaas e disponibilidade) |
 | **Termos & LGPD** | Registros de aceite dos termos |

@@ -285,6 +285,9 @@ export interface CityRates {
   b2c_mot_plat_referred?: number | null;
   b2b_mot_plat_referred?: number | null;
   col_mot_plat_referred?: number | null;
+  b2c_referred_driver_commission_pct?: number | null;
+  b2b_referred_driver_commission_pct?: number | null;
+  col_referred_driver_commission_pct?: number | null;
   b2c_delivery_platform_fee_pct_referred?: number | null;
   b2b_delivery_platform_fee_pct_referred?: number | null;
   col_delivery_platform_fee_pct_referred?: number | null;
@@ -3500,12 +3503,45 @@ export const useAppStore = create<AppState>()(
       },
       saveCityRates: async (cityId, rawCityRates) => {
          const cityRates = stripSecretKeys(rawCityRates);
+         const prevCity = get().cities.find(c => c.id === cityId);
+         const referralsEnabled = Boolean(cityRates.referrals_enabled ?? prevCity?.referrals_enabled ?? false);
+         const ratingsEnabled = Boolean(cityRates.ratings_enabled ?? prevCity?.ratings_enabled ?? false);
          set((state) => ({
-            cities: state.cities.map(c => c.id === cityId ? { ...c, rates: stripSecretKeys({ ...c.rates, ...cityRates }) } : c)
+            cities: state.cities.map(c => c.id === cityId ? {
+               ...c,
+               referrals_enabled: referralsEnabled,
+               ratings_enabled: ratingsEnabled,
+               rates: stripSecretKeys({ ...c.rates, ...cityRates })
+            } : c)
          }));
          try {
-            const { error } = await supabase.from('cities').update({ rates: cityRates }).eq('id', cityId);
-            if (error) console.warn("Aviso ao salvar taxas da cidade no Supabase (coluna rates):", error);
+            const payload: Record<string, any> = {
+               rates: cityRates,
+               referrals_enabled: referralsEnabled,
+               ratings_enabled: ratingsEnabled,
+               b2c_referred_driver_commission_pct: cityRates.b2c_referred_driver_commission_pct ?? null,
+               b2c_referred_exclusive_seconds: cityRates.b2c_referred_exclusive_seconds ?? 180,
+               b2c_stuck_order_alert_seconds: cityRates.b2c_stuck_order_alert_seconds ?? 300,
+               b2b_referred_driver_commission_pct: cityRates.b2b_referred_driver_commission_pct ?? null,
+               b2b_referred_exclusive_seconds: cityRates.b2b_referred_exclusive_seconds ?? 180,
+               b2b_stuck_order_alert_seconds: cityRates.b2b_stuck_order_alert_seconds ?? 300,
+               col_referred_driver_commission_pct: cityRates.col_referred_driver_commission_pct ?? null,
+               col_referred_exclusive_seconds: cityRates.col_referred_exclusive_seconds ?? 180,
+               col_stuck_order_alert_seconds: cityRates.col_stuck_order_alert_seconds ?? 300,
+            };
+            const { error } = await supabase.from('cities').update(payload).eq('id', cityId);
+            if (error) {
+               await supabase.from('cities').update({ rates: cityRates }).eq('id', cityId);
+            }
+            const actorId = get().currentUser?.id || null;
+            await supabase.from('admin_audit_log').insert({
+               actor_id: actorId,
+               action: 'ADMIN_CITY_SETTINGS_UPDATE',
+               target_type: 'city',
+               target_id: cityId,
+               before_state: prevCity ? { name: prevCity.name, referrals_enabled: prevCity.referrals_enabled, ratings_enabled: prevCity.ratings_enabled, rates: prevCity.rates } : null,
+               after_state: { name: prevCity?.name, ...payload }
+            });
          } catch (e) {
             console.warn("Exceção ao atualizar taxas da cidade no banco:", e);
          }

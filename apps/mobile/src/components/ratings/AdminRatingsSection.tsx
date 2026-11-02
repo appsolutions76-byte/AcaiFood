@@ -11,19 +11,57 @@ export function AdminRatingsSection() {
   const [subTab, setSubTab] = useState<"reports" | "all">("reports");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [moderatingId, setModeratingId] = useState<string | null>(null);
+  const [windowDays, setWindowDays] = useState<number>(7);
+  const [minCountDisplay, setMinCountDisplay] = useState<number>(3);
+  const [commentsEnabled, setCommentsEnabled] = useState<boolean>(true);
+  const [savingGlobal, setSavingGlobal] = useState(false);
 
   const loadModeration = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await supabase.rpc("admin_get_ratings_moderation");
+      const [{ data }, { data: ps }] = await Promise.all([
+        supabase.rpc("admin_get_ratings_moderation"),
+        supabase
+          .from("platform_settings")
+          .select("rating_window_days, rating_min_count_display, rating_comments_enabled")
+          .limit(1)
+          .maybeSingle(),
+      ]);
       if (data?.success) {
         setReports(Array.isArray(data.reports) ? data.reports : []);
         setRatings(Array.isArray(data.ratings) ? data.ratings : []);
+      }
+      if (ps) {
+        if (ps.rating_window_days != null) setWindowDays(Number(ps.rating_window_days));
+        if (ps.rating_min_count_display != null) setMinCountDisplay(Number(ps.rating_min_count_display));
+        if (ps.rating_comments_enabled != null) setCommentsEnabled(Boolean(ps.rating_comments_enabled));
       }
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const handleSaveGlobalParams = async () => {
+    setSavingGlobal(true);
+    try {
+      const { error } = await supabase
+        .from("platform_settings")
+        .update({
+          rating_window_days: Math.max(1, Number(windowDays) || 7),
+          rating_min_count_display: Math.max(1, Number(minCountDisplay) || 3),
+          rating_comments_enabled: Boolean(commentsEnabled),
+        })
+        .not("id", "is", null);
+      if (error) {
+        setFeedback(error.message);
+      } else {
+        setFeedback("Parâmetros globais de avaliação salvos com sucesso!");
+      }
+    } finally {
+      setSavingGlobal(false);
+      setTimeout(() => setFeedback(null), 4000);
+    }
+  };
 
   useEffect(() => {
     loadModeration();
@@ -113,6 +151,57 @@ export function AdminRatingsSection() {
           {feedback}
         </div>
       )}
+
+      {/* Parâmetros Globais de Avaliação (platform_settings) */}
+      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+          <div>
+            <label className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">
+              Janela para avaliar (dias)
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={windowDays}
+              onChange={(e) => setWindowDays(Math.max(1, Number(e.target.value) || 7))}
+              className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">
+              Mínimo de notas para exibir média
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={minCountDisplay}
+              onChange={(e) => setMinCountDisplay(Math.max(1, Number(e.target.value) || 3))}
+              className="w-full border dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="flex items-center pt-4">
+            <label className="flex items-center gap-2 text-xs font-bold text-zinc-700 dark:text-zinc-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={commentsEnabled}
+                onChange={(e) => setCommentsEnabled(e.target.checked)}
+                className="w-4 h-4 accent-purple-600"
+              />
+              Permitir comentários escritos (máx. 280 caract.)
+            </label>
+          </div>
+        </div>
+        <button
+          type="button"
+          disabled={savingGlobal}
+          onClick={handleSaveGlobalParams}
+          className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-bold transition shrink-0 cursor-pointer"
+        >
+          {savingGlobal ? "Salvando..." : "Salvar Regras Globais"}
+        </button>
+      </div>
 
       {subTab === "reports" ? (
         reports.length === 0 ? (

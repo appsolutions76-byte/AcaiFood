@@ -324,6 +324,14 @@ function ManualBatedeira() {
             <p>• <strong>Saque</strong>: Peça o saque na aba Financeiro. Ele sai da sua conta Asaas por Pix para uma chave <strong>CPF ou CNPJ do mesmo titular</strong>. O administrador aprova (ou é automático, se ativado), e o saque só aparece como pago quando o Asaas confirma. A tarifa Pix do Asaas é descontada do valor enviado. Um saque por vez.</p>
             <p>• <strong>Valor Mínimo de Saque</strong>: O valor mínimo configurado na plataforma é de R$ 20,00.</p>
           </div>
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1.5">
+            <p className="font-bold text-emerald-900 dark:text-emerald-300">🤝 Motoristas Indicados, Entrega Própria & Avaliações (quando ativos na sua cidade):</p>
+            <p className="text-emerald-800 dark:text-emerald-300">
+              • <strong>Convite por link:</strong> Na aba <em>Motoristas indicados</em>, gere links de convite para entregadores de sua confiança (B2C) ou operadores de caçamba (Coleta) e escolha como chamar (<em>Aberto a todos</em>, <em>Priorizar meus indicados</em> por alguns minutos ou <em>Só meus indicados</em>). A indicação é uma preferência de chamada e não gera exclusividade nem vínculo.<br/>
+              • <strong>Entrega por conta própria:</strong> Se um pedido em <em>Só meus indicados</em> ficar aguardando motorista além do tempo da praça, você pode abrir o pedido para todos do app, aguardar mais ou assumir a <strong>entrega por conta própria</strong> (validando o PIN de 4 dígitos do cliente na entrega e mantendo o valor líquido do frete na sua conta).<br/>
+              • <strong>Avaliações (1 a 5 estrelas):</strong> Após a conclusão do pedido, avalie o cliente e o entregador (e no B2B/Coleta, o fornecedor e o motorista) em até 7 dias.
+            </p>
+          </div>
           <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs space-y-1.5">
             <p className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
               🛡️ Mesma Titularidade Obrigatória (Resoluções BCB / Asaas):
@@ -429,6 +437,14 @@ function ManualFornecedor() {
             <p>• <strong>Pagamento do Frete Pesado</strong>: Logo após o PIN, o app transfere automaticamente o valor do frete para o caminhoneiro a partir da sua conta Asaas.</p>
             <p>• <strong>Saques por Pix</strong>: Solicite saques a qualquer momento para sua chave Pix (mesmo CPF ou CNPJ de cadastro, conforme normas do Banco Central).</p>
           </div>
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1.5">
+            <p className="font-bold text-emerald-900 dark:text-emerald-300">🤝 Caminhoneiros Indicados, Entrega Própria & Avaliações (quando ativos na sua cidade):</p>
+            <p className="text-emerald-800 dark:text-emerald-300">
+              • Na aba <em>Caminhoneiros indicados</em>, convide transportadores B2B por link/WhatsApp e escolha entre <em>Aberto a todos</em>, <em>Priorizar meus indicados</em> ou <em>Só meus indicados</em>.<br/>
+              • Caso uma carga em <em>Só meus indicados</em> aguarde além do tempo da praça, você pode abrir o chamado para todos do app ou assumir a <strong>entrega por conta própria</strong>, validando o PIN de 4 dígitos da loja compradora na descarga.<br/>
+              • Após a entrega concluída, avalie a loja compradora e o caminhoneiro com 1 a 5 estrelas.
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -466,6 +482,9 @@ function ManualMotoboy() {
         <p className="text-zinc-600 dark:text-zinc-400">
           • <strong>Saque:</strong> Peça na aba Financeiro. Sai da sua conta Asaas por Pix para chave CPF do próprio titular, com a tarifa Pix do Asaas descontada do valor enviado.
         </p>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          • <strong>Lojas que me indicam & Avaliações:</strong> Quando ativo na sua cidade, aceite ou encerre convites de lojas quando quiser, veja o selo <em>&quot;🤝 Te indicou&quot;</em> no radar e avalie clientes e lojas com 1 a 5 estrelas após concluir a entrega.
+        </p>
       </div>
     </div>
   );
@@ -499,6 +518,9 @@ function ManualCaminhao() {
         </p>
         <p className="text-blue-700 dark:text-blue-300">
           • <strong>Saque:</strong> sai da sua conta Asaas por Pix para chave CPF/CNPJ do mesmo titular, com a tarifa Pix do Asaas descontada.
+        </p>
+        <p className="text-blue-700 dark:text-blue-300">
+          • <strong>Quem me indica & Avaliações:</strong> Quando ativo na sua cidade, gerencie convites separados de Fornecedores (B2B) e Lojas (Coleta) e avalie as partes com 1 a 5 estrelas após a conclusão.
         </p>
       </div>
     </div>
