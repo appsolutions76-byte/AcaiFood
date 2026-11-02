@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Truck, BookOpen, Share2 } from "lucide-react";
-import { useAppStore, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
+import { Truck, BookOpen, Share2, Users } from "lucide-react";
+import { useAppStore, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
+import { DriverReferralsSection } from "@/components/referrals/DriverReferralsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -49,6 +50,8 @@ export default function CaminhaoDashboard() {
   }>({ open: false, title: '', onSelect: () => {} });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [serverBalance, setServerBalance] = useState<number | null>(null);
+  const [indicacoesFlowTab, setIndicacoesFlowTab] = useState<'B2B' | 'COLETA'>('B2B');
+  const [myActivePartnerIds, setMyActivePartnerIds] = useState<Set<string>>(new Set());
   const lastAvailableCountRef = React.useRef(0);
 
   const [mounted, setMounted] = useState(false);
@@ -147,7 +150,23 @@ export default function CaminhaoDashboard() {
   }
 
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates || {};
+  const referralsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'referrals_enabled');
+  const ratingsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'ratings_enabled');
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  useEffect(() => {
+    if (!referralsEnabled || !currentUser?.id) return;
+    supabase.rpc('get_my_referrals', { p_flow: null }).then(({ data }) => {
+      if (data?.success && Array.isArray(data.referrals)) {
+        const ids = new Set<string>(
+          data.referrals
+            .filter((r: any) => r.status === 'ACTIVE')
+            .map((r: any) => String(r.partner_id))
+        );
+        setMyActivePartnerIds(ids);
+      }
+    });
+  }, [referralsEnabled, currentUser?.id, activeTab]);
 
   const getDriverFee = (o: any) => {
     if (!o) return 0;
@@ -564,6 +583,20 @@ export default function CaminhaoDashboard() {
                 {formatMoney(ganhosHoje)}
               </span>
             </button>
+
+            {referralsEnabled && (
+              <button 
+                onClick={() => setActiveTab('indicacoes')} 
+                className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  activeTab === 'indicacoes' 
+                    ? 'bg-amber-600 text-white shadow-md' 
+                    : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
+                }`}
+              >
+                <Users size={15} />
+                <span>🤝 Indicações</span>
+              </button>
+            )}
           </div>
         </div>
       }
@@ -591,10 +624,17 @@ export default function CaminhaoDashboard() {
                       : ((destId && store.users) ? store.users[destId] : null);
                     return (
                       <div key={o.id} className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-amber-100 dark:border-amber-900/50">
-                          <div className="flex justify-between items-center mb-2">
-                              <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded">
-                                {isColeta ? '🚛 Coleta de Caroço (Caçamba)' : `Nova Rota ${o.type}`}
-                              </span>
+                          <div className="flex justify-between items-center mb-2 flex-wrap gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded">
+                                  {isColeta ? '🚛 Coleta de Caroço (Caçamba)' : `Nova Rota ${o.type}`}
+                                </span>
+                                {referralsEnabled && (Boolean(o.is_referred_by_partner) || (origId && myActivePartnerIds.has(origId))) && (
+                                  <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 rounded-full">
+                                    🤝 Te indicou
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-base sm:text-lg font-black text-zinc-950 dark:text-white tracking-tight">Líquido: {formatMoney(getDriverFee(o))}</span>
                           </div>
                           <div className="bg-gray-50 dark:bg-zinc-950/50 p-3 rounded text-sm mb-4 flex flex-col gap-1 border border-zinc-100 dark:border-zinc-800">
@@ -699,6 +739,42 @@ export default function CaminhaoDashboard() {
               partnerId={currentUser.id} 
               role="motorista" 
               onBalanceLoaded={setServerBalance}
+            />
+          </div>
+        )}
+
+        {/* 5. ABA: INDICAÇÕES (R39 - B2B e Coleta) */}
+        {activeTab === 'indicacoes' && referralsEnabled && (
+          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex gap-2 bg-white dark:bg-zinc-900 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 w-fit">
+              <button
+                type="button"
+                onClick={() => setIndicacoesFlowTab('B2B')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  indicacoesFlowTab === 'B2B'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                🏭 Cargas B2B (Fornecedores)
+              </button>
+              <button
+                type="button"
+                onClick={() => setIndicacoesFlowTab('COLETA')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  indicacoesFlowTab === 'COLETA'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                ♻️ Coleta de Caroço (Lojas)
+              </button>
+            </div>
+
+            <DriverReferralsSection
+              flow={indicacoesFlowTab}
+              partnerLabel={indicacoesFlowTab === 'COLETA' ? 'loja' : 'fornecedor'}
+              ratingsEnabled={ratingsEnabled}
             />
           </div>
         )}

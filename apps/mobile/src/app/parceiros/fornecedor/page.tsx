@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { 
   PackageOpen, Printer, BookOpen, Share2, Camera, Edit3, Trash2, 
   CheckCircle2, XCircle, Sparkles, Plus, Search, Tag, Factory, 
-  Truck, Package, BarChart3, History, Wallet, Check, X, AlertCircle 
+  Truck, Package, BarChart3, History, Wallet, Check, X, AlertCircle, Users 
 } from "lucide-react";
-import { useAppStore, getRatesForCity, generateUUID } from "@/store/useAppStore";
+import { useAppStore, getRatesForCity, generateUUID, isCityFeatureEnabled } from "@/store/useAppStore";
+import { PartnerReferralsSection } from "@/components/referrals/PartnerReferralsSection";
+import { StuckOrderModal } from "@/components/referrals/StuckOrderModal";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { supabase } from "@/lib/supabase";
@@ -156,6 +158,7 @@ export default function FornecedorDashboard() {
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
   const [myStorefrontId, setMyStorefrontId] = useState<string | null>(null);
+  const [selfDeliveryPinInputs, setSelfDeliveryPinInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (currentUser?.id) {
@@ -351,6 +354,8 @@ export default function FornecedorDashboard() {
   }
 
   const rates = getRatesForCity(currentUser?.cidade, store.rates, store.cities) || store.rates;
+  const referralsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'referrals_enabled');
+  const ratingsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'ratings_enabled');
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const getSupplierRepasse = (o: any) => {
@@ -618,6 +623,60 @@ export default function FornecedorDashboard() {
                   <button onClick={() => store.acaoPedido(o.id, 'chamar_moto')} className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition">🚛 Chamar Caminhão</button>
               </div>
             )}
+
+            {!isCanceled && o.status === 'pronto' && !o.motoristaId && !o.self_delivery && referralsEnabled && (o.dispatch_mode === 'REFERRED_ONLY' || o.dispatch_mode_snapshot === 'REFERRED_ONLY') && (!o.radar_open_at || new Date(o.radar_open_at).getTime() > Date.now()) && (
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const { data, error } = await supabase.rpc('dispatch_open_order_to_app', { p_order_id: o.id });
+                    if (error || !data?.success) alert(data?.error || error?.message || 'Erro ao abrir pedido para o app');
+                    else if (currentUser?.id) store.fetchOrders(currentUser.id, true);
+                  }}
+                  className="bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm"
+                >
+                  📡 Abrir para o app
+                </button>
+                {Boolean(o.stuck_alert_sent_at) && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const { data, error } = await supabase.rpc('dispatch_set_self_delivery', { p_order_id: o.id });
+                      if (error || !data?.success) alert(data?.error || error?.message || 'Erro ao ativar entrega própria');
+                      else if (currentUser?.id) store.fetchOrders(currentUser.id, true);
+                    }}
+                    className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm"
+                  >
+                    🚛 Entregar por conta própria
+                  </button>
+                )}
+              </div>
+            )}
+
+            {!isCanceled && o.self_delivery && !isCompleted(o.status) && (
+              <div className="mt-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3 rounded-xl flex flex-col gap-2 w-full sm:w-auto">
+                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                  🚛 Entrega própria: peça o PIN de 4 dígitos da loja compradora ao entregar
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    maxLength={4}
+                    placeholder="0000"
+                    value={selfDeliveryPinInputs[o.id] || ''}
+                    onChange={e => setSelfDeliveryPinInputs(prev => ({ ...prev, [o.id]: e.target.value }))}
+                    className="w-24 text-center font-black tracking-widest text-base p-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => store.acaoPedido(o.id, 'validar_pin', selfDeliveryPinInputs[o.id])}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg shadow transition"
+                  >
+                    Confirmar Entrega
+                  </button>
+                </div>
+              </div>
+            )}
         </div>
     </div>
   )};
@@ -722,6 +781,20 @@ export default function FornecedorDashboard() {
                 {formatMoney((vendasHoje && vendasHoje > 0) ? vendasHoje : (emProcessamento || 0))}
               </span>
             </button>
+
+            {referralsEnabled && (
+              <button 
+                onClick={() => setActiveTab('indicacoes')} 
+                className={`py-2 px-3 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  activeTab === 'indicacoes' 
+                    ? 'bg-emerald-600 text-white shadow-md' 
+                    : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
+                }`}
+              >
+                <Users size={15} />
+                <span>Indicações</span>
+              </button>
+            )}
           </div>
         </div>
       }
@@ -1420,6 +1493,26 @@ export default function FornecedorDashboard() {
             />
           </div>
         )}
+
+        {/* 5. ABA: INDICAÇÕES (R39) */}
+        {activeTab === 'indicacoes' && referralsEnabled && (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <PartnerReferralsSection
+              flow="B2B"
+              driverLabel="caminhoneiro"
+              ratingsEnabled={ratingsEnabled}
+            />
+          </div>
+        )}
+
+      <StuckOrderModal
+        orders={fornActiveOrders}
+        rates={rates}
+        referralsEnabled={referralsEnabled}
+        onOrderUpdated={() => {
+          if (currentUser?.id) store.fetchOrders(currentUser.id, true);
+        }}
+      />
 
       <MapModal 
         isOpen={mapModal.open} 
