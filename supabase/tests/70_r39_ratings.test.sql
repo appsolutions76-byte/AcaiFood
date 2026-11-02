@@ -179,42 +179,87 @@ BEGIN
   );
 END $$;
 
--- 7. Denúncia (rating_report_create) e Moderação Admin (admin_rating_moderate) com log de auditoria
+-- 7. Denúncia (rating_report_create), leituras e Moderação Admin (admin_rating_moderate) com log de auditoria
 DO $$
 DECLARE
   v_rating_id UUID;
   r_rep       JSONB;
+  r_rep_dup   JSONB;
+  r_my        JSONB;
+  r_pub       JSONB;
   r_non_admin JSONB;
+  v_rep_st    TEXT;
 BEGIN
   SELECT id INTO v_rating_id
     FROM public.ratings
    WHERE order_id = '00000000-0000-0000-0000-000000000701'
      AND ratee_id = '00000000-0000-0000-0000-000000000611';
 
+  r_my := public.get_order_ratings_for_me('00000000-0000-0000-0000-000000000706');
+  PERFORM tests.assert(
+    (r_my->>'success')::boolean = true AND jsonb_array_length(r_my->'ratings') = 2,
+    'get_order_ratings_for_me retorna as 2 avaliações feitas pela Loja no pedido B2B 706'
+  );
+
+  r_pub := public.get_public_ratings_for_user('00000000-0000-0000-0000-000000000611');
+  PERFORM tests.assert(
+    (r_pub->>'success')::boolean = true AND (r_pub->>'rating_count')::int = 2,
+    'get_public_ratings_for_user retorna resumo e comentários públicos'
+  );
+
   r_rep := public.rating_report_create(v_rating_id, 'Comentário suspeito');
   PERFORM tests.assert((r_rep->>'success')::boolean = true, 'Loja cria denúncia de avaliação');
+
+  SELECT status INTO v_rep_st FROM public.rating_reports WHERE id = (r_rep->>'report_id')::uuid;
+  PERFORM tests.assert(v_rep_st = 'OPEN', 'rating_reports.status inicia como OPEN');
+
+  r_rep_dup := public.rating_report_create(v_rating_id, 'Denúncia repetida');
+  PERFORM tests.assert(
+    (r_rep_dup->>'success')::boolean = true AND COALESCE((r_rep_dup->>'already_reported')::boolean, false) = true,
+    'rating_report_create evita denúncia duplicada OPEN pelo mesmo usuário'
+  );
 
   r_non_admin := public.admin_rating_moderate(v_rating_id, 'HIDDEN', 'Tentativa sem ser admin');
   PERFORM tests.assert((r_non_admin->>'success')::boolean = false, 'Não-admin não pode moderar avaliação');
 END $$;
 
--- Admin (600) oculta a avaliação -> some de ratings_public e registra em admin_audit_log
+-- Admin (600) oculta a avaliação -> some de ratings_public, atualiza hidden_reason/hidden_by/status e registra em admin_audit_log
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000600', true);
 DO $$
 DECLARE
   v_rating_id UUID;
+  r_mod_list  JSONB;
   r_mod       JSONB;
+  r_mod_keep  JSONB;
   v_pub_cnt   INT;
   v_audit_cnt INT;
+  v_h_reason  TEXT;
+  v_h_by      UUID;
+  v_rep_st    TEXT;
 BEGIN
   SELECT id INTO v_rating_id
     FROM public.ratings
    WHERE order_id = '00000000-0000-0000-0000-000000000701'
      AND ratee_id = '00000000-0000-0000-0000-000000000611';
 
+  r_mod_list := public.admin_get_ratings_moderation();
+  PERFORM tests.assert(
+    (r_mod_list->>'success')::boolean = true AND jsonb_array_length(r_mod_list->'reports') >= 1,
+    'admin_get_ratings_moderation retorna denúncias e avaliações recentes'
+  );
+
   r_mod := public.admin_rating_moderate(v_rating_id, 'HIDDEN', 'Ocultado em teste');
   PERFORM tests.assert((r_mod->>'success')::boolean = true AND r_mod->>'status' = 'HIDDEN',
     'Admin oculta avaliação denunciada');
+
+  SELECT hidden_reason, hidden_by INTO v_h_reason, v_h_by FROM public.ratings WHERE id = v_rating_id;
+  PERFORM tests.assert(
+    v_h_reason = 'Ocultado em teste' AND v_h_by = '00000000-0000-0000-0000-000000000600',
+    'ratings.hidden_reason e ratings.hidden_by preenchidos ao ocultar'
+  );
+
+  SELECT status INTO v_rep_st FROM public.rating_reports WHERE rating_id = v_rating_id LIMIT 1;
+  PERFORM tests.assert(v_rep_st = 'RESOLVED_HIDDEN', 'rating_reports.status atualizado para RESOLVED_HIDDEN');
 
   SELECT count(*) INTO v_pub_cnt FROM public.ratings_public WHERE id = v_rating_id;
   PERFORM tests.assert(v_pub_cnt = 0, 'Avaliação ocultada não aparece em ratings_public');
@@ -223,6 +268,19 @@ BEGIN
     FROM public.admin_audit_log
    WHERE action = 'ADMIN_RATING_MODERATE' AND target_id = v_rating_id::text;
   PERFORM tests.assert(v_audit_cnt = 1, 'Moderação registrada em admin_audit_log');
+
+  -- Agora testa manter visível (VISIBLE -> RESOLVED_KEPT) em nova denúncia
+  UPDATE public.rating_reports SET status = 'OPEN' WHERE rating_id = v_rating_id;
+  r_mod_keep := public.admin_rating_moderate(v_rating_id, 'VISIBLE', 'Mantida após revisão');
+  SELECT status INTO v_rep_st FROM public.rating_reports WHERE rating_id = v_rating_id LIMIT 1;
+  SELECT hidden_reason, hidden_by INTO v_h_reason, v_h_by FROM public.ratings WHERE id = v_rating_id;
+  PERFORM tests.assert(
+    (r_mod_keep->>'success')::boolean = true
+    AND v_rep_st = 'RESOLVED_KEPT'
+    AND v_h_reason IS NULL
+    AND v_h_by IS NULL,
+    'admin_rating_moderate VISIBLE limpa hidden_reason/hidden_by e marca RESOLVED_KEPT'
+  );
 END $$;
 
 ROLLBACK;

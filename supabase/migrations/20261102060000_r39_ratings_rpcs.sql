@@ -2,6 +2,15 @@
 -- MIGRATION R39 (FASE 6): AVALIAÇÕES 1 A 5 ESTRELAS, DENÚNCIAS E MODERAÇÃO
 -- ==============================================================================
 
+-- 0. Colunas aditivas em ratings e rating_reports ------------------------------
+ALTER TABLE public.ratings
+  ADD COLUMN IF NOT EXISTS flow TEXT NOT NULL DEFAULT 'B2C' CHECK (flow IN ('B2C', 'B2B', 'COLETA')),
+  ADD COLUMN IF NOT EXISTS hidden_reason TEXT NULL,
+  ADD COLUMN IF NOT EXISTS hidden_by UUID NULL REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE public.rating_reports
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'RESOLVED_HIDDEN', 'RESOLVED_KEPT'));
+
 -- 1. RPC: rating_submit (6.1) --------------------------------------------------
 CREATE OR REPLACE FUNCTION public.rating_submit(
   p_order_id UUID,
@@ -296,6 +305,7 @@ BEGIN
 
   UPDATE public.rating_reports
      SET status      = v_report_status,
+         resolution  = COALESCE(NULLIF(trim(p_resolution), ''), v_report_status),
          resolved_by = v_caller,
          resolved_at = NOW()
    WHERE rating_id = p_rating_id
@@ -413,7 +423,6 @@ BEGIN
     jsonb_agg(
       jsonb_build_object(
         'id', rp.id,
-        'flow', rp.flow,
         'ratee_id', rp.ratee_id,
         'ratee_role', rp.ratee_role,
         'rater_role', rp.rater_role,
