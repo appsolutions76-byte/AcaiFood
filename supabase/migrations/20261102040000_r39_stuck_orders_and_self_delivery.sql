@@ -502,6 +502,12 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_create_order_settlements_on_receive ON public.orders;
+CREATE TRIGGER trg_create_order_settlements_on_receive
+  AFTER UPDATE OF status ON public.orders
+  FOR EACH ROW
+  EXECUTE FUNCTION public.create_order_settlements_on_receive();
+
 -- 7. Permissões -----------------------------------------------------------------
 REVOKE EXECUTE ON FUNCTION public.dispatch_mark_stuck_alert_sent(uuid) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.dispatch_open_order_to_app(uuid)     FROM PUBLIC, anon;

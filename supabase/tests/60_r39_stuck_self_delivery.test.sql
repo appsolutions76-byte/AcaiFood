@@ -237,11 +237,15 @@ END $$;
 RESET ROLE;
 
 SELECT tests.assert(
-  NOT EXISTS (
+  EXISTS (
+    SELECT 1 FROM public.settlements
+     WHERE order_id = '00000000-0000-0000-0000-000000000502' AND role = 'seller'
+  )
+  AND NOT EXISTS (
     SELECT 1 FROM public.settlements
      WHERE order_id = '00000000-0000-0000-0000-000000000502' AND role = 'driver'
   ),
-  'Nenhum settlement de motorista é criado quando self_delivery = true'
+  'Settlement do vendedor é criado e NENHUM settlement de motorista é criado quando self_delivery = true'
 );
 
 ROLLBACK;

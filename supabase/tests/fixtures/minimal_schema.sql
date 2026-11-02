@@ -63,7 +63,10 @@ CREATE TABLE public.orders (
   status TEXT,
   order_type TEXT,
   delivery_distance_km NUMERIC,
+  seller_payout_amount NUMERIC,
   driver_payout_amount NUMERIC,
+  payout_seller_done BOOLEAN DEFAULT false,
+  payout_driver_done BOOLEAN DEFAULT false,
   delivery_bairro TEXT,
   delivery_lat NUMERIC,
   delivery_lng NUMERIC,
@@ -123,7 +126,22 @@ CREATE TABLE public.admin_audit_log (
 
 CREATE TABLE public.platform_settings (
   id INTEGER PRIMARY KEY DEFAULT 1,
-  asaas_platform_wallet_id TEXT
+  asaas_platform_wallet_id TEXT,
+  settlements_enabled BOOLEAN DEFAULT false
+);
+
+CREATE TABLE public.settlements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL,
+  partner_id UUID NOT NULL,
+  role TEXT NOT NULL,
+  amount NUMERIC NOT NULL DEFAULT 0,
+  wallet_id TEXT,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  attempt_ref TEXT,
+  last_error TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (order_id, role)
 );
 
 CREATE TABLE public.cities (
