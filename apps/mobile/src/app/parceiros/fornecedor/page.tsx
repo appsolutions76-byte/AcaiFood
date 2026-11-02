@@ -10,6 +10,8 @@ import {
 import { useAppStore, getRatesForCity, generateUUID, isCityFeatureEnabled } from "@/store/useAppStore";
 import { PartnerReferralsSection } from "@/components/referrals/PartnerReferralsSection";
 import { StuckOrderModal } from "@/components/referrals/StuckOrderModal";
+import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
+import { MyReceivedRatingsSection } from "@/components/ratings/MyReceivedRatingsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { supabase } from "@/lib/supabase";
@@ -676,6 +678,14 @@ export default function FornecedorDashboard() {
                   </button>
                 </div>
               </div>
+            )}
+            {ratingsEnabled && currentUser?.id && (
+              <OrderRatingCard
+                order={o}
+                viewerId={currentUser.id}
+                viewerRole="fornecedor"
+                ratingsEnabled={ratingsEnabled}
+              />
             )}
         </div>
     </div>
@@ -1480,6 +1490,11 @@ export default function FornecedorDashboard() {
                 fornHistoryOrders.map(renderFornecedorOrderCard)
               )}
             </div>
+            {ratingsEnabled && currentUser?.id && (
+              <div className="mt-6">
+                <MyReceivedRatingsSection userId={currentUser.id} ratingsEnabled={ratingsEnabled} />
+              </div>
+            )}
           </div>
         )}
 

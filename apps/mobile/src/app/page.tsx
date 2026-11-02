@@ -4,7 +4,8 @@ import React, { useEffect, useState, useSyncExternalStore, Suspense } from "reac
 import Link from "next/link";
 import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw, Menu, X, Home, Search, ClipboardList, User, ChevronRight, Store, MapPin, Zap, Navigation, Clock, LayoutGrid, List, Star, SlidersHorizontal, ArrowUpDown, Sparkles } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, calculateOrderFreight } from "@/store/useAppStore";
+import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
+import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PixModal } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -3396,6 +3397,14 @@ export default function StorefrontPage() {
                             </button>
                           )}
                         </div>
+                        {currentUser?.id && isCityFeatureEnabled(o.cidadeOrigem || currentUser.cidade, store.cities, 'ratings_enabled') && (
+                          <OrderRatingCard
+                            order={o}
+                            viewerId={currentUser.id}
+                            viewerRole="cliente"
+                            ratingsEnabled={true}
+                          />
+                        )}
                       </div>
                     </div>
                   );

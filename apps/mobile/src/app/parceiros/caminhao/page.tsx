@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Truck, BookOpen, Share2, Users } from "lucide-react";
 import { useAppStore, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
 import { DriverReferralsSection } from "@/components/referrals/DriverReferralsSection";
+import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
+import { MyReceivedRatingsSection } from "@/components/ratings/MyReceivedRatingsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -483,12 +485,20 @@ export default function CaminhaoDashboard() {
                     ✅ Repasse Liquidado (R$ {getDriverFee(o).toFixed(2)})
                   </span>
                 ) : (
-                   <span className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-bold px-2 py-1 rounded border border-blue-200 dark:border-blue-800/60 shadow-sm flex items-center gap-1">
-                     ⏳ Saldo p/ Saque Asaas (R$ {getDriverFee(o).toFixed(2)})
-                   </span>
-                )}
-            </div>
-        ) : null}
+                    <span className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-bold px-2 py-1 rounded border border-blue-200 dark:border-blue-800/60 shadow-sm flex items-center gap-1">
+                      ⏳ Saldo p/ Saque Asaas (R$ {getDriverFee(o).toFixed(2)})
+                    </span>
+                 )}
+                 {ratingsEnabled && currentUser?.id && (
+                   <OrderRatingCard
+                     order={o}
+                     viewerId={currentUser.id}
+                     viewerRole="caminhao"
+                     ratingsEnabled={ratingsEnabled}
+                   />
+                 )}
+             </div>
+         ) : null}
       </div>
     );
   };
@@ -728,6 +738,11 @@ export default function CaminhaoDashboard() {
                   caminhaoHistoryOrders.map(o => renderFreightCard(o))
                 )}
               </div>
+              {ratingsEnabled && currentUser?.id && (
+                <div className="mt-6">
+                  <MyReceivedRatingsSection userId={currentUser.id} ratingsEnabled={ratingsEnabled} />
+                </div>
+              )}
             </div>
           </div>
         )}

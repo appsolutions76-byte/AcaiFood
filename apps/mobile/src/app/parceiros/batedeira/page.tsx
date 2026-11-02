@@ -30,6 +30,8 @@ import {
 import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, generateUUID, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
 import { PartnerReferralsSection } from "@/components/referrals/PartnerReferralsSection";
 import { StuckOrderModal } from "@/components/referrals/StuckOrderModal";
+import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
+import { MyReceivedRatingsSection } from "@/components/ratings/MyReceivedRatingsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
@@ -1177,6 +1179,14 @@ export default function BatedeiraDashboard() {
                 <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-1.5 rounded shadow-sm text-center">⏳ Aguardando caminhão</span>
               )}
           </div>
+          {ratingsEnabled && currentUser?.id && (
+            <OrderRatingCard
+              order={o}
+              viewerId={currentUser.id}
+              viewerRole="loja"
+              ratingsEnabled={ratingsEnabled}
+            />
+          )}
       </div>
     );
   };
@@ -2601,6 +2611,11 @@ export default function BatedeiraDashboard() {
                 batedeiraHistoryOrders.map(renderOrderCard)
               )}
             </div>
+            {ratingsEnabled && currentUser?.id && (
+              <div className="mt-6">
+                <MyReceivedRatingsSection userId={currentUser.id} ratingsEnabled={ratingsEnabled} />
+              </div>
+            )}
           </div>
         )}
 

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Bike, BookOpen, Share2 } from "lucide-react";
 import { useAppStore, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
 import { DriverReferralsSection } from "@/components/referrals/DriverReferralsSection";
+import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
+import { MyReceivedRatingsSection } from "@/components/ratings/MyReceivedRatingsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { MapModal, MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -706,6 +708,14 @@ export default function MotoboyDashboard() {
                                 >
                                   ⚠️ Reportar Problema
                                 </button>
+                                {ratingsEnabled && currentUser?.id && (
+                                  <OrderRatingCard
+                                    order={o}
+                                    viewerId={currentUser.id}
+                                    viewerRole="motorista"
+                                    ratingsEnabled={ratingsEnabled}
+                                  />
+                                )}
                             </div>
                         ) : isCanceled ? (
                             <div className="flex flex-col gap-2">
@@ -734,6 +744,11 @@ export default function MotoboyDashboard() {
                     </div>
                   )})}
                 </div>
+                {ratingsEnabled && currentUser?.id && (
+                  <div className="mt-6">
+                    <MyReceivedRatingsSection userId={currentUser.id} ratingsEnabled={ratingsEnabled} />
+                  </div>
+                )}
             </div>
         </div>
         )}
