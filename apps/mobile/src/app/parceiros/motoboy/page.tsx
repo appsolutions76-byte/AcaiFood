@@ -5,9 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Bike, BookOpen, Share2, Navigation, MapPin, X } from "lucide-react";
 import { useAppStore, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
-import { DriverReferralsSection } from "@/components/referrals/DriverReferralsSection";
 import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
-import { MyReceivedRatingsSection } from "@/components/ratings/MyReceivedRatingsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import type { MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -21,6 +19,10 @@ import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 import { PartnerDashboardLayout } from "@/components/PartnerDashboardLayout";
+
+// R41 (desempenho): janelas e abas pesadas só são baixadas depois que a tela abriu
+const DriverReferralsSection = dynamic(() => import("@/components/referrals/DriverReferralsSection").then(m => m.DriverReferralsSection), { ssr: false });
+const MyReceivedRatingsSection = dynamic(() => import("@/components/ratings/MyReceivedRatingsSection").then(m => m.MyReceivedRatingsSection), { ssr: false });
 
 // R40 (desempenho): janelas pesadas só são baixadas quando a tela já abriu
 const MapModal = dynamic(() => import("@/components/MapModal").then(m => m.MapModal), { ssr: false });
@@ -184,8 +186,8 @@ export default function MotoboyDashboard() {
     initAudioUnlock();
     const s = useAppStore.getState();
     if (typeof s.fetchCities === 'function') s.fetchCities();
-    // startRealtime já carrega taxas, lojas, usuários e pedidos (R40: sem buscas repetidas)
-    s.startRealtime();
+    // startRealtime já carrega taxas, usuários e pedidos. Modo leve (R41): sem cardápio e fotos das lojas
+    s.startRealtime({ lite: true });
     supabase.rpc('get_my_referrals', { p_flow: 'B2C' }).then(({ data }) => {
       if (Array.isArray(data)) setMyReferrals(data);
     });
@@ -323,13 +325,11 @@ export default function MotoboyDashboard() {
         await Promise.all([
           store.fetchOrders(currentUser.id, true),
           store.fetchAllUsers(true),
-          store.fetchLojas(true),
           store.fetchRates(true)
         ]);
       } else {
         await Promise.all([
           store.fetchAllUsers(true),
-          store.fetchLojas(true),
           store.fetchRates(true)
         ]);
       }

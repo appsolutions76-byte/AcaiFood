@@ -4,16 +4,11 @@ import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Truck, BookOpen, Share2, Users } from "lucide-react";
 import { useAppStore, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
-import { DriverReferralsSection } from "@/components/referrals/DriverReferralsSection";
 import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
-import { MyReceivedRatingsSection } from "@/components/ratings/MyReceivedRatingsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
-import { MapModal, MapPoint } from "@/components/MapModal";
+import type { MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { PartnerManualModal } from "@/components/PartnerManualModal";
-import { OrderChatModal } from "@/components/OrderChatModal";
 import { SupportChatButton } from "@/components/SupportChatButton";
-import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { supabase } from "@/lib/supabase";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { initAudioUnlock, playDeliveryAlertTone } from "@/lib/soundAlerts";
@@ -21,7 +16,16 @@ import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 import { PartnerDashboardLayout } from "@/components/PartnerDashboardLayout";
-import { PhotoPickerModal } from "@/components/PhotoPickerModal";
+import dynamic from "next/dynamic";
+
+// R41 (desempenho): janelas e abas pesadas só são baixadas depois que a tela abriu
+const MapModal = dynamic(() => import("@/components/MapModal").then(m => m.MapModal), { ssr: false });
+const PartnerManualModal = dynamic(() => import("@/components/PartnerManualModal").then(m => m.PartnerManualModal), { ssr: false });
+const OrderChatModal = dynamic(() => import("@/components/OrderChatModal").then(m => m.OrderChatModal), { ssr: false });
+const ShareLandingModal = dynamic(() => import("@/components/ShareLandingModal").then(m => m.ShareLandingModal), { ssr: false });
+const PhotoPickerModal = dynamic(() => import("@/components/PhotoPickerModal").then(m => m.PhotoPickerModal), { ssr: false });
+const DriverReferralsSection = dynamic(() => import("@/components/referrals/DriverReferralsSection").then(m => m.DriverReferralsSection), { ssr: false });
+const MyReceivedRatingsSection = dynamic(() => import("@/components/ratings/MyReceivedRatingsSection").then(m => m.MyReceivedRatingsSection), { ssr: false });
 
 const emptySubscribe = () => () => {};
 
@@ -65,23 +69,23 @@ export default function CaminhaoDashboard() {
   useEffect(() => {
     initAudioUnlock();
     const s = useAppStore.getState();
-    s.fetchAllUsers();
     if (typeof s.fetchCities === 'function') s.fetchCities();
-    if (typeof s.fetchRates === 'function') s.fetchRates();
-    s.startRealtime();
+    // startRealtime já carrega taxas, usuários e pedidos. Modo leve (R41): sem cardápio e fotos das lojas
+    s.startRealtime({ lite: true });
   }, []);
 
-  // Polling contínuo do radar de entregas a cada 3.5 segundos para garantir que chamadas toquem e apareçam instantaneamente
+  // Consulta do radar (R41: a cada 6 s e só com o app na tela; antes 3,5 s sempre)
   useEffect(() => {
     if (!mounted || !currentUser?.id || currentUser.status === 'paused') return;
-    store.fetchOrders(currentUser.id, true);
+    store.fetchOrders(currentUser.id, false);
 
     const intervalId = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       const s = useAppStore.getState();
       if (s.currentUser?.id && s.currentUser.status !== 'paused') {
         s.fetchOrders(s.currentUser.id, false);
       }
-    }, 3500);
+    }, 6000);
 
     return () => clearInterval(intervalId);
   }, [mounted, currentUser?.id, currentUser?.status]);
@@ -203,7 +207,6 @@ export default function CaminhaoDashboard() {
         await Promise.all([
           store.fetchOrders(currentUser.id, true),
           store.fetchAllUsers(true),
-          store.fetchLojas(true),
           store.fetchRates(true)
         ]);
       } else {

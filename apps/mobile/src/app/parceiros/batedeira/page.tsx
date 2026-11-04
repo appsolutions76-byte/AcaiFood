@@ -28,20 +28,14 @@ import {
   Edit2
 } from "lucide-react";
 import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, generateUUID, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
-import { PartnerReferralsSection } from "@/components/referrals/PartnerReferralsSection";
-import { StuckOrderModal } from "@/components/referrals/StuckOrderModal";
 import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
-import { MyReceivedRatingsSection } from "@/components/ratings/MyReceivedRatingsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
-import { MapModal, MapPoint } from "@/components/MapModal";
+import type { MapPoint } from "@/components/MapModal";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 import { PartnerDashboardLayout } from "@/components/PartnerDashboardLayout";
 import { supabase } from "@/lib/supabase";
-import { PixModal, PixModalData } from "@/components/PixModal";
+import type { PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { PartnerManualModal } from "@/components/PartnerManualModal";
-import { OrderChatModal } from "@/components/OrderChatModal";
-import { PhotoPickerModal } from "@/components/PhotoPickerModal";
 import { PartnerShareModal, StoreShareCard } from "@/components/PartnerShareModal";
 import { SupportChatButton } from "@/components/SupportChatButton";
 import {
@@ -53,11 +47,22 @@ import {
   DEFAULT_PRINTER_CONFIG,
   PrinterConfig,
 } from "@/lib/thermalPrinter";
-import { ThermalPrinterModal } from "@/components/ThermalPrinterModal";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { RefundInfo } from "@/components/RefundInfo";
+import dynamic from "next/dynamic";
+
+// R41 (desempenho): janelas e abas pesadas só são baixadas depois que a tela abriu
+const StuckOrderModal = dynamic(() => import("@/components/referrals/StuckOrderModal").then(m => m.StuckOrderModal), { ssr: false });
+const MapModal = dynamic(() => import("@/components/MapModal").then(m => m.MapModal), { ssr: false });
+const PixModal = dynamic(() => import("@/components/PixModal").then(m => m.PixModal), { ssr: false });
+const PartnerManualModal = dynamic(() => import("@/components/PartnerManualModal").then(m => m.PartnerManualModal), { ssr: false });
+const OrderChatModal = dynamic(() => import("@/components/OrderChatModal").then(m => m.OrderChatModal), { ssr: false });
+const PhotoPickerModal = dynamic(() => import("@/components/PhotoPickerModal").then(m => m.PhotoPickerModal), { ssr: false });
+const ThermalPrinterModal = dynamic(() => import("@/components/ThermalPrinterModal").then(m => m.ThermalPrinterModal), { ssr: false });
+const PartnerReferralsSection = dynamic(() => import("@/components/referrals/PartnerReferralsSection").then(m => m.PartnerReferralsSection), { ssr: false });
+const MyReceivedRatingsSection = dynamic(() => import("@/components/ratings/MyReceivedRatingsSection").then(m => m.MyReceivedRatingsSection), { ssr: false });
 
 const emptySubscribe = () => () => {};
 
@@ -242,8 +247,7 @@ export default function BatedeiraDashboard() {
 
   useEffect(() => {
     const s = useAppStore.getState();
-    s.fetchAllUsers(true);
-    s.fetchLojas(true);
+    // startRealtime já carrega lojas e usuários (R41: sem busca em dobro na abertura)
     if (typeof s.fetchCities === 'function') s.fetchCities();
     if (typeof s.fetchRates === 'function') s.fetchRates(true);
     s.startRealtime();
@@ -251,14 +255,17 @@ export default function BatedeiraDashboard() {
     // Tenta reconectar automaticamente à impressora térmica Bluetooth salva
     autoReconnectBluetoothPrinter();
 
+    // R41 (desempenho): antes recarregava lojas e usuários a cada 4 s, mesmo com o app em segundo plano.
+    // As mudanças chegam pelo Realtime; esta consulta é só uma garantia, a cada 15 s e com o app na tela.
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       s.fetchAllUsers(true);
       s.fetchLojas(true);
-    }, 4000);
+    }, 15000);
 
     const handleFocus = () => {
-      s.fetchAllUsers(true);
-      s.fetchLojas(true);
+      s.fetchAllUsers();
+      s.fetchLojas();
     };
     window.addEventListener('focus', handleFocus);
 

@@ -13,22 +13,26 @@ import {
 import { useAppStore, Order, City, CityRates, getRatesForCity, calculateOrderFreight, calculateOrderTaxes, getAuthHeaders } from "@/store/useAppStore";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
 import { supabase } from "@/lib/supabase";
-import { MapModal, MapPoint } from "@/components/MapModal";
+import type { MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { AdminManualModal } from "@/components/AdminManualModal";
-import { IncidentReportSection } from "@/components/IncidentReportSection";
-import { AdminSupportSection } from "@/components/admin/AdminSupportSection";
 import { AdminComplianceSection, RootBalanceBanner } from "@/components/admin/AdminComplianceSection";
-import { AdminWithdrawalsSection } from "@/components/admin/AdminWithdrawalsSection";
-import { AdminReconciliationSection } from "@/components/admin/AdminReconciliationSection";
-import { AdminSimulatorTab } from "@/components/admin/AdminSimulatorTab";
-import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 
 import { AdminMfaGuard } from "@/components/admin/AdminMfaGuard";
 import { RefundInfo } from "@/components/RefundInfo";
-import { AdminRatingsSection } from "@/components/ratings/AdminRatingsSection";
+import dynamic from "next/dynamic";
+
+// R41 (desempenho): janelas e abas pesadas só são baixadas depois que a tela abriu
+const MapModal = dynamic(() => import("@/components/MapModal").then(m => m.MapModal), { ssr: false });
+const AdminManualModal = dynamic(() => import("@/components/AdminManualModal").then(m => m.AdminManualModal), { ssr: false });
+const IncidentReportSection = dynamic(() => import("@/components/IncidentReportSection").then(m => m.IncidentReportSection), { ssr: false });
+const AdminSupportSection = dynamic(() => import("@/components/admin/AdminSupportSection").then(m => m.AdminSupportSection), { ssr: false });
+const AdminWithdrawalsSection = dynamic(() => import("@/components/admin/AdminWithdrawalsSection").then(m => m.AdminWithdrawalsSection), { ssr: false });
+const AdminReconciliationSection = dynamic(() => import("@/components/admin/AdminReconciliationSection").then(m => m.AdminReconciliationSection), { ssr: false });
+const AdminSimulatorTab = dynamic(() => import("@/components/admin/AdminSimulatorTab").then(m => m.AdminSimulatorTab), { ssr: false });
+const ShareLandingModal = dynamic(() => import("@/components/ShareLandingModal").then(m => m.ShareLandingModal), { ssr: false });
+const AdminRatingsSection = dynamic(() => import("@/components/ratings/AdminRatingsSection").then(m => m.AdminRatingsSection), { ssr: false });
 
 const emptySubscribe = () => () => {};
 

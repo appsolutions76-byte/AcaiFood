@@ -567,7 +567,7 @@ interface AppState {
 
   // Realtime
   upsertOrder: (order: Order) => void;
-  startRealtime: () => void;
+  startRealtime: (opts?: { lite?: boolean }) => void;
 }
 
 // Para manter referência ao channel e evitar duplicatas
@@ -600,6 +600,35 @@ const lastLocationSent: Record<string, { t: number; lat: number; lng: number }> 
 const LOCATION_MIN_INTERVAL_MS = 20000;
 const LOCATION_MIN_MOVE_M = 15;
 const LOCATION_FORCE_MOVE_M = 150;
+
+// R41: modo "leve" (painel do motoboy). Não baixa cardápio, fotos e produtos de todas as lojas;
+// só o necessário para as corridas (nome, endereço, GPS, status). Mantém o que já estiver na memória.
+let catalogLite = false;
+const LITE_PRESERVED_USER_KEYS = ['products', 'photo', 'priceB2B', 'priceB2C', 'availabilityB2C', 'imagesB2C', 'descriptionsB2C', 'availabilityB2B', 'imagesB2B', 'descriptionsB2B', 'storefronts'];
+
+// R41: o que vai para o armazenamento do navegador não leva fotos embutidas (data:...) dos outros
+// usuários. Elas voltam do servidor ao abrir; o perfil do próprio usuário é guardado completo.
+const isDataUrl = (v: any) => typeof v === 'string' && v.startsWith('data:');
+const slimImageMap = (m: any) => (m && typeof m === 'object' && !Array.isArray(m))
+  ? Object.fromEntries(Object.entries(m).filter(([, v]) => !isDataUrl(v)))
+  : m;
+const slimUserForPersist = (u: any) => {
+  if (!u || typeof u !== 'object') return u;
+  return {
+    ...u,
+    photo: isDataUrl(u.photo) ? undefined : u.photo,
+    imagesB2C: slimImageMap(u.imagesB2C),
+    imagesB2B: slimImageMap(u.imagesB2B),
+    products: Array.isArray(u.products)
+      ? u.products.map((p: any) => (p && (isDataUrl(p.imageUrl) || isDataUrl(p.photo)))
+          ? { ...p, imageUrl: isDataUrl(p.imageUrl) ? undefined : p.imageUrl, photo: isDataUrl(p.photo) ? undefined : p.photo }
+          : p)
+      : u.products,
+    storefronts: Array.isArray(u.storefronts)
+      ? u.storefronts.map((sf: any) => ({ id: sf?.id, store_name: sf?.store_name, partner_id: sf?.partner_id }))
+      : u.storefronts,
+  };
+};
 const distanceMeters = (lat1: number, lng1: number, lat2: number, lng2: number) => {
   const toRad = (v: number) => (v * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
@@ -954,11 +983,12 @@ export const useAppStore = create<AppState>()(
           });
       },
 
-      startRealtime: () => {
+      startRealtime: (opts?: { lite?: boolean }) => {
           const currentUser = get().currentUser;
+          catalogLite = !!opts?.lite;
           
           get().fetchRates();
-          get().fetchLojas(true);
+          if (!catalogLite) get().fetchLojas(true);
           get().fetchAllUsers(true);
           if (currentUser) {
               get().fetchOrders(currentUser.id);
@@ -976,7 +1006,7 @@ export const useAppStore = create<AppState>()(
               if (usersRefetchTimer) return;
               usersRefetchTimer = setTimeout(() => {
                   usersRefetchTimer = null;
-                  get().fetchLojas(true);
+                  if (!catalogLite) get().fetchLojas(true);
                   get().fetchAllUsers(true);
               }, 3000);
           };
@@ -1034,7 +1064,7 @@ export const useAppStore = create<AppState>()(
               .on(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'products' },
-                  () => scheduleUsersRefetch()
+                  () => { if (!catalogLite) scheduleUsersRefetch(); }
               )
               .on(
                   'postgres_changes',
@@ -1200,6 +1230,7 @@ export const useAppStore = create<AppState>()(
 
         // Admin lê a lista completa pelo servidor (service_role + MFA); demais perfis só colunas públicas
         const isAdminViewer = String(get().currentUser?.role || '').toLowerCase() === 'admin';
+        const liteFetch = catalogLite && !isAdminViewer;
         let dbUsers: any[] | null = null;
         let error: any = null;
         if (isAdminViewer) {
@@ -1215,9 +1246,13 @@ export const useAppStore = create<AppState>()(
             // Sem login não há lista de usuários (anon não lê users); as lojas vêm de fetchLojas
             const { data: { session: usersSession } } = await supabase.auth.getSession();
             if (!usersSession) return;
+            // R41: no modo leve (motoboy) não traz cardápio, fotos nem produtos das lojas
+            const usersSelect = liteFetch
+                ? 'id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, dispatch_mode, serve_mode, created_at, storefronts(id, store_name, partner_id, is_active, frete_subsidy_pct)'
+                : 'id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, dispatch_mode, serve_mode, created_at, storefronts(*, products(*))';
             const res = await supabase
                 .from('users')
-                .select('id, name, role, phone, telefone, endereco, address, cidade, bairro, latitude, longitude, vehicle_type, is_online, status, asaas_wallet_id, asaas_account_status, split_enabled, is_admin, dispatch_mode, serve_mode, created_at, storefronts(*, products(*))');
+                .select(usersSelect);
             dbUsers = res.data;
             error = res.error;
         }
@@ -1311,6 +1346,15 @@ export const useAppStore = create<AppState>()(
                         dispatch_mode: (dbUser.dispatch_mode as any) || 'ALL',
                         serve_mode: (dbUser.serve_mode as any) || 'ALL'
                     };
+                    // R41: no modo leve, mantém cardápio/fotos que já estavam na memória
+                    if (liteFetch) {
+                        const prevU: any = state.users[dbUser.id];
+                        if (prevU) {
+                            LITE_PRESERVED_USER_KEYS.forEach(k => {
+                                if (prevU[k] !== undefined) (userObj as any)[k] = prevU[k];
+                            });
+                        }
+                    }
                     if (state.currentUser && state.currentUser.id === dbUser.id) {
                         updatedCurrentUser = keepLocalPrices(state.currentUser, { ...state.currentUser, ...definedOnly(userObj), status: storeStatus });
                         newUsers[dbUser.id] = keepLocalPrices(state.currentUser, userObj);
@@ -3689,8 +3733,13 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => {
         const { users, currentUser, ...rest } = state;
         // Strip all sensitive fields from persisted users
+        const meId = currentUser?.id;
         const safeUsers = Object.fromEntries(
-          Object.entries(users || {}).map(([k, u]) => [k, { ...u, password: undefined, cpfCnpj: undefined, pixKey: undefined, asaasWalletId: undefined }])
+          Object.entries(users || {}).map(([k, u]) => {
+            const base = { ...u, password: undefined, cpfCnpj: undefined, pixKey: undefined, asaasWalletId: undefined };
+            // R41: fotos embutidas dos outros usuários não vão para o navegador (voltam do servidor)
+            return [k, k === meId ? base : slimUserForPersist(base)];
+          })
         ) as typeof users;
         const safeCurrentUser = currentUser ? { ...currentUser, password: undefined } : null;
         // Strip sensitive payment/security data from persisted orders
@@ -3763,7 +3812,7 @@ function wakeUpApp() {
   isSleeping = false;
   const store = useAppStore.getState();
   if (typeof store.startRealtime === 'function') {
-    store.startRealtime();
+    store.startRealtime({ lite: catalogLite });
   }
 }
 

@@ -273,19 +273,20 @@ export default function StorefrontPage() {
   );
 
   useEffect(() => {
-    store.fetchLojas(true);
-    store.fetchAllUsers(true);
-    store.fetchRates(true);
+    // startRealtime já carrega taxas, lojas e usuários (R41: sem busca em dobro na abertura)
     store.startRealtime();
 
+    // R41 (desempenho): antes recarregava todas as lojas a cada 4 s, mesmo com o app em segundo plano.
+    // As mudanças chegam pelo Realtime; esta consulta é só uma garantia, a cada 15 s e com o app na tela.
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       store.fetchLojas(true);
       store.fetchAllUsers(true);
-    }, 4000);
+    }, 15000);
 
     const handleFocus = () => {
-      store.fetchLojas(true);
-      store.fetchAllUsers(true);
+      store.fetchLojas();
+      store.fetchAllUsers();
     };
     window.addEventListener('focus', handleFocus);
 

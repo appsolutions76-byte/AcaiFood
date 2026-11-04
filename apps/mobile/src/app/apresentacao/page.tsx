@@ -10,9 +10,13 @@ import {
   Recycle, HelpCircle, Layers, Volume2
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { InteractiveVideoModal, VideoId } from "@/components/InteractiveVideoModal";
+import type { VideoId } from "@/components/InteractiveVideoModal";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
+import dynamic from "next/dynamic";
+
+// R41 (desempenho): janelas e abas pesadas só são baixadas depois que a tela abriu
+const InteractiveVideoModal = dynamic(() => import("@/components/InteractiveVideoModal").then(m => m.InteractiveVideoModal), { ssr: false });
 
 export default function LandingPage() {
   const [copied, setCopied] = useState(false);
