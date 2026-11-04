@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { logAdminAction } from '@/lib/adminAudit';
+import { timingSafeEqual } from 'crypto';
+
+// R44: comparação em tempo constante da senha de limpeza
+function samePassword(a: string, b: string) {
+  const ba = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ba.length !== bb.length) return false;
+  return timingSafeEqual(ba, bb);
+}
 
 export async function POST(request: Request) {
   const auth = await authorizeRequest(request, ['admin']);
@@ -18,6 +27,22 @@ export async function POST(request: Request) {
       return NextResponse.json({
         error: 'Limpeza geral desativada neste ambiente. Os registros de pedidos e pagamentos precisam ser guardados.'
       }, { status: 403 });
+    }
+
+    // R44: além da chave de ambiente, exige a senha forte definida no servidor (ADMIN_CLEAR_DATA_PASSWORD).
+    // Sem senha configurada (ou com menos de 12 caracteres) a limpeza fica travada.
+    const configured = String(process.env.ADMIN_CLEAR_DATA_PASSWORD || '');
+    if (configured.length < 12) {
+      await logAdminAction({ actorId, action: 'SYSTEM_DATA_CLEAR_BLOCKED', targetType: 'SYSTEM', targetId: 'all', request });
+      return NextResponse.json({
+        error: 'Limpeza travada: defina a senha forte ADMIN_CLEAR_DATA_PASSWORD (mínimo 12 caracteres) nas variáveis do servidor.'
+      }, { status: 403 });
+    }
+    const body = await request.json().catch(() => ({} as any));
+    const typed = String(body?.password || '');
+    if (!typed || !samePassword(typed, configured)) {
+      await logAdminAction({ actorId, action: 'SYSTEM_DATA_CLEAR_WRONG_PASSWORD', targetType: 'SYSTEM', targetId: 'all', request });
+      return NextResponse.json({ error: 'Senha de limpeza incorreta.' }, { status: 403 });
     }
 
     const { count: ordersBefore } = await supabase.from('orders').select('id', { count: 'exact', head: true });

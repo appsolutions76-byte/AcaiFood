@@ -587,7 +587,7 @@ interface AppState {
   fetchOrders: (userId: string, force?: boolean) => Promise<void>;
   fetchAllUsers: (force?: boolean) => Promise<void>;
   setupRealtime: (userId: string) => void;
-  clearData: () => Promise<void>;
+  clearData: (password?: string) => Promise<void>;
   updateUserPixKey: (userId: string, pixKey: string) => Promise<void>;
   updateUserName: (userId: string, name: string) => Promise<void>;
   markPayoutDone: (orderIds: string[], role: 'seller' | 'driver', partnerId?: string) => Promise<void>;
@@ -3481,12 +3481,14 @@ export const useAppStore = create<AppState>()(
           get().startRealtime();
       },
 
-      clearData: async () => {
+      clearData: async (password?: string) => {
          try {
             const headers = await getAuthHeaders();
             const res = await fetch('/api/admin/clear-data', {
                method: 'POST',
-               headers
+               headers,
+               // R44: senha conferida no servidor (ADMIN_CLEAR_DATA_PASSWORD)
+               body: JSON.stringify({ password: password || '' })
             });
             const data = await res.json();
 

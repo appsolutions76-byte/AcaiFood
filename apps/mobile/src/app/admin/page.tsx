@@ -211,6 +211,18 @@ function AdminDashboardContent() {
   const [pwdModalOpen, setPwdModalOpen] = useState(false);
   const [pwdInputText, setPwdInputText] = useState('');
   const [pwdModalMode, setPwdModalMode] = useState<'create' | 'verify'>('verify');
+  // R44: funções do modelo antigo (plataforma recebia e repassava) ficam escondidas; dá para mostrar de novo
+  const [showLegacy, setShowLegacy] = useState(false);
+  useEffect(() => {
+    try { setShowLegacy(localStorage.getItem('acaifood_admin_show_legacy') === '1'); } catch (_e) { /* sem armazenamento */ }
+  }, []);
+  const toggleLegacy = () => {
+    setShowLegacy(prev => {
+      const next = !prev;
+      try { localStorage.setItem('acaifood_admin_show_legacy', next ? '1' : '0'); } catch (_e) { /* sem armazenamento */ }
+      return next;
+    });
+  };
   const [selectedCityForRates, setSelectedCityForRates] = useState<City | null>(null);
   const [isSavingRates, setIsSavingRates] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -1188,7 +1200,25 @@ function AdminDashboardContent() {
     };
   };
 
-  const localStats = getFilteredLocalStats(selectedPeriod);
+  const localStatsBrowser = getFilteredLocalStats(selectedPeriod);
+
+  // R44: números da Visão Geral calculados no servidor com todos os pedidos (o navegador só tem os 200 mais recentes)
+  const [serverStats, setServerStats] = useState<Record<string, any>>({});
+  const [serverStatsTick, setServerStatsTick] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/dashboard-stats?period=${selectedPeriod}`, { headers: await getAuthHeaders(), cache: 'no-store' });
+        const json = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok && json?.success && json.stats) {
+          setServerStats(prev => ({ ...prev, [selectedPeriod]: json.stats }));
+        }
+      } catch (_e) { /* mantém o cálculo local */ }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedPeriod, orders.length, serverStatsTick]);
+  const localStats = (serverStats[selectedPeriod] as typeof localStatsBrowser) || localStatsBrowser;
 
   const currentOrdersCount = localStats.ordersCount;
   const currentConcluidosCount = localStats.concluidosCount;
@@ -1746,6 +1776,7 @@ function AdminDashboardContent() {
       if (typeof store.fetchRates === 'function') await store.fetchRates(true);
       if (store.rates) setLocalRates(store.rates);
       await fetchAdminBalances();
+      setServerStatsTick(t => t + 1);
       showToast("🔄 Painel atualizado com sucesso!");
     } catch (_e) {
       console.error("Erro ao atualizar painel:", _e);
@@ -1763,29 +1794,18 @@ function AdminDashboardContent() {
 
   const handleConfirmPasswordModal = async () => {
     if (!pwdInputText) {
-      alert("Por favor, digite a senha de segurança do Admin.");
+      alert("Por favor, digite a senha de segurança da limpeza.");
       return;
     }
-
-    const entered = pwdInputText.trim();
-    const isMasterValid = !store.clearPassword || 
-                          entered === store.clearPassword || 
-                          entered === 'admin' || 
-                          entered === 'admin123' || 
-                          entered === '123456';
-
-    if (!isMasterValid) {
-      alert("Senha incorreta!");
-      return;
-    }
-
+    // R44: a senha é conferida no SERVIDOR (variável ADMIN_CLEAR_DATA_PASSWORD). Sem senhas fixas no app.
+    const entered = pwdInputText;
     setPwdModalOpen(false);
     setPwdInputText('');
 
     if (confirm("🚨 ATENÇÃO: Tem certeza que deseja apagar DEFINITIVAMENTE todos os pedidos, mensagens, balanços e registros do banco de dados para recomeçar o sistema do zero?")) {
       try {
         if (typeof store.clearData === 'function') {
-          await store.clearData();
+          await store.clearData(entered);
         }
         setAdminBalances({
           historical: { total_orders: 0, total_volume: 0, app_revenue: 0, fornecedores_bruto: 0, fornecedores_liquido: 0, batedeiras_bruto: 0, batedeiras_liquido: 0, motoristas_bruto: 0, motoristas_liquido: 0, caminhoes_bruto: 0, caminhoes_liquido: 0 },
@@ -1858,7 +1878,10 @@ function AdminDashboardContent() {
                 <button onClick={() => setPasswordModalOpen(true)} className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs cursor-pointer">
                     🔑 Senha
                 </button>
-                <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs cursor-pointer">
+                <button onClick={toggleLegacy} title="Mostrar ou esconder as funções do modelo de pagamento antigo" className="bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 px-3 py-1.5 rounded-lg font-bold text-xs transition flex items-center gap-1 border border-zinc-200 dark:border-zinc-700">
+                🗂️ {showLegacy ? 'Ocultar funções antigas' : 'Funções antigas'}
+              </button>
+              <button onClick={handleClearData} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-xl font-bold flex items-center gap-2 transition text-xs cursor-pointer">
                     <Trash2 size={14} /> Limpar
                 </button>
                 <button onClick={() => { if(typeof store.logout === 'function') store.logout(); router.push('/login'); }} className="text-sm font-bold text-red-600 hover:text-red-800 ml-1 underline cursor-pointer">Sair</button>
@@ -1907,9 +1930,11 @@ function AdminDashboardContent() {
                 </span>
               )}
             </button>
+            {showLegacy && (
             <button onClick={() => setActiveTab('conciliacao')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'conciliacao' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
               <span>⚖️ Conciliação Pix</span>
             </button>
+            )}
             <button onClick={() => setActiveTab('conformidade')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'conformidade' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
               <span>🛡️ Conformidade</span>
             </button>
@@ -1997,6 +2022,16 @@ function AdminDashboardContent() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
+                    toggleLegacy();
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-bold transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">🗂️ {showLegacy ? 'Ocultar funções antigas' : 'Mostrar funções antigas'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
                     handleClearData();
                   }}
                   className="w-full flex items-center justify-between p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-xs font-bold transition cursor-pointer"
@@ -2038,17 +2073,19 @@ function AdminDashboardContent() {
                   <button onClick={() => setSelectedPeriod('daily')} className={`py-1.5 px-3 rounded-md text-xs font-bold transition-all ${selectedPeriod === 'daily' ? 'bg-white dark:bg-zinc-900 text-purple-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>Diário Parcial</button>
                 </div>
               </div>
+              {showLegacy && (
               <button 
                 onClick={() => handleResetBalance(selectedPeriod)}
                 className="bg-red-50 hover:bg-red-100 dark:bg-red-950/20 text-red-600 border border-red-200 dark:border-red-900/50 hover:border-red-300 font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm mt-2 sm:mt-0 active:scale-95"
               >
                 🗑️ Zerar {selectedPeriod === 'historical' ? 'Acumulado Histórico' : selectedPeriod === 'monthly' ? 'Balanço Mensal' : 'Balanço Diário'}
               </button>
+              )}
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
             <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800">
-                <p className="text-zinc-500 dark:text-zinc-400 text-[11px] uppercase font-bold">Volume Total</p>
+                <p className="text-zinc-500 dark:text-zinc-400 text-[11px] uppercase font-bold">Total de Pedidos</p>
                 <p className="text-xl font-bold text-zinc-900 dark:text-white">{totais.pedidos}</p>
             </div>
             <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-xl shadow-sm border border-green-200 dark:border-green-900/50">
@@ -2337,7 +2374,7 @@ function AdminDashboardContent() {
                 <p className="text-lg font-bold text-zinc-900 dark:text-white mt-0.5">{reportMetrics.totalOrders}</p>
               </div>
               <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                <p className="text-[10px] text-zinc-500 uppercase font-bold">Volume Total</p>
+                <p className="text-[10px] text-zinc-500 uppercase font-bold">Volume (R$)</p>
                 <p className="text-lg font-bold text-purple-600 dark:text-purple-400 mt-0.5">{formatMoney(reportMetrics.totalGrossVolume)}</p>
               </div>
               <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
@@ -2642,6 +2679,7 @@ function AdminDashboardContent() {
             <h3 className="font-bold text-lg text-zinc-700 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800 pb-2">👥 Gestão de Usuários e Parceiros</h3>
             
             {/* Card de Liquidação Geral em Lote & Por Cidade */}
+            {showLegacy && (
             <div className="bg-gradient-to-r from-purple-900/10 via-indigo-900/10 to-purple-900/5 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-zinc-900 border border-purple-200 dark:border-purple-800/60 p-4 sm:p-5 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 shadow-sm">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -2701,6 +2739,7 @@ function AdminDashboardContent() {
                 )}
               </div>
             </div>
+            )}
 
             {/* Grid Interativo de Contadores de Usuários por Personagem */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mt-4">
@@ -2901,7 +2940,7 @@ function AdminDashboardContent() {
                                             🔑 PIX: {pixKey || 'Não cadastrado'}
                                           </span>
                                         </div>
-                                        {amountOwed > 0 && (
+                                        {showLegacy && amountOwed > 0 && (
                                           <button
                                             disabled={isPaying}
                                             onClick={() => pagarParceiro(u, pendingOrders, amountOwed)}
@@ -3032,6 +3071,7 @@ function AdminDashboardContent() {
                                 <td className="p-4 font-bold text-zinc-800 dark:text-zinc-200">
                                     <div>{c.name}</div>
                                     <div className="text-[10px] font-bold mt-0.5 flex flex-wrap items-center gap-1">
+                                        {showLegacy && (<>
                                         <span className="text-purple-600 dark:text-purple-400">⏰ Pix Automático:</span>
                                         <span className={`px-1.5 py-0.5 rounded border text-[9px] font-bold ${
                                           isAutoPayoutEnabled 
@@ -3040,6 +3080,7 @@ function AdminDashboardContent() {
                                         }`}>
                                             {cityPayoutTime} ({isAutoPayoutEnabled ? '⚡ Ativo' : '⏸️ Pausado'})
                                         </span>
+                                        </>)}
                                         <span className={`px-1.5 py-0.5 rounded border text-[9px] font-bold ${
                                           cityRatesObj.referrals_enabled
                                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
@@ -3060,7 +3101,7 @@ function AdminDashboardContent() {
                                     {c.status === 'active' ? <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Ativa</span> : <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px] font-bold uppercase">Pausada</span>}
                                 </td>
                                 <td className="p-4">
-                                    {cityPending && cityPending.totalOwed > 0 ? (
+                                    {showLegacy && cityPending && cityPending.totalOwed > 0 ? (
                                         <div className="flex items-center gap-2">
                                             <span className="font-bold text-xs text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 px-2.5 py-1 rounded-lg">
                                                 {formatMoney(cityPending.totalOwed)} ({cityPending.partners.length} parc.)
@@ -3153,6 +3194,7 @@ function AdminDashboardContent() {
             </div>
 
             {/* Painel de Ajuste de Taxa & Cota */}
+            {showLegacy && (
             <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4">
                 <div>
@@ -3216,6 +3258,7 @@ function AdminDashboardContent() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Tabela de Parceiros e Status de Homologação */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
@@ -3838,7 +3881,7 @@ function AdminDashboardContent() {
               totalOwedAllPartners={totalOwedAllPartners}
               pendingPayoutsByCity={pendingPayoutsByCity}
               partnersWithPendingPayouts={partnersWithPendingPayouts}
-              pagarTodosParceiros={pagarTodosParceiros}
+              pagarTodosParceiros={showLegacy ? pagarTodosParceiros : undefined}
               isPayingAll={isPayingAll}
               payAllProgress={payAllProgress}
               totalVolume={currentVolumeTotal}
@@ -3856,12 +3899,12 @@ function AdminDashboardContent() {
           </div>
         )}
 
-        {activeTab === 'conciliacao' && (
+        {showLegacy && activeTab === 'conciliacao' && (
           <AdminReconciliationSection />
         )}
 
         {activeTab === 'conformidade' && (
-          <AdminComplianceSection showToast={showToast} />
+          <AdminComplianceSection showToast={showToast} showLegacy={showLegacy} />
         )}
 
       </main>
@@ -4606,6 +4649,7 @@ function AdminDashboardContent() {
                   </div>
               </div>
 
+              {showLegacy && (
               <div className="pb-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
                   <h4 className="font-bold text-zinc-700 dark:text-zinc-200 mb-1 flex items-center gap-2"><span>⏰</span> Pagamento Automático via Pix (Asaas) nesta Cidade</h4>
                   <p className="text-xs text-zinc-500 mb-3">Configure o status e o horário de varredura diária no Asaas para transferir os saldos pendentes de Lojas, Fornecedores e Motoristas desta região.</p>
@@ -4656,6 +4700,7 @@ function AdminDashboardContent() {
                       </div>
                   </div>
               </div>
+              )}
 
               {selectedCityForRates && (
                 <div className="pb-4 border-t border-zinc-200 dark:border-zinc-800 pt-4 space-y-4">
@@ -4953,11 +4998,20 @@ function AdminDashboardContent() {
                 <button onClick={() => setPasswordModalOpen(false)} className="px-4 py-2 text-zinc-600 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Cancelar</button>
                 <button 
                   onClick={() => {
-                    if (newAdminPassword.length < 3) return alert('A senha deve ter pelo menos 3 caracteres.');
-                    if (store.currentUser?.id && typeof store.changePassword === 'function') store.changePassword(store.currentUser.id, newAdminPassword);
-                    setPasswordModalOpen(false);
-                    setNewAdminPassword('');
-                    alert('Senha alterada com sucesso!');
+                    // R44: senha forte para a conta de administrador
+                    const pw = newAdminPassword;
+                    if (pw.length < 12 || !/[a-z]/.test(pw) || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
+                      return alert('Use pelo menos 12 caracteres, com letra maiúscula, minúscula, número e símbolo.');
+                    }
+                    supabase.auth.updateUser({ password: pw }).then(({ error }) => {
+                      if (error) {
+                        alert('Não foi possível alterar a senha: ' + error.message);
+                        return;
+                      }
+                      setPasswordModalOpen(false);
+                      setNewAdminPassword('');
+                      alert('Senha do administrador alterada com sucesso!');
+                    });
                   }} 
                   className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition"
                 >

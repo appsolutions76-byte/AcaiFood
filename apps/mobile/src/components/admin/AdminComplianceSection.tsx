@@ -48,7 +48,7 @@ async function apiPost(url: string, body: any): Promise<any> {
   return data;
 }
 
-export function AdminComplianceSection({ showToast }: { showToast?: (msg: string) => void }) {
+export function AdminComplianceSection({ showToast, showLegacy = false }: { showToast?: (msg: string) => void; showLegacy?: boolean }) {
   const [tab, setTab] = useState<SubTab>('subcontas');
   const toast = useCallback((m: string) => { if (showToast) showToast(m); }, [showToast]);
 
@@ -72,7 +72,7 @@ export function AdminComplianceSection({ showToast }: { showToast?: (msg: string
       </div>
 
       <RootBalancePanel toast={toast} />
-      <PaymentModelPanel toast={toast} />
+      <PaymentModelPanel toast={toast} showLegacy={showLegacy} />
       <RefundFeePayerPanel toast={toast} />
       <TransferValidationPanel toast={toast} />
 
@@ -84,7 +84,7 @@ export function AdminComplianceSection({ showToast }: { showToast?: (msg: string
   );
 }
 
-function PaymentModelPanel({ toast }: { toast: (m: string) => void }) {
+function PaymentModelPanel({ toast, showLegacy = false }: { toast: (m: string) => void; showLegacy?: boolean }) {
   const [model, setModel] = useState<string>('');
   const [walletReady, setWalletReady] = useState<boolean>(false);
   const [saving, setSaving] = useState(false);
@@ -122,7 +122,9 @@ function PaymentModelPanel({ toast }: { toast: (m: string) => void }) {
   return (
     <Panel title="💳 Modelo de pagamento dos novos pedidos">
       <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
-        {isNew
+        {!model
+          ? 'Carregando o modelo ativo...'
+          : isNew
           ? 'Ativo: cobrança na subconta da loja. A plataforma recebe só a comissão por split; a loja recebe venda + frete e paga a corrida da moto após o PIN de entrega.'
           : 'Ativo: modelo antigo. A cobrança cai na conta raiz e os repasses saem dela após o PIN.'}
       </p>
@@ -135,13 +137,13 @@ function PaymentModelPanel({ toast }: { toast: (m: string) => void }) {
         >
           Usar cobrança na loja (novo)
         </button>
-        <button
+        {showLegacy && <button
           disabled={saving || !isNew || !model}
           onClick={() => change('ROOT')}
           className="px-3 py-2 rounded-lg text-xs font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 disabled:opacity-40 cursor-pointer"
         >
           Voltar ao modelo antigo
-        </button>
+        </button>}
       </div>
     </Panel>
   );
@@ -295,7 +297,9 @@ function RefundFeePayerPanel({ toast }: { toast: (m: string) => void }) {
         <span className={`text-xs font-bold ${isPlatform ? 'text-emerald-600' : 'text-zinc-400'}`}>Plataforma paga</span>
       </div>
       <p className="text-xs text-zinc-500 mt-3">
-        {isPlatform
+        {!payer
+          ? 'Carregando...'
+          : isPlatform
           ? 'Ativo: a plataforma cobre a tarifa (até o valor da tarifa do pedido) quando faltar na conta da loja.'
           : 'Ativo: a loja paga a tarifa. Sem saldo suficiente na loja, o estorno é recusado e o pedido continua pago.'}
       </p>
