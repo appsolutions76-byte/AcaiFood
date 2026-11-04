@@ -1086,11 +1086,14 @@ function AdminDashboardContent() {
   const concluidos = orders.filter((o: Order) => o && ['entregue', 'arquivado', 'received', 'delivered', 'completed', 'concluido'].includes(String(o.status || '').toLowerCase().trim()));
   
   const getDynamicTaxes = (o: Order) => {
-    if (!o) return { repasseLoja: 0, repasseForn: 0, repasseMoto: 0, platVenda: 0, platEntrega: 0, entregaTotal: 0 };
+    if (!o) return { repasseLoja: 0, repasseForn: 0, repasseMoto: 0, platVenda: 0, platEntrega: 0, entregaTotal: 0, asaasTotal: 0, asaasVendedor: 0, asaasEntregador: 0, asaasPlataforma: 0, platLiquida: 0, freteSubsidioLoja: 0, totalCliente: null as number | null, fromSnapshot: false };
     const orderCity = (o as any).cidadeOrigem || (o.lojaId && users[o.lojaId] ? users[o.lojaId]?.cidade : undefined);
     const activeRates = getRatesForCity(orderCity, rates, cities);
     return calculateOrderTaxes(o, activeRates, users);
   };
+
+  // R42: só pedidos concluídos geram repasse/receita (cancelados e estornados não entram nos totais)
+  const isFinalizedOrder = (o: Order) => ['entregue', 'arquivado', 'received', 'delivered', 'completed', 'concluido'].includes(String(o?.status || '').toLowerCase().trim());
 
   const isMoto = (motId?: string | null) => { 
     if (!motId || typeof motId !== 'string') return false;
@@ -1134,7 +1137,7 @@ function AdminDashboardContent() {
     const canceladosList = periodOrders.filter((o: Order) => o.status === 'cancelado');
     const emRotaList = periodOrders.filter((o: Order) => o.status === 'em_rota' || o.status === 'aguardando_cliente');
 
-    let localVendas = 0, localFretes = 0, localMov = 0;
+    let localVendas = 0, localFretes = 0, localMov = 0, localAsaasPlat = 0;
     let localBatBruto = 0, localBatLiq = 0;
     let localFornBruto = 0, localFornLiq = 0;
     let localMotBruto = 0, localMotLiq = 0;
@@ -1144,6 +1147,7 @@ function AdminDashboardContent() {
       const dyn = getDynamicTaxes(o);
       localVendas += dyn.platVenda || 0;
       localFretes += dyn.platEntrega || 0;
+      localAsaasPlat += dyn.asaasPlataforma || 0;
       localMov += (o.valor || 0) + (dyn.entregaTotal || 0);
 
       if (o.type === 'B2C' || !o.type) {
@@ -1170,7 +1174,8 @@ function AdminDashboardContent() {
       emRota: emRotaList.length,
       concluidosCount: concluidosList.length,
       volume: localMov,
-      appRev: localVendas + localFretes,
+      // R42: receita líquida (comissões menos a parte da tarifa Asaas paga pela plataforma)
+      appRev: localVendas + localFretes - localAsaasPlat,
       fornBruto: localFornBruto,
       fornLiq: localFornLiq,
       batBruto: localBatBruto,
@@ -1323,14 +1328,18 @@ function AdminDashboardContent() {
     let totalProductVolume = 0;
     let totalFreightVolume = 0;
     let totalPlatformFee = 0;
+    let totalAsaasFee = 0;
     let totalDriverNet = 0;
     let totalSellerNet = 0;
 
     filteredOrdersForReport.forEach((o: Order) => {
+      // R42: valores financeiros somam só pedidos concluídos (cancelado/estornado não tem repasse)
+      if (!isFinalizedOrder(o)) return;
       const dyn = getDynamicTaxes(o);
       totalProductVolume += (o.valor || 0);
       totalFreightVolume += (dyn.entregaTotal || 0);
-      totalPlatformFee += (dyn.platVenda || 0) + (dyn.platEntrega || 0);
+      totalPlatformFee += (dyn.platLiquida || 0);
+      totalAsaasFee += (dyn.asaasTotal || 0);
       totalDriverNet += (dyn.repasseMoto || 0);
       if (o.type === 'B2B') {
         totalSellerNet += (dyn.repasseForn || 0);
@@ -1345,6 +1354,7 @@ function AdminDashboardContent() {
       totalFreightVolume,
       totalGrossVolume: totalProductVolume + totalFreightVolume,
       totalPlatformFee,
+      totalAsaasFee,
       totalDriverNet,
       totalSellerNet
     };
@@ -1370,7 +1380,9 @@ function AdminDashboardContent() {
       "Veiculo",
       "Valor Produtos (R$)",
       "Valor Frete (R$)",
-      "Taxa App Plataforma (R$)",
+      "Comissao App Bruta (R$)",
+      "Tarifa Pix Asaas (R$)",
+      "Receita App Liquida (R$)",
       "Repasse Vendedor (R$)",
       "Repasse Entregador (R$)",
       "Distancia (km)",
@@ -1405,6 +1417,8 @@ function AdminDashboardContent() {
         `"${(o.valor || 0).toFixed(2).replace('.', ',')}"`,
         `"${(dyn.entregaTotal || 0).toFixed(2).replace('.', ',')}"`,
         `"${((dyn.platVenda || 0) + (dyn.platEntrega || 0)).toFixed(2).replace('.', ',')}"`,
+        `"${(dyn.asaasTotal || 0).toFixed(2).replace('.', ',')}"`,
+        `"${(dyn.platLiquida || 0).toFixed(2).replace('.', ',')}"`,
         `"${((o.type === 'B2B' ? dyn.repasseForn : dyn.repasseLoja) || 0).toFixed(2).replace('.', ',')}"`,
         `"${(dyn.repasseMoto || 0).toFixed(2).replace('.', ',')}"`,
         `"${(o.distancia || 0).toFixed(1).replace('.', ',')}"`,
@@ -1480,7 +1494,7 @@ function AdminDashboardContent() {
             <div style="font-size: 13px; font-weight: bold; color: #2563eb; margin-top: 2px;">${formatMoney(reportMetrics.totalFreightVolume)}</div>
           </div>
           <div style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #faf5ff; border-color: #d8b4fe;">
-            <div style="font-size: 9px; color: #7e22ce; text-transform: uppercase; font-weight: bold;">Receita App</div>
+            <div style="font-size: 9px; color: #7e22ce; text-transform: uppercase; font-weight: bold;">Receita App (líquida)</div>
             <div style="font-size: 13px; font-weight: bold; color: #6b21a8; margin-top: 2px;">${formatMoney(reportMetrics.totalPlatformFee)}</div>
           </div>
           <div style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #f0fdf4; border-color: #86efac;">
@@ -1504,7 +1518,7 @@ function AdminDashboardContent() {
               <th style="padding: 6px 4px; text-align: left;">Entregador</th>
               <th style="padding: 6px 4px; text-align: right;">Produtos</th>
               <th style="padding: 6px 4px; text-align: right;">Frete</th>
-              <th style="padding: 6px 4px; text-align: right;">Taxa App</th>
+              <th style="padding: 6px 4px; text-align: right;">Receita App (líq.)</th>
               <th style="padding: 6px 4px; text-align: right;">Repasse Vendedor</th>
               <th style="padding: 6px 4px; text-align: right;">Repasse Motoboy</th>
               <th style="padding: 6px 4px; text-align: center;">Status</th>
@@ -1538,7 +1552,7 @@ function AdminDashboardContent() {
                   </td>
                   <td style="padding: 5px 4px; text-align: right;">${formatMoney(o.valor)}</td>
                   <td style="padding: 5px 4px; text-align: right;">${formatMoney(dyn.entregaTotal)}</td>
-                  <td style="padding: 5px 4px; text-align: right; color: #7e22ce; font-weight: bold;">${formatMoney((dyn.platVenda || 0) + (dyn.platEntrega || 0))}</td>
+                  <td style="padding: 5px 4px; text-align: right; color: #7e22ce; font-weight: bold;">${formatMoney(dyn.platLiquida || 0)}</td>
                   <td style="padding: 5px 4px; text-align: right; color: #166534; font-weight: bold;">${formatMoney(o.type === 'B2B' ? dyn.repasseForn : dyn.repasseLoja)}</td>
                   <td style="padding: 5px 4px; text-align: right; color: #92400e; font-weight: bold;">${formatMoney(dyn.repasseMoto)}</td>
                   <td style="padding: 5px 4px; text-align: center; text-transform: uppercase; font-size: 8.5px; font-weight: bold;">${o.status}</td>
@@ -1634,8 +1648,20 @@ function AdminDashboardContent() {
               <strong style="font-size: 12px; color: #2563eb;">${formatMoney(dyn.entregaTotal)}</strong>
             </div>
             <div style="padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #e9d5ff;">
-              <span style="font-size: 9px; color: #666; text-transform: uppercase;">Taxa AçaíFood:</span><br/>
+              <span style="font-size: 9px; color: #666; text-transform: uppercase;">Comissão AçaíFood:</span><br/>
               <strong style="font-size: 12px; color: #7e22ce;">${formatMoney((dyn.platVenda || 0) + (dyn.platEntrega || 0))}</strong>
+            </div>
+            <div style="padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #e9d5ff;">
+              <span style="font-size: 9px; color: #666; text-transform: uppercase;">Tarifa Pix Asaas:</span><br/>
+              <strong style="font-size: 12px; color: #dc2626;">${formatMoney(dyn.asaasTotal || 0)}</strong>
+            </div>
+            <div style="padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #e9d5ff;">
+              <span style="font-size: 9px; color: #666; text-transform: uppercase;">Repasse Vendedor:</span><br/>
+              <strong style="font-size: 12px; color: #166534;">${formatMoney(order.type === 'B2B' ? dyn.repasseForn : dyn.repasseLoja)}</strong>
+            </div>
+            <div style="padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #e9d5ff;">
+              <span style="font-size: 9px; color: #666; text-transform: uppercase;">Receita Líquida App:</span><br/>
+              <strong style="font-size: 12px; color: #6b21a8;">${formatMoney(dyn.platLiquida || 0)}</strong>
             </div>
             <div style="padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #e9d5ff;">
               <span style="font-size: 9px; color: #666; text-transform: uppercase;">Repasse Entregador:</span><br/>
@@ -2040,7 +2066,7 @@ function AdminDashboardContent() {
                 <p className="text-xl font-bold text-zinc-800 dark:text-zinc-200">{totais.concluidos}</p>
             </div>
             <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-xl shadow-sm border border-purple-200 dark:border-purple-900/50">
-                <p className="text-purple-700 dark:text-purple-400 text-[11px] uppercase font-bold">Receita App</p>
+                <p className="text-purple-700 dark:text-purple-400 text-[11px] uppercase font-bold">Receita App (líquida)</p>
                 <p className="text-xl font-bold text-purple-800 dark:text-purple-300">{formatMoney(totais.receitaVendas)}</p>
             </div>
         </div>
@@ -2313,7 +2339,7 @@ function AdminDashboardContent() {
                 <p className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-0.5">{formatMoney(reportMetrics.totalFreightVolume)}</p>
               </div>
               <div className="bg-purple-50 dark:bg-purple-950/30 p-3.5 rounded-xl border border-purple-200 dark:border-purple-900/50 shadow-sm">
-                <p className="text-[10px] text-purple-700 dark:text-purple-400 uppercase font-bold">Receita App</p>
+                <p className="text-[10px] text-purple-700 dark:text-purple-400 uppercase font-bold">Receita App (líquida)</p>
                 <p className="text-lg font-bold text-purple-800 dark:text-purple-300 mt-0.5">{formatMoney(reportMetrics.totalPlatformFee)}</p>
               </div>
               <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/50 shadow-sm">
@@ -2462,6 +2488,16 @@ function AdminDashboardContent() {
                             <div className="flex justify-between gap-2 text-[10px] border-t border-zinc-100 dark:border-zinc-800 pt-0.5">
                               <span className="text-purple-600 dark:text-purple-400">Taxa App:</span>
                               <span className="font-bold text-purple-700 dark:text-purple-300">{formatMoney((dyn.platVenda || 0) + (dyn.platEntrega || 0))}</span>
+                            </div>
+                            {dyn.fromSnapshot && (
+                              <div className="flex justify-between gap-2 text-[10px]">
+                                <span className="text-red-600 dark:text-red-400">Tarifa Asaas:</span>
+                                <span className="font-bold text-red-700 dark:text-red-300">{formatMoney(dyn.asaasTotal)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between gap-2 text-[10px]">
+                              <span className="text-purple-600 dark:text-purple-400">Líquido App:</span>
+                              <span className="font-bold text-purple-700 dark:text-purple-300">{formatMoney(dyn.platLiquida)}</span>
                             </div>
                             <div className="flex justify-between gap-2 text-[10px]">
                               <span className="text-emerald-600 dark:text-emerald-400">Repasse Venda:</span>
@@ -4304,7 +4340,38 @@ function AdminDashboardContent() {
                         <span className="text-[10px] text-zinc-500 uppercase font-bold block">Repasse Entregador</span>
                         <span className="font-bold text-sm text-amber-600 dark:text-amber-400">{formatMoney(dyn.repasseMoto)}</span>
                       </div>
+                      <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-purple-100 dark:border-purple-900/50">
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold block">Repasse Vendedor</span>
+                        <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400">{formatMoney(selectedAuditOrder.type === 'B2B' ? dyn.repasseForn : dyn.repasseLoja)}</span>
+                      </div>
+                      <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-purple-100 dark:border-purple-900/50">
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold block">Tarifa Pix Asaas</span>
+                        <span className="font-bold text-sm text-red-600 dark:text-red-400">{formatMoney(dyn.asaasTotal)}</span>
+                      </div>
+                      <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-purple-100 dark:border-purple-900/50">
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold block">Receita Líquida App</span>
+                        <span className="font-bold text-sm text-purple-700 dark:text-purple-300">{formatMoney(dyn.platLiquida)}</span>
+                      </div>
+                      {dyn.fromSnapshot && (
+                        <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-purple-100 dark:border-purple-900/50">
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">Cliente Pagou</span>
+                          <span className="font-bold text-sm text-zinc-900 dark:text-white">{formatMoney(dyn.totalCliente ?? 0)}</span>
+                        </div>
+                      )}
+                      {dyn.fromSnapshot && (
+                        <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-lg border border-purple-100 dark:border-purple-900/50">
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">Frete Pago pela Loja</span>
+                          <span className="font-bold text-sm text-zinc-900 dark:text-white">{formatMoney(dyn.freteSubsidioLoja)}</span>
+                        </div>
+                      )}
                     </div>
+                    {dyn.fromSnapshot ? (
+                      <p className="text-[10px] text-zinc-500">
+                        Valores gravados no pagamento. Tarifa Pix Asaas rateada: vendedor {formatMoney(dyn.asaasVendedor)}, entregador {formatMoney(dyn.asaasEntregador)}, plataforma {formatMoney(dyn.asaasPlataforma)}.
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-amber-600">Pedido sem valores gravados: estimativa com as taxas atuais, sem tarifa Asaas.</p>
+                    )}
                   </div>
                 );
               })()}

@@ -313,7 +313,7 @@ export function AdminWithdrawalsSection({
               <DollarSign size={18} className="text-purple-600 dark:text-purple-400" />
             </div>
             <p className="text-2xl font-black text-purple-950 dark:text-white mt-1">{formatMoney(appRevenue)}</p>
-            <p className="text-[10px] text-zinc-500 mt-1">Taxas retidas (vendas + comissão de frete)</p>
+            <p className="text-[10px] text-zinc-500 mt-1">Comissões (vendas + frete) menos a parte da tarifa Pix Asaas</p>
           </div>
 
           {/* Saldo Pendente de Repasse aos Parceiros */}

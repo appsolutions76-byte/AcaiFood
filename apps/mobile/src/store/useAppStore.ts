@@ -207,6 +207,9 @@ export interface Order {
   confirmacao: { entregador: boolean; recebedor: boolean };
   motoristaId: string | null;
   valor: number;
+  /** R42: valores congelados pelo servidor no pagamento (pricing_snapshot) e tarifa Asaas cobrada */
+  pricingSnapshot?: any;
+  asaasFeeAmount?: number | null;
   taxas: {
     entregaTotal: number;
     entregaMotorista: number;
@@ -437,6 +440,39 @@ export function calculateOrderFreight(
 
 export function calculateOrderTaxes(order: Order, rates: any, storeUsers: Record<string, User> = {}) {
   const oType = (order.type || 'B2C').toUpperCase();
+
+  // R42: pedidos pagos têm os valores congelados pelo servidor (pricing_snapshot): é o que de fato
+  // foi cobrado e repassado, já com a tarifa Pix do Asaas rateada. Usa esses valores em vez de
+  // recalcular com as taxas de hoje.
+  const ps: any = (order as any).pricingSnapshot;
+  const num = (v: any) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Number(v);
+  if (ps && typeof ps === 'object' && num(ps.netSellerPayout) !== null && num(ps.netDriverPayout) !== null) {
+    const entregaTotalS = num(ps.deliveryTotal) ?? num(order.taxas?.entregaTotal) ?? 0;
+    const platVendaS = num(ps.platformSalesFee) ?? 0;
+    const platEntregaS = num(ps.platformDeliveryFee) ?? 0;
+    const sellerS = num(order.taxas?.repasse) ?? num(ps.netSellerPayout) ?? 0;
+    const driverS = num(order.taxas?.entregaMotorista) ?? num(ps.netDriverPayout) ?? 0;
+    const asaasTotalS = num(order.asaasFeeAmount) ?? num(ps.asaasPixFeeFixed) ?? 0;
+    const asaasSellerS = num(ps.asaasFeeSeller) ?? 0;
+    const asaasDriverS = num(ps.asaasFeeDriver) ?? 0;
+    const asaasPlatS = num(ps.asaasFeePlatform) ?? Math.max(0, Number((asaasTotalS - asaasSellerS - asaasDriverS).toFixed(2)));
+    return {
+      entregaTotal: entregaTotalS,
+      repasseLoja: oType === 'B2C' ? sellerS : 0,
+      repasseForn: oType === 'B2B' ? sellerS : 0,
+      repasseMoto: driverS,
+      platVenda: platVendaS,
+      platEntrega: platEntregaS,
+      asaasTotal: asaasTotalS,
+      asaasVendedor: asaasSellerS,
+      asaasEntregador: asaasDriverS,
+      asaasPlataforma: asaasPlatS,
+      platLiquida: Number((platVendaS + platEntregaS - asaasPlatS).toFixed(2)),
+      freteSubsidioLoja: num(ps.storeDeliveryFee) ?? 0,
+      totalCliente: num(ps.buyerTotal),
+      fromSnapshot: true
+    };
+  }
   const dist = order.distancia || 0;
   
   const entregaTotal = (order.taxas?.entregaTotal && Number(order.taxas.entregaTotal) > 0)
@@ -485,7 +521,16 @@ export function calculateOrderTaxes(order: Order, rates: any, storeUsers: Record
     repasseForn,
     repasseMoto,
     platVenda,
-    platEntrega
+    platEntrega,
+    // Pedidos antigos (sem snapshot): estimativa com as taxas atuais, sem a tarifa Asaas
+    asaasTotal: 0,
+    asaasVendedor: 0,
+    asaasEntregador: 0,
+    asaasPlataforma: 0,
+    platLiquida: Number((platVenda + platEntrega).toFixed(2)),
+    freteSubsidioLoja: 0,
+    totalCliente: null as number | null,
+    fromSnapshot: false
   };
 }
 
@@ -3346,6 +3391,8 @@ export const useAppStore = create<AppState>()(
                           ? Number(dbOrder.delivery_platform_fee_pct_applied)
                           : (localOrder?.delivery_platform_fee_pct_applied ?? null),
                        confirmacao: localOrder?.confirmacao || { entregador: !!dbOrder.driver_id, recebedor: appStatus === 'entregue' },
+                       pricingSnapshot: dbOrder.pricing_snapshot || localOrder?.pricingSnapshot || null,
+                       asaasFeeAmount: snap(dbOrder.asaas_fee_amount) ?? localOrder?.asaasFeeAmount ?? null,
                        taxas: {
                           entregaTotal: finalEntregaTotal,
                           entregaMotorista: finalEntregaMotorista,
