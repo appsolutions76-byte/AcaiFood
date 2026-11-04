@@ -1,94 +1,84 @@
-# AçaíFood — Como o app funciona (Atualizado Pós-R16 / 06 de outubro de 2026)
+# AçaíFood — Como o App Funciona (Atualizado — Novembro de 2026)
 
 > **Documentação oficial de operação e fluxos de negócio da plataforma AçaíFood.**  
 > **Produção:** https://www.acaifood.app.br (espelho: https://acai-food-mobile.vercel.app)  
-> **Instituição de pagamento (BaaS):** Asaas Gestão Financeira Instituição de Pagamento S.A. (CNPJ 19.540.550/0001-21) | **Tomadora e titular da marca AçaíFood:** Eletromecânica Baia Ltda (CNPJ 42.035.623/0001-40)
+> **Instituição de pagamento (BaaS):** Asaas Gestão Financeira Instituição de Pagamento S.A. (CNPJ 19.540.550/0001-21)  
+> **Tomadora e titular da marca AçaíFood:** Eletromecânica Baia Ltda (CNPJ 42.035.623/0001-40)
 
 ---
 
-## 1. O que é
+## 1. O que é o AçaíFood
 
-Marketplace web/PWA da cadeia do açaí no Pará e regiões de expansão. Conecta quem consome açaí batido, batedeiras artesanais/industriais, fornecedores de frutos no atacado, motoboys urbanos e caminhoneiros/caçambeiros (logística pesada e coleta reversa de caroços). 
-
-Todos os pagamentos são feitos por **Pix dinâmico da cobrança Asaas**, que cai na conta da Tomadora no Asaas. Os parceiros recebem hoje pelo **saque aprovado pelo admin**, transferido para a **subconta Asaas aprovada** do parceiro. O repasse automático depois do PIN (`settlements`) está construído, mas **desligado** (`settlements_enabled = false`) até a aprovação escrita do Asaas (ver `13_CONFORMIDADE_CONTRATO_ASAAS_BAAS.md`). Não há split na cobrança nem custódia.
+Marketplace web e PWA oficial da cadeia do açaí no Pará e regiões de expansão. Conecta os elos produtivos e consumidores:
+1. **Consumidores Finais (B2C):** Compram os 5 tipos de açaí (incluindo açaí congelado para viagem), refeições executivas/churrascos com complementos personalizados, produtos com variedades de marcas e bebidas geladas.
+2. **Batedeiras Artesanais e Industriais:** Recebem pedidos com pagamento Pix Asaas já garantido, imprimem comandas térmicas (58mm/80mm), acionam entregadores autônomos sob demanda, compram frutos no B2B e solicitam caçambas para descarte sustentável de caroços.
+3. **Fornecedores de Frutos (B2B):** Vendem paneiros, latas e sacas de frutos no atacado para as batedeiras e despacham cargas pesadas via caminhoneiros credenciados.
+4. **Motoboys Urbanos (Logística B2C):** Visualizam entregas prontas no Radar Urbano com roteamento OSRM e navegação automatizada (redirecionamento automático ao aceitar e após confirmação de retirada), finalizando as corridas com PIN de 4 dígitos.
+5. **Caminhoneiros e Caçambeiros (Logística Pesada & ESG):** Transportam cargas pesadas B2B e operam a logística reversa do descarte de caroços para ecopontos e usinas de biomassa/adubo.
+6. **Administradores da Plataforma:** Gerenciam tarifas municipais, esteira de saques com titularidade estrita (BCB), monitoramento por Mapa ao Vivo, fechamento fiscal/contábil de NF-e e auditoria imutável.
 
 ---
 
-## 2. Perfis (Roles) e Acessos
+## 2. Perfis de Usuários (Roles)
 
-| Perfil no App | `role` no Banco | Painel | Responsabilidades |
+| Perfil no App | `role` no Banco | Rota Principal | Responsabilidades |
 |---|---|---|---|
-| **Cliente** | `cliente` | `/` | Escolhe açaí e adicionais, paga via Pix Asaas, recebe o código PIN de 4 dígitos e informa ao motoboy na entrega. |
-| **Loja / Batedeira** | `loja` (compatível com `partner`, `batedeira`) | `/parceiros/batedeira` | Vendas B2C, aceita pedidos, imprime comandas térmicas, chama motoboy, compra frutos no B2B e solicita coleta de caroço. |
-| **Fornecedor** | `fornecedor` (`supplier`) | `/parceiros/fornecedor` | Vende lotes/latas de frutos no atacado (B2B) para batedeiras e despacha cargas pesadas para caminhoneiros. |
-| **Motoboy** | `motorista` (`courier`, `motoboy`) | `/parceiros/motoboy` | Visualiza entregas liberadas no Radar Urbano, retira na loja e valida a entrega mediante digitação do PIN do cliente. |
-| **Caminhoneiro / Caçamba** | `motorista` (`caminhao`) | `/parceiros/caminhao` | Realiza fretes pesados B2B (porto/produtor → batedeiras) e coletas de resíduos (batedeiras → ecopontos). |
-| **Administrador Master** | `admin` (`is_admin = true`) | `/admin` | Gestão de cidades, tarifas, esteira de saques, auditoria administrativa (`admin_audit_log`), conciliação e suporte. |
+| **Cliente** | `cliente` | `/` | Catálogo georreferenciado, sacola, personalização de complementos/marcas, checkout Pix Asaas, rastreio em tempo real e fornecimento do PIN ao motoboy. |
+| **Loja / Batedeira** | `loja` (ou `batedeira`) | `/parceiros/batedeira` | Gestão de cardápio (5 açaís, refeições, marcas), impressão de comandas, acionamento sob demanda ("Chamar Motoboy"), compras B2B, coleta ESG e saques Pix. |
+| **Fornecedor** | `fornecedor` | `/parceiros/fornecedor` | Catálogo de sacas/lotes de frutos, romaneio de carga, acionamento de caminhões e recebimento atacadista. |
+| **Motoboy** | `motorista` (`motoboy`) | `/parceiros/motoboy` | Radar de corridas urbanas sem espera, navegação GPS inteligente até a loja e cliente, validação do PIN de entrega e recebimento automático do frete líquido. |
+| **Caminhoneiro / Caçamba** | `motorista` (`caminhao`) | `/parceiros/caminhao` | Fretes pesados B2B e coletas de resíduos, conferência de cargas e validação de PIN de descarga. |
+| **Administrador Master** | `admin` (`is_admin = true`) | `/admin` | Visão geral calculada no servidor, Mapa ao Vivo, Fechamento Mensal / Notas Fiscais, simulador econômico, aprovação de saques, auditoria e governança. |
 
 ---
 
-## 3. Páginas Públicas e Cadastro
+## 3. Modelo Financeiro (Cobrança Direta na Loja com Split Asaas)
 
-- `/apresentacao`: Landing comercial com vídeo institucional.
-- `/parceiros`: Portal central de acesso e direcionamento dos parceiros.
-- `/cadastro`: Fluxo de cadastro estruturado com coleta de dados reais (KYC) e registro de aceite dos termos de uso e privacidade (`terms_acceptances`).
-- `/login`: Autenticação segura via Supabase Auth (JWT).
-- `/politica-de-privacidade`: Termos de uso, privacidade, LGPD e informações de conformidade BaaS Asaas.
-
----
-
-## 4. Cadastro, Subconta Asaas e Ativação de Parceiros
-
-A ordem é sempre esta:
-
-1. **Aceites:** o parceiro aceita Termos de Uso, Política de Privacidade e os documentos do Asaas da versão atual (`CURRENT_TERMS_VERSION`). Se a versão mudar, o app pede o aceite de novo no próximo login.
-2. **Subconta Asaas (KYC real):** o servidor cria a subconta com os dados que o parceiro digitou (nome, e-mail, CPF/CNPJ, celular, renda/faturamento, endereço com CEP, número e bairro). Nada é preenchido por padrão. Se o Asaas já tiver uma subconta com o mesmo CPF/CNPJ, o cadastro fica como **"Precisa do admin"**.
-3. **Documentos:** no cartão **"Minha conta Asaas"** o parceiro envia os documentos que o Asaas pedir (link do Asaas ou envio pelo app).
-4. **Aprovação:** a subconta só conta como aprovada quando o Asaas informa `general = APPROVED` (webhook de situação da conta, consulta diária às 11h30 UTC e botão "Reconsultar").
-5. **Ativação:** fundadores (cota definida pelo admin) não pagam. Os demais pagam a taxa de ativação definida pelo admin, por Pix Asaas, com os dados do próprio cadastro.
-
-Enquanto a subconta não está aprovada, o parceiro usa o painel normalmente, mas **não consegue pedir saque**.
+1. **Cliente Paga à Loja (`SELLER_SPLIT`):**
+   - No checkout, o Pix emitido pelo Asaas tem como beneficiário a conta Asaas da loja vendedora.
+   - No mesmo Pix, o Asaas separa automaticamente a taxa de comissão da plataforma AçaíFood (split de pagamento).
+2. **Saldo Reservado Durante o Pedido:**
+   - O valor permanece reservado na subconta da loja durante a rota para garantir liquidez em caso de estorno autorizado.
+3. **Pagamento Automático da Corrida (Pós-PIN):**
+   - Assim que o motoboy valida o PIN de 4 dígitos informado pelo cliente, o app transfere o valor líquido da corrida da conta Asaas da loja para a conta Asaas do motoboy.
+   - O saldo restante da venda é liberado como saldo livre para saque da batedeira.
+4. **Saques com Mesma Titularidade (BCB):**
+   - Qualquer parceiro solicita o saque do saldo livre diretamente para a sua conta bancária sob a mesma titularidade (mesmo CPF ou CNPJ), em total conformidade com as Resoluções BCB nº 1/2020 e nº 80/2021.
 
 ---
 
-## 5. Fluxos Operacionais de Pedidos
+## 4. Fluxo Operacional Ponta a Ponta (B2C)
 
-### 5.1 Pedido B2C (Cliente → Loja → Motoboy)
-1. **Carrinho:** Cliente seleciona loja, consistência do açaí (Popular, Médio, Grosso, Branco) e complementos.
-2. **Frete:** Calculado dinamicamente com base na distância ou tarifa fixa da cidade, aplicando eventual subsídio oferecido pela loja.
-3. **Checkout Pix Asaas:** Servidor revalida os preços contra o banco e gera o QR Code Pix dinâmico oficial do Asaas.
-4. **Confirmação:** Webhook oficial do Asaas confirma o recebimento (`PAID`) e aciona a geração isolada do **PIN de 4 dígitos** na tabela segura `order_pins`.
-5. **Preparo e Despacho:** A loja aceita o pedido (`PREPARING`), imprime a comanda térmica e clica em "Chamar Motoboy" (`READY`).
-6. **Radar e Entrega:** O motoboy visualiza a entrega no Radar (com coordenadas aproximadas para privacidade), aceita a corrida e desloca-se até o cliente.
-7. **Validação do PIN:** O cliente informa os 4 dígitos ao motoboy. A RPC segura `check_delivery_pin` confere a identidade do motorista e o código. Com o PIN validado, o pedido vai para `RECEIVED` e os saldos são liberados.
-
-### 5.2 Pedido B2B (Loja → Fornecedor → Caminhão)
-- A batedeira compra latas/sacas de frutos direto do fornecedor, paga via Pix Asaas e a entrega é validada pelo PIN fornecido pela batedeira ao caminhoneiro.
-
-### 5.3 Coleta de Caroço (Loja → Caçamba / Ecoponto)
-- A batedeira solicita o recolhimento de caroços. O motorista de caçamba aceita no Radar Pesado e finaliza o serviço com a validação do PIN da loja.
-
----
-
-## 6. Governança Financeira e Segurança
-
-- **Segurança de PINs:** os PINs ficam só em `order_pins` (a tabela `orders` não guarda PIN nem hash). A leitura é feita pela função `get_my_order_pins_bulk`: o comprador recebe só o PIN de entrega, a loja só o de retirada, o motorista nenhum. Só o motorista atribuído consegue validar o PIN (`check_delivery_pin` / `check_pickup_pin`).
-- **Avanço de Status Seguro:** Todas as transições de status são intermediadas pela RPC `advance_order_status` ou `check_delivery_pin`, impedindo alterações arbitrárias pelo navegador.
-- **Baixa Forçada Auditada:** Admins podem dar baixa de contingência apenas em pedidos em rota ou travados por excesso de tentativas, exigindo justificativa obrigatória registrada em `admin_audit_log`.
-- **Saque:** o parceiro pede o saque do saldo calculado no servidor; o admin aprova; o valor vai **só para o `walletId` da subconta Asaas aprovada** do parceiro (nunca para chave Pix, CPF ou e-mail digitado). Não existe mais limite de "2 saques por dia" nem contador no navegador: só pode haver um saque em aberto por vez.
-- **Ações do admin com registro:** pagar parceiro, aprovar/recusar saque, regerar PIN, conciliar ou estornar pagamento, bloquear/desbloquear, excluir usuário, zerar balanços, mudar configurações de saque, ativação e suporte ficam em `admin_audit_log` (só inclusão).
-- **Exclusão e limpeza:** usuário com pedido pago ou saque não pode ser excluído (bloqueie a conta). A limpeza geral de pedidos só funciona com `ALLOW_DESTRUCTIVE_ADMIN_RESET=true` (ambiente de teste).
-- **Prevenção de Pagamento em Duplicidade:** não há split no checkout. Enquanto o repasse automático estiver desligado, o único caminho é o saque aprovado pelo admin; ao ligar, o pedido que gera repasse é marcado como pago (`payout_*_done`) e sai do saldo de saque.
+```
+[1. CLIENTE] 
+   Escolhe loja, açaí (5 tipos), refeições com acompanhamentos/marcas
+   Gera Pix Asaas → Paga no banco → Pedido vai para PAID
+         ↓
+[2. BATEDEIRA] 
+   Alerta sonoro → Clica em "Aceitar e Preparar" (PREPARING)
+   Imprime comanda térmica (58mm/80mm) com itens, opções e PIN Balcão
+   Açaí pronto e embalado → Clica em "Chamar Motoboy" (READY)
+         ↓
+[3. MOTOBOY] 
+   Radar toca com ganho líquido e distância → Clica em "Aceitar Corrida"
+   🚀 Redirecionamento AUTOMÁTICO para rota GPS até a batedeira
+   Chega na batedeira → Retira o açaí e digita o PIN de Balcão da loja
+   🏁 Redirecionamento AUTOMÁTICO para rota GPS até o cliente
+   Chega no cliente → Solicita o PIN de 4 dígitos
+         ↓
+[4. CONCLUSÃO & FINANCEIRO] 
+   Motoboy valida PIN na tela → Pedido vira RECEIVED
+   App transfere o frete líquido da loja p/ o motoboy no Asaas
+   Saldo livre liberado para a loja
+   Cliente e batedeira podem emitir comprovante oficial Asaas
+```
 
 ---
 
-## 7. Configurações que valem hoje
+## 5. Módulos Avançados do Painel Administrativo (`/admin`)
 
-| Item | Onde fica | Valor/regra |
-|---|---|---|
-| Repasse automático (`settlements_enabled`) | `platform_settings` | desligado |
-| Saque automático (`auto_payout_enabled`) | `platform_settings` | desligado; o servidor recusa ligar sem `ALLOW_AUTO_PAYOUT=true` |
-| Taxa de ativação e cota de fundadores | `platform_config` (`activation`) + coluna `activation_fee_enabled` | definidas no admin |
-| Horário e WhatsApp do suporte | `platform_config` (`support`) | definidos no admin |
-| Disponibilidade mensal (SLA) | `monthly_sla` | informada no admin (aba Conformidade); sem valor, o relatório diz "não medido" |
-
+- **Visão Geral Segura no Servidor:** Indicadores consolidados por backend (`/api/admin/dashboard-stats` e `lib/orderFinance.ts`), apresentando GMV, Receita Bruta da Plataforma e Receita Líquida (pós tarifas Asaas Pix).
+- **Mapa ao Vivo (R45):** Visão geoespacial em tempo real de parceiros ativos em rotas e lojas abertas, com privacidade total do cliente (endereços não são expostos em mapa público/geral, conforme LGPD).
+- **Fechamento Mensal / Notas Fiscais (R43):** Apuração contábil por competência mensal para emissão de notas fiscais de serviço e apuração de ISS.
+- **Esteira de Saques Auditada:** Consulta ao Asaas em tempo real para liquidação e prevenção de duplicidade.
+- **Proteção Anti-Destrutiva (R44):** Bloqueio estrito no servidor para limpeza ou redefinição de dados, exigindo credenciais e variáveis explícitas de contingência.

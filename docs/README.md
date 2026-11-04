@@ -1,19 +1,32 @@
-# Documentação Oficial do AçaíFood (Atualizado em 06/10/2026, pós-R16)
+# Documentação Oficial do AçaíFood (Atualizado em Novembro de 2026)
 
 Esta pasta `docs/` é a **fonte oficial de verdade** sobre o app e a arquitetura técnica da plataforma AçaíFood.
 
 ---
 
-## 📚 Índice de Documentos Atuais
+## 📚 Documentos Centrais e Manuais Atualizados
 
 | Arquivo | Descrição e Finalidade |
 |---|---|
-| [`01_OPERACAO_DO_APP.md`](01_OPERACAO_DO_APP.md) | **Como o app funciona:** Perfis de usuário, três fluxos de pedidos (B2C, B2B, Coleta), ciclo de status, regras de dinheiro e contingência. |
-| [`02_ARQUITETURA_TECNICA.md`](02_ARQUITETURA_TECNICA.md) | **Arquitetura técnica:** Stack, organização de pastas, rotas de API Next.js, modelo de banco Supabase, RLS, RPCs e auditoria. |
-| [`04_MANUAIS_DE_USO.md`](04_MANUAIS_DE_USO.md) | **Manuais de uso detalhados por perfil:** Cliente, Batedeira/Loja, Fornecedor B2B, Motoboy, Caminhoneiro, Administrador Master (`/admin`) e **"Como abrir sua conta Asaas"**. |
-| [`13_CONFORMIDADE_CONTRATO_ASAAS_BAAS.md`](13_CONFORMIDADE_CONTRATO_ASAAS_BAAS.md) | **Contrato BaaS Asaas:** cláusulas e Anexo I aplicados ao app. |
-| [`20_PROMPT_CORRECOES_R16.md`](20_PROMPT_CORRECOES_R16.md) | **Rodada de correções R16** (itens e regras). |
-| [`21_RELATORIO_FINAL_R16_2026-10-06.md`](21_RELATORIO_FINAL_R16_2026-10-06.md) | **Relatório final do R16:** o que foi corrigido, como foi testado e o checklist antes de publicar. |
+| [`01_OPERACAO_DO_APP.md`](01_OPERACAO_DO_APP.md) | **Como o app funciona:** Perfis de usuário, fluxos B2C, B2B e Coleta ESG, modelo financeiro `SELLER_SPLIT` via Asaas, GPS inteligente de entregas e regras de contingência. |
+| [`02_ARQUITETURA_TECNICA.md`](02_ARQUITETURA_TECNICA.md) | **Arquitetura técnica:** Stack Next.js 16 / Supabase / Asaas, organização de pastas, rotas de API, segurança RLS, isolamento de PINs, otimizações R40/R41 e módulo fiscal. |
+| [`04_MANUAIS_DE_USO.md`](04_MANUAIS_DE_USO.md) | **Manuais de uso detalhados por perfil:** Cliente, Batedeira/Loja, Fornecedor B2B, Motoboy, Caminhoneiro, Administrador Master (`/admin`) e orientações para subcontas Asaas. |
+
+---
+
+## 🚀 Rodadas Recentes de Engenharia (R38 a R46)
+
+| Rodada | Documento de Referência | Resumo da Entrega |
+|---|---|---|
+| **R38** | [`36_R38_SIMULADOR_ADMIN_2026-11-01.md`](36_R38_SIMULADOR_ADMIN_2026-11-01.md) | Simulador econômico no painel `/admin` para cálculo de viabilidade, taxas e projeção de receita. |
+| **R39** | [`37_R39_INDICACOES_AVALIACOES_2026-11-02.md`](37_R39_INDICACOES_AVALIACOES_2026-11-02.md) | Módulo de motoristas e caminhoneiros indicados, entrega própria e avaliações de 1 a 5 estrelas. |
+| **R40** | [`38_R40_DESEMPENHO_E_GPS_MOTOBOY_2026-11-04.md`](38_R40_DESEMPENHO_E_GPS_MOTOBOY_2026-11-04.md) | Desempenho e GPS do motoboy: debounce de coordenadas, redução de requisições, modais dinâmicos sob demanda (`next/dynamic`). |
+| **R41** | [`39_R41_DESEMPENHO_CATALOGO_E_PAINEIS_2026-11-04.md`](39_R41_DESEMPENHO_CATALOGO_E_PAINEIS_2026-11-04.md) | Otimização do catálogo de produtos e lojas, eliminação de polling agressivo e modo leve para entregadores. |
+| **R42** | [`40_R42_ADMIN_VALORES_REAIS_TARIFA_ASAAS_2026-11-04.md`](40_R42_ADMIN_VALORES_REAIS_TARIFA_ASAAS_2026-11-04.md) | Painel admin com valores financeiros reais, dedução de tarifa Pix Asaas e receita líquida precisa. |
+| **R43** | [`41_R43_FECHAMENTO_MENSAL_NOTAS_FISCAIS_2026-11-04.md`](41_R43_FECHAMENTO_MENSAL_NOTAS_FISCAIS_2026-11-04.md) | Módulo Fechamento Mensal / Notas Fiscais no `/admin` (`/api/admin/fiscal-close`) para apuração fiscal de ISS e exportação contábil. |
+| **R44** | [`42_R44_ADMIN_SEGURANCA_LEGADO_VISAO_GERAL_2026-11-04.md`](42_R44_ADMIN_SEGURANCA_LEGADO_VISAO_GERAL_2026-11-04.md) | Trava no servidor para limpeza de dados (`ALLOW_DESTRUCTIVE_ADMIN_RESET`), motor `lib/orderFinance.ts` e visão geral calculada no backend. |
+| **R45** | [`43_R45_MAPA_AO_VIVO_ADMIN_2026-11-04.md`](43_R45_MAPA_AO_VIVO_ADMIN_2026-11-04.md) | Aba Mapa ao Vivo no `/admin` (`/api/admin/live-map`) com geolocalização de parceiros operacionais, contadores de status e privacidade LGPD para clientes. |
+| **R46** | [`44_R46_RECEITA_BRUTA_E_LIQUIDA_2026-11-04.md`](44_R46_RECEITA_BRUTA_E_LIQUIDA_2026-11-04.md) | Discriminação transparente de Receita Bruta da Plataforma e Receita Líquida pós-tarifas Pix Asaas. |
 
 ---
 
@@ -28,26 +41,3 @@ Esta pasta `docs/` é a **fonte oficial de verdade** sobre o app e a arquitetura
 - [`docs/seguranca/REGISTRO_DE_VULNERABILIDADES.md`](seguranca/REGISTRO_DE_VULNERABILIDADES.md): Registro e matriz de mitigação de vulnerabilidades.
 - [`docs/seguranca/BACKUP_E_RESTAURACAO.md`](seguranca/BACKUP_E_RESTAURACAO.md): Políticas de backup contínuo (PITR) e recuperação de desastres.
 - [`docs/seguranca/INVENTARIO_DE_TERCEIROS.md`](seguranca/INVENTARIO_DE_TERCEIROS.md): Inventário de terceiros críticos (Asaas, Supabase, Vercel).
-
----
-
-## 📜 Histórico de Auditorias e Evolução (Imutáveis)
-
-- `03_AUDITORIA_2026-09-23.md`: Sexta auditoria e decisões de modelo de repasse seguro.
-- `05_PROMPT_MESTRE_NOVO_APP.md`: Especificação inicial do ecossistema e fluxos da cadeia do açaí.
-- `06_PROMPT_CORRECOES_R8.md`: Especificações de transições de status e correções R8.
-- `07_AUDITORIA_FINANCEIRA_PIX_2026-09-23.md`: Diagnóstico de checkout Pix e saques.
-- `08_PROMPT_HOTFIX_R9_PIX.md`: Hotfix R9 (Pix dinâmico Asaas, remoção de chaves fixas).
-- `09_AUDITORIA_2026-10-02.md`: Oitava auditoria (fechamento de brechas de metadata e estorno).
-- `10_REAUDITORIA_2026-10-02.md`: Reauditoria R10 e preparação para R11.
-- `11_PROMPT_CORRECOES_R11.md`: Especificações de transição de status e RPCs.
-- `12_AUDITORIA_POS_R11_2026-10-02.md`: Auditoria pós-R11 que fundamentou o R12 definitivo.
-- `13_CONFORMIDADE_CONTRATO_ASAAS_BAAS.md`: Conformidade Contratual Asaas BaaS (Cláusulas 1 a 12 e Anexo I).
-- `14_PROMPT_CORRECOES_R12.md`: Especificação R12 consolidada (PINs isolados em `order_pins` e auditoria).
-- `15_REAUDITORIA_POS_R12_2026-10-02.md`: Reauditoria pós-R12.
-- `16_PROMPT_CORRECOES_R13.md`: Especificações do ciclo R13/R14.
-- `17_AUDITORIA_POS_R13_R14_2026-10-06.md`: Auditoria pós-R13/R14 (PIN mestre, leitura ampla de `users`, saque por chave Pix).
-- `18_PROMPT_CORRECOES_R15.md`: Correções R15 com o contrato BaaS, migration do PIN e orientações de cadastro/documentos Asaas.
-- `19_AUDITORIA_POS_R15_2026-10-06.md`: Auditoria pós-R15.
-- `21_RELATORIO_FINAL_R16_2026-10-06.md`: Fechamento do R16 (itens 1–8) e checklist de publicação.
-- `20_PROMPT_CORRECOES_R16.md`: Correções R16 (aceites, subconta com KYC real, situação da conta, saque só por subconta aprovada, MFA, privacidade de `users`, log de admin, tela de Conformidade, SLA, testes no CI).

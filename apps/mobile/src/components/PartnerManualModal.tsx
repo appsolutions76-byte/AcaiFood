@@ -108,6 +108,7 @@ function ManualCliente() {
               <p>🥩 <strong>1. Ponto da Carne</strong>: Selecione seu ponto preferido (<em>Ao ponto</em>, <em>Bem assado</em> ou <em>Mal passado</em>).</p>
               <p>🍚 <strong>2. Acompanhamentos</strong>: Marque os itens desejados respeitando o limite máximo configurado pela loja (ex: até 2 entre <em>Arroz branco</em>, <em>Baião de dois</em>, <em>Salada de maionese</em>, <em>Farofa crocante</em> ou <em>Vinagrete</em>).</p>
               <p>✍️ <strong>3. Observações Especiais</strong>: Escreva instruções pontuais para a cozinha (ex: <em>"sem cebola"</em>, <em>"vinagrete em potinho separado"</em>).</p>
+              <p>🏷️ <strong>4. Variedades & Marcas</strong>: Em produtos com diferentes opções de marca (como cervejas, refrigerantes ou farinhas), você escolhe a marca desejada no mesmo momento.</p>
             </div>
             <p className="text-zinc-600 dark:text-zinc-400 mt-1">
               Todas as escolhas aparecem detalhadas na sua sacola, no comprovante e saem impressas diretamente na comanda da cozinha do restaurante!
@@ -264,6 +265,7 @@ function ManualBatedeira() {
                   <li>Preço adicional para cada opção (ex: + R$ 3,00) ou sem custo extra (+ R$ 0,00).</li>
                 </ul>
                 <p>🤖 <strong>Anexo Inteligente</strong>: Ao cadastrar um produto novo com nomes como "churrasco", "maminha" ou "picanha", o sistema já anexa o modelo de acompanhamentos para você economizar tempo!</p>
+                <p>🏷️ <strong>Variedade de Marcas</strong>: Para produtos com diversas marcas (ex: cerveja lata, refrigerantes, águas, farinhas), crie um grupo de opções de marcas para que o cliente selecione a de sua preferência na hora da compra.</p>
               </div>
             </div>
           </div>
@@ -462,11 +464,12 @@ function ManualMotoboy() {
         <p>1. 📡 <strong>Status Online & GPS</strong>: Marque como <em>Online</em> para transmitir seu posicionamento em tempo real e receber chamados da sua praça.</p>
         <p>2. 🏍️ <strong>Radar de Prontos</strong>: Você só recebe chamados de pedidos que a batedeira já preparou e acionou <em>"Chamar Moto"</em>, eliminando tempo de espera na loja.</p>
         <p>3. 👁️ <strong>Transparência de Ganhos</strong>: Veja o valor líquido do frete, a distância em km e o mapa da rota antes de aceitar.</p>
-        <p>4. 🧭 <strong>Navegação GPS & Chegada</strong>:</p>
+        <p>4. 🧭 <strong>Navegação GPS Automatizada & Chegada</strong>:</p>
         <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
-          <li>Toque em <em>"🚀 GPS p/ Retirada"</em> para navegar até a loja.</li>
-          <li>Ao chegar, clique em <em>"🏪 Confirmar Chegada na Loja"</em> e retire os pacotes.</li>
-          <li>Toque em <em>"🏁 GPS p/ Cliente"</em> para navegar até o destino.</li>
+          <li><strong>🚀 Redirecionamento Automático p/ Loja:</strong> Ao aceitar a corrida no Radar, o app redireciona você automaticamente para o mapa de rota até a batedeira.</li>
+          <li>Ao chegar, retire o pedido e confirme a retirada com o PIN de balcão da loja.</li>
+          <li><strong>🏁 Redirecionamento Automático p/ Cliente:</strong> Ao confirmar o PIN de retirada, o app abre imediatamente a rota GPS até a casa do cliente!</li>
+          <li>Atalhos extras: você pode usar os botões <em>"🚀 GPS p/ Retirada"</em> e <em>"🏁 GPS p/ Cliente"</em> para reabrir no Google Maps ou Waze a qualquer momento.</li>
           <li>Ao chegar ao cliente, clique em <em>"Confirmar Chegada no Cliente"</em>.</li>
         </ul>
         <p>5. 🔐 <strong>Validação Obrigatória do PIN de 4 Dígitos</strong>: Peça o PIN ao cliente, digite na tela e confirme. Sem o PIN correto, a entrega não fecha e a corrida não é paga.</p>
