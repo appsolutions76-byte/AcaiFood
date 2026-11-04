@@ -27,6 +27,7 @@ interface AdminWithdrawalsSectionProps {
   payAllProgress?: { current: number; total: number; name: string } | null;
   totalVolume?: number;
   appRevenue?: number;
+  appRevenueGross?: number;
   onRefreshAll?: () => void;
 }
 
@@ -40,6 +41,7 @@ export function AdminWithdrawalsSection({
   payAllProgress = null,
   totalVolume = 0,
   appRevenue = 0,
+  appRevenueGross,
   onRefreshAll
 }: AdminWithdrawalsSectionProps) {
   const [activeTab, setActiveTab] = useState<'PENDENTE' | 'PROCESSING' | 'PAGO' | 'REJEITADO' | 'FALHOU' | 'all'>('PENDENTE');
@@ -312,8 +314,19 @@ export function AdminWithdrawalsSection({
               <span className="text-[11px] font-bold uppercase text-purple-700 dark:text-purple-400">Receita AçaíFood</span>
               <DollarSign size={18} className="text-purple-600 dark:text-purple-400" />
             </div>
-            <p className="text-2xl font-black text-purple-950 dark:text-white mt-1">{formatMoney(appRevenue)}</p>
-            <p className="text-[10px] text-zinc-500 mt-1">Comissões (vendas + frete) menos a parte da tarifa Pix Asaas</p>
+            <div className="flex items-end justify-between gap-3 mt-1">
+              {typeof appRevenueGross === 'number' && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-zinc-500">Bruta</p>
+                  <p className="text-xl font-black text-zinc-800 dark:text-zinc-200">{formatMoney(appRevenueGross)}</p>
+                </div>
+              )}
+              <div className={typeof appRevenueGross === 'number' ? 'text-right' : ''}>
+                <p className="text-[10px] font-bold uppercase text-zinc-500">Líquida</p>
+                <p className="text-2xl font-black text-purple-950 dark:text-white">{formatMoney(appRevenue)}</p>
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-500 mt-1">Bruta = comissões (vendas + frete) · Líquida = bruta menos a parte da tarifa Pix Asaas</p>
           </div>
 
           {/* Saldo Pendente de Repasse aos Parceiros */}

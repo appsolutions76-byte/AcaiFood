@@ -1190,6 +1190,7 @@ function AdminDashboardContent() {
       volume: localMov,
       // R42: receita líquida (comissões menos a parte da tarifa Asaas paga pela plataforma)
       appRev: localVendas + localFretes - localAsaasPlat,
+      comissaoBruta: localVendas + localFretes,
       fornBruto: localFornBruto,
       fornLiq: localFornLiq,
       batBruto: localBatBruto,
@@ -1245,6 +1246,7 @@ function AdminDashboardContent() {
       concluidos: localStats.concluidosCount,
       emRota: localStats.emRota,
       receitaVendas: localStats.appRev,
+      receitaBruta: Number((localStats as any).comissaoBruta ?? 0),
       receitaFretes: 0
   };
 
@@ -1360,6 +1362,7 @@ function AdminDashboardContent() {
     let totalProductVolume = 0;
     let totalFreightVolume = 0;
     let totalPlatformFee = 0;
+    let totalPlatformGross = 0;
     let totalAsaasFee = 0;
     let totalDriverNet = 0;
     let totalSellerNet = 0;
@@ -1371,6 +1374,7 @@ function AdminDashboardContent() {
       totalProductVolume += (o.valor || 0);
       totalFreightVolume += (dyn.entregaTotal || 0);
       totalPlatformFee += (dyn.platLiquida || 0);
+      totalPlatformGross += (dyn.platVenda || 0) + (dyn.platEntrega || 0);
       totalAsaasFee += (dyn.asaasTotal || 0);
       totalDriverNet += (dyn.repasseMoto || 0);
       if (o.type === 'B2B') {
@@ -1386,6 +1390,7 @@ function AdminDashboardContent() {
       totalFreightVolume,
       totalGrossVolume: totalProductVolume + totalFreightVolume,
       totalPlatformFee,
+      totalPlatformGross,
       totalAsaasFee,
       totalDriverNet,
       totalSellerNet
@@ -1526,8 +1531,8 @@ function AdminDashboardContent() {
             <div style="font-size: 13px; font-weight: bold; color: #2563eb; margin-top: 2px;">${formatMoney(reportMetrics.totalFreightVolume)}</div>
           </div>
           <div style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #faf5ff; border-color: #d8b4fe;">
-            <div style="font-size: 9px; color: #7e22ce; text-transform: uppercase; font-weight: bold;">Receita App (líquida)</div>
-            <div style="font-size: 13px; font-weight: bold; color: #6b21a8; margin-top: 2px;">${formatMoney(reportMetrics.totalPlatformFee)}</div>
+            <div style="font-size: 9px; color: #7e22ce; text-transform: uppercase; font-weight: bold;">Receita App (bruta / líquida)</div>
+            <div style="font-size: 13px; font-weight: bold; color: #6b21a8; margin-top: 2px;">${formatMoney(reportMetrics.totalPlatformGross)} / ${formatMoney(reportMetrics.totalPlatformFee)}</div>
           </div>
           <div style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #f0fdf4; border-color: #86efac;">
             <div style="font-size: 9px; color: #15803d; text-transform: uppercase; font-weight: bold;">Repasse Vendas</div>
@@ -2107,8 +2112,17 @@ function AdminDashboardContent() {
                 <p className="text-xl font-bold text-zinc-800 dark:text-zinc-200">{totais.concluidos}</p>
             </div>
             <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-xl shadow-sm border border-purple-200 dark:border-purple-900/50">
-                <p className="text-purple-700 dark:text-purple-400 text-[11px] uppercase font-bold">Receita App (líquida)</p>
-                <p className="text-xl font-bold text-purple-800 dark:text-purple-300">{formatMoney(totais.receitaVendas)}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-purple-700 dark:text-purple-400 text-[11px] uppercase font-bold">Receita bruta</p>
+                    <p className="text-xl font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(totais.receitaBruta)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-purple-700 dark:text-purple-400 text-[11px] uppercase font-bold">Líquida</p>
+                    <p className="text-xl font-bold text-purple-800 dark:text-purple-300">{formatMoney(totais.receitaVendas)}</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-zinc-500 mt-1">Bruta = comissões · Líquida = bruta − parte da tarifa Asaas da plataforma</p>
             </div>
         </div>
 
@@ -2388,8 +2402,9 @@ function AdminDashboardContent() {
                 <p className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-0.5">{formatMoney(reportMetrics.totalFreightVolume)}</p>
               </div>
               <div className="bg-purple-50 dark:bg-purple-950/30 p-3.5 rounded-xl border border-purple-200 dark:border-purple-900/50 shadow-sm">
-                <p className="text-[10px] text-purple-700 dark:text-purple-400 uppercase font-bold">Receita App (líquida)</p>
-                <p className="text-lg font-bold text-purple-800 dark:text-purple-300 mt-0.5">{formatMoney(reportMetrics.totalPlatformFee)}</p>
+                <p className="text-[10px] text-purple-700 dark:text-purple-400 uppercase font-bold">Receita App</p>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">Bruta <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(reportMetrics.totalPlatformGross)}</span></p>
+                <p className="text-lg font-bold text-purple-800 dark:text-purple-300">Líq. {formatMoney(reportMetrics.totalPlatformFee)}</p>
               </div>
               <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/50 shadow-sm">
                 <p className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase font-bold">Repasse Lojas/Forn</p>
@@ -3892,6 +3907,7 @@ function AdminDashboardContent() {
               payAllProgress={payAllProgress}
               totalVolume={currentVolumeTotal}
               appRevenue={currentAppRevenue}
+              appRevenueGross={Number((localStats as any).comissaoBruta ?? 0)}
               onRefreshAll={async () => {
                 fetchAdminBalances();
                 if (store.currentUser?.id && typeof store.fetchOrders === 'function') {
