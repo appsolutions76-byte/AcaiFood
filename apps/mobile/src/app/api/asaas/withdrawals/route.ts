@@ -5,6 +5,9 @@ import { authorizeRequest } from '@/lib/apiAuth';
 import { settlePendingOrdersForPartner } from '@/lib/orderSettlements';
 import { getPayoutHold, isInstantPayoutEnabled, PAYOUT_HOLD_MESSAGE } from '@/lib/payoutHold';
 import { processWithdrawalApproval } from '@/lib/withdrawalApproval';
+import { getAccountGroup } from '@/lib/accountGroup';
+
+const LINKED_NO_WITHDRAW_MSG = 'Esta conta recebe pela conta de recebimento da sua conta principal (mesmo CPF/CNPJ). O saque está liberado na conta principal ou com autorização dela.';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,12 +55,14 @@ export async function GET(request: Request) {
 
     // 2. Obter saldo disponível recalculado
     const balanceInfo = await getPartnerAvailableBalance(user.id, role);
+    // R47: contas que usam a mesma subconta (mesmo CPF/CNPJ)
+    const group = await getAccountGroup(user.id);
 
-    // 3. Buscar se já existe solicitação PENDENTE ou PROCESSING ativa
+    // 3. Buscar se já existe solicitação PENDENTE ou PROCESSING ativa (em qualquer conta do grupo)
     const { data: pendingRows } = await adminSupabase
       .from('withdrawal_requests')
       .select('*')
-      .eq('partner_id', user.id)
+      .in('partner_id', group.memberIds)
       .in('status', ['PENDENTE', 'APROVADO', 'PROCESSING'])
       .order('created_at', { ascending: false })
       .limit(1);
@@ -74,7 +79,7 @@ export async function GET(request: Request) {
 
     const payoutHold = await getPayoutHold(user.id);
     const instantPayout = await isInstantPayoutEnabled();
-    const canRequest = accountApproved && !pendingRequest && !payoutHold.hold && balanceInfo.totalDisponivel >= minWithdrawalValue;
+    const canRequest = accountApproved && group.canWithdraw && !pendingRequest && !payoutHold.hold && balanceInfo.totalDisponivel >= minWithdrawalValue;
 
     return NextResponse.json({
       success: true,
@@ -94,7 +99,15 @@ export async function GET(request: Request) {
       recentRequests: recentRequests || [],
       payoutHold: payoutHold.hold,
       payoutHoldMessage: payoutHold.hold ? PAYOUT_HOLD_MESSAGE : null,
-      instantPayout
+      instantPayout,
+      sharedAccount: {
+        isShared: group.memberIds.length > 1,
+        isOwner: group.isOwner,
+        isLinked: group.isLinked,
+        canWithdraw: group.canWithdraw,
+        members: group.memberIds.length,
+        message: group.isLinked && !group.canWithdraw ? LINKED_NO_WITHDRAW_MSG : null
+      }
     });
   } catch (err: any) {
     console.error('[API /api/asaas/withdrawals GET] Erro:', err);
@@ -120,17 +133,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: PAYOUT_HOLD_MESSAGE, code: 'PAYOUT_HOLD' }, { status: 403 });
     }
 
-    // 1. Revalidar se já existe solicitação PENDENTE, APROVADO ou PROCESSING
+    // 0.1 R47: conta vinculada à subconta de outra conta só saca com autorização da principal
+    const group = await getAccountGroup(user.id);
+    if (group.isLinked && !group.canWithdraw) {
+      return NextResponse.json({ error: LINKED_NO_WITHDRAW_MSG, code: 'LINKED_NO_WITHDRAW' }, { status: 403 });
+    }
+
+    // 1. Revalidar se já existe solicitação PENDENTE, APROVADO ou PROCESSING (em qualquer conta do grupo)
     const { data: pendingRows } = await adminSupabase
       .from('withdrawal_requests')
       .select('id, status, requested_amount, created_at')
-      .eq('partner_id', user.id)
+      .in('partner_id', group.memberIds)
       .in('status', ['PENDENTE', 'APROVADO', 'PROCESSING'])
       .limit(1);
 
     if (pendingRows && pendingRows.length > 0) {
       return NextResponse.json({
-        error: 'Você já possui uma solicitação de saque em andamento (Pendente ou Em Processamento). Aguarde a conclusão antes de solicitar novamente.',
+        error: group.memberIds.length > 1
+          ? 'Já existe um saque em andamento nesta conta de recebimento (pode ter sido pedido por outra conta sua com o mesmo CPF/CNPJ). Aguarde a conclusão.'
+          : 'Você já possui uma solicitação de saque em andamento (Pendente ou Em Processamento). Aguarde a conclusão antes de solicitar novamente.',
         pendingRequest: pendingRows[0]
       }, { status: 400 });
     }
@@ -206,18 +227,37 @@ export async function POST(request: Request) {
     }
 
     // 5. Inserir a solicitação de saque com status PENDENTE
-    const { data: newRequest, error: insErr } = await adminSupabase
+    // R47: account_group_id + índice único no banco = no máximo UM saque aberto por subconta,
+    // mesmo com pedidos simultâneos de contas diferentes do mesmo CPF/CNPJ.
+    const baseRow: any = {
+      partner_id: user.id,
+      role,
+      requested_amount: requestedAmount,
+      // O saque usa só o saldo da subconta; os pedidos são controlados pelos repasses (settlements)
+      order_ids: [],
+      status: 'PENDENTE'
+    };
+    let { data: newRequest, error: insErr } = await adminSupabase
       .from('withdrawal_requests')
-      .insert({
-        partner_id: user.id,
-        role,
-        requested_amount: requestedAmount,
-        // O saque usa só o saldo da subconta; os pedidos são controlados pelos repasses (settlements)
-        order_ids: [],
-        status: 'PENDENTE'
-      })
+      .insert({ ...baseRow, account_group_id: group.ownerId })
       .select()
       .single();
+    if (insErr && (insErr as any).code === '23505') {
+      return NextResponse.json({
+        error: 'Já existe um saque em andamento nesta conta de recebimento. Aguarde a conclusão antes de pedir outro.'
+      }, { status: 400 });
+    }
+    if (insErr && /account_group_id/i.test(insErr.message || '')) {
+      // Banco ainda sem a migration R47: grava como antes (só é seguro sem contas vinculadas)
+      if (group.memberIds.length > 1) {
+        return NextResponse.json({ error: 'Saque temporariamente indisponível para contas vinculadas. Fale com o suporte.' }, { status: 503 });
+      }
+      ({ data: newRequest, error: insErr } = await adminSupabase
+        .from('withdrawal_requests')
+        .insert(baseRow)
+        .select()
+        .single());
+    }
 
     if (insErr || !newRequest) {
       console.error('Erro ao inserir solicitação de saque:', insErr);

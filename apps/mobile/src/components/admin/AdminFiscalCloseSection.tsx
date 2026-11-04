@@ -60,6 +60,8 @@ export function AdminFiscalCloseSection() {
   const [month, setMonth] = useState(initialMonth);
   const [tipo, setTipo] = useState<'all' | 'Batedeira' | 'Fornecedor' | 'Motoboy' | 'Caminhão'>('Batedeira');
   const [search, setSearch] = useState('');
+  // R47: a nota é por pessoa (CPF/CNPJ). Junta as contas do mesmo documento numa linha.
+  const [groupByDoc, setGroupByDoc] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [partners, setPartners] = useState<PartnerRow[]>([]);
@@ -87,12 +89,32 @@ export function AdminFiscalCloseSection() {
 
   const visible = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return partners.filter(p => {
+    const filtered = partners.filter(p => {
       if (tipo !== 'all' && p.tipo !== tipo) return false;
       if (q && !(`${p.nome} ${p.documento} ${p.email} ${p.cidade}`.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [partners, tipo, search]);
+    if (!groupByDoc) return filtered;
+    const byDoc = new Map<string, PartnerRow>();
+    for (const p of filtered) {
+      const key = String(p.documento || '').replace(/\D/g, '') || `sem-doc:${p.partnerId}:${p.papel}`;
+      const cur = byDoc.get(key);
+      if (!cur) { byDoc.set(key, { ...p }); continue; }
+      byDoc.set(key, {
+        ...cur,
+        nome: cur.nome.includes(p.nome) ? cur.nome : `${cur.nome} + ${p.nome}`,
+        tipo: cur.tipo.includes(p.tipo) ? cur.tipo : `${cur.tipo} + ${p.tipo}`,
+        pedidos: cur.pedidos + p.pedidos,
+        valorBase: cur.valorBase + p.valorBase,
+        comissao: cur.comissao + p.comissao,
+        tarifaAsaas: cur.tarifaAsaas + p.tarifaAsaas,
+        freteSubsidiado: cur.freteSubsidiado + p.freteSubsidiado,
+        repasseLiquido: cur.repasseLiquido + p.repasseLiquido,
+        pedidosEstimados: cur.pedidosEstimados + p.pedidosEstimados,
+      });
+    }
+    return Array.from(byDoc.values());
+  }, [partners, tipo, search, groupByDoc]);
 
   const visibleTotals = useMemo(() => visible.reduce((a, p) => ({
     pedidos: a.pedidos + p.pedidos,
@@ -171,6 +193,11 @@ export function AdminFiscalCloseSection() {
             📥 Exportar CSV para o contador
           </button>
         </div>
+
+        <label className="flex items-center gap-2 text-xs font-bold text-zinc-700 dark:text-zinc-300 cursor-pointer">
+          <input type="checkbox" checked={groupByDoc} onChange={e => setGroupByDoc(e.target.checked)} />
+          Agrupar por CPF/CNPJ (várias lojas ou papéis da mesma pessoa numa linha só)
+        </label>
 
         <div className="flex flex-wrap gap-2">
           {tipos.map(t => (

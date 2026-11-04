@@ -5,6 +5,8 @@ import { CURRENT_TERMS_VERSION, SUBACCOUNT_REQUIRED_DOCS } from '@/lib/legalVers
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { logAdminAction } from '@/lib/adminAudit';
 import { loadSubaccountUser, countOpenWithdrawals, closeSubaccountInAsaas, unlinkSubaccount } from '@/lib/asaasSubaccountClose';
+import { logAsaasRequest } from '@/lib/asaasRequestLog';
+import { cleanDoc, maskEmail } from '@/lib/accountGroup';
 
 export const dynamic = 'force-dynamic';
 
@@ -202,6 +204,11 @@ export async function POST(request: Request) {
       headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
     });
     const searchData = await accountSearchRes.json();
+    await logAsaasRequest({
+      userId, action: 'SUBACCOUNT_SEARCH_BY_CPF', method: 'GET', endpoint: '/v3/accounts?cpfCnpj=…',
+      requestBody: { cpfCnpj: cleanCpfCnpj }, responseStatus: accountSearchRes.status,
+      responseBody: { totalCount: searchData?.totalCount, data: (searchData?.data || []).map((a: any) => ({ id: a.id, name: a.name, email: a.email, walletId: a.walletId })) },
+    });
 
     let walletId = '';
     let accountId = '';
@@ -230,6 +237,50 @@ export async function POST(request: Request) {
           status: 'EXISTING',
           isSandbox: ASAAS_URL.includes('sandbox')
         });
+      }
+
+      // R47: a subconta já pertence a outra conta do app com o MESMO CPF/CNPJ → pedido de vínculo
+      // para a conta principal aprovar (o dinheiro passa a cair na mesma subconta).
+      try {
+        const { data: ownerRows } = await supabase
+          .from('users')
+          .select('id, email, cpf_cnpj')
+          .eq('asaas_account_id', found.id)
+          .neq('id', userId)
+          .limit(5);
+        const owners = (ownerRows || []).filter((o: any) => cleanDoc(o.cpf_cnpj) === cleanCpfCnpj);
+        // A principal é quem tem a chave da subconta guardada e não é, ela mesma, vinculada
+        let owner: any = null;
+        for (const o of owners) {
+          const { data: sec } = await supabase.from('partner_secrets').select('user_id').eq('user_id', o.id).maybeSingle();
+          const { data: asLinked } = await supabase.from('payment_account_links').select('id').eq('linked_user_id', o.id).eq('status', 'ACTIVE').maybeSingle();
+          if (sec && !asLinked) { owner = o; break; }
+        }
+        if (owner) {
+          const { data: existing } = await supabase
+            .from('payment_account_links')
+            .select('id, status')
+            .eq('linked_user_id', userId)
+            .in('status', ['PENDING', 'ACTIVE'])
+            .maybeSingle();
+          if (!existing) {
+            const { error: linkErr } = await supabase.from('payment_account_links').insert({
+              owner_user_id: owner.id,
+              linked_user_id: userId,
+              cpf_cnpj: cleanCpfCnpj,
+              asaas_account_id: found.id,
+              status: 'PENDING',
+            });
+            if (linkErr) throw linkErr;
+          }
+          await logAsaasRequest({ userId, action: 'SUBACCOUNT_LINK_REQUESTED', responseBody: { ownerUserId: owner.id, accountId: found.id } });
+          return NextResponse.json({
+            error: `Você já tem uma conta de recebimento com este CPF/CNPJ (conta principal: ${maskEmail(owner.email)}). Enviamos um pedido de vínculo: aprove na conta principal, no cartão "Contas vinculadas", e esta conta passa a receber pela mesma subconta.`,
+            status: 'LINK_REQUESTED'
+          }, { status: 409 });
+        }
+      } catch (linkFlowErr: any) {
+        console.warn('[Subaccount] Pedido de vínculo não registrado:', linkFlowErr?.message || linkFlowErr);
       }
 
       await supabase
@@ -293,6 +344,12 @@ export async function POST(request: Request) {
       });
 
       const accountData = await createRes.json();
+      // R47: registro da requisição de criação (sem apiKey nem token de webhook) para o suporte do Asaas
+      await logAsaasRequest({
+        userId, action: 'SUBACCOUNT_CREATE', method: 'POST', endpoint: '/v3/accounts',
+        requestBody: accountPayload, responseStatus: createRes.status, responseBody: accountData,
+        error: (!accountData?.walletId && !accountData?.id) ? 'Falha na criação' : null,
+      });
       if (!accountData.walletId && !accountData.id) {
         const errMsg = accountData.errors
           ? accountData.errors.map((e: any) => e.description).join(', ')

@@ -29,6 +29,7 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
     recentRequests: any[];
     payoutHold?: boolean;
     payoutHoldMessage?: string | null;
+    sharedAccount?: { isShared: boolean; isOwner: boolean; isLinked: boolean; canWithdraw: boolean; members: number; message: string | null };
     instantPayout?: boolean;
   } | null>(null);
   // R34: valor do saque (vazio = todo o saldo livre)
@@ -245,6 +246,10 @@ export function PartnerWithdrawalSection({ partnerId, role, showToast, onBalance
           ) : balanceData?.payoutHold ? (
             <div className="text-xs text-red-200 bg-red-950/60 border border-red-700/50 rounded-2xl p-3 sm:max-w-xs">
               🔒 {balanceData?.payoutHoldMessage || 'Saques suspensos por segurança. Fale com o suporte do AçaíFood.'}
+            </div>
+          ) : balanceData?.sharedAccount?.message ? (
+            <div className="text-xs text-purple-200 bg-purple-950/60 border border-purple-700/50 rounded-2xl p-3 sm:max-w-xs">
+              🔗 {balanceData.sharedAccount.message}
             </div>
           ) : !accountApproved ? (
             <div className="text-xs text-amber-200 bg-amber-950/60 border border-amber-700/50 rounded-2xl p-3 sm:max-w-xs">

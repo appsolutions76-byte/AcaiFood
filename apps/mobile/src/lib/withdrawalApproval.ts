@@ -4,6 +4,7 @@ import { logAdminAction } from '@/lib/adminAudit';
 import { getAsaasBaseUrl } from '@/lib/asaasConfig';
 import { settlePendingOrdersForPartner } from '@/lib/orderSettlements';
 import { getPartnerAvailableBalance } from '@/lib/partnerBalance';
+import { getAccountGroup } from '@/lib/accountGroup';
 import { getPayoutHold, PAYOUT_HOLD_MESSAGE } from '@/lib/payoutHold';
 import {
   findTransferByExternalRef,
@@ -258,6 +259,14 @@ export async function processWithdrawalApproval(
   if (!partnerUser) {
     await failRequest(requestId, 'Usuário parceiro não encontrado no banco de dados.', actorId);
     return { success: false, status: 'FALHOU', error: 'Parceiro não encontrado.' };
+  }
+
+  // 2.1 R47: conta vinculada a outra subconta só saca com autorização da conta principal
+  const accountGroup = await getAccountGroup(requestRow.partner_id);
+  if (accountGroup.isLinked && !accountGroup.canWithdraw) {
+    const failMsg = 'Conta vinculada sem autorização de saque da conta principal.';
+    await failRequest(requestId, failMsg, actorId);
+    return { success: false, status: 'FALHOU', error: failMsg };
   }
 
   // 3. Chave da subconta

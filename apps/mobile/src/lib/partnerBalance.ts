@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { calculateOrderPricing } from '@/lib/pricingEngine';
 import { snapshotModel, sellerNetFromPricing } from '@/lib/paymentAccount';
+import { getAccountGroup } from '@/lib/accountGroup';
 
 export interface PartnerBalanceResult {
   totalDisponivel: number;
@@ -226,9 +227,12 @@ export async function getPartnerAvailableBalance(partnerId: string, role: string
   // - pedido pago e ainda não entregue: o valor recebido pelo split (pode ser estornado);
   // - pedido entregue com a corrida da moto ainda não paga: o valor da corrida.
   let reservedBalance = 0;
-  if (!isDriver) {
+  // R47: contas que usam a MESMA subconta (mesmo CPF/CNPJ) somam as reservas de todas elas,
+  // para uma conta não sacar o dinheiro reservado para pedidos de outra.
+  const group = await getAccountGroup(partnerId);
+  if (!isDriver || group.memberIds.length > 1) {
     try {
-      const { data: sfs } = await adminSupabase.from('storefronts').select('id').eq('partner_id', partnerId);
+      const { data: sfs } = await adminSupabase.from('storefronts').select('id').in('partner_id', group.memberIds);
       const sfIds = (sfs || []).map((x: any) => x.id);
       if (sfIds.length > 0) {
         const notPaidOrClosed = ['PENDING', 'pendente', 'aguardando_pagamento', 'AWAITING_PAYMENT', 'CANCELLED', 'CANCELADO', 'REFUNDED', 'RECUSADO'];

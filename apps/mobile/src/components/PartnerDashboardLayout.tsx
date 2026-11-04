@@ -32,6 +32,7 @@ import PartnerActivationGuard from '@/components/PartnerActivationGuard';
 import { AsaasAccountStatusCard } from '@/components/AsaasAccountStatusCard';
 // R40 (desempenho): manual e edição de nome só são baixados quando a tela já abriu
 const PartnerManualModal = dynamic(() => import('@/components/PartnerManualModal').then(m => m.PartnerManualModal), { ssr: false });
+const PartnerLinkedAccountsCard = dynamic(() => import('@/components/PartnerLinkedAccountsCard').then(m => m.PartnerLinkedAccountsCard), { ssr: false });
 const EditPartnerNameModal = dynamic(() => import('@/components/EditPartnerNameModal').then(m => m.EditPartnerNameModal), { ssr: false });
 
 export interface PartnerDashboardLayoutProps {
@@ -646,6 +647,7 @@ export function PartnerDashboardLayout({
         {/* Main Dashboard Container */}
         <main className="max-w-6xl mx-auto p-3 sm:p-6 space-y-4 pb-28 md:pb-12">
           <AsaasAccountStatusCard />
+          <PartnerLinkedAccountsCard />
           {children}
         </main>
 

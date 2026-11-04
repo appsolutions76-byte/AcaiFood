@@ -32,6 +32,7 @@ const AdminWithdrawalsSection = dynamic(() => import("@/components/admin/AdminWi
 const AdminReconciliationSection = dynamic(() => import("@/components/admin/AdminReconciliationSection").then(m => m.AdminReconciliationSection), { ssr: false });
 const AdminSimulatorTab = dynamic(() => import("@/components/admin/AdminSimulatorTab").then(m => m.AdminSimulatorTab), { ssr: false });
 const ShareLandingModal = dynamic(() => import("@/components/ShareLandingModal").then(m => m.ShareLandingModal), { ssr: false });
+const AdminAccountLinksSection = dynamic(() => import("@/components/admin/AdminAccountLinksSection").then(m => m.AdminAccountLinksSection), { ssr: false });
 const AdminLiveMapSection = dynamic(() => import("@/components/admin/AdminLiveMapSection").then(m => m.AdminLiveMapSection), { ssr: false });
 const AdminFiscalCloseSection = dynamic(() => import("@/components/admin/AdminFiscalCloseSection").then(m => m.AdminFiscalCloseSection), { ssr: false });
 const AdminRatingsSection = dynamic(() => import("@/components/ratings/AdminRatingsSection").then(m => m.AdminRatingsSection), { ssr: false });
@@ -3926,7 +3927,10 @@ function AdminDashboardContent() {
         )}
 
         {activeTab === 'conformidade' && (
-          <AdminComplianceSection showToast={showToast} showLegacy={showLegacy} />
+          <>
+            <AdminComplianceSection showToast={showToast} showLegacy={showLegacy} />
+            <AdminAccountLinksSection />
+          </>
         )}
 
       </main>
