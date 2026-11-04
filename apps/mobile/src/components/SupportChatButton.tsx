@@ -64,7 +64,7 @@ export function SupportChatButton({ currentUser, positionClassName }: SupportCha
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 border-2 border-purple-900 rounded-full animate-pulse" />
           ) : (
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 text-zinc-950 font-black text-[8px] rounded-full flex items-center justify-center border border-purple-950 shadow-xs" title="Exclusivo para contas cadastradas">
-              🔒
+              <Lock size={8} className="text-zinc-950" />
             </span>
           )}
         </div>

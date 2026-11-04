@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
-import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw, Menu, X, Home, Search, ClipboardList, User, ChevronRight, Store, MapPin, Zap, Navigation, Clock, LayoutGrid, List, Star, SlidersHorizontal, ArrowUpDown, Sparkles } from "lucide-react";
+import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw, Menu, X, Home, Search, ClipboardList, User, ChevronRight, Store, MapPin, Zap, Navigation, Clock, LayoutGrid, List, Star, SlidersHorizontal, ArrowUpDown, Sparkles, Plus, Utensils, UtensilsCrossed, Snowflake, ChevronDown, ChevronUp, ArrowLeft, CheckSquare, Square, Check, FileText, Headphones, Palmtree, Soup, Lock } from "lucide-react";
+import { ProductThumbnail } from "@/components/ProductThumbnail";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
 import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
@@ -1245,7 +1246,7 @@ export default function StorefrontPage() {
                         return (
                           <>
                             <h4 className="font-black text-sm sm:text-base text-zinc-900 dark:text-white uppercase tracking-wider mb-3.5 flex items-center gap-2">
-                              <span>✦</span> Catálogo de Fruto & Insumos B2B
+                              <Store className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Catálogo de Fruto & Insumos B2B
                             </h4>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -1259,13 +1260,10 @@ export default function StorefrontPage() {
                                   }`}>
                                     <div className="flex items-start justify-between gap-3 min-w-0">
                                       <div className="flex items-start gap-3 min-w-0 flex-1">
-                                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-purple-50 dark:bg-purple-950 overflow-hidden shrink-0 border border-purple-200 dark:border-purple-800 flex items-center justify-center shadow-xs">
-                                          {item.photo ? (
-                                            <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
-                                          ) : (
-                                            <span className="text-2xl sm:text-3xl">{item.emoji}</span>
-                                          )}
-                                        </div>
+                                        <ProductThumbnail
+                                          photo={item.photo}
+                                          name={item.name}
+                                        />
                                         <div className="min-w-0 flex-1">
                                           <div className="flex items-center gap-1.5 flex-wrap">
                                             <h5 className="font-extrabold text-zinc-950 dark:text-white text-sm sm:text-base leading-snug break-words">
@@ -1292,7 +1290,7 @@ export default function StorefrontPage() {
                                                 title={isExpanded ? "Ocultar detalhes" : "Ver detalhes do produto"}
                                               >
                                                 <span>Detalhes</span>
-                                                <span className="text-[8px] leading-none">{isExpanded ? '▲' : '▼'}</span>
+                                                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                                               </button>
                                             )}
                                           </div>
@@ -1307,13 +1305,13 @@ export default function StorefrontPage() {
                                           >
                                             {(item as any).complements?.length > 0 ? (
                                               <>
-                                                <span className="text-xs leading-none">🍽️</span>
+                                                <SlidersHorizontal className="w-3.5 h-3.5" />
                                                 <span className="text-xs font-black leading-none">Escolher</span>
                                               </>
                                             ) : (
                                               <>
-                                                <span className="text-sm leading-none">🛒</span>
-                                                <span className="text-base font-black leading-none">+</span>
+                                                <ShoppingCart className="w-3.5 h-3.5" />
+                                                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                                               </>
                                             )}
                                           </button>
@@ -1331,7 +1329,7 @@ export default function StorefrontPage() {
                                         {(item as any).complements?.length > 0 && (
                                           <div className="pt-1.5 border-t border-zinc-200 dark:border-zinc-800 space-y-1">
                                             <p className="font-bold text-[10px] text-amber-700 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1">
-                                              <span>🍽️</span> Opções & Complementos disponíveis:
+                                              <SlidersHorizontal className="w-3 h-3 text-amber-700 dark:text-amber-300 inline" /> Opções & Complementos disponíveis:
                                             </p>
                                             {(item as any).complements.map((grp: any) => (
                                               <p key={grp.id} className="text-[11px] text-zinc-700 dark:text-zinc-300">
@@ -1352,7 +1350,7 @@ export default function StorefrontPage() {
                                 onClick={handleClearSelectedStore}
                                 className="w-full sm:w-auto text-xs sm:text-sm bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-extrabold px-6 py-3 rounded-xl transition border border-zinc-300 dark:border-zinc-700 flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
                               >
-                                ⬅️ Voltar e Ver Outras Lojas / Fornecedores
+                                <ArrowLeft className="w-4 h-4 inline mr-1" /> Voltar e Ver Outras Lojas / Fornecedores
                               </button>
                             </div>
                           </>
@@ -1426,7 +1424,7 @@ export default function StorefrontPage() {
                         return (
                           <>
                             <h4 className="font-black text-sm sm:text-base text-zinc-900 dark:text-white uppercase tracking-wider mb-3.5 flex items-center gap-2">
-                              <span>✦</span> Cardápio & Produtos
+                              <UtensilsCrossed className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Cardápio & Produtos
                             </h4>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -1444,13 +1442,12 @@ export default function StorefrontPage() {
                                         className="flex items-start gap-3 min-w-0 flex-1 cursor-pointer select-none group"
                                         title="Clique sobre o produto para ver detalhes e marcar opções"
                                       >
-                                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl ${item.isTeal ? 'bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800' : 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800'} overflow-hidden shrink-0 border flex items-center justify-center shadow-xs`}>
-                                          {item.photo ? (
-                                            <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
-                                          ) : (
-                                            <span className="text-2xl sm:text-3xl">{item.emoji}</span>
-                                          )}
-                                        </div>
+                                        <ProductThumbnail
+                                          photo={item.photo}
+                                          name={item.name}
+                                          isTeal={item.isTeal}
+                                          isCongelado={(item as any).isCongelado}
+                                        />
                                         <div className="min-w-0 flex-1">
                                           <div className="flex items-center gap-1.5 flex-wrap">
                                             <h5 className="font-extrabold text-zinc-950 dark:text-white text-sm sm:text-base leading-snug break-words">
@@ -1467,8 +1464,9 @@ export default function StorefrontPage() {
                                               {formatMoney(item.price)}
                                             </p>
                                              {(item as any).isCongelado && (
-                                               <span className="text-[9px] font-black bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
-                                                 ❄️ P/ Viagem
+                                               <span className="text-[9px] font-black bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-200 dark:border-cyan-800 inline-flex items-center gap-1">
+                                                 <Snowflake className="w-2.5 h-2.5" />
+                                                 <span>P/ Viagem</span>
                                                </span>
                                              )}
                                              {(item as any).complements?.length > 0 && (
@@ -1481,8 +1479,9 @@ export default function StorefrontPage() {
                                                   className="text-[9px] font-black bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded border border-amber-300 dark:border-amber-700 flex items-center gap-1 cursor-pointer transition shadow-2xs"
                                                   title="Marcar complementos"
                                                 >
-                                                  <span>🍽️</span>
-                                                  <span>{isExpanded ? 'Ocultar Opções ▲' : 'Marcar Opções ▼'}</span>
+                                                  <SlidersHorizontal className="w-2.5 h-2.5" />
+                                                  <span>{isExpanded ? 'Ocultar Opções' : 'Marcar Opções'}</span>
+                                                  <ChevronDown className={`w-2.5 h-2.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                                                 </button>
                                               )}
                                              {item.desc && !(item as any).complements?.length && (
@@ -1509,8 +1508,8 @@ export default function StorefrontPage() {
                                              className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800' : 'bg-purple-600 hover:bg-purple-700 active:bg-purple-800'} text-white font-black px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition shadow-sm shrink-0 active:scale-95 cursor-pointer flex items-center gap-1 text-xs sm:text-sm hover:brightness-110`}
                                              title={(item as any).complements?.length > 0 ? "Adicionar ao carrinho com complementos marcados" : "Adicionar ao pedido"}
                                            >
-                                             <span className="text-sm leading-none">🛒</span>
-                                             <span className="text-base font-black leading-none">+</span>
+                                             <ShoppingCart className="w-3.5 h-3.5" />
+                                              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                                            </button>
                                          ) : (
                                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 rounded-lg shrink-0">
@@ -1528,7 +1527,7 @@ export default function StorefrontPage() {
                                            <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
                                              <div className="flex items-center justify-between">
                                                <span className="font-extrabold text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5 uppercase tracking-wide">
-                                                 <span>🍽️</span> Complementos Disponíveis (Marque o que deseja):
+                                                 <SlidersHorizontal className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300 inline" /> Complementos Disponíveis (Marque o que deseja):
                                                </span>
                                              </div>
 
@@ -1589,7 +1588,7 @@ export default function StorefrontPage() {
                                                                : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-purple-300 hover:bg-purple-50/50'
                                                            }`}
                                                          >
-                                                           <span className="text-sm font-black leading-none">{isChecked ? '☑' : '☐'}</span>
+                                                           {isChecked ? <CheckSquare className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" /> : <Square className="w-4 h-4 text-zinc-400 shrink-0" />}
                                                            <span>{opt.name}</span>
                                                            {opt.price > 0 && <span className="opacity-80 text-[10px] font-normal">(+R$ ${opt.price.toFixed(2)})</span>}
                                                          </button>
@@ -1622,7 +1621,7 @@ export default function StorefrontPage() {
                                                  }}
                                                  className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition"
                                                >
-                                                 <span>🛒 Adicionar ao Carrinho com Opções Marcadas</span>
+                                                 <span className="flex items-center justify-center gap-1.5"><ShoppingCart className="w-3.5 h-3.5" /> Adicionar ao Carrinho com Opções Marcadas</span>
                                                </button>
                                              </div>
                                            </div>
@@ -1660,7 +1659,7 @@ export default function StorefrontPage() {
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div>
                           <h3 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
-                            <span>✦</span> Batedeiras de Açaí
+                            <Store className="w-4 h-4 text-purple-600 dark:text-purple-400 inline" /> Batedeiras de Açaí
                           </h3>
                           <p className="text-xs text-zinc-500">
                             {batedeirasFiltered.length} {batedeirasFiltered.length === 1 ? 'loja encontrada' : 'lojas encontradas'} {userCityNorm ? `em ${currentUser?.cidade}` : ''}
@@ -2269,7 +2268,7 @@ export default function StorefrontPage() {
               <div className="flex items-center justify-between mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">
                 <div className="flex items-center gap-2">
                   <h3 className="font-extrabold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
-                    <span>✦</span> Pedidos em Andamento ({clientActiveOrders.length})
+                    <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400 inline" /> Pedidos em Andamento ({clientActiveOrders.length})
                   </h3>
                   <span className="text-xs bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800 animate-pulse">
                     Ao Vivo
@@ -2501,7 +2500,7 @@ export default function StorefrontPage() {
         <div className="fixed inset-0 bg-black/70 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95">
               <div className="bg-purple-900 text-white p-4 sm:p-5 flex justify-between items-center">
-                  <h3 className="font-bold text-lg">🛒 Adicionar ao Carrinho</h3>
+                  <h3 className="font-bold text-lg flex items-center gap-2"><ShoppingCart className="w-5 h-5 text-purple-200" /> Adicionar ao Carrinho</h3>
                   <button onClick={() => setProductSelectModal({ ...productSelectModal, open: false })} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
               </div>
               
@@ -2557,7 +2556,7 @@ export default function StorefrontPage() {
                         { key: 'medio', label: `Açaí Médio (1L) - ${formatMoney(priceMedio)}`, isAvail: isMedAvail },
                         { key: 'grosso', label: `Açaí Grosso Especial (1L) - ${formatMoney(priceGrosso)}`, isAvail: isGroAvail },
                         { key: 'branco', label: `Açaí Branco Especial (1L) - ${formatMoney(priceBranco)}`, isAvail: isBraAvail },
-                        { key: 'congelado', label: `❄️ Açaí Congelado p/ Viagem (1L) - ${formatMoney(priceCongelado)}`, isAvail: isCongAvail },
+                        { key: 'congelado', label: `Açaí Congelado p/ Viagem (1L) - ${formatMoney(priceCongelado)}`, isAvail: isCongAvail },
                         ...(loja?.products || []).map((p: any) => ({
                           key: p.id,
                           label: `${p.name} - ${formatMoney(p.price)}`,
@@ -2593,7 +2592,7 @@ export default function StorefrontPage() {
                       <div className="space-y-3.5 mb-5 p-3.5 bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800">
                         <div className="border-b border-zinc-200/80 dark:border-zinc-800 pb-2">
                           <h5 className="font-extrabold text-xs uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
-                            <span>🍽️</span> Personalize seu Prato
+                            <Utensils className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 inline" /> Personalize seu Prato
                           </h5>
                           <p className="text-[11px] text-zinc-500">Escolha as opções de preparo e acompanhamentos abaixo.</p>
                         </div>
@@ -2709,7 +2708,7 @@ export default function StorefrontPage() {
         <div className="fixed inset-0 bg-black/70 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-full sm:zoom-in-95 flex flex-col max-h-[90vh]">
               <div className="bg-purple-900 text-white p-4 sm:p-5 flex justify-between items-center shrink-0">
-                  <h3 className="font-bold text-lg">🛒 Seu Pedido</h3>
+                  <h3 className="font-bold text-lg flex items-center gap-2"><ShoppingCart className="w-5 h-5 text-purple-200" /> Seu Pedido</h3>
                   <button onClick={() => setCheckoutModalOpen(false)} className="text-white hover:text-red-300 font-bold text-2xl leading-none">&times;</button>
               </div>
               
@@ -2951,7 +2950,7 @@ export default function StorefrontPage() {
                         ) : !currentUser ? (
                           <><span>✨</span> Criar Conta & Pagar Pix</>
                         ) : (
-                          <><span className="text-lg">🛒</span> Pagar via Pix</>
+                          <><ShoppingCart className="w-4 h-4" /> Pagar via Pix</>
                         )}
                       </button>
                   </div>
@@ -3032,7 +3031,7 @@ export default function StorefrontPage() {
             >
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-bold text-sm relative shrink-0">
-                  🛒
+                  <ShoppingCart className="w-4 h-4 text-white" />
                   <span className="absolute -top-1 -right-1 bg-white text-purple-700 text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black shadow-xs">
                     {cartTotalQuantity}
                   </span>
