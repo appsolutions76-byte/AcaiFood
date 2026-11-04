@@ -519,7 +519,7 @@ interface AppState {
   fetchRates: (force?: boolean) => Promise<void>;
   saveRates: (newRates: Partial<AppState['rates']>) => Promise<void>;
   criarPedido: (tipo: 'B2C' | 'B2B' | 'COLETA', targetId?: string, deliveryInfo?: { address?: string; lat?: number; lng?: number; reference?: string }, overrideCpf?: string) => Promise<any>;
-  acaoPedido: (orderId: string, action: string, pinStr?: string, reasonStr?: string) => Promise<void>;
+  acaoPedido: (orderId: string, action: string, pinStr?: string, reasonStr?: string) => Promise<boolean | void>;
   incrementAdminBalances: (order: Order) => Promise<void>;
   setFreteSubsidy: (userId: string, pct: number) => Promise<void>;
   updateUserStatus: (userId: string, status: 'active' | 'paused' | 'blocked') => Promise<void>;
@@ -2457,14 +2457,14 @@ export const useAppStore = create<AppState>()(
       acaoPedido: async (orderId, action, pinStr?: string, reasonStr?: string) => {
         const state = get();
         const currentUser = state.currentUser;
-        if (!currentUser) return;
+        if (!currentUser) return false;
 
         // 0. Validação Segura do PIN de Retirada (Coleta no Balcão / Fornecedor)
         if (action === 'validar_pin_retirada') {
             const cleanPin = (pinStr || '').trim();
             if (!cleanPin || cleanPin.length !== 4) {
               alert("⚠️ Por favor, digite o PIN de Retirada de 4 dígitos informado pelo estabelecimento.");
-              return;
+              return false;
             }
 
             try {
@@ -2480,17 +2480,17 @@ export const useAppStore = create<AppState>()(
                   orders: state.orders.map(o => o.id === orderId ? { ...o, pickedUpAt: nowIso, status: 'em_rota' } : o)
                 }));
                 await get().fetchOrders(currentUser.id, true);
-                return;
+                return true;
               }
 
               const errMsg = pinRes?.error || pinErr?.message || 'PIN de Retirada inválido.';
               alert(`❌ ${errMsg}`);
               await get().fetchOrders(currentUser.id, true);
-              return;
+              return false;
             } catch (err: any) {
               console.error("Erro ao validar PIN de retirada no servidor:", err);
               alert("Erro ao validar o PIN de retirada. Tente novamente.");
-              return;
+              return false;
             }
         }
 
@@ -2545,7 +2545,7 @@ export const useAppStore = create<AppState>()(
               }
               if (accStatus !== 'APPROVED') {
                 alert("⚠️ Sua conta Asaas ainda não está aprovada. Abra \"Minha conta Asaas\" no painel e envie os documentos. Só é possível aceitar corridas com a conta aprovada, porque o pagamento cai nela.");
-                return;
+                return false;
               }
             }
             try {
@@ -2558,12 +2558,12 @@ export const useAppStore = create<AppState>()(
                 const errMsg = acceptRes?.error || acceptErr?.message || 'Este pedido não está pronto para despacho ou já foi aceito por outro operador.';
                 alert(`⚠️ ${errMsg}`);
                 await get().fetchOrders(currentUser.id, true);
-                return;
+                return false;
               }
             } catch (err: any) {
               console.error("Erro ao aceitar corrida via escrita atômica:", err);
               alert("Erro de conexão ao aceitar a corrida.");
-              return;
+              return false;
             }
         }
 
@@ -2799,6 +2799,7 @@ export const useAppStore = create<AppState>()(
               console.error("Exceção ao solicitar estorno:", e);
            }
          }
+         return true;
       },
 
       incrementAdminBalances: async (order) => {

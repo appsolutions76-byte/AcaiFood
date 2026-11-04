@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Bike, BookOpen, Share2 } from "lucide-react";
+import { Bike, BookOpen, Share2, Navigation, MapPin } from "lucide-react";
 import { useAppStore, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
 import { DriverReferralsSection } from "@/components/referrals/DriverReferralsSection";
 import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
@@ -36,6 +36,80 @@ export default function MotoboyDashboard() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [activeTab, setActiveTab] = useState('radar');
   const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
+  const [acceptingOrderId, setAcceptingOrderId] = useState<string | null>(null);
+  const [validatingPickupId, setValidatingPickupId] = useState<string | null>(null);
+
+  // 1. Aceitar corrida no radar e redirecionar direto para o GPS da batedeira
+  const handleAcceptOrder = async (order: any) => {
+    if (acceptingOrderId) return;
+    setAcceptingOrderId(order.id);
+
+    const lojaId = order.lojaId || (order as any).sellerId || order.origemId;
+    const lojaUser = lojaId && store.users ? store.users[lojaId] : null;
+
+    let mapsUrl = '';
+    if (lojaUser?.lat && lojaUser?.lng) {
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lojaUser.lat},${lojaUser.lng}`;
+    } else {
+      const destStr = order.lojaNome || lojaUser?.name || 'Ponto do açaí, Belém';
+      const destAddr = lojaUser?.endereco ? `${lojaUser.endereco}, ${lojaUser.cidade || 'Belém'}` : destStr;
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destAddr)}`;
+    }
+
+    try {
+      const success = await store.acaoPedido(order.id, 'aceitar_motorista');
+      if (success !== false) {
+        setActiveTab('ativos');
+        if (mapsUrl && typeof window !== 'undefined') {
+          window.open(mapsUrl, '_blank');
+        }
+      }
+    } finally {
+      setAcceptingOrderId(null);
+    }
+  };
+
+  // 2. Validar PIN de retirada no balcão e redirecionar direto para o GPS do cliente
+  const handleValidatePickupPin = async (order: any) => {
+    const pin = (pinInputs[`pickup_${order.id}`] || '').trim();
+    if (!pin || pin.length !== 4) {
+      alert("⚠️ Por favor, digite o PIN de Retirada de 4 dígitos informado pela loja.");
+      return;
+    }
+
+    setValidatingPickupId(order.id);
+    try {
+      const success = await store.acaoPedido(order.id, 'validar_pin_retirada', pin);
+      if (success !== false) {
+        const lojaId = order.lojaId || (order as any).sellerId || order.origemId;
+        const lojaUser = lojaId && store.users ? store.users[lojaId] : null;
+        const latOrig = lojaUser?.lat || 0;
+        const lngOrig = lojaUser?.lng || 0;
+
+        const clienteId = order.clienteId || (order as any).buyerId || order.destinoId;
+        const clienteUser = clienteId && store.users ? store.users[clienteId] : null;
+
+        const latDest = order.deliveryLat || clienteUser?.lat;
+        const lngDest = order.deliveryLng || clienteUser?.lng;
+
+        const hasDistinctDestCoords = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
+
+        const clientDestStr = order.deliveryAddress 
+          ? order.deliveryAddress 
+          : (clienteUser?.bairro ? `${clienteUser.bairro}, ${clienteUser.cidade || 'Belém'}` : (clienteUser?.endereco || order.clienteNome || 'Cliente'));
+
+        const mapsUrl = hasDistinctDestCoords
+          ? `https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`
+          : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clientDestStr)}`;
+
+        if (mapsUrl && typeof window !== 'undefined') {
+          window.open(mapsUrl, '_blank');
+        }
+      }
+    } finally {
+      setValidatingPickupId(null);
+    }
+  };
   const [partnerManualOpen, setPartnerManualOpen] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
@@ -393,7 +467,14 @@ export default function MotoboyDashboard() {
                                 🗺️ Ver Rota de {distKm.toFixed(1)} km
                               </button>
                           </div>
-                          <button onClick={() => store.acaoPedido(o.id, 'aceitar_motorista')} className="w-full bg-zinc-800 hover:bg-black dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white text-base font-bold py-3.5 rounded-xl transition shadow-md cursor-pointer">Aceitar Corrida</button>
+                          <button 
+                              onClick={() => handleAcceptOrder(o)} 
+                              disabled={acceptingOrderId === o.id}
+                              className="w-full bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 disabled:opacity-50 text-white text-base font-extrabold py-3.5 rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                            >
+                              <Navigation className="w-5 h-5" />
+                              <span>{acceptingOrderId === o.id ? 'Aceitando & Abrindo GPS...' : 'Aceitar Corrida & Abrir GPS'}</span>
+                            </button>
                       </div>
                     )
                   })}
@@ -571,13 +652,18 @@ export default function MotoboyDashboard() {
                                         placeholder="0000" 
                                         value={pinInputs[`pickup_${o.id}`] || ''} 
                                         onChange={e => setPinInputs(prev => ({ ...prev, [`pickup_${o.id}`]: e.target.value }))}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') handleValidatePickupPin(o);
+                                        }}
                                         className="w-24 text-center font-black tracking-widest text-xl p-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
                                       />
                                       <button 
-                                        onClick={() => store.acaoPedido(o.id, 'validar_pin_retirada', pinInputs[`pickup_${o.id}`])} 
-                                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm cursor-pointer"
+                                        onClick={() => handleValidatePickupPin(o)} 
+                                        disabled={validatingPickupId === o.id}
+                                        className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold py-2.5 px-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 text-xs sm:text-sm cursor-pointer active:scale-95"
                                       >
-                                        Validar e Iniciar Rota
+                                        <Navigation className="w-4 h-4" />
+                                        <span>{validatingPickupId === o.id ? 'Validando & Abrindo GPS...' : 'Validar e Abrir GPS do Cliente'}</span>
                                       </button>
                                     </div>
                                     <div className="flex justify-end pt-1">
