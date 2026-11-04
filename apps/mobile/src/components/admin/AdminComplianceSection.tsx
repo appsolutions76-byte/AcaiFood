@@ -24,6 +24,36 @@ function statusClass(status: string): string {
   return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
 }
 
+// Tradução do detalhe da subconta (retorno do Asaas) para português
+const DETAIL_KEY_PT: Record<string, string> = {
+  general: 'Geral', documentation: 'Documentos', commercialInfo: 'Dados comerciais',
+  bankAccountInfo: 'Conta bancária', source: 'Origem', updatedAt: 'Atualizado em',
+};
+const DETAIL_VALUE_PT: Record<string, string> = {
+  APPROVED: 'Aprovado', PENDING: 'Pendente', REJECTED: 'Recusado',
+  AWAITING_APPROVAL: 'Em análise', AWAITING_ACTION_AUTHORIZATION: 'Aguardando autorização',
+};
+const DETAIL_SOURCE_PT: Record<string, string> = {
+  'admin:reconsultar': 'reconsulta do admin', 'documents:get': 'consulta de documentos',
+  'webhook': 'aviso do Asaas', 'status:get': 'consulta de situação',
+};
+const ROLE_PT: Record<string, string> = {
+  PARTNER: 'Batedeira', LOJA: 'Batedeira', SUPPLIER: 'Fornecedor', FORNECEDOR: 'Fornecedor',
+  COURIER: 'Motoboy', MOTORISTA: 'Motoboy', DRIVER: 'Motoboy', ADMIN: 'Admin', CLIENT: 'Cliente',
+};
+function translateDetailValue(k: string, v: any): string {
+  if (v === null || v === undefined || v === '') return '—';
+  const sv = String(v);
+  if (k === 'updatedAt') { const d = new Date(sv); return isNaN(d.getTime()) ? sv : d.toLocaleString('pt-BR'); }
+  if (k === 'source') return DETAIL_SOURCE_PT[sv] || sv;
+  return DETAIL_VALUE_PT[sv.toUpperCase()] || sv;
+}
+function formatDetail(detail: any): string {
+  if (!detail) return '—';
+  if (typeof detail === 'string') return detail;
+  return Object.entries(detail).map(([k, v]) => `${DETAIL_KEY_PT[k] || k}: ${translateDetailValue(k, v)}`).join(' · ');
+}
+
 function fmtDate(v?: string | null): string {
   if (!v) return '—';
   try { return new Date(v).toLocaleString('pt-BR'); } catch { return String(v); }
@@ -554,7 +584,7 @@ function SubaccountsPanel({ toast }: { toast: (m: string) => void }) {
             {visible.map(r => (
               <tr key={r.id} className="border-b border-zinc-100 dark:border-zinc-800 align-top">
                 <td className="py-2 pr-2 font-semibold text-zinc-900 dark:text-white">{r.name || '—'}</td>
-                <td className="py-2 pr-2">{r.role}</td>
+                <td className="py-2 pr-2">{ROLE_PT[String(r.role || '').toUpperCase()] || r.role}</td>
                 <td className="py-2 pr-2 font-mono">{r.document || '—'}</td>
                 <td className="py-2 pr-2">
                   <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${statusClass(r.status)}`}>
@@ -564,7 +594,7 @@ function SubaccountsPanel({ toast }: { toast: (m: string) => void }) {
                   {r.accountId && !r.hasApiKey && <div className="text-[11px] text-red-600 mt-1">Subconta antiga (antes do BaaS): trocar</div>}
                 </td>
                 <td className="py-2 pr-2 text-[11px] text-zinc-600 dark:text-zinc-400 max-w-[220px] break-words">
-                  {r.detail ? (typeof r.detail === 'string' ? r.detail : Object.entries(r.detail).map(([k, v]) => `${k}: ${v}`).join(' · ')) : '—'}
+                  {formatDetail(r.detail)}
                 </td>
                 <td className="py-2 pr-2">{fmtDate(r.createdAt)}</td>
                 <td className="py-2 space-y-1">
@@ -675,7 +705,7 @@ function SettlementsPanel({ toast }: { toast: (m: string) => void }) {
             {rows.map(r => (
               <tr key={r.id} className="border-b border-zinc-100 dark:border-zinc-800 align-top">
                 <td className="py-2 pr-2 font-mono">#{String(r.order_id || '').slice(0, 8)}</td>
-                <td className="py-2 pr-2">{r.role}</td>
+                <td className="py-2 pr-2">{ROLE_PT[String(r.role || '').toUpperCase()] || r.role}</td>
                 <td className="py-2 pr-2">{fmtMoney(r.amount)}</td>
                 <td className="py-2 pr-2">{r.status}</td>
                 <td className="py-2 pr-2 text-[11px] text-zinc-600 dark:text-zinc-400 max-w-[220px] break-words">{r.last_error || '—'}</td>
