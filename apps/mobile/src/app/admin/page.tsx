@@ -32,6 +32,7 @@ const AdminWithdrawalsSection = dynamic(() => import("@/components/admin/AdminWi
 const AdminReconciliationSection = dynamic(() => import("@/components/admin/AdminReconciliationSection").then(m => m.AdminReconciliationSection), { ssr: false });
 const AdminSimulatorTab = dynamic(() => import("@/components/admin/AdminSimulatorTab").then(m => m.AdminSimulatorTab), { ssr: false });
 const ShareLandingModal = dynamic(() => import("@/components/ShareLandingModal").then(m => m.ShareLandingModal), { ssr: false });
+const AdminFiscalCloseSection = dynamic(() => import("@/components/admin/AdminFiscalCloseSection").then(m => m.AdminFiscalCloseSection), { ssr: false });
 const AdminRatingsSection = dynamic(() => import("@/components/ratings/AdminRatingsSection").then(m => m.AdminRatingsSection), { ssr: false });
 
 const emptySubscribe = () => () => {};
@@ -120,7 +121,7 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState<CityRates>(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'simulador' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'conformidade'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'simulador' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'conformidade' | 'fiscal'>('dashboard');
   const [selectedSupportUserId, setSelectedSupportUserId] = useState<string | null>(null);
   const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
   const [activationConfig, setActivationConfig] = useState<{
@@ -1913,6 +1914,7 @@ function AdminDashboardContent() {
               <span>🛡️ Conformidade</span>
             </button>
             <button onClick={() => setActiveTab('pedidos')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🛒 Histórico de Pedidos</button>
+            <button onClick={() => setActiveTab('fiscal')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'fiscal' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🧾 Fechamento / Notas</button>
             <button onClick={() => setActiveTab('ocorrencias')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>📋 Ocorrências & Auditoria</button>
             <button onClick={() => setActiveTab('cidades')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'cidades' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🌍 Cidades / Expansão</button>
         </div>
@@ -2182,6 +2184,10 @@ function AdminDashboardContent() {
 
         {activeTab === 'simulador' && (
           <AdminSimulatorTab />
+        )}
+
+        {activeTab === 'fiscal' && (
+          <AdminFiscalCloseSection />
         )}
 
         {activeTab === 'pedidos' && (
