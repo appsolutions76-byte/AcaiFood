@@ -20,10 +20,18 @@ export async function POST(request: Request) {
     const userId = auth.user.id;
     const supabaseAdmin = getSupabaseAdmin();
 
-    const { error } = await supabaseAdmin
+    // R45: grava também a hora da posição (mapa ao vivo do admin). Se a coluna ainda não existir
+    // no banco, grava só a posição, como antes.
+    let { error } = await supabaseAdmin
       .from('users')
-      .update({ latitude: finalLat, longitude: finalLng })
+      .update({ latitude: finalLat, longitude: finalLng, location_updated_at: new Date().toISOString() })
       .eq('id', userId);
+    if (error && /location_updated_at/i.test(error.message || '')) {
+      ({ error } = await supabaseAdmin
+        .from('users')
+        .update({ latitude: finalLat, longitude: finalLng })
+        .eq('id', userId));
+    }
 
     if (error) {
       console.error("Erro ao atualizar localização GPS via Service Role:", error);
