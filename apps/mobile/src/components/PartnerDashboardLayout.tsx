@@ -26,10 +26,13 @@ import {
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AsaasPartnerBadge } from '@/components/AsaasPartnerBadge';
 import { PartnerWithdrawalSection } from '@/components/PartnerWithdrawalSection';
-import { PartnerManualModal, PartnerRole } from '@/components/PartnerManualModal';
+import dynamic from 'next/dynamic';
+import type { PartnerRole } from '@/components/PartnerManualModal';
 import PartnerActivationGuard from '@/components/PartnerActivationGuard';
 import { AsaasAccountStatusCard } from '@/components/AsaasAccountStatusCard';
-import { EditPartnerNameModal } from '@/components/EditPartnerNameModal';
+// R40 (desempenho): manual e edição de nome só são baixados quando a tela já abriu
+const PartnerManualModal = dynamic(() => import('@/components/PartnerManualModal').then(m => m.PartnerManualModal), { ssr: false });
+const EditPartnerNameModal = dynamic(() => import('@/components/EditPartnerNameModal').then(m => m.EditPartnerNameModal), { ssr: false });
 
 export interface PartnerDashboardLayoutProps {
   role: 'loja' | 'fornecedor' | 'motorista' | 'caminhao';

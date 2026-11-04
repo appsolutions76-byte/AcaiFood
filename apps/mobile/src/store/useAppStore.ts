@@ -587,6 +587,27 @@ let lastFetchLojasTime = 0;
 let lastFetchRatesTime = 0;
 const lastFetchOrdersTime: Record<string, number> = {};
 
+// R40 (desempenho): mudanças em users/storefronts/products chegam em rajada pelo Realtime.
+// Em vez de recarregar todos os usuários e lojas a cada evento, agrupa em uma recarga só.
+let usersRefetchTimer: any = null;
+// Assinatura dos campos (exceto GPS) de cada usuário, para reconhecer quando o evento
+// do Realtime foi só uma atualização de posição e evitar recarregar a lista inteira.
+const USER_SIG_FIELDS = ['name', 'role', 'phone', 'telefone', 'endereco', 'address', 'cidade', 'bairro', 'vehicle_type', 'is_online', 'status', 'asaas_wallet_id', 'asaas_account_status', 'split_enabled', 'is_admin', 'dispatch_mode', 'serve_mode'];
+const userRowSig: Record<string, string> = {};
+const buildUserRowSig = (row: any) => USER_SIG_FIELDS.map(k => String(row?.[k] ?? '')).join('|');
+// R40: envio do GPS limitado (antes: a cada leitura do celular, gerando recarga em todos os apps)
+const lastLocationSent: Record<string, { t: number; lat: number; lng: number }> = {};
+const LOCATION_MIN_INTERVAL_MS = 20000;
+const LOCATION_MIN_MOVE_M = 15;
+const LOCATION_FORCE_MOVE_M = 150;
+const distanceMeters = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 // Mescla só os campos definidos (listas públicas não trazem CPF, chave Pix, e-mail etc.;
 // não podem apagar esses dados do perfil do próprio usuário logado)
 function definedOnly<T extends Record<string, any>>(obj: T): Partial<T> {
@@ -950,6 +971,16 @@ export const useAppStore = create<AppState>()(
 
           initAudioUnlock();
 
+          // R40: agrupa recargas de usuários/lojas disparadas pelo Realtime (no máximo 1 a cada 3 s)
+          const scheduleUsersRefetch = () => {
+              if (usersRefetchTimer) return;
+              usersRefetchTimer = setTimeout(() => {
+                  usersRefetchTimer = null;
+                  get().fetchLojas(true);
+                  get().fetchAllUsers(true);
+              }, 3000);
+          };
+
           let channel = supabase.channel('schema-db-changes');
 
           channel = channel
@@ -998,25 +1029,36 @@ export const useAppStore = create<AppState>()(
               .on(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'storefronts' },
-                  () => {
-                      get().fetchLojas(true);
-                      get().fetchAllUsers(true);
-                  }
+                  () => scheduleUsersRefetch()
               )
               .on(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'products' },
-                  () => {
-                      get().fetchLojas(true);
-                      get().fetchAllUsers(true);
-                  }
+                  () => scheduleUsersRefetch()
               )
               .on(
                   'postgres_changes',
                   { event: '*', schema: 'public', table: 'users' },
-                  () => {
-                      get().fetchLojas(true);
-                      get().fetchAllUsers(true);
+                  (payload: any) => {
+                      const row = payload?.new;
+                      // R40: se só mudou a posição (GPS), atualiza o ponto localmente sem recarregar todos
+                      if (payload?.eventType === 'UPDATE' && row?.id && userRowSig[row.id] && userRowSig[row.id] === buildUserRowSig(row)) {
+                          const lat = Number(row.latitude);
+                          const lng = Number(row.longitude);
+                          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                              set((state) => {
+                                  const u = state.users[row.id];
+                                  if (!u || (u.lat === lat && u.lng === lng)) return state;
+                                  const updated = { ...u, lat, lng };
+                                  return {
+                                      users: { ...state.users, [row.id]: updated },
+                                      currentUser: (state.currentUser && state.currentUser.id === row.id) ? { ...state.currentUser, lat, lng } : state.currentUser
+                                  };
+                              });
+                          }
+                          return;
+                      }
+                      scheduleUsersRefetch();
                   }
               )
               .on(
@@ -1050,6 +1092,7 @@ export const useAppStore = create<AppState>()(
                 .or('role.eq.PARTNER,role.eq.loja');
             dbLojas = res.data;
             error = res.error;
+            (res.data || []).forEach((row: any) => { if (row?.id) userRowSig[row.id] = buildUserRowSig(row); });
         } else {
             const res = await supabase.rpc('get_public_stores');
             dbLojas = Array.isArray(res.data) ? res.data : null;
@@ -1185,6 +1228,7 @@ export const useAppStore = create<AppState>()(
         }
 
         if (dbUsers) {
+            dbUsers.forEach((row: any) => { if (row?.id) userRowSig[row.id] = buildUserRowSig(row); });
             set((state) => {
                 const newUsers: Record<string, any> = {};
                 let updatedCurrentUser = state.currentUser;
@@ -1686,6 +1730,16 @@ export const useAppStore = create<AppState>()(
       },
 
       updateUserLocation: async (userId, lat, lng) => {
+        // R40: só registra se passou tempo suficiente e houve deslocamento real
+        const prevSent = lastLocationSent[userId];
+        if (prevSent) {
+          const moved = distanceMeters(prevSent.lat, prevSent.lng, lat, lng);
+          const elapsed = Date.now() - prevSent.t;
+          const shouldSend = moved >= LOCATION_FORCE_MOVE_M || (elapsed >= LOCATION_MIN_INTERVAL_MS && moved >= LOCATION_MIN_MOVE_M);
+          if (!shouldSend) return;
+        }
+        lastLocationSent[userId] = { t: Date.now(), lat, lng };
+
         set((state) => {
           const user = state.users[userId];
           if (!user) return state;

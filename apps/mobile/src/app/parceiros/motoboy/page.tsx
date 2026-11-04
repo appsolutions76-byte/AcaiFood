@@ -2,18 +2,18 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Bike, BookOpen, Share2, Navigation, MapPin } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Bike, BookOpen, Share2, Navigation, MapPin, X } from "lucide-react";
 import { useAppStore, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
 import { DriverReferralsSection } from "@/components/referrals/DriverReferralsSection";
 import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
 import { MyReceivedRatingsSection } from "@/components/ratings/MyReceivedRatingsSection";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
-import { MapModal, MapPoint } from "@/components/MapModal";
+import type { MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { PartnerManualModal } from "@/components/PartnerManualModal";
-import { OrderChatModal } from "@/components/OrderChatModal";
+
 import { SupportChatButton } from "@/components/SupportChatButton";
-import { ShareLandingModal } from "@/components/ShareLandingModal";
+
 import { supabase } from "@/lib/supabase";
 import PartnerActivationGuard from "@/components/PartnerActivationGuard";
 import { initAudioUnlock, playDeliveryAlertTone } from "@/lib/soundAlerts";
@@ -21,7 +21,75 @@ import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { PartnerWithdrawalSection } from "@/components/PartnerWithdrawalSection";
 import { PartnerDashboardLayout } from "@/components/PartnerDashboardLayout";
-import { PhotoPickerModal } from "@/components/PhotoPickerModal";
+
+// R40 (desempenho): janelas pesadas só são baixadas quando a tela já abriu
+const MapModal = dynamic(() => import("@/components/MapModal").then(m => m.MapModal), { ssr: false });
+const OrderChatModal = dynamic(() => import("@/components/OrderChatModal").then(m => m.OrderChatModal), { ssr: false });
+const ShareLandingModal = dynamic(() => import("@/components/ShareLandingModal").then(m => m.ShareLandingModal), { ssr: false });
+const PhotoPickerModal = dynamic(() => import("@/components/PhotoPickerModal").then(m => m.PhotoPickerModal), { ssr: false });
+
+// R40: monta o link do Google Maps. Usa as coordenadas cadastradas; sem elas, o endereço escrito.
+const buildMapsUrl = (lat?: number | null, lng?: number | null, address?: string) => {
+  const la = Number(lat);
+  const ln = Number(lng);
+  if (Number.isFinite(la) && Number.isFinite(ln) && la !== 0 && ln !== 0) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${la},${ln}`;
+  }
+  if (address && address.trim()) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address.trim())}`;
+  }
+  return '';
+};
+const joinAddress = (...parts: Array<string | undefined | null>) =>
+  parts.map(p => String(p || '').trim()).filter(p => p && p !== '—').join(', ');
+
+// Endereço da loja/batedeira de um pedido: primeiro o que já está no app; se faltar, busca só esse cadastro.
+const resolveStoreMapsUrl = async (orderId: string, fallbackOrder?: any) => {
+  const s = useAppStore.getState();
+  const fresh: any = (s.orders || []).find((o: any) => o?.id === orderId) || fallbackOrder || {};
+  const lojaId = fresh.lojaId || fresh.origemId;
+  let loja: any = lojaId ? s.users?.[lojaId] : null;
+  if (lojaId && (!loja || !Number(loja.lat) || !Number(loja.lng))) {
+    try {
+      const { data } = await supabase
+        .from('users')
+        .select('latitude, longitude, endereco, address, bairro, cidade')
+        .eq('id', lojaId)
+        .maybeSingle();
+      if (data) {
+        loja = {
+          ...(loja || {}),
+          lat: Number(data.latitude) || 0,
+          lng: Number(data.longitude) || 0,
+          endereco: data.endereco || data.address || loja?.endereco,
+          bairro: data.bairro || loja?.bairro,
+          cidade: data.cidade || loja?.cidade,
+        };
+      }
+    } catch (_e) { /* segue com o que houver */ }
+  }
+  const address = joinAddress(loja?.endereco, loja?.bairro, loja?.cidade)
+    || (fresh.lojaNome && fresh.lojaNome !== 'Estabelecimento Parceiro' ? joinAddress(fresh.lojaNome, loja?.cidade || 'Belém') : '');
+  return buildMapsUrl(loja?.lat, loja?.lng, address);
+};
+
+// Destino do cliente: coordenadas da entrega; se faltarem, endereço escrito da entrega.
+const resolveClientMapsUrl = (order: any) => {
+  const s = useAppStore.getState();
+  const fresh: any = (s.orders || []).find((o: any) => o?.id === order?.id) || order || {};
+  const lojaUser: any = s.users?.[fresh.lojaId] || s.users?.[fresh.origemId];
+  const clienteId = fresh.clienteId || fresh.buyerId || fresh.destinoId;
+  const clienteUser: any = clienteId ? s.users?.[clienteId] : null;
+  const latDest = Number(fresh.deliveryLat || clienteUser?.lat || 0);
+  const lngDest = Number(fresh.deliveryLng || clienteUser?.lng || 0);
+  const latOrig = Number(lojaUser?.lat || 0);
+  const lngOrig = Number(lojaUser?.lng || 0);
+  // Se o destino for igual ao ponto da loja, a coordenada não é do cliente: usa o endereço
+  const distinct = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
+  const address = joinAddress(fresh.deliveryAddress, fresh.delivery_bairro && !String(fresh.deliveryAddress || '').includes(fresh.delivery_bairro) ? fresh.delivery_bairro : '', clienteUser?.cidade || lojaUser?.cidade)
+    || joinAddress(clienteUser?.endereco, clienteUser?.bairro, clienteUser?.cidade);
+  return distinct ? buildMapsUrl(latDest, lngDest) : buildMapsUrl(null, null, address);
+};
 
 export default function MotoboyDashboard() {
   const router = useRouter();
@@ -39,31 +107,34 @@ export default function MotoboyDashboard() {
   const [acceptingOrderId, setAcceptingOrderId] = useState<string | null>(null);
   const [validatingPickupId, setValidatingPickupId] = useState<string | null>(null);
 
+  // Aviso fixo com botão grande de GPS: aparece sempre após aceitar/retirar,
+  // porque o celular pode bloquear a abertura automática do mapa.
+  const [gpsPrompt, setGpsPrompt] = useState<{ url: string; label: string } | null>(null);
+
+  const openGps = (url: string, label: string, missingMsg: string) => {
+    if (!url) {
+      setGpsPrompt({ url: '', label: missingMsg });
+      return;
+    }
+    setGpsPrompt({ url, label });
+    if (typeof window !== 'undefined') {
+      try { window.open(url, '_blank', 'noopener'); } catch (_e) { /* o botão fica na tela */ }
+    }
+  };
+
   // 1. Aceitar corrida no radar e redirecionar direto para o GPS da batedeira
   const handleAcceptOrder = async (order: any) => {
     if (acceptingOrderId) return;
     setAcceptingOrderId(order.id);
-
-    const lojaId = order.lojaId || (order as any).sellerId || order.origemId;
-    const lojaUser = lojaId && store.users ? store.users[lojaId] : null;
-
-    let mapsUrl = '';
-    if (lojaUser?.lat && lojaUser?.lng) {
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lojaUser.lat},${lojaUser.lng}`;
-    } else {
-      const destStr = order.lojaNome || lojaUser?.name || 'Ponto do açaí, Belém';
-      const destAddr = lojaUser?.endereco ? `${lojaUser.endereco}, ${lojaUser.cidade || 'Belém'}` : destStr;
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destAddr)}`;
-    }
-
     try {
       const success = await store.acaoPedido(order.id, 'aceitar_motorista');
-      if (success !== false) {
-        setActiveTab('ativos');
-        if (mapsUrl && typeof window !== 'undefined') {
-          window.open(mapsUrl, '_blank');
-        }
-      }
+      if (success === false) return;
+      setActiveTab('ativos');
+      // Depois de aceita, a corrida passa a trazer a loja de origem (o radar só mostra o bairro)
+      const s = useAppStore.getState();
+      if (s.currentUser?.id) await s.fetchOrders(s.currentUser.id, true);
+      const url = await resolveStoreMapsUrl(order.id, order);
+      openGps(url, 'Abrir GPS até a batedeira', 'Endereço da batedeira não encontrado. Use o Chat & Voz da corrida para combinar a retirada.');
     } finally {
       setAcceptingOrderId(null);
     }
@@ -80,32 +151,9 @@ export default function MotoboyDashboard() {
     setValidatingPickupId(order.id);
     try {
       const success = await store.acaoPedido(order.id, 'validar_pin_retirada', pin);
-      if (success !== false) {
-        const lojaId = order.lojaId || (order as any).sellerId || order.origemId;
-        const lojaUser = lojaId && store.users ? store.users[lojaId] : null;
-        const latOrig = lojaUser?.lat || 0;
-        const lngOrig = lojaUser?.lng || 0;
-
-        const clienteId = order.clienteId || (order as any).buyerId || order.destinoId;
-        const clienteUser = clienteId && store.users ? store.users[clienteId] : null;
-
-        const latDest = order.deliveryLat || clienteUser?.lat;
-        const lngDest = order.deliveryLng || clienteUser?.lng;
-
-        const hasDistinctDestCoords = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
-
-        const clientDestStr = order.deliveryAddress 
-          ? order.deliveryAddress 
-          : (clienteUser?.bairro ? `${clienteUser.bairro}, ${clienteUser.cidade || 'Belém'}` : (clienteUser?.endereco || order.clienteNome || 'Cliente'));
-
-        const mapsUrl = hasDistinctDestCoords
-          ? `https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`
-          : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clientDestStr)}`;
-
-        if (mapsUrl && typeof window !== 'undefined') {
-          window.open(mapsUrl, '_blank');
-        }
-      }
+      if (success !== true) return;
+      const url = resolveClientMapsUrl(order);
+      openGps(url, 'Abrir GPS até o cliente', 'Endereço do cliente não encontrado. Use o Chat & Voz da corrida para confirmar o local.');
     } finally {
       setValidatingPickupId(null);
     }
@@ -135,26 +183,27 @@ export default function MotoboyDashboard() {
   useEffect(() => {
     initAudioUnlock();
     const s = useAppStore.getState();
-    s.fetchAllUsers();
     if (typeof s.fetchCities === 'function') s.fetchCities();
-    if (typeof s.fetchRates === 'function') s.fetchRates();
+    // startRealtime já carrega taxas, lojas, usuários e pedidos (R40: sem buscas repetidas)
     s.startRealtime();
     supabase.rpc('get_my_referrals', { p_flow: 'B2C' }).then(({ data }) => {
       if (Array.isArray(data)) setMyReferrals(data);
     });
   }, []);
 
-  // Polling contínuo do radar de entregas a cada 3.5 segundos para garantir que chamadas toquem e apareçam instantaneamente
+  // Consulta do radar de entregas (R40: a cada 6 s e só com o app na tela; antes 3,5 s sempre).
+  // Ao voltar para o app, a recarga é imediata (visibilitychange no store).
   useEffect(() => {
     if (!mounted || !currentUser?.id || currentUser.status === 'paused') return;
-    store.fetchOrders(currentUser.id, true);
+    store.fetchOrders(currentUser.id, false);
 
     const intervalId = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       const s = useAppStore.getState();
       if (s.currentUser?.id && s.currentUser.status !== 'paused') {
         s.fetchOrders(s.currentUser.id, false);
       }
-    }, 3500);
+    }, 6000);
 
     return () => clearInterval(intervalId);
   }, [mounted, currentUser?.id, currentUser?.status]);
@@ -413,6 +462,30 @@ export default function MotoboyDashboard() {
     >
       <div className="space-y-6">
 
+        {gpsPrompt && (
+          <div className="fixed inset-x-0 bottom-24 md:bottom-6 z-[60] px-4 flex justify-center pointer-events-none">
+            <div className="pointer-events-auto w-full max-w-md bg-zinc-900 text-white rounded-2xl shadow-2xl p-2.5 flex items-center gap-2 border border-purple-500/70">
+              {gpsPrompt.url ? (
+                <a
+                  href={gpsPrompt.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setGpsPrompt(null)}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3.5 px-3 rounded-xl font-extrabold text-base flex items-center justify-center gap-2"
+                >
+                  <Navigation className="w-5 h-5" />
+                  <span>{gpsPrompt.label}</span>
+                </a>
+              ) : (
+                <p className="flex-1 text-sm font-medium px-2 py-2">{gpsPrompt.label}</p>
+              )}
+              <button type="button" onClick={() => setGpsPrompt(null)} aria-label="Fechar" className="p-2 text-zinc-400 hover:text-white cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 1. ABA: RADAR B2C */}
         {activeTab === 'radar' && (
         <div className="grid grid-cols-1 gap-6 animate-in fade-in zoom-in-95 duration-300">
@@ -561,51 +634,28 @@ export default function MotoboyDashboard() {
                                   🗺️ Ver Mapa ({Number(o.distancia || 0).toFixed(1)} km)
                               </button>
                               
-                              {origemUser?.lat ? (
-                                <a 
-                                  href={`https://www.google.com/maps/dir/?api=1&destination=${origemUser.lat},${origemUser.lng}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                >
-                                  🚀 GPS p/ Retirada
-                                </a>
-                              ) : (
-                                <a 
-                                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.lojaNome || 'Ponto do açaí, Belém')}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                >
-                                  🚀 GPS p/ Retirada
-                                </a>
-                              )}
-
                               {(() => {
-                                 const latOrig = origemUser?.lat || 0;
-                                 const lngOrig = origemUser?.lng || 0;
-                                 const latDest = o.deliveryLat || destinoUser?.lat;
-                                 const lngDest = o.deliveryLng || destinoUser?.lng;
-
-                                 const hasDistinctDestCoords = latDest && lngDest && (Math.abs(latDest - latOrig) > 0.0001 || Math.abs(lngDest - lngOrig) > 0.0001);
-                                 
-                                 const clientDestStr = o.deliveryAddress 
-                                   ? o.deliveryAddress 
-                                   : (destinoUser?.bairro ? `${destinoUser.bairro}, ${destinoUser.cidade || 'Belém'}` : (destinoUser?.endereco || o.clienteNome || 'Cliente'));
-
-                                 const mapsUrl = hasDistinctDestCoords
-                                   ? `https://www.google.com/maps/dir/?api=1&destination=${latDest},${lngDest}`
-                                   : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clientDestStr)}`;
-
+                                 const storeUrl = buildMapsUrl(
+                                   origemUser?.lat, origemUser?.lng,
+                                   joinAddress(origemUser?.endereco, origemUser?.bairro, origemUser?.cidade) || (o.lojaNome ? joinAddress(o.lojaNome, origemUser?.cidade || 'Belém') : '')
+                                 );
+                                 const clientUrl = resolveClientMapsUrl(o);
+                                 const btnBase = "flex-1 font-bold p-2.5 rounded-xl border text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center";
                                  return (
-                                   <a 
-                                     href={mapsUrl}
-                                     target="_blank"
-                                     rel="noopener noreferrer"
-                                     className="flex-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs transition flex items-center justify-center gap-1.5 shadow-sm text-center"
-                                   >
-                                     🏁 GPS p/ Cliente
-                                   </a>
+                                   <>
+                                     {storeUrl && (
+                                       <a href={storeUrl} target="_blank" rel="noopener noreferrer"
+                                         className={`${btnBase} bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700`}>
+                                         <Navigation className="w-3.5 h-3.5" /> GPS p/ Retirada
+                                       </a>
+                                     )}
+                                     {clientUrl && (
+                                       <a href={clientUrl} target="_blank" rel="noopener noreferrer"
+                                         className={`${btnBase} bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/40`}>
+                                         <MapPin className="w-3.5 h-3.5" /> GPS p/ Cliente
+                                       </a>
+                                     )}
+                                   </>
                                  );
                                })()}
                             </div>

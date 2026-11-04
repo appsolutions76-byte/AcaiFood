@@ -7,21 +7,25 @@ import { ProductThumbnail } from "@/components/ProductThumbnail";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, haversineKm, getRouteDistanceKm, getEstimatedRouteDistanceSync, getRatesForCity, calculateOrderFreight, isCityFeatureEnabled } from "@/store/useAppStore";
 import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
-import { MapModal, MapPoint } from "@/components/MapModal";
-import { PixModal } from "@/components/PixModal";
+import type { MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { PartnerManualModal } from "@/components/PartnerManualModal";
-import { OrderChatModal } from "@/components/OrderChatModal";
 import { AdBannerCarousel } from "@/components/AdBannerCarousel";
 import { SupportChatButton } from "@/components/SupportChatButton";
-import { ShareLandingModal } from "@/components/ShareLandingModal";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { validateCpfCnpjDigits } from "@/lib/pix";
 import { OrderTimelineBadges } from "@/components/OrderTimelineBadges";
-import { OrderReceiptModal } from "@/components/OrderReceiptModal";
 import { RefundInfo } from "@/components/RefundInfo";
-import { RateDriverModal } from "@/components/RateDriverModal";
+import dynamic from "next/dynamic";
+
+// R40 (desempenho): janelas (mapa, Pix, chat, manual, recibo, avaliação) só são baixadas depois que a tela abriu
+const MapModal = dynamic(() => import("@/components/MapModal").then(m => m.MapModal), { ssr: false });
+const PixModal = dynamic(() => import("@/components/PixModal").then(m => m.PixModal), { ssr: false });
+const PartnerManualModal = dynamic(() => import("@/components/PartnerManualModal").then(m => m.PartnerManualModal), { ssr: false });
+const OrderChatModal = dynamic(() => import("@/components/OrderChatModal").then(m => m.OrderChatModal), { ssr: false });
+const ShareLandingModal = dynamic(() => import("@/components/ShareLandingModal").then(m => m.ShareLandingModal), { ssr: false });
+const OrderReceiptModal = dynamic(() => import("@/components/OrderReceiptModal").then(m => m.OrderReceiptModal), { ssr: false });
+const RateDriverModal = dynamic(() => import("@/components/RateDriverModal").then(m => m.RateDriverModal), { ssr: false });
 
 const emptySubscribe = () => () => {};
 
