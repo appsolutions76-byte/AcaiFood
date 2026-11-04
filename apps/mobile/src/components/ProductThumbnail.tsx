@@ -62,8 +62,34 @@ export function ProductThumbnail({
     );
   }
 
-  // Fruto B2B / Insumo bruto
-  if (lower.includes("fruto") || lower.includes("caroço") || lower.includes("lata")) {
+  // Bebidas (Cervejas, Refrigerantes, Sucos, Água, Vinhos, Energéticos)
+  if (
+    lower.includes("cerveja") ||
+    lower.includes("refrigerante") ||
+    lower.includes("suco") ||
+    lower.includes("água") ||
+    lower.includes("agua") ||
+    lower.includes("bebida") ||
+    lower.includes("chope") ||
+    lower.includes("vinho") ||
+    lower.includes("energetico") ||
+    lower.includes("energético") ||
+    lower.includes("long neck") ||
+    lower.includes("latão") ||
+    lower.includes("latao") ||
+    (lower.includes("lata") && (lower.includes("350") || lower.includes("ml") || lower.includes("gelada")))
+  ) {
+    return (
+      <div
+        className={`${className} rounded-xl bg-gradient-to-br from-amber-500/15 via-amber-400/25 to-yellow-500/15 dark:from-amber-950/70 dark:via-yellow-950/40 dark:to-amber-900/50 border border-amber-300/80 dark:border-amber-700/60 overflow-hidden shrink-0 flex items-center justify-center shadow-xs text-amber-600 dark:text-amber-400`}
+      >
+        <CupSoda className="w-6 h-6 stroke-[1.8]" />
+      </div>
+    );
+  }
+
+  // Fruto B2B / Insumo bruto (Lata de fruto em caroço B2B)
+  if (lower.includes("fruto") || lower.includes("caroço") || lower.includes("caroco") || (lower.includes("lata") && (lower.includes("açai") || lower.includes("açaí") || lower.includes("b2b")))) {
     return (
       <div
         className={`${className} rounded-xl bg-gradient-to-br from-emerald-50 to-purple-50 dark:from-emerald-950/50 dark:to-purple-950/50 border border-emerald-200/80 dark:border-emerald-800/60 overflow-hidden shrink-0 flex items-center justify-center shadow-xs text-emerald-700 dark:text-emerald-300`}
@@ -155,24 +181,6 @@ export function ProductThumbnail({
         className={`${className} rounded-xl bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/60 dark:to-yellow-950/40 border border-amber-200/70 dark:border-amber-800/50 overflow-hidden shrink-0 flex items-center justify-center shadow-xs text-amber-600 dark:text-amber-300`}
       >
         <Wheat className="w-6 h-6 stroke-[1.8]" />
-      </div>
-    );
-  }
-
-  // Bebidas
-  if (
-    lower.includes("suco") ||
-    lower.includes("refrigerante") ||
-    lower.includes("água") ||
-    lower.includes("agua") ||
-    lower.includes("cerveja") ||
-    lower.includes("bebida")
-  ) {
-    return (
-      <div
-        className={`${className} rounded-xl bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/60 dark:to-blue-950/40 border border-cyan-200/70 dark:border-cyan-800/50 overflow-hidden shrink-0 flex items-center justify-center shadow-xs text-cyan-600 dark:text-cyan-300`}
-      >
-        <CupSoda className="w-6 h-6 stroke-[1.8]" />
       </div>
     );
   }

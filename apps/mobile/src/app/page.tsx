@@ -1480,7 +1480,7 @@ export default function StorefrontPage() {
                                                   title="Marcar complementos"
                                                 >
                                                   <SlidersHorizontal className="w-2.5 h-2.5" />
-                                                  <span>{isExpanded ? 'Ocultar Opções' : 'Marcar Opções'}</span>
+                                                  <span>{isExpanded ? 'Ocultar Opções' : ((item as any).complements?.some((g: any) => /marca/i.test(g.title)) ? `${(item as any).complements.find((g: any) => /marca/i.test(g.title))?.options?.length || ''} Marcas Disponíveis` : 'Marcar Opções')}</span>
                                                   <ChevronDown className={`w-2.5 h-2.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                                                 </button>
                                               )}
@@ -1503,14 +1503,25 @@ export default function StorefrontPage() {
                                        </div>
                                        <div className="shrink-0 flex items-center pt-0.5">
                                          {item.isAvail && selLoja.status !== 'paused' ? (
-                                           <button
-                                             onClick={() => handleQuickAddWithComplements(selLoja.id, item)}
-                                             className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800' : 'bg-purple-600 hover:bg-purple-700 active:bg-purple-800'} text-white font-black px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition shadow-sm shrink-0 active:scale-95 cursor-pointer flex items-center gap-1 text-xs sm:text-sm hover:brightness-110`}
-                                             title={(item as any).complements?.length > 0 ? "Adicionar ao carrinho com complementos marcados" : "Adicionar ao pedido"}
-                                           >
-                                             <ShoppingCart className="w-3.5 h-3.5" />
-                                              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                                           </button>
+                                           (item as any).complements?.length > 0 ? (
+                                             <button
+                                               onClick={() => setExpandedProductDesc(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                                               className="bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-black px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition shadow-sm shrink-0 active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs sm:text-sm hover:brightness-110"
+                                               title="Escolher marca ou opções"
+                                             >
+                                               <SlidersHorizontal className="w-3.5 h-3.5" />
+                                               <span className="text-xs font-black leading-none">{isExpanded ? 'Fechar ▲' : 'Escolher'}</span>
+                                             </button>
+                                           ) : (
+                                             <button
+                                               onClick={() => handleQuickAddWithComplements(selLoja.id, item)}
+                                               className={`${item.isTeal ? 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800' : 'bg-purple-600 hover:bg-purple-700 active:bg-purple-800'} text-white font-black px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition shadow-sm shrink-0 active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs sm:text-sm hover:brightness-110`}
+                                               title="Adicionar ao pedido"
+                                             >
+                                               <ShoppingCart className="w-3.5 h-3.5" />
+                                               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                             </button>
+                                           )
                                          ) : (
                                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 rounded-lg shrink-0">
                                              {selLoja.status === 'paused' ? 'Fechado' : 'Esgotado'}
@@ -1588,7 +1599,13 @@ export default function StorefrontPage() {
                                                                : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-purple-300 hover:bg-purple-50/50'
                                                            }`}
                                                          >
-                                                           {isChecked ? <CheckSquare className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" /> : <Square className="w-4 h-4 text-zinc-400 shrink-0" />}
+                                                           {isSingleChoice ? (
+                                                                <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isChecked ? 'border-white bg-white' : 'border-zinc-400'}`}>
+                                                                  {isChecked && <div className="w-1.5 h-1.5 rounded-full bg-purple-600" />}
+                                                                </div>
+                                                              ) : (
+                                                                isChecked ? <CheckSquare className="w-4 h-4 text-white shrink-0" /> : <Square className="w-4 h-4 text-zinc-400 shrink-0" />
+                                                              )}
                                                            <span>{opt.name}</span>
                                                            {opt.price > 0 && <span className="opacity-80 text-[10px] font-normal">(+R$ ${opt.price.toFixed(2)})</span>}
                                                          </button>

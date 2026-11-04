@@ -171,6 +171,8 @@ export default function BatedeiraDashboard() {
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
   const [newProductDesc, setNewProductDesc] = useState('');
+  const [newProductBrands, setNewProductBrands] = useState('');
+  const [quickBrandModalInput, setQuickBrandModalInput] = useState('');
   const [extraSearchQuery, setExtraSearchQuery] = useState('');
   const [extraFilterStatus, setExtraFilterStatus] = useState<'all' | 'available' | 'unavailable'>('all');
   const [extraPresetCategory, setExtraPresetCategory] = useState<'acai' | 'carnes' | 'bebidas' | 'outros'>('acai');
@@ -350,7 +352,7 @@ export default function BatedeiraDashboard() {
       return;
     }
     const isMeatDish = /churrasco|maminha|picanha|alcatra|frango|carne|peixe/i.test(nameToAdd);
-    const defaultComplements = isMeatDish ? [
+    let defaultComplements = isMeatDish ? [
       {
         id: 'ponto_carne_' + Date.now(),
         title: 'Ponto da Carne',
@@ -377,6 +379,31 @@ export default function BatedeiraDashboard() {
       }
     ] : undefined;
 
+    // Se o lojista cadastrou marcas ou variedades
+    const parsedBrands = newProductBrands
+      .split(/[,;\n/]+/)
+      .map(b => b.trim())
+      .filter(Boolean);
+
+    if (parsedBrands.length > 0) {
+      const marcasGroup = {
+        id: 'marcas_' + Date.now(),
+        title: /cerveja/i.test(nameToAdd)
+          ? 'Marca da Cerveja'
+          : /refrigerante|suco|agua|água/i.test(nameToAdd)
+          ? 'Marca / Sabor'
+          : 'Escolha a Marca / Variedade',
+        required: true,
+        maxSelections: 1,
+        options: parsedBrands.map((bName, bIdx) => ({
+          id: 'm_' + bIdx + '_' + Date.now(),
+          name: bName,
+          price: 0
+        }))
+      };
+      defaultComplements = defaultComplements ? [...defaultComplements, marcasGroup] : [marcasGroup];
+    }
+
     store.addProduct(currentUser.id, {
       id: generateUUID(),
       name: nameToAdd,
@@ -389,6 +416,7 @@ export default function BatedeiraDashboard() {
     setNewProductName('');
     setNewProductPrice('');
     setNewProductDesc('');
+    setNewProductBrands('');
     setNewProductImage(undefined);
   };
 
@@ -1841,11 +1869,96 @@ export default function BatedeiraDashboard() {
                 <div className="w-full">
                   <input
                     type="text"
-                    placeholder="Descrição / Detalhes (ex: Porção 300g, acompanha farofa e vinagrete...)"
+                    placeholder="Descrição / Detalhes (ex: Lata 350ml bem gelada, Porção 300g...)"
                     value={newProductDesc}
                     onChange={e => setNewProductDesc(e.target.value)}
                     className="w-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl py-2 px-3.5 text-xs outline-none focus:border-purple-500 font-normal text-zinc-700 dark:text-zinc-300"
                   />
+                </div>
+
+                {/* Campo de Marcas / Variedades */}
+                <div className="w-full bg-white dark:bg-zinc-900 p-3 rounded-xl border border-dashed border-purple-200 dark:border-purple-800/60 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <label className="text-xs font-black text-purple-900 dark:text-purple-300 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-purple-600" />
+                      Variedade de Marcas disponíveis (Opcional):
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-medium">
+                      O cliente escolherá uma dessas marcas ao pedir
+                    </span>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Digite as marcas separadas por vírgula (ex: Brahma, Skol, Heineken, Amstel)"
+                    value={newProductBrands}
+                    onChange={e => setNewProductBrands(e.target.value)}
+                    className="w-full border border-zinc-200 dark:border-zinc-700 bg-zinc-50/70 dark:bg-zinc-950 rounded-lg py-2 px-3 text-xs outline-none focus:border-purple-500 font-medium text-zinc-800 dark:text-zinc-200"
+                  />
+
+                  {/* Sugestões Rápidas de Marcas ao digitar nomes de bebidas */}
+                  {/cerveja|lata/i.test(newProductName) && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      <span className="text-[10px] font-bold text-zinc-500 shrink-0">Adicionar marcas de cerveja:</span>
+                      {['Brahma', 'Skol', 'Heineken', 'Amstel', 'Budweiser', 'Corona', 'Antarctica', 'Eisenbahn'].map(b => (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => {
+                            const cur = newProductBrands ? newProductBrands.split(',').map(s => s.trim()).filter(Boolean) : [];
+                            if (!cur.includes(b)) {
+                              setNewProductBrands([...cur, b].join(', '));
+                            }
+                          }}
+                          className="text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-md cursor-pointer transition active:scale-95"
+                        >
+                          + {b}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/refrigerante|refr|refri/i.test(newProductName) && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      <span className="text-[10px] font-bold text-zinc-500 shrink-0">Adicionar refrigerantes:</span>
+                      {['Coca-Cola', 'Guaraná Antarctica', 'Fanta Laranja', 'Fanta Uva', 'Sprite', 'Pepsi'].map(b => (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => {
+                            const cur = newProductBrands ? newProductBrands.split(',').map(s => s.trim()).filter(Boolean) : [];
+                            if (!cur.includes(b)) {
+                              setNewProductBrands([...cur, b].join(', '));
+                            }
+                          }}
+                          className="text-[10px] font-bold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700 px-2 py-0.5 rounded-md cursor-pointer transition active:scale-95"
+                        >
+                          + {b}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/agua|água/i.test(newProductName) && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      <span className="text-[10px] font-bold text-zinc-500 shrink-0">Adicionar tipos de água:</span>
+                      {['Sem Gás', 'Com Gás', 'Indaiá', 'Crystal', 'Minalba'].map(b => (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => {
+                            const cur = newProductBrands ? newProductBrands.split(',').map(s => s.trim()).filter(Boolean) : [];
+                            if (!cur.includes(b)) {
+                              setNewProductBrands([...cur, b].join(', '));
+                            }
+                          }}
+                          className="text-[10px] font-bold bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/50 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700 px-2 py-0.5 rounded-md cursor-pointer transition active:scale-95"
+                        >
+                          + {b}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </form>
                 </div>
@@ -3219,6 +3332,45 @@ export default function BatedeiraDashboard() {
                       <span>⚡</span> Modelo Churrasco
                     </button>
 
+                    {/* Botão Modelo Marcas Rápidas */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const isCerveja = /cerveja|lata/i.test(editingProduct.name);
+                        const marcasOptions = isCerveja
+                          ? [
+                              { id: 'm1', name: 'Brahma', price: 0 },
+                              { id: 'm2', name: 'Skol', price: 0 },
+                              { id: 'm3', name: 'Heineken', price: 0 },
+                              { id: 'm4', name: 'Amstel', price: 0 },
+                              { id: 'm5', name: 'Budweiser', price: 0 },
+                              { id: 'm6', name: 'Corona', price: 0 },
+                              { id: 'm7', name: 'Antarctica', price: 0 },
+                              { id: 'm8', name: 'Eisenbahn', price: 0 }
+                            ]
+                          : [
+                              { id: 'm1', name: 'Coca-Cola', price: 0 },
+                              { id: 'm2', name: 'Guaraná Antarctica', price: 0 },
+                              { id: 'm3', name: 'Fanta Laranja', price: 0 },
+                              { id: 'm4', name: 'Sprite', price: 0 }
+                            ];
+
+                        const marcasGroup = {
+                          id: 'marcas_' + Date.now(),
+                          title: isCerveja ? 'Marca da Cerveja' : 'Escolha a Marca / Sabor',
+                          required: true,
+                          maxSelections: 1,
+                          options: marcasOptions
+                        };
+                        setEditingProduct(prev => prev ? { ...prev, complements: [...(prev.complements || []), marcasGroup] } : null);
+                      }}
+                      className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                      title="Adicionar grupo completo de marcas"
+                    >
+                      <Tag className="w-3.5 h-3.5 text-amber-600" />
+                      <span>+ Marcas ({/cerveja|lata/i.test(editingProduct.name) ? 'Cervejas' : 'Bebidas'})</span>
+                    </button>
+
                     {/* Botão Novo Grupo Personalizado */}
                     <button
                       type="button"
@@ -3237,6 +3389,43 @@ export default function BatedeiraDashboard() {
                       <Plus className="w-3.5 h-3.5" /> Grupo
                     </button>
                   </div>
+                </div>
+
+                {/* Adição rápida de marcas customizadas */}
+                <div className="p-2.5 bg-purple-50/70 dark:bg-purple-950/30 rounded-xl border border-purple-200 dark:border-purple-800/60 flex flex-col sm:flex-row items-center gap-2">
+                  <div className="flex-1 w-full">
+                    <input
+                      type="text"
+                      placeholder="Adicionar marcas (ex: Brahma, Skol, Heineken, Amstel)"
+                      value={quickBrandModalInput}
+                      onChange={(e) => setQuickBrandModalInput(e.target.value)}
+                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-purple-500 font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!quickBrandModalInput.trim()}
+                    onClick={() => {
+                      const brands = quickBrandModalInput.split(/[,;\n/]+/).map(b => b.trim()).filter(Boolean);
+                      if (brands.length === 0) return;
+                      const newGroup = {
+                        id: 'marcas_' + Date.now(),
+                        title: /cerveja|lata/i.test(editingProduct.name) ? 'Marca da Cerveja' : 'Escolha a Marca',
+                        required: true,
+                        maxSelections: 1,
+                        options: brands.map((bName, bIdx) => ({
+                          id: 'opt_' + bIdx + '_' + Date.now(),
+                          name: bName,
+                          price: 0
+                        }))
+                      };
+                      setEditingProduct(prev => prev ? { ...prev, complements: [...(prev.complements || []), newGroup] } : null);
+                      setQuickBrandModalInput('');
+                    }}
+                    className="w-full sm:w-auto px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Adicionar Marcas
+                  </button>
                 </div>
 
                 {/* Lista de Grupos de Opções */}
