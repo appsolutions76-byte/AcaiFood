@@ -1,4 +1,4 @@
-# AçaíFood — Manuais de Uso Oficiais (versão consolidada — novembro de 2026 — modelo "cliente paga a loja")
+# AçaíFood — Manuais de Uso Oficiais (versão consolidada — 04/11/2026, R51 — modelo "cliente paga a loja")
 
 > **Documentação oficial de operação para clientes e parceiros da plataforma AçaíFood.**
 > **Site oficial:** https://www.acaifood.app.br (espelho: https://acai-food-mobile.vercel.app)
@@ -41,7 +41,7 @@
 ### 1.3 Pagamento por Pix
 1. Ao finalizar, aparece o **QR Code Pix e o Copia e Cola**, gerados pelo Asaas.
 2. O valor cobrado é o total calculado pelo servidor (produtos + frete, já com o eventual subsídio da loja).
-3. **Você paga direto à loja:** no seu banco, o recebedor aparece com o **nome da loja** que vendeu (conta Asaas da loja). No mesmo Pix, o Asaas separa automaticamente a comissão do AçaíFood.
+3. **Você paga direto à loja:** no seu banco, o recebedor aparece com o **nome do titular da conta Asaas da loja** que vendeu (normalmente o nome da loja; em contas vinculadas, o nome do titular do CPF/CNPJ). No mesmo Pix, o Asaas separa automaticamente a comissão do AçaíFood.
 4. O Pix vale por **60 minutos**. Sem pagamento nesse prazo, o pedido é cancelado.
 5. A confirmação é automática em poucos segundos.
 
@@ -124,11 +124,13 @@
 - Você é **autônomo**: atende qualquer loja da cidade, sem contrato de exclusividade.
 - O radar mostra somente pedidos já preparados pelas lojas (sem tempo de espera no balcão), com valor líquido da corrida, distância em km e rota no mapa.
 
-### 4.3 Navegação GPS Automatizada (Fluxo Inteligente)
-1. **Aceitou a Corrida:** O app redireciona você **automaticamente para o mapa com a rota até a batedeira**, sem necessidade de cliques extras.
-2. **Chegada na Loja:** Retire os produtos e digite o **PIN de Balcão** da loja.
-3. **Retirada Confirmada:** Assim que o PIN de balcão é digitado, o app **redireciona você automaticamente para o mapa com a rota até o cliente**.
-4. **Atalhos Manuais:** Os botões *"🚀 GPS p/ Retirada"* e *"🏁 GPS p/ Cliente"* continuam disponíveis para alternar ou abrir externamente no Google Maps ou Waze a qualquer momento.
+### 4.3 Navegação GPS (Google Maps)
+1. **Aceitar corrida:** toque em *"Aceitar Corrida & Abrir GPS"*. O app abre o Google Maps com a rota até a batedeira.
+2. **Se o mapa não abrir sozinho** (alguns celulares bloqueiam a abertura automática): aparece um **botão roxo grande** no rodapé, *"Abrir GPS até a batedeira"*. Toque nele.
+3. **Chegada na loja:** retire o pedido, digite o **PIN de Balcão** e toque em *"Validar e Abrir GPS do Cliente"*. O app abre a rota até o cliente (ou mostra o botão *"Abrir GPS até o cliente"*).
+4. **Atalhos:** os botões *"GPS p/ Retirada"* e *"GPS p/ Cliente"* no card da corrida reabrem a rota no Google Maps quando você quiser.
+5. **Sem endereço cadastrado:** o app avisa; use o **Chat & Voz** da corrida para combinar o local.
+6. **No cliente:** toque em *"🏁 Cheguei ao Endereço do Cliente"* e siga para o PIN.
 
 ### 4.4 ⚠️ PIN do cliente (obrigatório)
 - No destino, peça o **PIN de 4 dígitos** que está no celular do cliente, digite e confirme.
@@ -149,8 +151,9 @@
 
 1. **Radar de Cargas:** fretes B2B (fornecedor → batedeira) e coletas de caroço (batedeira → ecoponto/usina).
 2. O ganho é calculado por km ou taxa fixa da cidade. **Frete B2B:** pago após o PIN, da conta do fornecedor para a do caminhoneiro. **Coleta de caroço:** a loja paga à plataforma, que transfere ao motorista após o PIN no destino.
-3. **PIN de descarga:** no destino, o responsável confere a carga e informa o PIN de 4 dígitos.
-4. **Quem me indica e avaliações:** gerencie convites separados de Fornecedores e Lojas e avalie as partes envolvidas.
+3. **GPS:** os botões *"📍 Google Maps (Retirada)"* e *"📍 Google Maps (Destino)"* no card do frete abrem a rota no Google Maps.
+4. **PIN de descarga:** no destino, o responsável confere a carga e informa o PIN de 4 dígitos.
+5. **Quem me indica e avaliações:** gerencie convites separados de Fornecedores e Lojas e avalie as partes envolvidas.
 
 ---
 
@@ -170,7 +173,19 @@ Todo parceiro recebe por uma **subconta Asaas em seu nome**, aberta pelo AçaíF
 | Em análise no Asaas | Aguardar |
 | Aprovada | Vendas, corridas e saques liberados |
 | Reprovada | Verificar motivo no cartão e contatar suporte |
-| Precisa do admin | CPF/CNPJ já cadastrado no Asaas; suporte resolve |
+| Precisa do admin | CPF/CNPJ já cadastrado no Asaas em nome de outra pessoa; suporte resolve |
+| Pedido de vínculo enviado | Você já tem outra conta no app com este CPF/CNPJ; aprove na conta principal (6.1) |
+
+### 6.1 Mais de uma conta com o mesmo CPF/CNPJ (contas vinculadas)
+O Asaas permite **uma conta de recebimento por CPF/CNPJ**. Quem tem mais de uma conta no app com outro e-mail (por exemplo, 2 ou 3 lojas, ou loja e motoboy, ou motoboy e fornecedor) usa a mesma conta de recebimento em todas:
+
+1. A primeira conta que abriu a conta Asaas é a **conta principal**.
+2. Na segunda conta, ao abrir a conta de recebimento, o app envia um **pedido de vínculo** à conta principal e mostra o e-mail dela (parcialmente oculto).
+3. Na conta principal, abra o cartão **"🔗 Contas vinculadas"** no painel e toque em **Aprovar** (ou **Recusar**). O app confere que as duas contas têm o mesmo CPF/CNPJ.
+4. Aprovada, a conta vinculada passa a receber vendas e corridas **na mesma conta de recebimento**. O saldo é um só para todas.
+5. **Saque:** por padrão só a conta principal saca. A principal pode tocar em **"Liberar saque"** (ou "Bloquear saque") para cada vinculada. Só existe **um saque aberto por vez** em cada conta de recebimento, para evitar saque duplo.
+6. **Desvincular:** a conta principal pode desfazer o vínculo quando não houver pedido, corrida ou saque em andamento.
+7. No banco do cliente, o recebedor do Pix aparece com o nome do titular do CPF/CNPJ.
 
 ---
 
@@ -186,29 +201,29 @@ Todo parceiro recebe por uma **subconta Asaas em seu nome**, aberta pelo AçaíF
 **Saque Pix (Todos):**
 - Solicite saque na aba Financeiro para chave Pix **CPF ou CNPJ do mesmo titular** (Resoluções BCB nº 1/2020 e nº 80/2021).
 - Chaves de terceiros, e-mails ou celulares divergentes são bloqueadas pelo sistema.
-- A tarifa Pix do Asaas é descontada do valor transferido. Limite de um saque por vez em processamento.
+- A tarifa Pix do Asaas é descontada do valor transferido. Limite de um saque por vez em processamento em cada conta de recebimento (contas vinculadas dividem esse limite; veja 6.1).
 
 ---
 
 ## 8. Painel Administrativo (`/admin`)
 
-Acesso restrito a administradores verificados (`is_admin = true` e MFA/TOTP obrigatório). Todas as ações sensíveis são auditadas de forma imutável em `admin_audit_log`.
+Acesso restrito a administradores verificados (`is_admin = true` e MFA/TOTP obrigatório). Todas as ações sensíveis são auditadas em `admin_audit_log`. Desde a R50 o painel tem **7 abas**, cada uma com subabas:
 
-| Aba | Descrição e Funcionalidades Principais |
+| Aba | Subabas e funções |
 |---|---|
-| **Visão Geral** | Cards consolidados calculados diretamente no servidor (`/api/admin/dashboard-stats`): GMV, **Receita Bruta da Plataforma**, **Receita Líquida (pós tarifas Asaas Pix)**, pedidos ativos, volume de transações e balanços. |
-| **🗺️ Mapa ao Vivo** | Rastreamento geográfico em tempo real (`/api/admin/live-map`) de batedeiras (aberta/fechada), fornecedores, motoboys e caminhões (online / em corrida). Preserva total privacidade de clientes (LGPD). Mostra tempo da última coordenada (`location_updated_at`), filtros e botão centralizar. |
-| **📑 Fechamento Mensal / Notas Fiscais** | Módulo fiscal e contábil (`/api/admin/fiscal-close`): consolidação por competência mensal (AAAA-MM) do faturamento total, comissões retidas, tarifas Asaas e base de cálculo de ISS / NF-e com exportação para contabilidade. |
-| **Simulador** | Simulação de viabilidade econômica: comissões, split de tarifas Pix (R$ 0,99/R$ 1,99), ponto de equilíbrio e projeção de receita. Não afeta taxas em produção. |
-| **Saques** | Fila de aprovação de saques com validação automática de titularidade contra o Asaas, sincronização de status e estorno de saques rejeitados. |
-| **Usuários** | Gestão de contas, filtros por perfil/cidade, bloqueio e desbloqueio. Exclusão bloqueada se houver histórico de pedidos/saques (recomenda-se bloquear). |
-| **Pedidos & Balcão** | Acompanhamento em tempo real de status, comandas térmicas, conciliação manual, estornos Asaas e **geração de novo PIN de segurança** para pedidos bloqueados por tentativas excedidas. |
-| **Baixa Forçada** | Encerramento emergencial de pedidos travados com **justificativa obrigatória (mínimo 10 caracteres)** gravada em log de auditoria. |
-| **Cidades / Tarifas** | Configuração de taxas por município: valor por km, frete mínimo, comissão do app na venda e no frete, divisão da tarifa Pix Asaas, motoristas indicados e módulos de avaliação 1 a 5 estrelas. |
-| **Ativações** | Gestão do programa de fundadores (isenção de taxa) e controle da taxa de adesão da plataforma. |
-| **Suporte** | Central de atendimento ao vivo, encaminhamento de demandas financeiras para a Ouvidoria Asaas e geração de relatório mensal de conformidade e SLA. |
-| **Termos & LGPD** | Histórico imutável de aceites de termos de uso, políticas de privacidade e mandatos Asaas. |
-| **🛡️ Conformidade & Segurança** | Auditoria de subcontas Asaas, logs imutáveis (`admin_audit_log`), monitoramento de SLA e proteção de integridade contra comandos destrutivos acidentais (`ALLOW_DESTRUCTIVE_ADMIN_RESET`). |
+| **📊 Visão Geral** | **Resumo:** pedidos do período (geral, mês, dia), bloco *Receita da AçaíFood* com **Taxas de vendas**, **Taxas de transporte**, Receita bruta (valor das notas), Tarifa Asaas da plataforma e Receita líquida; movimentação total; faturamento dos parceiros; cadastros. **Mapa ao vivo:** batedeiras, fornecedores, motoboys e caminhões (sem clientes, LGPD). |
+| **🛒 Pedidos** | **Histórico de pedidos:** status, comandas, comprovantes, estornos, novo PIN para pedido bloqueado e baixa forçada com justificativa (mín. 10 caracteres). **Ocorrências:** casos com exportação PDF/CSV. |
+| **👥 Parceiros** | **Usuários:** cadastros, bloqueio e liquidação. **Ativações:** fundadores e taxa de adesão. **Subcontas Asaas e contas vinculadas:** situação de cada subconta (em português), reconsulta, encerramento, e vínculos de contas com o mesmo CPF/CNPJ (aprovar, recusar, liberar saque, desvincular). |
+| **💰 Financeiro** | **Saques:** aprovação, validação de titularidade, valor mínimo, modo de pagamento. **Notas do mês:** competência mensal, taxa de vendas, taxa de transporte e **Valor da nota** por parceiro, tarifa Asaas da plataforma, líquido, agrupar por CPF/CNPJ e CSV para o contador. **Repasses dos pedidos:** settlements. **Conta da plataforma:** saldo Asaas e aviso de mínimo. |
+| **🎧 Suporte** | Atendimento ao vivo e relatório mensal de chamados. |
+| **📢 Anúncios** | Banners e stories. |
+| **⚙️ Configurações** | **Pagamentos:** modelo de cobrança, quem paga a tarifa nos estornos, validação de saques (anti-fraude). **Cidades e taxas:** valor por km, frete mínimo, comissões, divisão da tarifa Pix, indicações e avaliações. **Simulador:** viabilidade (não altera as taxas reais). **Auditoria:** log imutável, SLA mensal e *Requisições enviadas ao Asaas* com o botão *Copiar para o suporte*. |
+
+### 8.1 Notas fiscais da plataforma
+- A receita do AçaíFood é só a **comissão** (taxa de vendas + taxa de transporte). Venda e frete são dos parceiros.
+- **Valor da nota** de cada parceiro = taxa de vendas + taxa de transporte cobradas dele no mês. O tomador é o parceiro (loja/fornecedor pela taxa de vendas; motoboy/caminhoneiro pela taxa de transporte).
+- A tarifa Asaas da plataforma é despesa; não é descontada da nota.
+- Optantes do Simples Nacional emitem a **NFS-e no padrão nacional** (Emissor Nacional). Código de serviço, alíquota e se a nota pode ser mensal por parceiro: **confirme com o contador**.
 
 ---
 

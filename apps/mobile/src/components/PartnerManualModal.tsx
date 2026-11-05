@@ -323,7 +323,7 @@ function ManualBatedeira() {
             <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 space-y-1.5">
               <p><strong>Exemplo:</strong> pedido de R$ 42,00 (venda R$ 36,00 + frete R$ 6,00). O Asaas separa a comissão do app, desconta a parte da tarifa Pix e o restante fica na sua conta. Após o PIN, a corrida vai para o motoboy. O que sobra é seu saldo livre para saque. Os valores de cada pedido aparecem no seu Financeiro.</p>
             </div>
-            <p>• <strong>Saque</strong>: Peça o saque na aba Financeiro. Ele sai da sua conta Asaas por Pix para uma chave <strong>CPF ou CNPJ do mesmo titular</strong>. O administrador aprova (ou é automático, se ativado), e o saque só aparece como pago quando o Asaas confirma. A tarifa Pix do Asaas é descontada do valor enviado. Um saque por vez.</p>
+            <p>• <strong>Saque</strong>: Peça o saque na aba Financeiro. Ele sai da sua conta Asaas por Pix para uma chave <strong>CPF ou CNPJ do mesmo titular</strong>. O administrador aprova (ou é automático, se ativado), e o saque só aparece como pago quando o Asaas confirma. A tarifa Pix do Asaas é descontada do valor enviado. Um saque por vez em cada conta de recebimento.</p>
             <p>• <strong>Valor Mínimo de Saque</strong>: O valor mínimo configurado na plataforma é de R$ 20,00.</p>
           </div>
           <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1.5">
@@ -342,6 +342,7 @@ function ManualBatedeira() {
               Conforme as <strong>Resoluções BCB nº 1/2020 e nº 80/2021 do Banco Central do Brasil</strong> e as normas de segurança do Asaas, todo saque é processado <strong>exclusivamente para a conta bancária do mesmo titular (mesmo CPF ou CNPJ)</strong> cadastrado na plataforma, impedindo qualquer desvio de valores.
             </p>
           </div>
+          <ContasVinculadasInfo />
         </div>
       )}
     </div>
@@ -447,8 +448,26 @@ function ManualFornecedor() {
               • Após a entrega concluída, avalie a loja compradora e o caminhoneiro com 1 a 5 estrelas.
             </p>
           </div>
+          <ContasVinculadasInfo />
         </div>
       )}
+    </div>
+  );
+}
+
+// R51: mesma pessoa (mesmo CPF/CNPJ) com mais de uma conta no app
+function ContasVinculadasInfo() {
+  return (
+    <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs space-y-1.5">
+      <p className="font-bold text-purple-900 dark:text-purple-300">🔗 Várias contas com o mesmo CPF/CNPJ (contas vinculadas):</p>
+      <p className="text-purple-800 dark:text-purple-300">
+        • O Asaas permite <strong>uma conta de recebimento por CPF/CNPJ</strong>. Se você tem mais de uma conta no app com outro e-mail (por exemplo, duas lojas, ou loja e motoboy), a primeira que abriu a conta Asaas é a <strong>conta principal</strong>.<br/>
+        • Ao abrir a conta de recebimento na segunda conta, o app envia um <strong>pedido de vínculo</strong>. Aprove na conta principal, no cartão <em>&quot;🔗 Contas vinculadas&quot;</em> do painel.<br/>
+        • Depois de aprovada, a conta vinculada recebe vendas e corridas <strong>na mesma conta de recebimento</strong>. O saldo é um só para todas.<br/>
+        • <strong>Saque:</strong> por padrão só a conta principal saca. A principal pode tocar em <em>&quot;Liberar saque&quot;</em> para a vinculada. Só um saque por vez em cada conta de recebimento.<br/>
+        • A conta principal pode <em>Desvincular</em> quando quiser, desde que não haja pedido, corrida ou saque em andamento.<br/>
+        • No banco do cliente, o recebedor do Pix aparece com o nome do titular do CPF/CNPJ.
+      </p>
     </div>
   );
 }
@@ -466,11 +485,12 @@ function ManualMotoboy() {
         <p>3. 👁️ <strong>Transparência de Ganhos</strong>: Veja o valor líquido do frete, a distância em km e o mapa da rota antes de aceitar.</p>
         <p>4. 🧭 <strong>Navegação GPS Automatizada & Chegada</strong>:</p>
         <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
-          <li><strong>🚀 Redirecionamento Automático p/ Loja:</strong> Ao aceitar a corrida no Radar, o app redireciona você automaticamente para o mapa de rota até a batedeira.</li>
-          <li>Ao chegar, retire o pedido e confirme a retirada com o PIN de balcão da loja.</li>
-          <li><strong>🏁 Redirecionamento Automático p/ Cliente:</strong> Ao confirmar o PIN de retirada, o app abre imediatamente a rota GPS até a casa do cliente!</li>
-          <li>Atalhos extras: você pode usar os botões <em>"🚀 GPS p/ Retirada"</em> e <em>"🏁 GPS p/ Cliente"</em> para reabrir no Google Maps ou Waze a qualquer momento.</li>
-          <li>Ao chegar ao cliente, clique em <em>"Confirmar Chegada no Cliente"</em>.</li>
+          <li><strong>🚀 Rota até a loja:</strong> Ao tocar em <em>&quot;Aceitar Corrida &amp; Abrir GPS&quot;</em>, o app abre o Google Maps com a rota até a batedeira.</li>
+          <li><strong>📲 Se o mapa não abrir sozinho</strong> (alguns celulares bloqueiam): aparece um <strong>botão roxo grande</strong> no rodapé, <em>&quot;Abrir GPS até a batedeira&quot;</em>. Toque nele.</li>
+          <li>Ao chegar, retire o pedido, digite o PIN de balcão da loja e toque em <em>&quot;Validar e Abrir GPS do Cliente&quot;</em>: o app abre a rota até o cliente (ou o botão <em>&quot;Abrir GPS até o cliente&quot;</em>).</li>
+          <li>Os botões <em>&quot;GPS p/ Retirada&quot;</em> e <em>&quot;GPS p/ Cliente&quot;</em> no card da corrida reabrem a rota no Google Maps quando você quiser.</li>
+          <li>Sem endereço cadastrado, o app avisa: use o <strong>Chat &amp; Voz</strong> da corrida para combinar o local.</li>
+          <li>Ao chegar ao cliente, toque em <em>&quot;🏁 Cheguei ao Endereço do Cliente&quot;</em>.</li>
         </ul>
         <p>5. 🔐 <strong>Validação Obrigatória do PIN de 4 Dígitos</strong>: Peça o PIN ao cliente, digite na tela e confirme. Sem o PIN correto, a entrega não fecha e a corrida não é paga.</p>
       </div>
@@ -489,6 +509,7 @@ function ManualMotoboy() {
           • <strong>Lojas que me indicam & Avaliações:</strong> Quando ativo na sua cidade, aceite ou encerre convites de lojas quando quiser, veja o selo <em>&quot;🤝 Te indicou&quot;</em> no radar e avalie clientes e lojas com 1 a 5 estrelas após concluir a entrega.
         </p>
       </div>
+      <ContasVinculadasInfo />
     </div>
   );
 }
@@ -508,7 +529,7 @@ function ManualCaminhao() {
           <li><strong>Coleta de Resíduos (Caçamba)</strong>: Remoção de caroços da Batedeira para Ecopontos e Usinas.</li>
         </ul>
         <p>3. 🗺️ <strong>Rotas & Navegação</strong>: Visualize origem, destino, traçado pelas vias principais e valor líquido do frete.</p>
-        <p>4. 🧭 <strong>Botões de GPS</strong>: Use os atalhos <em>"🚀 GPS p/ Retirada"</em> e <em>"🏁 GPS p/ Destino"</em> para abrir no Google Maps.</p>
+        <p>4. 🧭 <strong>Botões de GPS</strong>: Use <em>&quot;📍 Google Maps (Retirada)&quot;</em> e <em>&quot;📍 Google Maps (Destino)&quot;</em> no card do frete para abrir a rota no Google Maps.</p>
         <p>5. 🔐 <strong>PIN de Conclusão</strong>: Ao descarregar, solicite o PIN de 4 dígitos ao responsável no destino (loja ou ecoponto) e valide na tela.</p>
       </div>
       <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-800 text-xs space-y-2">
@@ -526,6 +547,7 @@ function ManualCaminhao() {
           • <strong>Quem me indica & Avaliações:</strong> Quando ativo na sua cidade, gerencie convites separados de Fornecedores (B2B) e Lojas (Coleta) e avalie as partes com 1 a 5 estrelas após a conclusão.
         </p>
       </div>
+      <ContasVinculadasInfo />
     </div>
   );
 }

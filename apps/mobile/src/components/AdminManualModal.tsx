@@ -8,7 +8,7 @@ interface AdminManualModalProps {
   onClose: () => void;
 }
 
-type Section = 'visao_geral' | 'taxas' | 'usuarios' | 'saques' | 'pagamentos' | 'operacao_radar' | 'seguranca' | 'ocorrencias' | 'suporte_anuncios';
+type Section = 'visao_geral' | 'taxas' | 'usuarios' | 'saques' | 'pagamentos' | 'operacao_radar' | 'seguranca' | 'ocorrencias' | 'suporte_anuncios' | 'notas_vinculos';
 
 const sections: { key: Section; label: string; icon: React.ReactNode }[] = [
   { key: 'visao_geral',      label: '1. Visão Geral',             icon: <BookOpen size={13} /> },
@@ -20,6 +20,7 @@ const sections: { key: Section; label: string; icon: React.ReactNode }[] = [
   { key: 'seguranca',        label: '7. Segurança, Reset & PIN',  icon: <ShieldCheck size={13} /> },
   { key: 'ocorrencias',      label: '8. Relatório de Ocorrências', icon: <BookOpen size={13} /> },
   { key: 'suporte_anuncios', label: '9. Suporte & Anúncios',      icon: <Headphones size={13} /> },
+  { key: 'notas_vinculos',   label: '10. Notas do mês & Contas vinculadas', icon: <DollarSign size={13} /> },
 ];
 
 export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
@@ -244,7 +245,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
             <div className="space-y-4 animate-in fade-in duration-150">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">📋 Relatório de Ocorrências & Auditoria</h3>
               <p>
-                A aba <strong>📋 Ocorrências & Auditoria</strong> consolida todos os problemas e eventos críticos ocorridos na plataforma:
+                Em <strong>🛒 Pedidos → 📋 Ocorrências</strong>, o painel consolida todos os problemas e eventos críticos ocorridos na plataforma:
               </p>
 
               <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 text-xs space-y-2">
@@ -272,7 +273,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                   <Headphones size={15} /> Atendimento ao Vivo em Tempo Real:
                 </p>
                 <p className="text-purple-800 dark:text-purple-300">
-                  Na aba <strong>Suporte</strong>, a administração recebe mensagens de chat enviadas por qualquer cliente ou parceiro, respondendo em tempo real com indicador sonoro e histórico de atendimento.
+                  Na aba <strong>🎧 Suporte</strong>, a administração recebe mensagens de chat enviadas por qualquer cliente ou parceiro, respondendo em tempo real com indicador sonoro e histórico de atendimento.
                 </p>
               </div>
 
@@ -281,8 +282,33 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                   <Megaphone size={15} /> Banners e Stories Patrocinados:
                 </p>
                 <p className="text-zinc-600 dark:text-zinc-400">
-                  Na aba <strong>Anúncios</strong>, cadastre banners promocionais e stories com fotos de produtos para exibição na vitrine inicial do app, aumentando as vendas de lojas parceiras selecionadas.
+                  Na aba <strong>📢 Anúncios</strong>, cadastre banners promocionais e stories com fotos de produtos para exibição na vitrine inicial do app, aumentando as vendas de lojas parceiras selecionadas.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'notas_vinculos' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">🧾 Notas do mês & 🔗 Contas vinculadas</h3>
+
+              <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 text-xs space-y-2">
+                <p className="font-bold text-purple-900 dark:text-purple-300">🧾 Notas do mês (💰 Financeiro → Notas do mês)</p>
+                <p>• A receita da plataforma é só a <strong>comissão</strong>: <em>taxa de vendas</em> (sobre os produtos, paga pela loja/fornecedor) e <em>taxa de transporte</em> (sobre o frete, paga pelo motoboy/caminhoneiro). Venda e frete são dos parceiros.</p>
+                <p>• A faixa <strong>📅 Competência</strong> mostra o mês. Até o dia 10 a tela abre no mês anterior (época de emitir as notas); use <em>◀ Mês anterior</em> / <em>Mês atual ▶</em>.</p>
+                <p>• Para cada parceiro, a coluna <strong>Valor da nota</strong> = taxa vendas + taxa transporte. É o valor da NFS-e (tomador = o parceiro) e entra na base do DAS.</p>
+                <p>• A <strong>tarifa Asaas da plataforma</strong> é despesa da empresa: não é descontada da nota. <em>Líquido na conta</em> = valor das notas − tarifa da plataforma.</p>
+                <p>• <em>Agrupar por CPF/CNPJ</em> junta numa linha as contas da mesma pessoa (várias lojas, ou loja e motoboy). <em>Exportar CSV</em> gera a planilha para o contador.</p>
+                <p>• Empresas do Simples emitem a NFS-e no padrão nacional (Emissor Nacional). Código de serviço, alíquota e forma da nota: confirme com o contador.</p>
+              </div>
+
+              <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
+                <p className="font-bold text-zinc-900 dark:text-white">🔗 Contas vinculadas (👥 Parceiros → Subcontas Asaas e contas vinculadas)</p>
+                <p>• O Asaas aceita uma subconta por CPF/CNPJ. Quando a mesma pessoa cria outra conta no app (outro e-mail), o app cria um <strong>pedido de vínculo</strong> para a conta principal.</p>
+                <p>• A conta principal aprova no painel dela; o admin também pode <em>Aprovar</em>, <em>Recusar</em>, <em>Liberar/Bloquear saque</em> e <em>Desvincular</em> na tabela.</p>
+                <p>• Saldo único por subconta e <strong>um saque aberto por vez</strong> para todas as contas do grupo (trava no banco).</p>
+                <p>• Desvincular só é possível sem pedidos, corridas ou saques em andamento.</p>
+                <p>• <strong>Para o suporte Asaas:</strong> em ⚙️ Configurações → Auditoria, a lista <em>Requisições enviadas ao Asaas</em> tem o botão <em>Copiar para o suporte</em> (o que o app enviou e o que o Asaas respondeu, sem chaves).</p>
               </div>
             </div>
           )}
