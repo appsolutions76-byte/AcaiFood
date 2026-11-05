@@ -78,9 +78,35 @@ async function apiPost(url: string, body: any): Promise<any> {
   return data;
 }
 
-export function AdminComplianceSection({ showToast, showLegacy = false }: { showToast?: (msg: string) => void; showLegacy?: boolean }) {
+// R50: o painel admin mostra cada bloco na sua subaba (Financeiro, Parceiros, Configurações)
+export type ComplianceView = 'conta' | 'pagamentos' | 'subcontas' | 'repasses' | 'auditoria';
+
+export function AdminComplianceSection({ showToast, showLegacy = false, view }: { showToast?: (msg: string) => void; showLegacy?: boolean; view?: ComplianceView }) {
   const [tab, setTab] = useState<SubTab>('subcontas');
   const toast = useCallback((m: string) => { if (showToast) showToast(m); }, [showToast]);
+
+  if (view) {
+    return (
+      <div className="space-y-4">
+        {view === 'conta' && <RootBalancePanel toast={toast} />}
+        {view === 'pagamentos' && (
+          <>
+            <PaymentModelPanel toast={toast} showLegacy={showLegacy} />
+            <RefundFeePayerPanel toast={toast} />
+            <TransferValidationPanel toast={toast} />
+          </>
+        )}
+        {view === 'subcontas' && <SubaccountsPanel toast={toast} />}
+        {view === 'repasses' && <SettlementsPanel toast={toast} />}
+        {view === 'auditoria' && (
+          <>
+            <AuditLogPanel />
+            <SlaPanel toast={toast} />
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -211,7 +237,7 @@ export function RootBalanceBanner({ onOpen }: { onOpen?: () => void }) {
       </p>
       {onOpen && (
         <button onClick={onOpen} className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/80 dark:bg-zinc-900 border border-current cursor-pointer">
-          Ver em Conformidade
+          Ver conta da plataforma
         </button>
       )}
     </div>

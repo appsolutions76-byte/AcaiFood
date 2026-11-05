@@ -61,13 +61,16 @@ export async function GET(request: Request) {
       (data || []).forEach((u: any) => { vehicle[u.id] = String(u.vehicle_type || '').toUpperCase(); });
     }
 
-    let volume = 0, receitaLiquida = 0, comissaoBruta = 0, tarifaAsaas = 0;
+    let volume = 0, receitaLiquida = 0, comissaoBruta = 0, tarifaAsaas = 0, comissaoVendas = 0, comissaoFrete = 0, tarifaAsaasPlataforma = 0;
     let batBruto = 0, batLiq = 0, fornBruto = 0, fornLiq = 0, motBruto = 0, motLiq = 0, camBruto = 0, camLiq = 0;
     for (const o of done) {
       const f = orderFinance(o);
       volume += f.produtos + f.frete;
       receitaLiquida += f.receitaLiquida;
       comissaoBruta += f.comissaoVenda + f.comissaoFrete;
+      comissaoVendas += f.comissaoVenda;
+      comissaoFrete += f.comissaoFrete;
+      tarifaAsaasPlataforma += f.asaasPlataforma;
       tarifaAsaas += f.asaasTotal;
       if (f.type === 'B2C') { batBruto += f.produtos; batLiq += f.repasseVendedor; }
       else if (f.type === 'B2B') { fornBruto += f.produtos; fornLiq += f.repasseVendedor; }
@@ -91,6 +94,9 @@ export async function GET(request: Request) {
         volume: r2(volume),
         appRev: r2(receitaLiquida),
         comissaoBruta: r2(comissaoBruta),
+        comissaoVendas: r2(comissaoVendas),
+        comissaoFrete: r2(comissaoFrete),
+        tarifaAsaasPlataforma: r2(tarifaAsaasPlataforma),
         tarifaAsaas: r2(tarifaAsaas),
         batBruto: r2(batBruto), batLiq: r2(batLiq),
         fornBruto: r2(fornBruto), fornLiq: r2(fornLiq),

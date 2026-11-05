@@ -21,6 +21,9 @@ type PartnerRow = {
   freteSubsidiado: number;
   repasseLiquido: number;
   pedidosEstimados: number;
+  // R50: taxa de vendas (papel vendedor) x taxa de transporte (papel entregador)
+  taxaVendas?: number;
+  taxaTransporte?: number;
 };
 
 type Totals = {
@@ -93,7 +96,11 @@ export function AdminFiscalCloseSection() {
       if (tipo !== 'all' && p.tipo !== tipo) return false;
       if (q && !(`${p.nome} ${p.documento} ${p.email} ${p.cidade}`.toLowerCase().includes(q))) return false;
       return true;
-    });
+    }).map(p => ({
+      ...p,
+      taxaVendas: p.papel === 'VENDEDOR' ? p.comissao : 0,
+      taxaTransporte: p.papel === 'ENTREGADOR' ? p.comissao : 0,
+    }));
     if (!groupByDoc) return filtered;
     const byDoc = new Map<string, PartnerRow>();
     for (const p of filtered) {
@@ -107,6 +114,8 @@ export function AdminFiscalCloseSection() {
         pedidos: cur.pedidos + p.pedidos,
         valorBase: cur.valorBase + p.valorBase,
         comissao: cur.comissao + p.comissao,
+        taxaVendas: (cur.taxaVendas || 0) + (p.taxaVendas || 0),
+        taxaTransporte: (cur.taxaTransporte || 0) + (p.taxaTransporte || 0),
         tarifaAsaas: cur.tarifaAsaas + p.tarifaAsaas,
         freteSubsidiado: cur.freteSubsidiado + p.freteSubsidiado,
         repasseLiquido: cur.repasseLiquido + p.repasseLiquido,
@@ -120,9 +129,11 @@ export function AdminFiscalCloseSection() {
     pedidos: a.pedidos + p.pedidos,
     valorBase: a.valorBase + p.valorBase,
     comissao: a.comissao + p.comissao,
+    taxaVendas: a.taxaVendas + (p.taxaVendas || 0),
+    taxaTransporte: a.taxaTransporte + (p.taxaTransporte || 0),
     tarifaAsaas: a.tarifaAsaas + p.tarifaAsaas,
     repasseLiquido: a.repasseLiquido + p.repasseLiquido,
-  }), { pedidos: 0, valorBase: 0, comissao: 0, tarifaAsaas: 0, repasseLiquido: 0 }), [visible]);
+  }), { pedidos: 0, valorBase: 0, comissao: 0, taxaVendas: 0, taxaTransporte: 0, tarifaAsaas: 0, repasseLiquido: 0 }), [visible]);
 
   const downloadCsv = async () => {
     try {
@@ -163,6 +174,15 @@ export function AdminFiscalCloseSection() {
             Quanto cada parceiro pagou à plataforma no mês (comissões), com os valores gravados em cada pedido no pagamento.
             Competência pela data de conclusão do pedido; só pedidos concluídos (cancelados e estornados ficam fora).
           </p>
+        </div>
+
+        {/* R50: mês da competência sempre visível */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50 px-4 py-3">
+          <p className="text-sm font-black text-purple-900 dark:text-purple-200 uppercase">📅 Competência: {monthLabel(month)}</p>
+          <div className="flex gap-2">
+            <button onClick={() => setMonth(previousMonth(month))} className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-800 text-xs font-bold text-purple-700 dark:text-purple-300 cursor-pointer">◀ Mês anterior</button>
+            <button onClick={() => setMonth(currentMonthBelem())} disabled={month === currentMonthBelem()} className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-800 text-xs font-bold text-purple-700 dark:text-purple-300 disabled:opacity-40 cursor-pointer">Mês atual ▶</button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-end gap-3">
@@ -223,23 +243,24 @@ export function AdminFiscalCloseSection() {
             <p className="text-lg font-bold text-zinc-900 dark:text-white">{totals.pedidos}</p>
           </div>
           <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <p className="text-[10px] text-zinc-500 uppercase font-bold">Comissão de vendas</p>
+            <p className="text-[10px] text-zinc-500 uppercase font-bold">🥣 Taxas de vendas</p>
             <p className="text-lg font-bold text-purple-700 dark:text-purple-300">{formatMoney(totals.comissaoVendas)}</p>
           </div>
           <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <p className="text-[10px] text-zinc-500 uppercase font-bold">Comissão de frete</p>
+            <p className="text-[10px] text-zinc-500 uppercase font-bold">🛵 Taxas de transporte</p>
             <p className="text-lg font-bold text-purple-700 dark:text-purple-300">{formatMoney(totals.comissaoFrete)}</p>
           </div>
           <div className="bg-purple-50 dark:bg-purple-950/30 p-3.5 rounded-xl border border-purple-200 dark:border-purple-900/50">
-            <p className="text-[10px] text-purple-700 dark:text-purple-400 uppercase font-bold">Comissão total</p>
+            <p className="text-[10px] text-purple-700 dark:text-purple-400 uppercase font-bold">Valor total das notas</p>
             <p className="text-lg font-bold text-purple-800 dark:text-purple-300">{formatMoney(totals.comissaoTotal)}</p>
           </div>
           <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <p className="text-[10px] text-zinc-500 uppercase font-bold">Tarifa Asaas (total)</p>
-            <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatMoney(totals.tarifaAsaasTotal)}</p>
+            <p className="text-[10px] text-zinc-500 uppercase font-bold">Tarifa Asaas da plataforma</p>
+            <p className="text-lg font-bold text-red-600 dark:text-red-400">− {formatMoney(totals.tarifaAsaasPlataforma)}</p>
+            <p className="text-[9px] text-zinc-400">Total de todos: {formatMoney(totals.tarifaAsaasTotal)}</p>
           </div>
           <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/50">
-            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase font-bold">Receita líquida app</p>
+            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase font-bold">Líquido na conta</p>
             <p className="text-lg font-bold text-emerald-800 dark:text-emerald-300">{formatMoney(totals.receitaLiquida)}</p>
           </div>
         </div>
@@ -247,13 +268,15 @@ export function AdminFiscalCloseSection() {
 
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[900px]">
+          <table className="w-full text-left text-xs min-w-[1100px]">
             <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 uppercase text-[10px] font-bold">
               <tr>
                 <th className="p-3">Parceiro</th>
                 <th className="p-3">CPF/CNPJ</th>
                 <th className="p-3 text-right">Pedidos</th>
                 <th className="p-3 text-right">Vendas / Fretes</th>
+                <th className="p-3 text-right">Taxa vendas</th>
+                <th className="p-3 text-right">Taxa transporte</th>
                 <th className="p-3 text-right">Valor da nota</th>
                 <th className="p-3 text-right">Tarifa Asaas paga</th>
                 <th className="p-3 text-right">Frete pago pela loja</th>
@@ -262,9 +285,9 @@ export function AdminFiscalCloseSection() {
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {loading ? (
-                <tr><td colSpan={8} className="p-6 text-center text-zinc-400">Carregando {monthLabel(month)}...</td></tr>
+                <tr><td colSpan={10} className="p-6 text-center text-zinc-400">Carregando {monthLabel(month)}...</td></tr>
               ) : visible.length === 0 ? (
-                <tr><td colSpan={8} className="p-6 text-center text-zinc-400">Nenhum parceiro com pedidos concluídos em {monthLabel(month)} neste filtro.</td></tr>
+                <tr><td colSpan={10} className="p-6 text-center text-zinc-400">Nenhum parceiro com pedidos concluídos em {monthLabel(month)} neste filtro.</td></tr>
               ) : visible.map(p => (
                 <tr key={`${p.papel}:${p.partnerId}`} className="align-top">
                   <td className="p-3">
@@ -277,6 +300,8 @@ export function AdminFiscalCloseSection() {
                   <td className="p-3 font-mono">{p.documento || <span className="text-red-500">sem cadastro</span>}</td>
                   <td className="p-3 text-right">{p.pedidos}</td>
                   <td className="p-3 text-right">{formatMoney(p.valorBase)}</td>
+                  <td className="p-3 text-right text-indigo-700 dark:text-indigo-300">{p.taxaVendas ? formatMoney(p.taxaVendas) : '—'}</td>
+                  <td className="p-3 text-right text-amber-700 dark:text-amber-300">{p.taxaTransporte ? formatMoney(p.taxaTransporte) : '—'}</td>
                   <td className="p-3 text-right font-bold text-purple-700 dark:text-purple-300">{formatMoney(p.comissao)}</td>
                   <td className="p-3 text-right text-red-600 dark:text-red-400">{formatMoney(p.tarifaAsaas)}</td>
                   <td className="p-3 text-right">{p.papel === 'VENDEDOR' ? formatMoney(p.freteSubsidiado) : '—'}</td>
@@ -290,6 +315,8 @@ export function AdminFiscalCloseSection() {
                   <td className="p-3" colSpan={2}>Total do filtro ({visible.length} parceiro(s))</td>
                   <td className="p-3 text-right">{visibleTotals.pedidos}</td>
                   <td className="p-3 text-right">{formatMoney(visibleTotals.valorBase)}</td>
+                  <td className="p-3 text-right text-indigo-700 dark:text-indigo-300">{formatMoney(visibleTotals.taxaVendas)}</td>
+                  <td className="p-3 text-right text-amber-700 dark:text-amber-300">{formatMoney(visibleTotals.taxaTransporte)}</td>
                   <td className="p-3 text-right text-purple-700 dark:text-purple-300">{formatMoney(visibleTotals.comissao)}</td>
                   <td className="p-3 text-right text-red-600 dark:text-red-400">{formatMoney(visibleTotals.tarifaAsaas)}</td>
                   <td className="p-3 text-right">—</td>
@@ -302,7 +329,7 @@ export function AdminFiscalCloseSection() {
       </div>
 
       <p className="text-[11px] text-zinc-500">
-        &quot;Valor da nota&quot; é a comissão bruta que a plataforma cobrou do parceiro (base da NFS-e e do DAS). A tarifa Pix do Asaas
+        &quot;Valor da nota&quot; = taxa de vendas + taxa de transporte: a comissão bruta que a plataforma cobrou do parceiro (base da NFS-e e do DAS). A tarifa Pix do Asaas
         aparece separada. Confirme com o seu contador qual valor usar na nota fiscal.
       </p>
     </div>

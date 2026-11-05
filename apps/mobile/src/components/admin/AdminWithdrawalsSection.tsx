@@ -28,6 +28,8 @@ interface AdminWithdrawalsSectionProps {
   totalVolume?: number;
   appRevenue?: number;
   appRevenueGross?: number;
+  /** R50: no painel novo, volume e receita ficam só na Visão Geral */
+  showRevenueCards?: boolean;
   onRefreshAll?: () => void;
 }
 
@@ -42,6 +44,7 @@ export function AdminWithdrawalsSection({
   totalVolume = 0,
   appRevenue = 0,
   appRevenueGross,
+  showRevenueCards = true,
   onRefreshAll
 }: AdminWithdrawalsSectionProps) {
   const [activeTab, setActiveTab] = useState<'PENDENTE' | 'PROCESSING' | 'PAGO' | 'REJEITADO' | 'FALHOU' | 'all'>('PENDENTE');
@@ -282,7 +285,7 @@ export function AdminWithdrawalsSection({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-4">
           <div>
             <h2 className="text-xl font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
-              <Wallet className="text-purple-600" size={24} /> Central Financeira & Repasses Asaas
+              <Wallet className="text-purple-600" size={24} /> {showRevenueCards ? 'Central Financeira & Repasses Asaas' : 'Saques dos parceiros'}
             </h2>
             <p className="text-xs text-zinc-500">
               Gestão integrada de faturamento, liquidações em lote por praça e autorização de saques Pix
@@ -297,7 +300,8 @@ export function AdminWithdrawalsSection({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-2 ${showRevenueCards ? 'lg:grid-cols-4' : ''} gap-4`}>
+          {showRevenueCards && (<>
           {/* Volume Total Transacionado */}
           <div className="bg-gradient-to-br from-indigo-900/10 to-purple-900/20 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-800/60 p-4 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between">
@@ -328,6 +332,7 @@ export function AdminWithdrawalsSection({
             </div>
             <p className="text-[10px] text-zinc-500 mt-1">Bruta = comissões (vendas + frete) · Líquida = bruta menos a parte da tarifa Pix Asaas</p>
           </div>
+          </>)}
 
           {/* Saldo Pendente de Repasse aos Parceiros */}
           <div className="bg-gradient-to-br from-amber-900/10 to-orange-900/20 dark:from-amber-950/40 dark:to-orange-950/40 border border-amber-200 dark:border-amber-800/60 p-4 rounded-2xl shadow-sm">

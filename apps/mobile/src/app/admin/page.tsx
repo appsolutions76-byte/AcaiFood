@@ -123,7 +123,7 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState<CityRates>(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'simulador' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'conformidade' | 'fiscal' | 'mapa'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'simulador' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'fiscal' | 'mapa' | 'subcontas' | 'repasses' | 'conta' | 'pagamentos' | 'auditoria'>('dashboard');
   const [selectedSupportUserId, setSelectedSupportUserId] = useState<string | null>(null);
   const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
   const [activationConfig, setActivationConfig] = useState<{
@@ -1192,6 +1192,9 @@ function AdminDashboardContent() {
       // R42: receita líquida (comissões menos a parte da tarifa Asaas paga pela plataforma)
       appRev: localVendas + localFretes - localAsaasPlat,
       comissaoBruta: localVendas + localFretes,
+      comissaoVendas: localVendas,
+      comissaoFrete: localFretes,
+      tarifaAsaasPlataforma: localAsaasPlat,
       fornBruto: localFornBruto,
       fornLiq: localFornLiq,
       batBruto: localBatBruto,
@@ -1248,7 +1251,11 @@ function AdminDashboardContent() {
       emRota: localStats.emRota,
       receitaVendas: localStats.appRev,
       receitaBruta: Number((localStats as any).comissaoBruta ?? 0),
-      receitaFretes: 0
+      receitaFretes: 0,
+      // R50: taxas da plataforma separadas (vendas x transporte) e tarifa Asaas da plataforma
+      taxasVendas: Number((localStats as any).comissaoVendas ?? 0),
+      taxasTransporte: Number((localStats as any).comissaoFrete ?? 0),
+      tarifaPlataforma: Number((localStats as any).tarifaAsaasPlataforma ?? 0)
   };
 
   const partnersWithPendingPayouts = useMemo(() => {
@@ -1907,50 +1914,62 @@ function AdminDashboardContent() {
           </div>
         </div>
 
-        {/* Linha Inferior do Admin: Abas de Navegação 100% Congeladas / Fixas no Topo */}
-        <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 flex overflow-x-auto no-scrollbar gap-1">
-            <button onClick={() => setActiveTab('dashboard')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'dashboard' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>📊 Visão Geral</button>
-            <button onClick={() => setActiveTab('mapa')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'mapa' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🗺️ Mapa ao vivo</button>
-            <button onClick={() => setActiveTab('simulador')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'simulador' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>📊 Simulador</button>
-            <button onClick={() => setActiveTab('usuarios')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'usuarios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>👥 Usuários</button>
-            <button onClick={() => setActiveTab('ativacoes')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'ativacoes' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
-              <span>🛡️ Ativação de Parceiros</span>
-              <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full font-black">
-                {subsidizedPartnersCount}/{activationConfig.freeQuota}
-              </span>
-            </button>
-            <button onClick={() => { setActiveTab('anuncios'); fetchAds(); }} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'anuncios' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
-              <span>📢 Comerciais & Anúncios</span>
-              {adsList.filter(a => a.isActive !== false && (a as any).active !== false).length > 0 && (
-                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full font-black">
-                  {adsList.filter(a => a.isActive !== false && (a as any).active !== false).length}
-                </span>
+        {/* R50: navegação em 7 grupos com subabas (antes eram 13 abas soltas) */}
+        {(() => {
+          const activeAdsCount = adsList.filter(a => a.isActive !== false && (a as any).active !== false).length;
+          type NavTab = typeof activeTab;
+          const groups: Array<{ id: string; label: string; badge?: number; badgeClass?: string; onEnter?: () => void; tabs: Array<[NavTab, string]> }> = [
+            { id: 'inicio', label: '📊 Visão Geral', tabs: [['dashboard', '📊 Resumo'], ['mapa', '🗺️ Mapa ao vivo']] },
+            { id: 'pedidos', label: '🛒 Pedidos', tabs: [['pedidos', '🛒 Histórico de pedidos'], ['ocorrencias', '📋 Ocorrências']] },
+            { id: 'parceiros', label: '👥 Parceiros', tabs: [['usuarios', '👥 Usuários'], ['ativacoes', `🛡️ Ativações (${subsidizedPartnersCount}/${activationConfig.freeQuota})`], ['subcontas', '🏦 Subcontas Asaas e contas vinculadas']] },
+            {
+              id: 'financeiro', label: '💰 Financeiro',
+              badge: partnersWithPendingPayouts.length, badgeClass: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300',
+              tabs: [
+                ['saques', '💳 Saques'],
+                ['fiscal', '🧾 Notas do mês'],
+                ['repasses', '💸 Repasses dos pedidos'],
+                ['conta', '🏦 Conta da plataforma'],
+                ...(showLegacy ? [['conciliacao', '⚖️ Conciliação Pix (antigo)'] as [NavTab, string]] : []),
+              ],
+            },
+            { id: 'suporte', label: '🎧 Suporte', tabs: [['suporte', '🎧 Atendimento']] },
+            { id: 'anuncios', label: '📢 Anúncios', badge: activeAdsCount, badgeClass: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300', onEnter: () => { fetchAds(); }, tabs: [['anuncios', '📢 Comerciais & anúncios']] },
+            { id: 'config', label: '⚙️ Configurações', tabs: [['pagamentos', '💳 Pagamentos'], ['cidades', '🌍 Cidades e taxas'], ['simulador', '📊 Simulador'], ['auditoria', '🧾 Auditoria']] },
+          ];
+          const currentGroup = groups.find(g => g.tabs.some(t => t[0] === activeTab)) || groups[0];
+          return (
+            <>
+              <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 flex overflow-x-auto no-scrollbar gap-1">
+                {groups.map(g => (
+                  <button
+                    key={g.id}
+                    onClick={() => { if (g.id !== currentGroup.id) { setActiveTab(g.tabs[0][0]); if (g.onEnter) g.onEnter(); } }}
+                    className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${g.id === currentGroup.id ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
+                  >
+                    <span>{g.label}</span>
+                    {!!g.badge && g.badge > 0 && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${g.badgeClass || ''}`}>{g.badge}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {currentGroup.tabs.length > 1 && (
+                <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 pb-2 pt-1 flex overflow-x-auto no-scrollbar gap-1.5">
+                  {currentGroup.tabs.map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setActiveTab(key)}
+                      className={`px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold border transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === key ? 'bg-purple-600 text-white border-purple-600' : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-purple-400'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               )}
-            </button>
-            <button onClick={() => setActiveTab('suporte')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'suporte' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
-              <span>🎧 Atendimento & Suporte</span>
-            </button>
-            <button onClick={() => setActiveTab('saques')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'saques' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
-              <span>💳 Financeiro & Repasses</span>
-              {partnersWithPendingPayouts.length > 0 && (
-                <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-black">
-                  {partnersWithPendingPayouts.length}
-                </span>
-              )}
-            </button>
-            {showLegacy && (
-            <button onClick={() => setActiveTab('conciliacao')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'conciliacao' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
-              <span>⚖️ Conciliação Pix</span>
-            </button>
-            )}
-            <button onClick={() => setActiveTab('conformidade')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${activeTab === 'conformidade' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
-              <span>🛡️ Conformidade</span>
-            </button>
-            <button onClick={() => setActiveTab('pedidos')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'pedidos' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🛒 Histórico de Pedidos</button>
-            <button onClick={() => setActiveTab('fiscal')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'fiscal' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🧾 Fechamento / Notas</button>
-            <button onClick={() => setActiveTab('ocorrencias')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'ocorrencias' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>📋 Ocorrências & Auditoria</button>
-            <button onClick={() => setActiveTab('cidades')} className={`py-3 px-3.5 font-bold text-xs sm:text-sm border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${activeTab === 'cidades' ? 'border-purple-600 text-purple-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>🌍 Cidades / Expansão</button>
-        </div>
+            </>
+          );
+        })()}
       </header>
 
       {/* MOBILE DRAWER EXCLUSIVO MOBILE ADMIN */}
@@ -2067,7 +2086,7 @@ function AdminDashboardContent() {
       )}
 
       <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
-        <RootBalanceBanner onOpen={() => setActiveTab('conformidade')} />
+        <RootBalanceBanner onOpen={() => setActiveTab('conta')} />
         
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300 font-medium">
@@ -2091,7 +2110,7 @@ function AdminDashboardContent() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800">
                 <p className="text-zinc-500 dark:text-zinc-400 text-[11px] uppercase font-bold">Total de Pedidos</p>
                 <p className="text-xl font-bold text-zinc-900 dark:text-white">{totais.pedidos}</p>
@@ -2112,18 +2131,40 @@ function AdminDashboardContent() {
                 <p className="text-zinc-500 dark:text-zinc-400 text-[11px] uppercase font-bold">Concluídos</p>
                 <p className="text-xl font-bold text-zinc-800 dark:text-zinc-200">{totais.concluidos}</p>
             </div>
-            <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-xl shadow-sm border border-purple-200 dark:border-purple-900/50">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-purple-700 dark:text-purple-400 text-[11px] uppercase font-bold">Receita bruta</p>
-                    <p className="text-xl font-bold text-zinc-800 dark:text-zinc-200">{formatMoney(totais.receitaBruta)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-purple-700 dark:text-purple-400 text-[11px] uppercase font-bold">Líquida</p>
-                    <p className="text-xl font-bold text-purple-800 dark:text-purple-300">{formatMoney(totais.receitaVendas)}</p>
-                  </div>
+        </div>
+
+        {/* R50: receita da plataforma com as taxas de vendas e de transporte separadas */}
+        <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-sm border border-purple-200 dark:border-purple-900/50 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-1">
+                <h3 className="font-bold text-sm text-zinc-800 dark:text-zinc-100">💜 Receita da AçaíFood (taxas cobradas)</h3>
+                <p className="text-[10px] text-zinc-500">Bruta = taxas de vendas + taxas de transporte (valor das notas) · Líquida = bruta − tarifa Asaas da plataforma</p>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/50">
+                    <p className="text-indigo-700 dark:text-indigo-400 text-[10px] uppercase font-bold">🥣 Taxas de vendas</p>
+                    <p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{formatMoney(totais.taxasVendas)}</p>
+                    <p className="text-[9px] text-zinc-500">Comissão sobre os produtos</p>
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-1">Bruta = comissões · Líquida = bruta − parte da tarifa Asaas da plataforma</p>
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/50">
+                    <p className="text-amber-700 dark:text-amber-400 text-[10px] uppercase font-bold">🛵 Taxas de transporte</p>
+                    <p className="text-lg font-bold text-amber-900 dark:text-amber-100">{formatMoney(totais.taxasTransporte)}</p>
+                    <p className="text-[9px] text-zinc-500">Comissão sobre os fretes</p>
+                </div>
+                <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-900/10 border border-purple-300 dark:border-purple-800">
+                    <p className="text-purple-700 dark:text-purple-400 text-[10px] uppercase font-bold">Receita bruta</p>
+                    <p className="text-lg font-black text-purple-900 dark:text-purple-200">{formatMoney(totais.receitaBruta)}</p>
+                    <p className="text-[9px] text-zinc-500">Valor das notas / base do DAS</p>
+                </div>
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50">
+                    <p className="text-red-700 dark:text-red-400 text-[10px] uppercase font-bold">Tarifa Asaas</p>
+                    <p className="text-lg font-bold text-red-700 dark:text-red-300">− {formatMoney(totais.tarifaPlataforma)}</p>
+                    <p className="text-[9px] text-zinc-500">Parte paga pela plataforma</p>
+                </div>
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/50">
+                    <p className="text-emerald-700 dark:text-emerald-400 text-[10px] uppercase font-bold">Receita líquida</p>
+                    <p className="text-lg font-black text-emerald-800 dark:text-emerald-300">{formatMoney(totais.receitaVendas)}</p>
+                    <p className="text-[9px] text-zinc-500">O que fica na conta</p>
+                </div>
             </div>
         </div>
 
@@ -3900,6 +3941,7 @@ function AdminDashboardContent() {
           <div className="animate-in fade-in zoom-in-95 duration-200">
             <AdminWithdrawalsSection 
               showToast={showToast}
+              showRevenueCards={false}
               totalOwedAllPartners={totalOwedAllPartners}
               pendingPayoutsByCity={pendingPayoutsByCity}
               partnersWithPendingPayouts={partnersWithPendingPayouts}
@@ -3926,10 +3968,26 @@ function AdminDashboardContent() {
           <AdminReconciliationSection />
         )}
 
-        {activeTab === 'conformidade' && (
+        {/* R50: blocos da antiga aba Conformidade, cada um na sua subaba */}
+        {activeTab === 'subcontas' && (
           <>
-            <AdminComplianceSection showToast={showToast} showLegacy={showLegacy} />
-            <AdminAccountLinksSection />
+            <AdminComplianceSection showToast={showToast} showLegacy={showLegacy} view="subcontas" />
+            <AdminAccountLinksSection show="links" />
+          </>
+        )}
+        {activeTab === 'repasses' && (
+          <AdminComplianceSection showToast={showToast} showLegacy={showLegacy} view="repasses" />
+        )}
+        {activeTab === 'conta' && (
+          <AdminComplianceSection showToast={showToast} showLegacy={showLegacy} view="conta" />
+        )}
+        {activeTab === 'pagamentos' && (
+          <AdminComplianceSection showToast={showToast} showLegacy={showLegacy} view="pagamentos" />
+        )}
+        {activeTab === 'auditoria' && (
+          <>
+            <AdminComplianceSection showToast={showToast} showLegacy={showLegacy} view="auditoria" />
+            <AdminAccountLinksSection show="logs" />
           </>
         )}
 

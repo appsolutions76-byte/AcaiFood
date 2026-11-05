@@ -466,7 +466,7 @@ export async function DELETE(request: Request) {
     afterState: { mode: result.mode, unlinked: unlinked.ok, reason }, request
   });
   if (!unlinked.ok) {
-    return NextResponse.json({ error: 'O Asaas encerrou a subconta, mas houve erro ao atualizar o banco. Use "Desvincular" na aba Conformidade.' }, { status: 500 });
+    return NextResponse.json({ error: 'O Asaas encerrou a subconta, mas houve erro ao atualizar o banco. Use "Desvincular" em Parceiros → Subcontas Asaas.' }, { status: 500 });
   }
   return NextResponse.json({ success: true, deletedAccountId: result.accountId });
 }

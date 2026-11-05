@@ -13,7 +13,7 @@ const maskDoc = (d: string) => {
   return x ? '***' : '';
 };
 
-export function AdminAccountLinksSection() {
+export function AdminAccountLinksSection({ show = 'all' }: { show?: 'all' | 'links' | 'logs' } = {}) {
   const [links, setLinks] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [migrationApplied, setMigrationApplied] = useState(true);
@@ -61,6 +61,7 @@ export function AdminAccountLinksSection() {
 
   return (
     <div className="space-y-4 mt-6">
+      {show !== 'logs' && (
       <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -105,11 +106,16 @@ export function AdminAccountLinksSection() {
           </div>
         )}
       </div>
+      )}
 
+      {show !== 'links' && (
       <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3">
-        <div>
-          <h3 className="font-bold text-zinc-900 dark:text-white">🧾 Requisições enviadas ao Asaas (abertura de subconta e vínculos)</h3>
-          <p className="text-xs text-zinc-500 mt-1">O que o app enviou e o que o Asaas respondeu, sem chaves secretas. Use &quot;Copiar para o suporte&quot; para mandar ao Asaas.</p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="font-bold text-zinc-900 dark:text-white">🧾 Requisições enviadas ao Asaas (abertura de subconta e vínculos)</h3>
+            <p className="text-xs text-zinc-500 mt-1">O que o app enviou e o que o Asaas respondeu, sem chaves secretas. Use &quot;Copiar para o suporte&quot; para mandar ao Asaas.</p>
+          </div>
+          {show === 'logs' && <button onClick={load} disabled={loading} className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-xs font-bold cursor-pointer">{loading ? '...' : '🔄'}</button>}
         </div>
         {logs.length === 0 ? (
           <p className="text-xs text-zinc-500">Nenhuma requisição registrada ainda (o registro começa a partir desta versão).</p>
@@ -127,6 +133,7 @@ export function AdminAccountLinksSection() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

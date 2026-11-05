@@ -88,14 +88,13 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                 </div>
               </div>
               <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
-                <p className="font-bold text-zinc-800 dark:text-white mb-2">🖥️ Abas Principais de Controle:</p>
-                <p>📊 <strong>Visão Geral & Balanços</strong>: KPIs de volume transacionado, receita líquida da plataforma e saldo acumulado.</p>
-                <p>📊 <strong>Simulador</strong>: Simulação de viabilidade: comissão na venda e no frete, tarifa Pix (R$ 0,99/R$ 1,99) e divisão, adesão e rampa, imposto e custos fixos. Não altera as taxas reais.</p>
-                <p>💸 <strong>Gestão de Saques</strong>: Esteira de aprovação/rejeição de saques solicitados pelos parceiros.</p>
-                <p>👥 <strong>Usuários</strong>: Gestão de cadastros com liquidação manual e em lote.</p>
-                <p>🛒 <strong>Histórico de Pedidos</strong>: Auditoria completa, rotas no mapa, comprovantes e baixa de contingência.</p>
-                <p>🌍 <strong>Cidades / Expansão</strong>: Parametrização tarifária independente por município.</p>
-                <p>🎧 <strong>Suporte & Anúncios</strong>: Atendimento em tempo real e moderação de publicidade.</p>
+                <p className="font-bold text-zinc-800 dark:text-white mb-2">🖥️ Abas do painel (cada uma com subabas):</p>
+                <p>📊 <strong>Visão Geral</strong>: Resumo do período (pedidos, receita com <em>taxas de vendas</em> e <em>taxas de transporte</em> separadas, bruta e líquida, faturamento dos parceiros) · Mapa ao vivo.</p>
+                <p>🛒 <strong>Pedidos</strong>: Histórico de pedidos (rotas, comprovantes, baixa de contingência) · Ocorrências.</p>
+                <p>👥 <strong>Parceiros</strong>: Usuários · Ativações · Subcontas Asaas e contas vinculadas (mesmo CPF/CNPJ).</p>
+                <p>💰 <strong>Financeiro</strong>: Saques · Notas do mês (valor da nota por parceiro) · Repasses dos pedidos · Conta da plataforma (saldo Asaas).</p>
+                <p>🎧 <strong>Suporte</strong> e 📢 <strong>Anúncios</strong>: Atendimento em tempo real e publicidade.</p>
+                <p>⚙️ <strong>Configurações</strong>: Pagamentos (modelo de cobrança, tarifa nos estornos, validação de saques) · Cidades e taxas · Simulador · Auditoria (log, SLA e requisições ao Asaas).</p>
               </div>
             </div>
           )}
@@ -116,19 +115,19 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                 <p className="font-bold text-blue-900 dark:text-blue-300 mb-2">🚗 Modalidades de Frete (KM vs. Valor Fixo):</p>
                 <p>• <strong>KM</strong>: O frete é calculado dinamicamente com base na distância de rota pelas ruas (distância × taxa por km).</p>
                 <p>• <strong>FIXED</strong>: Aplica uma taxa fixa pré-definida para todas as entregas na cidade, independente da distância.</p>
-                <p className="mt-2 text-blue-700 dark:text-blue-300 italic">Cada cidade cadastrada na aba <em>Cidades / Expansão</em> pode ter suas próprias taxas locais!</p>
+                <p className="mt-2 text-blue-700 dark:text-blue-300 italic">Cada cidade cadastrada em <em>⚙️ Configurações → Cidades e taxas</em> pode ter suas próprias taxas locais!</p>
               </div>
 
               <div className="text-xs bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
                 <p className="font-bold text-zinc-900 dark:text-white mb-2">🛡️ Taxa de ativação da plataforma AçaíFood:</p>
-                <p>Na aba <em>Ativações</em>, ative ou desative a cobrança de taxa de adesão Pix para novas lojas e configure a quantidade de vagas promocionais gratuitas de fundadores.</p>
+                <p>Em <em>👥 Parceiros → Ativações</em>, ative ou desative a cobrança de taxa de adesão Pix para novas lojas e configure a quantidade de vagas promocionais gratuitas de fundadores.</p>
               </div>
 
               <div className="text-xs bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 space-y-1.5">
                 <p className="font-bold text-purple-900 dark:text-purple-300 mb-1">🤝 Indicações de Motoristas & Avaliações por Cidade (R39):</p>
-                <p>• Em <em>Cidades / Expansão → ⚙️ Taxas da Cidade</em>, cada município possui duas chaves independentes (desligadas por padrão): <strong>Ativar indicação de motoristas nesta cidade</strong> e <strong>Ativar avaliações nesta cidade</strong>.</p>
+                <p>• Em <em>⚙️ Configurações → Cidades e taxas → ⚙️ Taxas da Cidade</em>, cada município possui duas chaves independentes (desligadas por padrão): <strong>Ativar indicação de motoristas nesta cidade</strong> e <strong>Ativar avaliações nesta cidade</strong>.</p>
                 <p>• Configure por fluxo (B2C, B2B e Coleta): <strong>comissão reduzida no frete para motorista indicado (%)</strong> (aplicada somente quando o vendedor opera em <em>&apos;Só indicados&apos;</em>), <strong>janela exclusiva dos indicados</strong> (padrão 180s) e <strong>tempo para alerta de pedido parado</strong> em <em>&apos;Só indicados&apos;</em> (padrão 300s).</p>
-                <p>• Na mesma aba <em>Cidades / Expansão</em>, modere avaliações denunciadas (Ocultar ou Manter Visível, com registro em <code>admin_audit_log</code>) e ajuste os parâmetros globais de avaliação.</p>
+                <p>• Na mesma subaba <em>Cidades e taxas</em>, modere avaliações denunciadas (Ocultar ou Manter Visível, com registro em <code>admin_audit_log</code>) e ajuste os parâmetros globais de avaliação.</p>
               </div>
             </div>
           )}
@@ -136,7 +135,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
           {activeSection === 'usuarios' && (
             <div className="space-y-4 animate-in fade-in duration-150">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">👥 Gestão de Parceiros & Liquidação</h3>
-              <p>Na aba <strong>👥 Usuários</strong>, você gerencia cada parceiro e acompanha as pendências financeiras:</p>
+              <p>Em <strong>👥 Parceiros → Usuários</strong>, você gerencia cada parceiro e acompanha as pendências financeiras:</p>
 
               <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
                 <p className="font-bold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
@@ -162,7 +161,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
           {activeSection === 'saques' && (
             <div className="space-y-4 animate-in fade-in duration-150">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">💸 Gestão de Saques (direto da conta Asaas do parceiro)</h3>
-              <p>Na aba <strong>💸 Saques</strong>, a administração aprova os saques que os parceiros pedem. O dinheiro já está na conta Asaas de cada parceiro; o saque só o leva para a chave Pix dele.</p>
+              <p>Em <strong>💰 Financeiro → Saques</strong>, a administração aprova os saques que os parceiros pedem. O dinheiro já está na conta Asaas de cada parceiro; o saque só o leva para a chave Pix dele.</p>
 
               <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 text-xs space-y-2.5">
                 <p className="font-bold text-purple-900 dark:text-purple-300">🔄 Fluxo do Saque:</p>
@@ -195,7 +194,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                 <p>6. <strong>📄 Comprovante Oficial Asaas</strong>: Mostra selo Asaas, ID da transação e o favorecido: a <strong>loja vendedora</strong> (na coleta de resíduos, a Eletromecânica Baia Ltda).</p>
                 <p>7. <strong>Estorno (Refund)</strong>: Cancelamentos acionam <code>POST /api/asaas/refund</code>, que faz o estorno integral a partir da conta da loja. No estorno integral, o split da comissão é desfeito. Pix pago após o cancelamento é estornado automaticamente.</p>
                 <p>8. <strong>Taxas por cidade</strong>: <em>App na Venda (%)</em>, <em>App no Frete (%)</em>, valor da corrida e divisão da tarifa Pix são definidos por cidade no painel. Cada pedido grava um retrato (snapshot) das taxas, então mudanças valem só para pedidos novos.</p>
-                <p>9. <strong>Modelo de pagamento</strong>: Em <em>🛡️ Conformidade</em>, o painel "Modelo de pagamento" alterna entre <code>SELLER_SPLIT</code> (cobrança na loja, padrão) e <code>ROOT</code> (cobrança na conta raiz, só para contingência).</p>
+                <p>9. <strong>Modelo de pagamento</strong>: Em <em>⚙️ Configurações → Pagamentos</em>, o painel "Modelo de pagamento" alterna entre <code>SELLER_SPLIT</code> (cobrança na loja, padrão) e <code>ROOT</code> (cobrança na conta raiz, só para contingência).</p>
               </div>
             </div>
           )}
