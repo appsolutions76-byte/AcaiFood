@@ -37,7 +37,7 @@ export const DEFAULT_ADS: AdItem[] = [
     title: 'Açaí Puro da Amazônia - Direto da Batedeira',
     advertiserName: 'AçaíFood Oficial',
     mediaType: 'image',
-    mediaUrl: '/banner.png?v=4',
+    mediaUrl: '/banner.png?v=5',
     placement: 'home_banner',
     targetType: 'url',
     targetValue: 'https://www.acaifood.app.br/',

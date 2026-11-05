@@ -10,7 +10,7 @@ const DEFAULT_CLIENT_BANNERS: AdItem[] = [
     title: 'Açaí Puro da Amazônia - Direto da Batedeira',
     advertiserName: 'AçaíFood Oficial',
     mediaType: 'image',
-    mediaUrl: '/banner.png?v=4',
+    mediaUrl: '/banner.png?v=5',
     placement: 'home_banner',
     targetType: 'url',
     targetValue: 'https://www.acaifood.app.br/',
@@ -166,7 +166,7 @@ export function AdBannerCarousel({ city, onSelectStore }: AdBannerCarouselProps)
         ) : (
           <img 
             key={currentAd.id || currentIndex}
-            src={currentAd.mediaUrl || '/banner.png?v=4'} 
+            src={currentAd.mediaUrl || '/banner.png?v=5'} 
             alt={currentAd.title}
             className="relative z-10 w-full h-full object-contain mx-auto transition-all duration-500 drop-shadow-md"
             loading="eager"

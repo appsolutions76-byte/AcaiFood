@@ -14,12 +14,12 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/icon-192x192.png?v=4", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512x512.png?v=4", sizes: "512x512", type: "image/png" },
+      { url: "/icon-192x192.png?v=5", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png?v=5", sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/apple-icon.png?v=4", sizes: "180x180", type: "image/png" },
-      { url: "/icon-192x192.png?v=4", sizes: "192x192", type: "image/png" },
+      { url: "/apple-icon.png?v=5", sizes: "180x180", type: "image/png" },
+      { url: "/icon-192x192.png?v=5", sizes: "192x192", type: "image/png" },
     ],
   },
   openGraph: {
@@ -29,10 +29,10 @@ export const metadata: Metadata = {
     siteName: "AçaíFood",
     images: [
       {
-        url: "https://www.acaifood.app.br/banner.png?v=4",
+        url: "https://www.acaifood.app.br/og-image.png?v=5",
         width: 1200,
         height: 630,
-        alt: "AçaíFood Roxo Açaí",
+        alt: "AçaíFood",
       },
     ],
     locale: "pt_BR",
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "AçaíFood - O Marketplace Definitivo de Açaí",
     description: "O marketplace definitivo de açaí.",
-    images: ["https://www.acaifood.app.br/banner.png?v=4"],
+    images: ["https://www.acaifood.app.br/og-image.png?v=5"],
   },
 };
 
@@ -54,13 +54,13 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <meta property="og:image" content="https://www.acaifood.app.br/banner.png?v=4" />
-        <meta property="og:image:secure_url" content="https://www.acaifood.app.br/banner.png?v=4" />
+        <meta property="og:image" content="https://www.acaifood.app.br/og-image.png?v=5" />
+        <meta property="og:image:secure_url" content="https://www.acaifood.app.br/og-image.png?v=5" />
         <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta name="twitter:image" content="https://www.acaifood.app.br/banner.png?v=4" />
-        <link rel="image_src" href="https://www.acaifood.app.br/banner.png?v=4" />
+        <meta name="twitter:image" content="https://www.acaifood.app.br/og-image.png?v=5" />
+        <link rel="image_src" href="https://www.acaifood.app.br/og-image.png?v=5" />
       </head>
       <body className="antialiased font-sans bg-zinc-950 text-zinc-100">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

@@ -114,7 +114,7 @@ export function AdStoriesRow({ city, onSelectStore }: AdStoriesRowProps) {
             <div className="w-16 h-16 sm:w-18 sm:h-18 p-[2.5px] rounded-full bg-gradient-to-tr from-purple-600 via-amber-400 to-fuchsia-500 shadow-md group-hover:scale-105 group-active:scale-95 transition-transform duration-200">
               <div className="w-full h-full rounded-full border-2 border-white dark:border-zinc-950 overflow-hidden bg-zinc-900 flex items-center justify-center">
                 <img
-                  src={s.thumbnailUrl || s.mediaUrl || '/banner.png?v=4'}
+                  src={s.thumbnailUrl || s.mediaUrl || '/banner.png?v=5'}
                   alt={s.advertiserName}
                   className="w-full h-full object-cover"
                   loading="lazy"
@@ -147,7 +147,7 @@ export function AdStoriesRow({ city, onSelectStore }: AdStoriesRowProps) {
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full border border-white/40 overflow-hidden bg-zinc-800">
                   <img
-                    src={activeStory.thumbnailUrl || activeStory.mediaUrl || '/banner.png?v=4'}
+                    src={activeStory.thumbnailUrl || activeStory.mediaUrl || '/banner.png?v=5'}
                     alt={activeStory.advertiserName}
                     className="w-full h-full object-cover"
                   />

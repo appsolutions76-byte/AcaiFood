@@ -498,7 +498,7 @@ function CadastroForm() {
         <div className="max-w-3xl mx-auto w-full p-4 sm:p-6 flex flex-col justify-center animate-in fade-in zoom-in-95 duration-200">
           <div className="text-center mb-8">
             <div className="flex flex-col justify-center items-center mb-4 text-center">
-              <img src="/banner.png?v=4" alt="Marca Oficial AçaíFood" className="w-32 h-32 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
+              <img src="/banner.png?v=5" alt="Marca Oficial AçaíFood" className="w-32 h-32 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-2 max-w-xs">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight mb-2">
@@ -680,7 +680,7 @@ function CadastroForm() {
         <>
           <div className="sm:mx-auto sm:w-full sm:max-w-md">
             <div className="flex flex-col justify-center items-center mb-4 text-center">
-              <img src="/banner.png?v=4" alt="Marca Oficial AçaíFood" className="w-36 h-36 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
+              <img src="/banner.png?v=5" alt="Marca Oficial AçaíFood" className="w-36 h-36 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-2 max-w-xs">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
             </div>
             <h2 className="text-center text-3xl font-extrabold text-zinc-900 dark:text-white">
