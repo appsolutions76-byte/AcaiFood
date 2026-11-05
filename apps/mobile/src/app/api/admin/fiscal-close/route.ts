@@ -210,7 +210,7 @@ export async function GET(request: Request) {
       lines.push(`FECHAMENTO MENSAL AÇAÍFOOD — BASE PARA NOTAS FISCAIS;${month}`);
       lines.push('Competência: data de conclusão do pedido (horário de Belém). Só pedidos concluídos.');
       lines.push('');
-      lines.push('TIPO;PAPEL;NOME;CPF/CNPJ;E-MAIL;TELEFONE;CIDADE;PEDIDOS;VENDAS OU FRETES (R$);COMISSAO COBRADA (R$);TARIFA ASAAS PAGA PELO PARCEIRO (R$);FRETE PAGO PELA LOJA (R$);REPASSE LIQUIDO (R$);PEDIDOS ESTIMADOS');
+      lines.push('TIPO;PAPEL;NOME;CPF/CNPJ;E-MAIL;TELEFONE;CIDADE;PEDIDOS;VENDAS OU FRETES (R$);VALOR DA NOTA (R$);TARIFA ASAAS PAGA PELO PARCEIRO (R$);FRETE PAGO PELA LOJA (R$);REPASSE LIQUIDO (R$);PEDIDOS ESTIMADOS');
       for (const p of partners) {
         lines.push([
           esc(p.tipo), esc(p.papel === 'VENDEDOR' ? 'Vendedor' : 'Entregador'), esc(p.nome), esc(p.documento), esc(p.email), esc(p.telefone), esc(p.cidade),

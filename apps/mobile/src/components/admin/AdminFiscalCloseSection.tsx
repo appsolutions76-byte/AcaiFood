@@ -254,7 +254,7 @@ export function AdminFiscalCloseSection() {
                 <th className="p-3">CPF/CNPJ</th>
                 <th className="p-3 text-right">Pedidos</th>
                 <th className="p-3 text-right">Vendas / Fretes</th>
-                <th className="p-3 text-right">Comissão cobrada</th>
+                <th className="p-3 text-right">Valor da nota</th>
                 <th className="p-3 text-right">Tarifa Asaas paga</th>
                 <th className="p-3 text-right">Frete pago pela loja</th>
                 <th className="p-3 text-right">Repasse líquido</th>
@@ -302,7 +302,7 @@ export function AdminFiscalCloseSection() {
       </div>
 
       <p className="text-[11px] text-zinc-500">
-        &quot;Comissão cobrada&quot; é o valor que a plataforma cobrou do parceiro (sugestão de base da nota). A tarifa Pix do Asaas
+        &quot;Valor da nota&quot; é a comissão bruta que a plataforma cobrou do parceiro (base da NFS-e e do DAS). A tarifa Pix do Asaas
         aparece separada. Confirme com o seu contador qual valor usar na nota fiscal.
       </p>
     </div>
