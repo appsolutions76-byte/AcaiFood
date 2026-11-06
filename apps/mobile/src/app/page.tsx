@@ -759,6 +759,7 @@ export default function StorefrontPage() {
                 width={608}
                 height={124}
                 priority
+                unoptimized
                 className="h-12 w-auto object-contain hover:opacity-90 transition-opacity"
               />
               {selectedStoreId && store.users?.[selectedStoreId] && (
@@ -853,6 +854,7 @@ export default function StorefrontPage() {
               width={608}
               height={124}
               priority
+              unoptimized
               className="h-10 w-auto object-contain"
             />
             <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-400 mt-0.5 truncate max-w-[200px]">

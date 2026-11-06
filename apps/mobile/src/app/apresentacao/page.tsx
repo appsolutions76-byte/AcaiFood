@@ -97,6 +97,7 @@ export default function LandingPage() {
               width={608}
               height={124}
               priority
+              unoptimized
               className="h-10 sm:h-12 w-auto object-contain group-hover:opacity-90 transition-opacity"
             />
             <div className="hidden sm:block">

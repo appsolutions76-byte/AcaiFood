@@ -25,6 +25,7 @@ export default function PoliticaPrivacidadePage() {
               width={608}
               height={124}
               priority
+              unoptimized
               className="h-8 sm:h-10 w-auto object-contain hover:opacity-90 transition-opacity"
             />
           </Link>
