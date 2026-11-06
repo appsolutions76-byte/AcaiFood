@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ShieldCheck, ArrowLeft, Lock, FileText, Smartphone, Users } from "lucide-react";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 
@@ -17,14 +18,16 @@ export default function PoliticaPrivacidadePage() {
           <Link href="/" className="flex items-center gap-2 text-purple-400 hover:text-purple-300 font-bold text-sm transition">
             <ArrowLeft size={16} /> Voltar para o AçaíFood
           </Link>
-          <div className="flex items-center gap-2">
-            <img
-              src="/logo.png"
+          <Link href="/" className="flex items-center" title="Página Inicial do AçaíFood">
+            <Image
+              src="/logo-header-escuro.svg"
               alt="AçaíFood"
-              className="w-7 h-7 object-contain rounded-lg shrink-0"
+              width={608}
+              height={124}
+              priority
+              className="h-8 sm:h-10 w-auto object-contain hover:opacity-90 transition-opacity"
             />
-            <span className="font-extrabold text-lg text-white">AçaíFood</span>
-          </div>
+          </Link>
         </div>
 
         {/* Title Banner */}

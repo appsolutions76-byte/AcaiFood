@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { 
   Sparkles, Store, Truck, Bike, ShoppingBag, ShieldCheck, 
   MapPin, Play, CheckCircle2, ArrowRight, Share2, 
@@ -89,19 +90,17 @@ export default function LandingPage() {
       {/* NAVBAR */}
       <header className="sticky top-0 z-50 bg-zinc-950/85 backdrop-blur-md border-b border-purple-900/30 px-4 py-3 sm:py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-purple-900/40 border border-purple-500/30 group-hover:scale-105 transition-transform flex items-center justify-center p-1">
-              <img
-                src="/logo.png"
-                alt="AçaíFood"
-                className="w-full h-full object-contain rounded-lg"
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg sm:text-xl font-black tracking-tight text-white">AçaíFood</span>
-                <span className="text-[10px] font-black uppercase tracking-wider bg-purple-600 text-white px-1.5 py-0.5 rounded-md">Oficial</span>
-              </div>
+          <Link href="/" className="flex items-center gap-2.5 group" title="Página Inicial do AçaíFood">
+            <Image
+              src="/logo-header-escuro.svg"
+              alt="AçaíFood"
+              width={608}
+              height={124}
+              priority
+              className="h-10 sm:h-12 w-auto object-contain group-hover:opacity-90 transition-opacity"
+            />
+            <div className="hidden sm:block">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-purple-600 text-white px-1.5 py-0.5 rounded-md">Oficial</span>
               <p className="text-[10px] text-zinc-400">O Ecossistema Completo do Açaí</p>
             </div>
           </Link>

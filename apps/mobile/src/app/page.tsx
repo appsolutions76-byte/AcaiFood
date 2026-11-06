@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useSyncExternalStore, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ShoppingCart, BookOpen, MessageSquare, Share2, RefreshCw, Menu, X, Home, Search, ClipboardList, User, ChevronRight, Store, MapPin, Zap, Navigation, Clock, LayoutGrid, List, Star, SlidersHorizontal, ArrowUpDown, Sparkles, Plus, Utensils, UtensilsCrossed, Snowflake, ChevronDown, ChevronUp, ArrowLeft, CheckSquare, Square, Check, FileText, Headphones, Palmtree, Soup, Lock } from "lucide-react";
 import { ProductThumbnail } from "@/components/ProductThumbnail";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -747,22 +748,21 @@ export default function StorefrontPage() {
         <PaymentHandler />
         <DirectStoreUrlHandler onStoreFound={(id) => setSelectedStoreId(id)} />
       </Suspense>
-      <header className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 p-2.5 sm:p-4 sticky top-0 z-30 shadow-xs">
+      <header className="bg-zinc-950/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-800 p-2.5 sm:p-4 sticky top-0 z-30 shadow-xs">
         {/* DESKTOP HEADER (100% Intacto para telas médias e computadores) */}
         <div className="hidden md:flex justify-between items-center max-w-7xl mx-auto w-full px-2 sm:px-4 flex-wrap gap-2">
           <div className="flex items-center gap-2.5 text-zinc-900 dark:text-white">
-            <img
-              src="/logo.png"
-              alt="AçaíFood"
-              className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-xl shadow-xs cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={handleClearSelectedStore}
-            />
-            <div>
-              <h1 className="text-lg sm:text-xl font-black leading-tight tracking-tight cursor-pointer" onClick={handleClearSelectedStore}>
-                AçaíFood
-              </h1>
+            <div className="cursor-pointer" onClick={handleClearSelectedStore} title="Página Inicial do AçaíFood">
+              <Image
+                src="/logo-header-escuro.svg"
+                alt="AçaíFood"
+                width={608}
+                height={124}
+                priority
+                className="h-12 w-auto object-contain hover:opacity-90 transition-opacity"
+              />
               {selectedStoreId && store.users?.[selectedStoreId] && (
-                <p className="text-[10px] text-purple-600 dark:text-purple-400 font-black uppercase tracking-wide">
+                <p className="text-[10px] text-purple-400 font-black uppercase tracking-wide mt-0.5">
                   {store.users[selectedStoreId].role === 'fornecedor' ? '• Fornecedor Oficial' : '• Loja Selecionada'} • {store.users[selectedStoreId].name}
                 </p>
               )}
@@ -846,24 +846,22 @@ export default function StorefrontPage() {
         </div>
         {/* MOBILE HEADER (Exclusivo para celular: Limpo, rápido e focado no usuário) */}
         <div className="flex md:hidden justify-between items-center w-full px-1">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={handleClearSelectedStore}>
-            <img
-              src="/logo.png"
+          <div className="flex flex-col items-start cursor-pointer" onClick={handleClearSelectedStore} title="Página Inicial do AçaíFood">
+            <Image
+              src="/logo-header-escuro.svg"
               alt="AçaíFood"
-              className="w-7 h-7 sm:w-8 sm:h-8 object-contain rounded-lg shadow-2xs shrink-0"
+              width={608}
+              height={124}
+              priority
+              className="h-10 w-auto object-contain"
             />
-            <div>
-              <h1 className="text-base font-black tracking-tight leading-none text-zinc-900 dark:text-white">
-                AçaíFood
-              </h1>
-              <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-600 dark:text-purple-400 mt-0.5 truncate max-w-[170px]">
-                <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">•</span>
-                <span className="truncate">
-                  {selectedStoreId && store.users?.[selectedStoreId]
-                    ? store.users[selectedStoreId].name
-                    : (currentUser?.bairro ? `${currentUser.bairro}, ${currentUser.cidade || 'Belém'}` : (currentUser?.cidade || 'Belém - PA'))}
-                </span>
-              </div>
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-400 mt-0.5 truncate max-w-[200px]">
+              <span className="text-[10px] text-purple-400 font-bold">•</span>
+              <span className="truncate">
+                {selectedStoreId && store.users?.[selectedStoreId]
+                  ? store.users[selectedStoreId].name
+                  : (currentUser?.bairro ? `${currentUser.bairro}, ${currentUser.cidade || 'Belém'}` : (currentUser?.cidade || 'Belém - PA'))}
+              </span>
             </div>
           </div>
 
