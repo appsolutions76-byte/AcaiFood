@@ -82,7 +82,7 @@ function LoginForm() {
       </div>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex flex-col justify-center items-center mb-4 text-center">
-          <img src="/banner.png?v=5" alt="Marca Oficial AçaíFood" className="w-40 h-40 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
+          <img src="/banner.png?v=6" alt="Marca Oficial AçaíFood" className="w-40 h-40 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-2 max-w-xs">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
         </div>
         <h2 className="text-center text-3xl font-extrabold text-zinc-900 dark:text-white">
