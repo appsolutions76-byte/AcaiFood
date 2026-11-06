@@ -31,6 +31,7 @@ const AdminSupportSection = dynamic(() => import("@/components/admin/AdminSuppor
 const AdminWithdrawalsSection = dynamic(() => import("@/components/admin/AdminWithdrawalsSection").then(m => m.AdminWithdrawalsSection), { ssr: false });
 const AdminReconciliationSection = dynamic(() => import("@/components/admin/AdminReconciliationSection").then(m => m.AdminReconciliationSection), { ssr: false });
 const AdminSimulatorTab = dynamic(() => import("@/components/admin/AdminSimulatorTab").then(m => m.AdminSimulatorTab), { ssr: false });
+const AdminArchitectureTab = dynamic(() => import("@/components/admin/AdminArchitectureTab").then(m => m.AdminArchitectureTab), { ssr: false });
 const ShareLandingModal = dynamic(() => import("@/components/ShareLandingModal").then(m => m.ShareLandingModal), { ssr: false });
 const AdminAccountLinksSection = dynamic(() => import("@/components/admin/AdminAccountLinksSection").then(m => m.AdminAccountLinksSection), { ssr: false });
 const AdminLiveMapSection = dynamic(() => import("@/components/admin/AdminLiveMapSection").then(m => m.AdminLiveMapSection), { ssr: false });
@@ -123,7 +124,7 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState<CityRates>(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'simulador' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'fiscal' | 'mapa' | 'subcontas' | 'repasses' | 'conta' | 'pagamentos' | 'auditoria'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'estrutura' | 'simulador' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'fiscal' | 'mapa' | 'subcontas' | 'repasses' | 'conta' | 'pagamentos' | 'auditoria'>('dashboard');
   const [selectedSupportUserId, setSelectedSupportUserId] = useState<string | null>(null);
   const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
   const [activationConfig, setActivationConfig] = useState<{
@@ -1919,7 +1920,7 @@ function AdminDashboardContent() {
           const activeAdsCount = adsList.filter(a => a.isActive !== false && (a as any).active !== false).length;
           type NavTab = typeof activeTab;
           const groups: Array<{ id: string; label: string; badge?: number; badgeClass?: string; onEnter?: () => void; tabs: Array<[NavTab, string]> }> = [
-            { id: 'inicio', label: '📊 Visão Geral', tabs: [['dashboard', '📊 Resumo'], ['mapa', '🗺️ Mapa ao vivo']] },
+            { id: 'inicio', label: '📊 Visão Geral', tabs: [['dashboard', '📊 Resumo'], ['estrutura', '🧭 Estrutura AçaíFood'], ['mapa', '🗺️ Mapa ao vivo']] },
             { id: 'pedidos', label: '🛒 Pedidos', tabs: [['pedidos', '🛒 Histórico de pedidos'], ['ocorrencias', '📋 Ocorrências']] },
             { id: 'parceiros', label: '👥 Parceiros', tabs: [['usuarios', '👥 Usuários'], ['ativacoes', `🛡️ Ativações (${subsidizedPartnersCount}/${activationConfig.freeQuota})`], ['subcontas', '🏦 Subcontas Asaas e contas vinculadas']] },
             {
@@ -2275,6 +2276,10 @@ function AdminDashboardContent() {
             </div>
           </div>
           </div>
+        )}
+
+        {activeTab === 'estrutura' && (
+          <AdminArchitectureTab />
         )}
 
         {activeTab === 'simulador' && (
