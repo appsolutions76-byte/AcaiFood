@@ -168,8 +168,16 @@ export function AdBannerCarousel({ city, onSelectStore }: AdBannerCarouselProps)
             key={currentAd.id || currentIndex}
             src={currentAd.mediaUrl || '/banner.png?v=6'} 
             alt={currentAd.title}
-            className="relative z-10 w-full h-full object-contain mx-auto transition-all duration-500 drop-shadow-md"
+            className="relative z-10 w-full h-full object-contain object-center mx-auto transition-all duration-500 drop-shadow-md"
             loading="eager"
+            onLoad={(e) => {
+              // Banner horizontal (formato 1920x823) preenche o espaço todo; imagem quadrada/em pé continua inteira
+              const img = e.currentTarget;
+              if (img.naturalWidth / img.naturalHeight >= 1.6) {
+                img.classList.remove('object-contain');
+                img.classList.add('object-cover');
+              }
+            }}
           />
         )}
 
