@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "br.app.acaifood",
+        "sha256_cert_fingerprints": ["CE:BC:76:51:F9:8E:3F:BA:CD:DC:5F:ED:5F:06:49:D4:C7:C6:D4:81:DC:0B:D2:6D:1F:07:73:99:BF:56:FC:56"]
+      }
+    }]
