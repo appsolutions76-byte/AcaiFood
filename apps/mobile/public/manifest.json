@@ -11,7 +11,10 @@
   "orientation": "portrait",
   "background_color": "#09090b",
   "theme_color": "#9333ea",
-  "categories": ["food", "shopping"],
+  "categories": [
+    "food",
+    "shopping"
+  ],
   "icons": [
     {
       "src": "/icon-192x192.png?v=6",
@@ -30,11 +33,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "/favicon.ico",
-      "sizes": "64x64 48x48 32x32 16x16",
-      "type": "image/x-icon"
     }
   ]
 }
