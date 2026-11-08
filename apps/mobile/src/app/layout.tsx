@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { TermsAcceptanceGate } from "@/components/TermsAcceptanceGate";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export const viewport: Viewport = {
   themeColor: "#9333ea",
@@ -66,6 +67,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
           <TermsAcceptanceGate />
+          <ServiceWorkerRegister />
         </ThemeProvider>
       </body>
     </html>

@@ -1,11 +1,17 @@
 {
-  "name": "AçaíFood Delivery & Logistics",
+  "id": "/",
+  "name": "AçaíFood",
   "short_name": "AçaíFood",
-  "description": "Ecossistema Completo de Delivery e Logística de Açaí",
+  "description": "Peça açaí e lanches das lojas do seu bairro, com entrega por motoboy e frete calculado pelo GPS.",
+  "lang": "pt-BR",
+  "dir": "ltr",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#09090b",
-  "theme_color": "#5B1E7A",
+  "theme_color": "#9333ea",
+  "categories": ["food", "shopping"],
   "icons": [
     {
       "src": "/icon-192x192.png?v=6",

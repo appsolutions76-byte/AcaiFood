@@ -639,6 +639,12 @@ export function PartnerDashboardLayout({
                   <LogOut size={14} />
                   <span>Sair do Painel</span>
                 </button>
+                <a
+                  href="/excluir-conta"
+                  className="mt-3 block text-center text-[11px] font-semibold text-zinc-500 hover:text-red-500 underline"
+                >
+                  Excluir minha conta
+                </a>
               </div>
             </div>
           </div>

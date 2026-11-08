@@ -116,7 +116,7 @@ export default function PoliticaPrivacidadePage() {
               <li>Revogar o consentimento a qualquer momento.</li>
             </ul>
             <p className="mt-2 text-zinc-400">
-              Para exercer seus direitos ou solicitar a exclusão de conta, entre em contato pelo e-mail: <strong className="text-purple-300">appsolutions76@gmail.com</strong>.
+              Para exercer seus direitos, entre em contato pelo e-mail: <strong className="text-purple-300">appsolutions76@gmail.com</strong>. Para excluir a sua conta, siga as instruções da página <Link href="/excluir-conta" className="underline font-bold text-purple-300">Excluir minha conta</Link>.
             </p>
           </section>
 

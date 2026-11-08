@@ -17,7 +17,7 @@ const DOC_LABELS: Record<string, React.ReactNode> = {
   pix_random_key_consent: <>Autorizo a criação de uma chave Pix aleatória na minha subconta Asaas para receber os Pix dos clientes e as transferências automáticas da plataforma.</>
 };
 
-const SKIP_PATHS = ['/cadastro', '/login', '/politica-de-privacidade', '/termos-de-uso', '/apresentacao'];
+const SKIP_PATHS = ['/cadastro', '/login', '/politica-de-privacidade', '/termos-de-uso', '/apresentacao', '/excluir-conta'];
 
 export function TermsAcceptanceGate() {
   const pathname = usePathname() || '';
