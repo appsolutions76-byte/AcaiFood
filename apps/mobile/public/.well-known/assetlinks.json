@@ -1,8 +1,13 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "br.app.acaifood",
-        "sha256_cert_fingerprints": ["CE:BC:76:51:F9:8E:3F:BA:CD:DC:5F:ED:5F:06:49:D4:C7:C6:D4:81:DC:0B:D2:6D:1F:07:73:99:BF:56:FC:56"]
-      }
-    }]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.app.acaifood",
+      "sha256_cert_fingerprints": [
+        "B2:AB:29:FD:FC:BA:66:20:27:95:7B:92:29:2D:47:43:6F:2A:C4:FA:71:07:74:8F:2E:FA:8B:2B:BF:BD:A0:CF",
+        "CE:BC:76:51:F9:8E:3F:BA:CD:DC:5F:ED:5F:06:49:D4:C7:C6:D4:81:DC:0B:D2:6D:1F:07:73:99:BF:56:FC:56"
+      ]
+    }
+  }
+]
