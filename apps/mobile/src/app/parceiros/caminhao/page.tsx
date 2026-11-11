@@ -134,6 +134,22 @@ export default function CaminhaoDashboard() {
     lastAvailableCountRef.current = corridasDisponiveis.length;
   }, [corridasDisponiveis.length]);
 
+  // R40: hook movido para ANTES dos returns antecipados (React #310 — ordem de hooks)
+  const referralsEnabledForEffect = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'referrals_enabled');
+  useEffect(() => {
+    if (!referralsEnabledForEffect || !currentUser?.id) return;
+    supabase.rpc('get_my_referrals', { p_flow: null }).then(({ data }) => {
+      if (data?.success && Array.isArray(data.referrals)) {
+        const ids = new Set<string>(
+          data.referrals
+            .filter((r: any) => r.status === 'ACTIVE')
+            .map((r: any) => String(r.partner_id))
+        );
+        setMyActivePartnerIds(ids);
+      }
+    });
+  }, [referralsEnabledForEffect, currentUser?.id, activeTab]);
+
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-6"><p>Carregando...</p></div>;
   }
@@ -160,19 +176,6 @@ export default function CaminhaoDashboard() {
   const ratingsEnabled = isCityFeatureEnabled(currentUser?.cidade, store.cities, 'ratings_enabled');
   const formatMoney = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  useEffect(() => {
-    if (!referralsEnabled || !currentUser?.id) return;
-    supabase.rpc('get_my_referrals', { p_flow: null }).then(({ data }) => {
-      if (data?.success && Array.isArray(data.referrals)) {
-        const ids = new Set<string>(
-          data.referrals
-            .filter((r: any) => r.status === 'ACTIVE')
-            .map((r: any) => String(r.partner_id))
-        );
-        setMyActivePartnerIds(ids);
-      }
-    });
-  }, [referralsEnabled, currentUser?.id, activeTab]);
 
   const getDriverFee = (o: any) => {
     if (!o) return 0;
