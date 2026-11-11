@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getAuthHeaders } from "@/store/useAppStore";
+import { StoreIcon } from "@/components/StoreIcon";
 
 // R43 — Fechamento mensal para notas fiscais (somente leitura)
 
@@ -157,8 +158,8 @@ export function AdminFiscalCloseSection() {
     }
   };
 
-  const tipos: Array<{ id: typeof tipo; label: string }> = [
-    { id: 'Batedeira', label: '🥣 Batedeiras' },
+  const tipos: Array<{ id: typeof tipo; label: React.ReactNode }> = [
+    { id: 'Batedeira', label: <><StoreIcon size={12} /> Batedeiras</> },
     { id: 'Motoboy', label: '🏍️ Motoboys' },
     { id: 'Fornecedor', label: '🏭 Fornecedores' },
     { id: 'Caminhão', label: '🚛 Caminhões' },
@@ -243,7 +244,7 @@ export function AdminFiscalCloseSection() {
             <p className="text-lg font-bold text-zinc-900 dark:text-white">{totals.pedidos}</p>
           </div>
           <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <p className="text-[10px] text-zinc-500 uppercase font-bold">🥣 Taxas de vendas</p>
+            <p className="text-[10px] text-zinc-500 uppercase font-bold"><StoreIcon size={12} /> Taxas de vendas</p>
             <p className="text-lg font-bold text-purple-700 dark:text-purple-300">{formatMoney(totals.comissaoVendas)}</p>
           </div>
           <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800">

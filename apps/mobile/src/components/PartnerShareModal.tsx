@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { X, Share2, Copy, Check, MessageCircle, QrCode, ExternalLink, Sparkles } from "lucide-react";
+import { StoreIcon } from "@/components/StoreIcon";
 
 interface PartnerShareModalProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ export function PartnerShareModal({ isOpen, onClose, storeId, storeName, role }:
       if (isSupplier) {
         return `🏭 Olá! Acesse nosso catálogo de frutos e insumos no *AçaíFood* e faça seu pedido direto com *${storeName}*:\n\n${storeUrl}`;
       } else {
-        return `🥣 Olá! Acesse nosso cardápio oficial no *AçaíFood* e faça seu pedido direto na *${storeName}*:\n\n${storeUrl}`;
+        return `🏪 Olá! Acesse nosso cardápio oficial no *AçaíFood* e faça seu pedido direto na *${storeName}*:\n\n${storeUrl}`;
       }
     }
     return `🥣 Conheça o *AçaíFood* — O marketplace e ecossistema oficial do Açaí!\n\nEscolha o seu perfil (Cliente, Batedeira, Fornecedor, Entregador ou Caminhão) e acesse:\n${appUrl}`;
@@ -81,7 +82,7 @@ export function PartnerShareModal({ isOpen, onClose, storeId, storeName, role }:
         {/* CABEÇALHO */}
         <div className="text-center space-y-1.5 pt-1">
           <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 flex items-center justify-center mx-auto text-2xl shadow-xs">
-            {isSupplier ? '🏭' : '🥣'}
+            {isSupplier ? '🏭' : <StoreIcon size={26} />}
           </div>
           <h3 className="text-lg sm:text-xl font-black text-zinc-950 dark:text-white">
             Compartilhar Link de Vendas
@@ -228,7 +229,7 @@ export function StoreShareCard({ storeId, storeName, role, onOpenModal }: StoreS
     if (isSupplier) {
       return `🏭 Olá! Acesse nosso catálogo de frutos e insumos no *AçaíFood* e faça seu pedido direto com *${storeName}*:\n\n${storeUrl}`;
     } else {
-      return `🥣 Olá! Acesse nosso cardápio oficial no *AçaíFood* e faça seu pedido direto na *${storeName}*:\n\n${storeUrl}`;
+      return `🏪 Olá! Acesse nosso cardápio oficial no *AçaíFood* e faça seu pedido direto na *${storeName}*:\n\n${storeUrl}`;
     }
   };
 
@@ -259,7 +260,7 @@ export function StoreShareCard({ storeId, storeName, role, onOpenModal }: StoreS
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-xl">{isSupplier ? '🏭' : '🥣'}</span>
+              <span className="text-xl">{isSupplier ? '🏭' : <StoreIcon size={20} />}</span>
               <span className="text-[11px] font-black uppercase tracking-wider text-purple-300 bg-purple-950/80 border border-purple-700/60 px-2 py-0.5 rounded-md">
                 Link de Vendas Direto
               </span>

@@ -22,6 +22,7 @@ import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { AdminMfaGuard } from "@/components/admin/AdminMfaGuard";
 import { RefundInfo } from "@/components/RefundInfo";
 import dynamic from "next/dynamic";
+import { StoreIcon } from "@/components/StoreIcon";
 
 // R41 (desempenho): janelas e abas pesadas só são baixadas depois que a tela abriu
 const MapModal = dynamic(() => import("@/components/MapModal").then(m => m.MapModal), { ssr: false });
@@ -2142,7 +2143,7 @@ function AdminDashboardContent() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                 <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/50">
-                    <p className="text-indigo-700 dark:text-indigo-400 text-[10px] uppercase font-bold">🥣 Taxas de vendas</p>
+                    <p className="text-indigo-700 dark:text-indigo-400 text-[10px] uppercase font-bold"><StoreIcon size={12} /> Taxas de vendas</p>
                     <p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">{formatMoney(totais.taxasVendas)}</p>
                     <p className="text-[9px] text-zinc-500">Comissão sobre os produtos</p>
                 </div>
@@ -2249,7 +2250,7 @@ function AdminDashboardContent() {
                 <p className="text-[9px] text-zinc-400 mt-0.5">Consumidores B2C</p>
               </div>
               <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm text-center">
-                <p className="text-[10px] text-zinc-500 uppercase font-bold">🥣 Batedeiras</p>
+                <p className="text-[10px] text-zinc-500 uppercase font-bold"><StoreIcon size={12} /> Batedeiras</p>
                 <p className="text-xl font-black text-purple-700 dark:text-purple-300 mt-1">{userCounts.lojas}</p>
                 <p className="text-[9px] text-zinc-400 mt-0.5">Lojas Açaí</p>
               </div>
@@ -2856,7 +2857,7 @@ function AdminDashboardContent() {
               >
                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider opacity-80">
                   <span>Batedeiras</span>
-                  <span>🥣</span>
+                  <StoreIcon size={14} />
                 </div>
                 <div className={`text-xl font-black mt-1 ${userFilterRole === 'loja' ? 'text-white' : 'text-purple-600 dark:text-purple-400'}`}>{userCounts.lojas}</div>
                 <div className="text-[10px] opacity-75">Lojas Açaí</div>
@@ -2950,7 +2951,7 @@ function AdminDashboardContent() {
                 >
                   <option value="all">👥 Todos os Tipos ({userCounts.total})</option>
                   <option value="cliente">👤 Clientes ({userCounts.clientes})</option>
-                  <option value="loja">🥣 Batedeiras / Lojas ({userCounts.lojas})</option>
+                  <option value="loja">🏪 Batedeiras / Lojas ({userCounts.lojas})</option>
                   <option value="fornecedor">🏭 Fornecedores ({userCounts.fornecedores})</option>
                   <option value="motoboy">🏍️ Motoboys / Entregadores ({userCounts.motoboys})</option>
                   <option value="caminhao">🚛 Caminhões / Caçambas ({userCounts.caminhoneiros})</option>
@@ -3040,7 +3041,7 @@ function AdminDashboardContent() {
                                     ? 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
                                     : 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
                                 }`}>
-                                  {isCaminhaoUser(u) ? '🚛 Caminhão / Caçamba' : isMotoboyUser(u) ? '🛵 Motoboy' : u.role === 'loja' ? '🥣 Batedeira' : u.role === 'fornecedor' ? '🏭 Fornecedor' : u.role === 'admin' ? '🛡️ Admin' : '👤 Cliente'}
+                                  {isCaminhaoUser(u) ? '🚛 Caminhão / Caçamba' : isMotoboyUser(u) ? '🛵 Motoboy' : u.role === 'loja' ? '🏪 Batedeira' : u.role === 'fornecedor' ? '🏭 Fornecedor' : u.role === 'admin' ? '🛡️ Admin' : '👤 Cliente'}
                                 </span>
                                 {u.veiculo && <span className="ml-1 text-[10px] text-zinc-500 font-medium">({u.veiculo})</span>}
                             </td>

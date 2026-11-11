@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAuthHeaders } from "@/store/useAppStore";
+import { StoreIcon, STORE_EMOJI, storeIconSvg } from "@/components/StoreIcon";
 
 // R45 — Mapa ao vivo do admin: batedeiras, fornecedores, motoboys e caminhões (sem clientes)
 
@@ -19,13 +20,15 @@ type Point = {
   locationUpdatedAt: string | null;
 };
 
-const KINDS: Array<{ id: Kind; label: string; emoji: string }> = [
-  { id: 'batedeira', label: 'Batedeiras', emoji: '🥣' },
+const KINDS: Array<{ id: Kind; label: string; emoji: React.ReactNode }> = [
+  { id: 'batedeira', label: 'Batedeiras', emoji: <StoreIcon size={14} /> },
   { id: 'motoboy', label: 'Motoboys', emoji: '🏍️' },
   { id: 'fornecedor', label: 'Fornecedores', emoji: '🏭' },
   { id: 'caminhao', label: 'Caminhões', emoji: '🚛' },
 ];
-const EMOJI: Record<Kind, string> = { batedeira: '🥣', motoboy: '🏍️', fornecedor: '🏭', caminhao: '🚛' };
+const EMOJI: Record<Kind, string> = { batedeira: STORE_EMOJI, motoboy: '🏍️', fornecedor: '🏭', caminhao: '🚛' };
+const markerIcon = (kind: Kind) => (kind === 'batedeira' ? storeIconSvg(22) : EMOJI[kind]);
+const popupIcon = (kind: Kind) => (kind === 'batedeira' ? storeIconSvg(14) : EMOJI[kind]);
 const REFRESH_MS = 30000;
 const BELEM: [number, number] = [-1.4558, -48.4908];
 
@@ -171,14 +174,14 @@ export function AdminLiveMapSection() {
       const st = statusOf(p);
       const icon = L.divIcon({
         className: '',
-        html: `<div style="width:34px;height:34px;border-radius:50%;background:#fff;border:3px solid ${st.color};display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 1px 4px rgba(0,0,0,.35);opacity:${p.online || p.busy ? 1 : 0.6}">${EMOJI[p.kind]}</div>`,
+        html: `<div style="width:34px;height:34px;border-radius:50%;background:#fff;border:3px solid ${st.color};display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 1px 4px rgba(0,0,0,.35);opacity:${p.online || p.busy ? 1 : 0.6}">${markerIcon(p.kind)}</div>`,
         iconSize: [34, 34],
         iconAnchor: [17, 17],
       });
       const when = p.locationUpdatedAt ? `<br/><span style="color:#666">Posição: ${esc(ago(p.locationUpdatedAt))}</span>` : '';
       const where = [p.bairro, p.cidade].filter(Boolean).map(esc).join(' · ');
       L.marker([p.lat, p.lng], { icon })
-        .bindPopup(`<b>${esc(p.name || '—')}</b><br/>${EMOJI[p.kind]} ${esc(KINDS.find(k => k.id === p.kind)?.label.replace(/s$/, '') || '')} · <span style="color:${st.color};font-weight:bold">${st.label}</span>${where ? `<br/>${where}` : ''}${when}`)
+        .bindPopup(`<b>${esc(p.name || '—')}</b><br/>${popupIcon(p.kind)} ${esc(KINDS.find(k => k.id === p.kind)?.label.replace(/s$/, '') || '')} · <span style="color:${st.color};font-weight:bold">${st.label}</span>${where ? `<br/>${where}` : ''}${when}`)
         .addTo(layerRef.current);
     });
     if (!fittedRef.current && visible.length > 0) {
@@ -213,7 +216,7 @@ export function AdminLiveMapSection() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50">
-            <p className="text-[10px] uppercase font-bold text-purple-700 dark:text-purple-300">🥣 Lojas abertas</p>
+            <p className="text-[10px] uppercase font-bold text-purple-700 dark:text-purple-300"><StoreIcon size={12} /> Lojas abertas</p>
             <p className="text-lg font-bold text-zinc-900 dark:text-white">{counters.lojasAbertas}<span className="text-xs text-zinc-500"> / {counters.lojasTotal}</span></p>
           </div>
           <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50">

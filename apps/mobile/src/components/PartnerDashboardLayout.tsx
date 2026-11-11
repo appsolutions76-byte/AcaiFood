@@ -30,6 +30,7 @@ import dynamic from 'next/dynamic';
 import type { PartnerRole } from '@/components/PartnerManualModal';
 import PartnerActivationGuard from '@/components/PartnerActivationGuard';
 import { AsaasAccountStatusCard } from '@/components/AsaasAccountStatusCard';
+import { StoreIcon } from "@/components/StoreIcon";
 // R40 (desempenho): manual e edição de nome só são baixados quando a tela já abriu
 const PartnerManualModal = dynamic(() => import('@/components/PartnerManualModal').then(m => m.PartnerManualModal), { ssr: false });
 const PartnerLinkedAccountsCard = dynamic(() => import('@/components/PartnerLinkedAccountsCard').then(m => m.PartnerLinkedAccountsCard), { ssr: false });
@@ -688,7 +689,7 @@ export function PartnerDashboardLayout({
                 onClick={() => router.push('/')}
                 className="flex flex-col items-center justify-center py-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white active:scale-95 transition cursor-pointer"
               >
-                <span className="text-base leading-none">🥣</span>
+                <StoreIcon size={18} />
                 <span className="text-[10px] font-bold mt-0.5">Lojas</span>
               </button>
             )}
