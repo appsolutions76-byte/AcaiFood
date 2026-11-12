@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Copy, CheckCircle, ExternalLink, X } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { SeloAsaas } from "@/components/SeloAsaas";
@@ -22,72 +22,108 @@ interface PixModalProps {
   onPaymentConfirmed?: () => void;
 }
 
+// Status locais do pedido que significam "pago" (o app só chega neles depois do servidor confirmar)
+const PAID_LOCAL_STATUSES = ['pendente', 'preparo', 'pronto', 'em_rota', 'aguardando_cliente', 'entregue'];
+
 export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
   const [copied, setCopied] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const acaoPedido = useAppStore((state: any) => state.acaoPedido);
+  // R49: status do pedido já carregado no app (atualizado em tempo real, como no painel da loja)
+  const localOrderStatus = useAppStore((state: any) =>
+    data.orderId ? (state.orders || []).find((o: any) => o.id === data.orderId)?.status : undefined
+  );
+
+  // R49: as funções ficam em refs para a consulta não reiniciar a cada redesenho da página
+  const acaoPedidoRef = useRef(acaoPedido);
+  const onPaymentConfirmedRef = useRef(onPaymentConfirmed);
+  const confirmedOrderRef = useRef<string | null>(null);
+  useEffect(() => {
+    acaoPedidoRef.current = acaoPedido;
+    onPaymentConfirmedRef.current = onPaymentConfirmed;
+  });
+
+  // Confirma uma única vez por pedido, venha o aviso de onde vier
+  const confirmPaid = useCallback(async (orderId: string) => {
+    if (confirmedOrderRef.current === orderId) return;
+    confirmedOrderRef.current = orderId;
+    setIsPaid(true);
+    try {
+      await acaoPedidoRef.current?.(orderId, 'confirmar_pagamento');
+    } catch (e) {
+      console.warn("Erro ao recarregar pedido após confirmação do Pix:", e);
+    }
+    try {
+      onPaymentConfirmedRef.current?.();
+    } catch (_e) {}
+  }, []);
 
   useEffect(() => {
-    if (!data.open) {
-      setIsPaid(false);
-      return;
-    }
+    confirmedOrderRef.current = null;
     setIsPaid(false);
   }, [data.open, data.orderId]);
+
+  // 1. Caminho rápido: o pedido já aparece como pago nos dados do app
+  useEffect(() => {
+    if (!data.open || !data.orderId) return;
+    if (localOrderStatus && PAID_LOCAL_STATUSES.includes(String(localOrderStatus))) {
+      confirmPaid(data.orderId);
+    }
+  }, [data.open, data.orderId, localOrderStatus, confirmPaid]);
 
   useEffect(() => {
     if (!data.open || !data.orderId || isPaid) return;
 
-    let isSubscribed = true;
+    const orderId = data.orderId;
+    const paymentId = data.paymentId;
+    let active = true;
+    let inFlight = false;
 
     const checkStatus = async () => {
-      if (isPaid || !isSubscribed) return;
+      if (!active || inFlight) return;
+      inFlight = true;
       try {
-        const query = data.paymentId 
-          ? `paymentId=${data.paymentId}&orderId=${data.orderId}` 
-          : `orderId=${data.orderId}`;
-        const res = await fetch(`/api/asaas/status?${query}`);
+        const query = paymentId
+          ? `paymentId=${paymentId}&orderId=${orderId}`
+          : `orderId=${orderId}`;
+        const res = await fetch(`/api/asaas/status?${query}`, { cache: 'no-store' });
         if (res.ok) {
           const resData = await res.json();
-          if (resData.isPaid && isSubscribed) {
-            setIsPaid(true);
-            if (data.orderId) {
-              await acaoPedido(data.orderId, 'confirmar_pagamento');
-            }
-            if (onPaymentConfirmed) {
-              onPaymentConfirmed();
-            }
+          if (resData.isPaid && active) {
+            await confirmPaid(orderId);
           }
         }
       } catch (e) {
         console.warn("Erro ao checar status do Pix no PixModal:", e);
+      } finally {
+        inFlight = false;
       }
     };
 
-    // 1. Checagem periódica ativa a cada 2.5s
+    // 2. Checagem periódica ativa a cada 2.5s
     checkStatus();
     const interval = setInterval(checkStatus, 2500);
 
-    // 2. Escuta via Supabase Realtime do pedido específico
+    // 3. Ao voltar do app do banco, confere na hora (sem esperar o próximo ciclo)
+    const onReturn = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      checkStatus();
+    };
+    document.addEventListener('visibilitychange', onReturn);
+    window.addEventListener('focus', onReturn);
+
+    // 4. Escuta via Supabase Realtime do pedido específico
     let channel: any = null;
     import('@/lib/supabase').then(({ supabase }) => {
-      if (!isSubscribed) return;
-      channel = supabase.channel(`pix-modal-${data.orderId}`)
+      if (!active) return;
+      channel = supabase.channel(`pix-modal-${orderId}`)
         .on(
           'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${data.orderId}` },
-          async (payload: any) => {
+          { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
+          (payload: any) => {
             const st = payload.new?.status;
             if (['PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'RECEIVED', 'pendente', 'preparo', 'pronto'].includes(st)) {
-              if (isSubscribed) {
-                setIsPaid(true);
-                if (data.orderId) {
-                  await acaoPedido(data.orderId, 'confirmar_pagamento');
-                }
-                if (onPaymentConfirmed) {
-                  onPaymentConfirmed();
-                }
-              }
+              if (active) confirmPaid(orderId);
             }
           }
         )
@@ -95,11 +131,13 @@ export function PixModal({ data, onClose, onPaymentConfirmed }: PixModalProps) {
     });
 
     return () => {
-      isSubscribed = false;
+      active = false;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', onReturn);
+      window.removeEventListener('focus', onReturn);
       if (channel) channel.unsubscribe();
     };
-  }, [data.open, data.orderId, data.paymentId, isPaid, acaoPedido, onPaymentConfirmed]);
+  }, [data.open, data.orderId, data.paymentId, isPaid, confirmPaid]);
 
   if (!data.open) return null;
 

@@ -89,7 +89,6 @@ export default function StorefrontPage() {
   }>({ open: false, lojaId: '', tipo: 'medio', quantity: 1, selectedComplements: {}, notes: '' });
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [pixModalData, setPixModalData] = useState<{ open: boolean; qrCode?: string; copiaECola?: string; invoiceUrl?: string; orderId?: string; isSandbox?: boolean; paymentId?: string; totalValue?: number }>({ open: false });
-  const [pixPaid, setPixPaid] = useState(false);
   const [cpfModalOpen, setCpfModalOpen] = useState(false);
   const [cpfInputValue, setCpfInputValue] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
@@ -204,52 +203,7 @@ export default function StorefrontPage() {
     );
   };
 
-  useEffect(() => {
-    if (!pixModalData.open || !pixModalData.orderId) {
-      return;
-    }
-
-    let isSubscribed = true;
-
-    const checkStatus = async () => {
-      // 1. Checar status no banco local via store
-      const localOrder = (store.orders || []).find((o: any) => o.id === pixModalData.orderId);
-      if (localOrder) {
-        const s = String(localOrder.status).toLowerCase();
-        if (['pago', 'preparo', 'pronto', 'em_rota', 'entregue', 'paid', 'preparing', 'ready', 'delivering', 'delivered', 'received', 'completed'].includes(s)) {
-          if (isSubscribed) setPixPaid(true);
-          return;
-        }
-      }
-
-      // 2. Checar API de status do Asaas
-      try {
-        const query = pixModalData.paymentId 
-          ? `paymentId=${pixModalData.paymentId}&orderId=${pixModalData.orderId}` 
-          : `orderId=${pixModalData.orderId}`;
-        const res = await fetch(`/api/asaas/status?${query}`);
-        if (res.ok && isSubscribed) {
-          const data = await res.json();
-          if (data.isPaid) {
-            setPixPaid(true);
-            if (pixModalData.orderId) {
-              store.acaoPedido(pixModalData.orderId, 'confirmar_pagamento');
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Erro ao checar status Pix:", e);
-      }
-    };
-
-    checkStatus();
-    const interval = setInterval(checkStatus, 3500);
-    return () => {
-      isSubscribed = false;
-      clearInterval(interval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pixModalData.open, pixModalData.orderId, pixModalData.paymentId]);
+  // R49: a confirmação do Pix é acompanhada só pelo PixModal (antes havia uma segunda consulta em dobro aqui)
 
   const getCartPrice = (lojaId: string, tipo: string) => {
     const loja = store.users?.[lojaId];
