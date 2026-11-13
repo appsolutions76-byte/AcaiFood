@@ -114,6 +114,15 @@ const QUICK_EXTRAS_PRESETS = [
   { name: 'Vatapá Paraense', price: 18, category: 'outros', icon: '🍲', description: 'Vatapá cremoso tradicional paraense com azeite de dendê, camarão e leite de coco.' },
 ];
 
+// Fornecedor sem conta Asaas aprovada: aparece na lista, mas ainda não recebe pedidos (R51).
+const fornAguardandoConta = (u: any): boolean => {
+  if (!u) return false;
+  const hasWallet = Boolean(String(u.asaasWalletId || u.asaas_wallet_id || '').trim());
+  return !(String(u.asaas_account_status || '').toUpperCase() === 'APPROVED' && hasWallet);
+};
+const fornIndisponivel = (u: any): boolean => !!u && (u.status === 'paused' || fornAguardandoConta(u));
+const MSG_FORN_EM_BREVE = (nome?: string) => `🕓 O fornecedor "${nome || 'selecionado'}" está concluindo o cadastro no AçaíFood e ainda não recebe pedidos. Escolha outro fornecedor ou volte em breve.`;
+
 export default function BatedeiraDashboard() {
   const router = useRouter();
   const store = useAppStore();
@@ -559,7 +568,7 @@ export default function BatedeiraDashboard() {
     });
 
   const countAllFornecedores = allFornecedores.length;
-  const countOpenFornecedores = allFornecedores.filter((u: any) => u.status !== 'paused').length;
+  const countOpenFornecedores = allFornecedores.filter((u: any) => !fornIndisponivel(u)).length;
   const countSubsidizedFornecedores = allFornecedores.filter((u: any) => (u.freteSubsidyPct || 0) > 0).length;
   const countStockFornecedores = allFornecedores.filter((u: any) => u.availabilityB2B?.lata !== false || (u.products || []).some((p: any) => p.isAvailable !== false)).length;
 
@@ -575,7 +584,7 @@ export default function BatedeiraDashboard() {
     })
     .filter((forn: any) => {
       if (b2bSortFilter === 'open') {
-        return forn.status !== 'paused';
+        return !fornIndisponivel(forn);
       }
       if (b2bSortFilter === 'has_stock') {
         return forn.availabilityB2B?.lata !== false || (forn.products || []).some((p: any) => p.isAvailable !== false);
@@ -586,8 +595,8 @@ export default function BatedeiraDashboard() {
       return true;
     })
     .sort((a: any, b: any) => {
-      const aOpen = a.status !== 'paused' ? 1 : 0;
-      const bOpen = b.status !== 'paused' ? 1 : 0;
+      const aOpen = !fornIndisponivel(a) ? 2 : fornAguardandoConta(a) ? 0 : 1;
+      const bOpen = !fornIndisponivel(b) ? 2 : fornAguardandoConta(b) ? 0 : 1;
       if (aOpen !== bOpen) return bOpen - aOpen;
 
       const distA = (a.lat && currentUser.lat) ? haversineKm(a.lat, a.lng!, currentUser.lat, currentUser.lng!) : 999;
@@ -798,8 +807,8 @@ export default function BatedeiraDashboard() {
     const forn = store.users?.[fornId];
     if (!forn) return;
 
-    if (forn.status === 'paused') {
-      alert(`⚠️ O fornecedor "${forn.name}" está fechado/pausado no momento e não está aceitando novos pedidos de abastecimento.`);
+    if (fornIndisponivel(forn)) {
+      alert(fornAguardandoConta(forn) ? MSG_FORN_EM_BREVE(forn.name) : `⚠️ O fornecedor "${forn.name}" está fechado/pausado no momento e não está aceitando novos pedidos de abastecimento.`);
       return;
     }
 
@@ -819,8 +828,8 @@ export default function BatedeiraDashboard() {
     if (!cart.storeId || b2bCartItems.length === 0) return;
     const fornId = cart.storeId;
     const forn = store.users?.[fornId];
-    if (forn?.status === 'paused') {
-      alert(`⚠️ O fornecedor "${forn.name || 'selecionado'}" está fechado no momento. Não é possível concluir o pedido de abastecimento.`);
+    if (fornIndisponivel(forn)) {
+      alert(fornAguardandoConta(forn) ? MSG_FORN_EM_BREVE(forn?.name) : `⚠️ O fornecedor "${forn.name || 'selecionado'}" está fechado no momento. Não é possível concluir o pedido de abastecimento.`);
       return;
     }
     const res: any = await store.criarPedido('B2B', fornId);
@@ -2240,7 +2249,7 @@ export default function BatedeiraDashboard() {
               const selForn = store.users[selectedFornecedorId];
               const { freteTotal, freteLoja, subsidy, dist } = calcFreteB2B(selForn.id);
               const isCartForn = cart.storeId === selForn.id && b2bCartItems.length > 0;
-              const isPaused = selForn.status === 'paused';
+              const isPaused = fornIndisponivel(selForn);
               const defaultB2BImage = 'https://images.unsplash.com/photo-1628557044797-f21a177c37ec?auto=format&fit=crop&w=400&q=80';
 
               return (
@@ -2296,7 +2305,7 @@ export default function BatedeiraDashboard() {
                   {isPaused && (
                     <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 p-3.5 rounded-xl mb-4 flex items-center gap-2.5 text-red-700 dark:text-red-300 text-xs font-bold shadow-xs">
                       <span className="text-base">⛔</span>
-                      <span>Este fornecedor está <strong>fechado/pausado no momento</strong> e não está recebendo pedidos de abastecimento.</span>
+                      {fornAguardandoConta(selForn) ? (<span>Este fornecedor está <strong>concluindo o cadastro</strong> e ainda não recebe pedidos de abastecimento.</span>) : (<span>Este fornecedor está <strong>fechado/pausado no momento</strong> e não está recebendo pedidos de abastecimento.</span>)}
                     </div>
                   )}
 
@@ -2372,7 +2381,7 @@ export default function BatedeiraDashboard() {
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <p className="font-extrabold text-zinc-950 dark:text-white text-base sm:text-lg leading-tight truncate">{item.name}</p>
                                 {!item.isAvail && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Esgotado</span>}
-                                {isPaused && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">Fechado</span>}
+                                {isPaused && <span className="text-[9px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 font-extrabold px-1.5 py-0.5 rounded uppercase">{fornAguardandoConta(selForn) ? 'Em breve' : 'Fechado'}</span>}
                               </div>
                               <p className="text-[11px] text-zinc-500 font-medium">{item.desc}</p>
                               <p className="text-base sm:text-lg font-black text-zinc-950 dark:text-white mt-0.5 tracking-tight">{formatMoney(item.price)} {item.unit && <span className="text-xs font-normal text-zinc-400">{item.unit}</span>}</p>
@@ -2404,7 +2413,7 @@ export default function BatedeiraDashboard() {
                             </button>
                           ) : (
                             <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1.5 rounded-lg shrink-0">
-                              {isPaused ? 'Fornecedor Fechado' : 'Esgotado'}
+                              {fornAguardandoConta(selForn) ? 'Em breve' : isPaused ? 'Fornecedor Fechado' : 'Esgotado'}
                             </span>
                           )}
                         </div>
@@ -2541,7 +2550,7 @@ export default function BatedeiraDashboard() {
                     {displayedFornecedores.map((forn: any) => {
                       const { freteTotal, freteLoja, subsidy, dist } = calcFreteB2B(forn.id);
                       const isSelectedForn = cart.storeId === forn.id && b2bCartItems.length > 0;
-                      const isFornPaused = forn.status === 'paused';
+                      const isFornPaused = fornIndisponivel(forn);
                       const minTime = Math.max(20, Math.min(60, 20 + Math.round(dist * 3)));
                       const maxTime = Math.max(35, Math.min(85, 35 + Math.round(dist * 3)));
 
@@ -2597,7 +2606,7 @@ export default function BatedeiraDashboard() {
                             {/* BADGES DE STATUS & SUBSÍDIO */}
                             <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
                               {isFornPaused ? (
-                                <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md">🔴 Fechado</span>
+                                <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md">{fornAguardandoConta(forn) ? '🕓 Em breve' : '🔴 Fechado'}</span>
                               ) : (
                                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">🟢 Aberto</span>
                               )}
@@ -2637,10 +2646,10 @@ export default function BatedeiraDashboard() {
                           {/* BOTÃO DE AÇÃO */}
                           {isFornPaused ? (
                             <button 
-                              onClick={() => alert(`⚠️ O fornecedor "${forn.name}" está fechado no momento e não está aceitando pedidos agora.`)}
+                              onClick={() => alert(fornAguardandoConta(forn) ? MSG_FORN_EM_BREVE(forn.name) : `⚠️ O fornecedor "${forn.name}" está fechado no momento e não está aceitando pedidos agora.`)}
                               className="w-full mt-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700/60 text-zinc-400 dark:text-zinc-500 font-bold py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700/60 transition flex justify-center items-center gap-1.5 text-xs"
                             >
-                              ⛔ Fechado no Momento
+                              {fornAguardandoConta(forn) ? '🕓 Em breve (ainda não recebe pedidos)' : '⛔ Fechado no Momento'}
                             </button>
                           ) : (
                             <button 
