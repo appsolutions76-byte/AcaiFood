@@ -65,6 +65,16 @@ function PaymentHandler() {
   return null;
 }
 
+// Loja sem conta Asaas aprovada: aparece na vitrine, mas ainda não recebe pedidos (doc 45).
+const lojaAguardandoConta = (u: any): boolean => {
+  if (!u) return false;
+  const hasWallet = Boolean(String(u.asaasWalletId || u.asaas_wallet_id || '').trim());
+  return !(String(u.asaas_account_status || '').toUpperCase() === 'APPROVED' && hasWallet);
+};
+// Fechada (pausada) ou ainda sem conta de pagamento aprovada: não recebe pedidos.
+const lojaIndisponivel = (u: any): boolean => !!u && (u.status === 'paused' || lojaAguardandoConta(u));
+const MSG_LOJA_EM_BREVE = (nome?: string) => `🕓 "${nome || 'Esta loja'}" está chegando ao AçaíFood e ainda não recebe pedidos. Volte em breve ou escolha outra loja aberta.`;
+
 export default function StorefrontPage() {
   const store = useAppStore();
   const rates = getRatesForCity(store.currentUser?.cidade, store.rates, store.cities) || store.rates;
@@ -288,12 +298,6 @@ export default function StorefrontPage() {
   const batedeirasAll = Object.values(store.users || {})
     .filter((u: any) => u.role === 'loja' && u.status !== 'blocked')
     .filter((u: any) => {
-      // Oculta estabelecimentos não ativados da vitrine pública
-      const hasWalletOrPix = Boolean(u.asaasWalletId || (u as any).asaas_wallet_id || u.pixKey);
-      const isFounder = u.isFounderSubsidized === true || (u.isFounderSubsidized !== false && hasWalletOrPix);
-      return isFounder || hasWalletOrPix;
-    })
-    .filter((u: any) => {
       if (!userCityNorm || !u.cidade) return true;
       return norm(u.cidade) === userCityNorm;
     });
@@ -303,7 +307,7 @@ export default function StorefrontPage() {
 
   // Contadores para os Chips Rápidos
   const countTotal = batedeirasAll.length;
-  const countOpen = batedeirasAll.filter((u: any) => u.status !== 'paused').length;
+  const countOpen = batedeirasAll.filter((u: any) => !lojaIndisponivel(u)).length;
   const countFreeFrete = batedeirasAll.filter((u: any) => (u.freteSubsidyPct || 0) > 0).length;
   const countGrosso = batedeirasAll.filter((u: any) => u.availabilityB2C?.grosso !== false).length;
   const countBranco = batedeirasAll.filter((u: any) => u.availabilityB2C?.branco !== false).length;
@@ -322,7 +326,7 @@ export default function StorefrontPage() {
       if (!nameMatch && !bairroMatch && !cidadeMatch && !prodMatch) return false;
     }
 
-    if (selectedCategoryChip === 'open' && loja.status === 'paused') return false;
+    if (selectedCategoryChip === 'open' && lojaIndisponivel(loja)) return false;
     if (selectedCategoryChip === 'free_frete' && (!loja.freteSubsidyPct || loja.freteSubsidyPct <= 0)) return false;
     if (selectedCategoryChip === 'grosso' && loja.availabilityB2C?.grosso === false) return false;
     if (selectedCategoryChip === 'branco' && loja.availabilityB2C?.branco === false) return false;
@@ -330,8 +334,8 @@ export default function StorefrontPage() {
     return true;
   }).sort((a: any, b: any) => {
     // 1. Prioridade Máxima: Lojas Abertas (status !== 'paused') aparecem primeiro
-    const aOpen = a.status !== 'paused' ? 1 : 0;
-    const bOpen = b.status !== 'paused' ? 1 : 0;
+    const aOpen = !lojaIndisponivel(a) ? 2 : lojaAguardandoConta(a) ? 0 : 1;
+    const bOpen = !lojaIndisponivel(b) ? 2 : lojaAguardandoConta(b) ? 0 : 1;
     if (aOpen !== bOpen) return bOpen - aOpen;
 
     // 2. Ordenação secundária por filtro ou seletor
@@ -363,8 +367,8 @@ export default function StorefrontPage() {
 
   const handleSelectStore = (lojaId: string) => {
     const loja = store.users?.[lojaId];
-    if (loja?.status === 'paused') {
-      alert(`⛔ A batedeira "${loja.name}" está FECHADA no momento e não está aceitando pedidos. Por favor, escolha outra loja aberta.`);
+    if (lojaIndisponivel(loja)) {
+      alert(lojaAguardandoConta(loja) ? MSG_LOJA_EM_BREVE(loja?.name) : `⛔ A batedeira "${loja.name}" está FECHADA no momento e não está aceitando pedidos. Por favor, escolha outra loja aberta.`);
       return;
     }
 
@@ -386,8 +390,8 @@ export default function StorefrontPage() {
     const loja = store.users?.[lojaId];
     if (!loja) return;
 
-    if (loja.status === 'paused') {
-      alert(`⚠️ "${loja.name}" está fechada no momento e não está aceitando novos pedidos.`);
+    if (lojaIndisponivel(loja)) {
+      alert(lojaAguardandoConta(loja) ? MSG_LOJA_EM_BREVE(loja.name) : `⚠️ "${loja.name}" está fechada no momento e não está aceitando novos pedidos.`);
       setProductSelectModal({ open: false, lojaId: '', tipo: 'medio', quantity: 1 });
       return;
     }
@@ -468,8 +472,8 @@ export default function StorefrontPage() {
   const handleQuickAddWithComplements = (lojaId: string, item: any) => {
     const loja = store.users?.[lojaId];
     if (!loja) return;
-    if (loja.status === 'paused') {
-      alert(`⚠️ "${loja.name}" está fechada no momento.`);
+    if (lojaIndisponivel(loja)) {
+      alert(lojaAguardandoConta(loja) ? MSG_LOJA_EM_BREVE(loja.name) : `⚠️ "${loja.name}" está fechada no momento.`);
       return;
     }
 
@@ -515,8 +519,8 @@ export default function StorefrontPage() {
     if (!cart.storeId || cart.items.length === 0) return;
 
     const storeUser = store.users?.[cart.storeId];
-    if (storeUser?.status === 'paused') {
-      alert(`⚠️ A batedeira "${storeUser.name}" está fechada no momento. O pedido não pode ser enviado agora.`);
+    if (lojaIndisponivel(storeUser)) {
+      alert(lojaAguardandoConta(storeUser) ? MSG_LOJA_EM_BREVE(storeUser?.name) : `⚠️ A batedeira "${storeUser.name}" está fechada no momento. O pedido não pode ser enviado agora.`);
       return;
     }
 
@@ -1146,13 +1150,13 @@ export default function StorefrontPage() {
                         </div>
                       </div>
 
-                      {selLoja.status === 'paused' && (
+                      {lojaIndisponivel(selLoja) && (
                         <div className="bg-red-600 text-white p-5 rounded-2xl mb-5 shadow-lg border border-red-500 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in">
                           <div className="flex items-center gap-3">
                             <span className="text-3xl bg-white/20 p-2 rounded-xl">⛔</span>
                             <div>
-                              <h4 className="font-black text-base sm:text-lg">{selLoja.role === 'fornecedor' ? 'Fornecedor Fechado / Pausado' : 'Esta Loja Está Fechada no Momento'}</h4>
-                              <p className="text-xs text-red-100 font-medium mt-0.5">O estabelecimento pausou o recebimento de novos pedidos. O cardápio está em modo apenas visualização.</p>
+                              <h4 className="font-black text-base sm:text-lg">{lojaAguardandoConta(selLoja) ? 'Em Breve no AçaíFood' : selLoja.role === 'fornecedor' ? 'Fornecedor Fechado / Pausado' : 'Esta Loja Está Fechada no Momento'}</h4>
+                              <p className="text-xs text-red-100 font-medium mt-0.5">{lojaAguardandoConta(selLoja) ? 'Este estabelecimento está concluindo o cadastro e ainda não recebe pedidos. O cardápio está em modo apenas visualização.' : 'O estabelecimento pausou o recebimento de novos pedidos. O cardápio está em modo apenas visualização.'}</p>
                             </div>
                           </div>
                           <button 
@@ -1172,9 +1176,9 @@ export default function StorefrontPage() {
                       {isCartStore && (
                         <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 p-3.5 rounded-xl text-xs sm:text-sm font-bold mb-4 flex justify-between items-center shadow-xs">
                           <span>• Você tem {cartTotalQuantity} item(ns) no carrinho desta loja ({formatMoney(cartItemsTotal)})</span>
-                          {selLoja.status === 'paused' ? (
+                          {lojaIndisponivel(selLoja) ? (
                             <span className="bg-red-600 text-white font-extrabold px-3.5 py-2 rounded-xl text-xs shadow">
-                              Loja Fechada
+                              {lojaAguardandoConta(selLoja) ? 'Em Breve' : 'Loja Fechada'}
                             </span>
                           ) : (
                             <button onClick={() => setCheckoutModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3.5 py-2 rounded-xl shadow transition cursor-pointer">
@@ -1262,7 +1266,7 @@ export default function StorefrontPage() {
                                         </div>
                                       </div>
                                       <div className="shrink-0 flex items-center pt-0.5">
-                                        {item.isAvail && selLoja.status !== 'paused' ? (
+                                        {item.isAvail && !lojaIndisponivel(selLoja) ? (
                                           <button
                                             onClick={() => setProductSelectModal({ open: true, lojaId: selLoja.id, tipo: item.key, quantity: 1 })}
                                             className="bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-black px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition shadow-sm shrink-0 active:scale-95 cursor-pointer flex items-center gap-1 text-xs sm:text-sm hover:brightness-110"
@@ -1282,7 +1286,7 @@ export default function StorefrontPage() {
                                           </button>
                                         ) : (
                                           <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 rounded-lg shrink-0">
-                                            {selLoja.status === 'paused' ? 'Fechado' : 'Esgotado'}
+                                            {lojaAguardandoConta(selLoja) ? 'Em breve' : lojaIndisponivel(selLoja) ? 'Fechado' : 'Esgotado'}
                                           </span>
                                         )}
                                       </div>
@@ -1467,7 +1471,7 @@ export default function StorefrontPage() {
                                          </div>
                                        </div>
                                        <div className="shrink-0 flex items-center pt-0.5">
-                                         {item.isAvail && selLoja.status !== 'paused' ? (
+                                         {item.isAvail && !lojaIndisponivel(selLoja) ? (
                                            (item as any).complements?.length > 0 ? (
                                              <button
                                                onClick={() => setExpandedProductDesc(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
@@ -1489,7 +1493,7 @@ export default function StorefrontPage() {
                                            )
                                          ) : (
                                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2.5 py-1 rounded-lg shrink-0">
-                                             {selLoja.status === 'paused' ? 'Fechado' : 'Esgotado'}
+                                             {lojaAguardandoConta(selLoja) ? 'Em breve' : lojaIndisponivel(selLoja) ? 'Fechado' : 'Esgotado'}
                                            </span>
                                          )}
                                        </div>
@@ -1743,7 +1747,7 @@ export default function StorefrontPage() {
 
                           <div className="flex gap-3 overflow-x-auto pb-2 pt-0.5 no-scrollbar scrollbar-none">
                             {batedeirasAll
-                              .filter((l: any) => l.status !== 'paused')
+                              .filter((l: any) => !lojaIndisponivel(l))
                               .sort((a: any, b: any) => {
                                 const distA = (a.lat && currentUser?.lat) ? haversineKm(a.lat, a.lng!, currentUser!.lat, currentUser!.lng!) : 999;
                                 const distB = (b.lat && currentUser?.lat) ? haversineKm(b.lat, b.lng!, currentUser!.lat, currentUser!.lng!) : 999;
@@ -1812,7 +1816,7 @@ export default function StorefrontPage() {
 
                             <div className="flex gap-3 overflow-x-auto pb-2 pt-0.5 no-scrollbar scrollbar-none">
                               {batedeirasAll
-                                .filter((l: any) => l.status !== 'paused' && (l.freteSubsidyPct || 0) > 0)
+                                .filter((l: any) => !lojaIndisponivel(l) && (l.freteSubsidyPct || 0) > 0)
                                 .slice(0, 6)
                                 .map((loja: any) => {
                                   const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
@@ -1955,7 +1959,8 @@ export default function StorefrontPage() {
                       ) : batedeiras.map((loja: any) => {
                         const { freteCliente, dist, subsidy } = calcFreteCliente(loja.id);
                         const isSelectedLoja = cart.storeId === loja.id && cart.items.length > 0;
-                        const isLojaPaused = loja.status === 'paused';
+                        const isLojaPaused = lojaIndisponivel(loja);
+                        const isLojaEmBreve = lojaAguardandoConta(loja);
                         const minTime = Math.max(15, Math.min(50, 15 + Math.round(dist * 3.5)));
                         const maxTime = Math.max(25, Math.min(65, 25 + Math.round(dist * 3.5)));
                         const pricePopular = loja.priceB2C?.popular || loja.priceB2C?.medio || 0;
@@ -1966,7 +1971,7 @@ export default function StorefrontPage() {
                               key={loja.id}
                               onClick={() => {
                                 if (!isLojaPaused) handleSelectStore(loja.id);
-                                else alert(`⛔ A batedeira "${loja.name}" está FECHADA no momento.`);
+                                else alert(isLojaEmBreve ? MSG_LOJA_EM_BREVE(loja.name) : `⛔ A batedeira "${loja.name}" está FECHADA no momento.`);
                               }}
                               className={`group bg-white dark:bg-zinc-900 border rounded-2xl p-3.5 transition-all duration-150 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs hover:shadow-md cursor-pointer relative overflow-hidden ${
                                 isSelectedLoja
@@ -2035,7 +2040,7 @@ export default function StorefrontPage() {
                                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                                     {isLojaPaused ? (
                                       <span className="text-[10px] font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md">
-                                        • Fechada
+                                        {isLojaEmBreve ? '• Em breve' : '• Fechada'}
                                       </span>
                                     ) : (
                                       <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">
@@ -2078,7 +2083,7 @@ export default function StorefrontPage() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (isLojaPaused) alert(`⛔ A batedeira "${loja.name}" está FECHADA no momento.`);
+                                    if (isLojaPaused) alert(isLojaEmBreve ? MSG_LOJA_EM_BREVE(loja.name) : `⛔ A batedeira "${loja.name}" está FECHADA no momento.`);
                                     else handleSelectStore(loja.id);
                                   }}
                                   className={`px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 ${
@@ -2088,7 +2093,7 @@ export default function StorefrontPage() {
                                   }`}
                                 >
                                   <ShoppingCart size={13} />
-                                  <span>{isLojaPaused ? 'Fechada' : 'Ver Cardápio'}</span>
+                                  <span>{isLojaEmBreve ? 'Em breve' : isLojaPaused ? 'Fechada' : 'Ver Cardápio'}</span>
                                 </button>
                               </div>
                             </div>
@@ -2115,7 +2120,7 @@ export default function StorefrontPage() {
 
                               {isLojaPaused && (
                                 <div className="absolute top-0 left-0 right-0 bg-red-600 text-white text-[10px] font-black tracking-wider uppercase py-0.5 text-center shadow-xs">
-                                  • Fechada no Momento
+                                  {isLojaEmBreve ? '• Em Breve — Ainda Não Recebe Pedidos' : '• Fechada no Momento'}
                                 </div>
                               )}
 
@@ -2166,7 +2171,7 @@ export default function StorefrontPage() {
                                 {/* BADGES DE STATUS & TEMPO */}
                                 <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
                                   {isLojaPaused ? (
-                                    <span className="text-[10px] font-black text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/80 border border-red-300 dark:border-red-800 px-2 py-0.5 rounded-md">• Fechada</span>
+                                    <span className="text-[10px] font-black text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/80 border border-red-300 dark:border-red-800 px-2 py-0.5 rounded-md">{isLojaEmBreve ? '• Em breve' : '• Fechada'}</span>
                                   ) : (
                                     <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">• Aberta</span>
                                   )}
@@ -2208,10 +2213,10 @@ export default function StorefrontPage() {
                               
                                {isLojaPaused ? (
                                  <button 
-                                   onClick={() => alert(`⛔ A batedeira "${loja.name}" está FECHADA no momento e não está aceitando pedidos. Por favor, escolha outra loja aberta.`)}
+                                   onClick={() => alert(isLojaEmBreve ? MSG_LOJA_EM_BREVE(loja.name) : `⛔ A batedeira "${loja.name}" está FECHADA no momento e não está aceitando pedidos. Por favor, escolha outra loja aberta.`)}
                                    className="w-full mt-1 bg-red-100 hover:bg-red-200 dark:bg-red-950/60 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 font-extrabold py-2.5 px-3 rounded-xl border border-red-300 dark:border-red-800 transition flex justify-center items-center gap-1.5 text-xs cursor-pointer shadow-2xs active:scale-95"
                                  >
-                                   Loja Fechada (Indisponível)
+                                   {isLojaEmBreve ? 'Em Breve (Ainda Não Recebe Pedidos)' : 'Loja Fechada (Indisponível)'}
                                  </button>
                                ) : (
                                  <button 
