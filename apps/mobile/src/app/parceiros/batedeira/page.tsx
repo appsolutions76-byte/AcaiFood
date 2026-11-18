@@ -1105,7 +1105,7 @@ export default function BatedeiraDashboard() {
                         store.acaoPedido(o.id, 'cancelar_pedido', undefined, reason.trim());
                       }
                     }} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-2 rounded-lg transition">❌ Cancelar</button>
-                    <button onClick={() => store.acaoPedido(o.id, 'chamar_moto')} className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition">🏍️ Chamar Moto</button>
+                    <button onClick={() => { if (confirmarFreteLojaAoChamar(o)) store.acaoPedido(o.id, 'chamar_moto'); }} className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition">🏍️ Chamar Moto</button>
                 </div>
               )}
 
@@ -1116,6 +1116,7 @@ export default function BatedeiraDashboard() {
                         <button
                           type="button"
                           onClick={async () => {
+                            if (!confirmarFreteLojaAoChamar(o)) return;
                             const { data, error } = await supabase.rpc('dispatch_open_order_to_app', { p_order_id: o.id });
                             if (error || !data?.success) alert(data?.error || error?.message || 'Erro ao abrir pedido');
                             else if (currentUser?.id) store.fetchOrders(currentUser.id, true);
@@ -1232,6 +1233,29 @@ export default function BatedeiraDashboard() {
             />
           )}
       </div>
+    );
+  };
+
+  // R51: texto claro sobre quem paga o frete (o funcionamento não muda)
+  const lojaFretePct = Math.max(0, Math.min(100, Math.round(Number(subsidyInput) || 0)));
+  const exemploFrete3km = calculateOrderFreight('B2C', 3, rates) || 0;
+  const exemploFreteLoja = Number((exemploFrete3km * lojaFretePct / 100).toFixed(2));
+  const exemploFreteCliente = Number(Math.max(0, exemploFrete3km - exemploFreteLoja).toFixed(2));
+
+  // R51: antes de chamar motoboy, avisa quanto do frete deste pedido sai da venda da loja
+  const confirmarFreteLojaAoChamar = (o: any): boolean => {
+    const freteLoja = Number(o?.taxas?.entregaLoja || 0);
+    if (freteLoja <= 0) return true;
+    const freteCliente = Number(o?.taxas?.entregaCliente || 0);
+    const linhaCliente = freteCliente > 0
+      ? `O cliente pagou ${formatMoney(freteCliente)} de frete.`
+      : 'O cliente não pagou frete (frete 100% pago pela loja).';
+    return window.confirm(
+      `Frete deste pedido\n\n` +
+      `A loja paga ${formatMoney(freteLoja)} do frete, descontado da sua venda.\n` +
+      `${linhaCliente}\n` +
+      `O motoboy recebe o frete normalmente pelo app.\n\n` +
+      `Deseja chamar o motoboy?`
     );
   };
 
@@ -1355,7 +1379,7 @@ export default function BatedeiraDashboard() {
                   ? 'bg-emerald-500 text-white shadow-xs' 
                   : activeTab === 'geral' ? 'bg-purple-800 text-purple-200' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
               }`}>
-                🚚 Frete: {subsidyInput}%
+                🚚 Frete pago pela loja: {subsidyInput}%
               </span>
             </button>
 
@@ -1504,7 +1528,7 @@ export default function BatedeiraDashboard() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 pt-3 md:pt-0 border-t md:border-t-0 border-zinc-100 dark:border-zinc-800 w-full md:w-auto">
                 <div className="flex items-center gap-1.5 shrink-0">
                   <Truck size={14} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Frete Subsidiado:</span>
+                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Frete pago pela loja:</span>
                   {Number(subsidyInput) > 0 ? (
                     <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-300/40">
                       {subsidyInput}%
@@ -1562,6 +1586,28 @@ export default function BatedeiraDashboard() {
                   </span>
                 )}
               </div>
+            </div>
+
+            {/* R51: explicação de quem paga o frete */}
+            <div className={`p-3.5 rounded-xl border text-xs leading-relaxed ${
+              lojaFretePct > 0
+                ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200'
+                : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300'
+            }`}>
+              <p className="font-black text-sm mb-1">🚚 Frete pago pela loja: {lojaFretePct}%</p>
+              {lojaFretePct >= 100 ? (
+                <p>O cliente <strong>não paga frete</strong>. O valor do frete é <strong>descontado da sua venda</strong>, e o motoboy recebe o frete normalmente pelo app.</p>
+              ) : lojaFretePct > 0 ? (
+                <p>Você paga <strong>{lojaFretePct}% do frete</strong> e o cliente paga o restante (<strong>{100 - lojaFretePct}%</strong>). A sua parte é descontada da sua venda, e o motoboy recebe o frete cheio pelo app.</p>
+              ) : (
+                <p>O cliente paga <strong>100% do frete</strong>. Você não paga frete, e o motoboy recebe o frete pelo app.</p>
+              )}
+              {exemploFrete3km > 0 && (
+                <p className="mt-1.5 font-bold">
+                  Exemplo: entrega de 3 km = {formatMoney(exemploFrete3km)} de frete. Você paga {formatMoney(exemploFreteLoja)} e o cliente paga {formatMoney(exemploFreteCliente)}.
+                </p>
+              )}
+              <p className="mt-1 text-[11px] opacity-75">A porcentagem vale para os próximos pedidos. O valor do frete segue a tabela da sua cidade.</p>
             </div>
 
             {/* 2. CARDÁPIO BASE DE AÇAÍ (1 LITRO & CONGELADO P/ VIAGEM) */}

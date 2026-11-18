@@ -49,11 +49,22 @@ export function SupportChatButton({ currentUser, positionClassName }: SupportCha
 
   return (
     <>
+      {/* R51: no celular, quando a tela tem a barra de navegação de baixo, o botão sobe para cima dela
+          (antes cobria o botão "Conta"). Telas sem a barra e telas grandes mantêm a posição original. */}
+      <style>{`
+        @media (max-width: 767px) {
+          body:has(nav[aria-label="Navegação Principal Mobile"]) .acaifood-support-fab,
+          body:has(nav[aria-label="Navegação do Parceiro Mobile"]) .acaifood-support-fab {
+            bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px)) !important;
+            right: 0.75rem !important;
+          }
+        }
+      `}</style>
       <button
         onClick={() => setIsOpen(true)}
         className={
           positionClassName ||
-          "fixed bottom-5 right-5 z-[140] bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 hover:from-purple-800 hover:to-indigo-800 text-white font-bold p-3.5 sm:px-4 sm:py-3 rounded-full shadow-2xl border-2 border-purple-300/40 dark:border-purple-500/30 flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer group"
+          "acaifood-support-fab fixed bottom-5 right-5 z-[140] bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 hover:from-purple-800 hover:to-indigo-800 text-white font-bold p-3.5 sm:px-4 sm:py-3 rounded-full shadow-2xl border-2 border-purple-300/40 dark:border-purple-500/30 flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer group"
         }
         title={isRegisteredUser ? "Central de Atendimento & Suporte AçaíFood" : "Suporte AçaíFood (Exclusivo para Cadastrados)"}
         aria-label="Falar com o Suporte AçaíFood"
