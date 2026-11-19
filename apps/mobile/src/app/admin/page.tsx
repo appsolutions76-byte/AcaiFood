@@ -209,6 +209,8 @@ function AdminDashboardContent() {
   const [newCityName, setNewCityName] = useState('');
   const [citySearchText, setCitySearchText] = useState<string>('');
   const [userFilterRole, setUserFilterRole] = useState<string>('all');
+  // R54: filtro por cidade na aba Parceiros → Usuários ('all' | '__none__' | chave normalizada da cidade)
+  const [userFilterCity, setUserFilterCity] = useState<string>('all');
   const [userFilterText, setUserFilterText] = useState<string>('');
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [newAdminPassword, setNewAdminPassword] = useState('');
@@ -1041,8 +1043,33 @@ function AdminDashboardContent() {
     };
   }, [users]);
 
+  // R54: chave da cidade sem acento/maiúsculas/espaços extras ("Belém", "belem " e "BELÉM" = mesma cidade)
+  const cityKey = (c: any) => String(c || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const userCityOptions = (() => {
+    const map = new Map<string, { label: string; count: number }>();
+    let semCidade = 0;
+    Object.values(users).forEach((u: any) => {
+      if (!u) return;
+      const k = cityKey(u.cidade);
+      if (!k) { semCidade++; return; }
+      const cur = map.get(k);
+      if (cur) cur.count++;
+      else map.set(k, { label: String(u.cidade).trim(), count: 1 });
+    });
+    const list = Array.from(map.entries())
+      .map(([key, v]) => ({ key, label: v.label, count: v.count }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'pt-BR'));
+    return { list, semCidade };
+  })();
+
   const filteredUsers = Object.values(users).filter((u: any) => {
     if (!u) return false;
+
+    if (userFilterCity !== 'all') {
+      const k = cityKey(u.cidade);
+      if (userFilterCity === '__none__') { if (k) return false; }
+      else if (k !== userFilterCity) return false;
+    }
     
     if (userFilterRole !== 'all') {
       const role = (u.role || '').toLowerCase();
@@ -2957,6 +2984,21 @@ function AdminDashboardContent() {
                   <option value="caminhao">🚛 Caminhões / Caçambas ({userCounts.caminhoneiros})</option>
                   <option value="motorista">🚚 Todos os Motoristas ({userCounts.motoboys + userCounts.caminhoneiros})</option>
                   <option value="admin">🛡️ Administradores ({userCounts.admins})</option>
+                </select>
+
+                <select
+                  value={userFilterCity}
+                  onChange={e => setUserFilterCity(e.target.value)}
+                  title="Filtrar por cidade"
+                  className="w-full sm:w-auto border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-xl p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                >
+                  <option value="all">🏙️ Todas as Cidades</option>
+                  {userCityOptions.list.map(c => (
+                    <option key={c.key} value={c.key}>{c.label} ({c.count})</option>
+                  ))}
+                  {userCityOptions.semCidade > 0 && (
+                    <option value="__none__">⚠️ Sem cidade ({userCityOptions.semCidade})</option>
+                  )}
                 </select>
 
                 <span className="text-xs text-zinc-500 font-bold whitespace-nowrap bg-zinc-100 dark:bg-zinc-800 px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700">
