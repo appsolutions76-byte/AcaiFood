@@ -2968,7 +2968,7 @@ function AdminDashboardContent() {
         <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-x-auto mt-4 mb-10">
             <table className="w-full text-left text-sm min-w-max">
                 <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
-                    <tr><th className="p-4">Usuário</th><th className="p-4">Contato / Local</th><th className="p-4">Tipo</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
+                    <tr><th className="p-4">Usuário</th><th className="p-4">Contato / Local</th><th className="p-4">Cidade</th><th className="p-4">Tipo</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {filteredUsers.map((u: any) => (
@@ -3027,6 +3027,12 @@ function AdminDashboardContent() {
                                 <div>{u.email || 'Sem e-mail'}</div>
                                 <div className="font-bold mt-0.5">{u.bairro || 'Sem bairro'}</div>
                             </td>
+                            {/* R53: cidade de cada usuário */}
+                            <td className="p-4 text-xs">
+                                {String(u.cidade || '').trim()
+                                  ? <span className="font-bold text-zinc-800 dark:text-zinc-200">🏙️ {String(u.cidade).trim()}</span>
+                                  : <span className="px-2 py-1 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">Sem cidade</span>}
+                            </td>
                             <td className="p-4">
                                 <span className={`px-2 py-1 rounded text-[10px] font-bold ${
                                   isCaminhaoUser(u)
@@ -3072,7 +3078,7 @@ function AdminDashboardContent() {
                         </tr>
                     ))}
                     {filteredUsers.length === 0 && (
-                        <tr><td colSpan={5} className="text-center p-6 text-zinc-500">Nenhum usuário encontrado com estes filtros.</td></tr>
+                        <tr><td colSpan={6} className="text-center p-6 text-zinc-500">Nenhum usuário encontrado com estes filtros.</td></tr>
                     )}
                 </tbody>
             </table>
@@ -3370,7 +3376,7 @@ function AdminDashboardContent() {
                             <td className="p-3.5 capitalize font-medium text-zinc-700 dark:text-zinc-300">
                               {u.role} {u.veiculo ? `(${u.veiculo})` : ''}
                             </td>
-                            <td className="p-3.5 text-zinc-600 dark:text-zinc-400">{u.cidade || 'Belém'}</td>
+                            <td className="p-3.5 text-zinc-600 dark:text-zinc-400">{String(u.cidade || '').trim() || 'Sem cidade'}</td>
                             <td className="p-3.5">
                               {isSubsidized ? (
                                 <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase border border-emerald-300 dark:border-emerald-800">
