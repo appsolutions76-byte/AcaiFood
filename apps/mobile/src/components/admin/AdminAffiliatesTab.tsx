@@ -325,6 +325,19 @@ export function AdminAffiliatesTab() {
           <p className="text-xs text-zinc-400">
             Aprove cadastros, gerencie comissões, acompanhe indicações e defina as regras gerais.
           </p>
+          <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-zinc-800/80">
+            <span className="text-[11px] text-zinc-400 font-medium">Painel do Parceiro Afiliado:</span>
+            <a
+              href="/parceiro/afiliado"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-950/60 border border-purple-800/60 text-purple-300 font-mono text-xs hover:bg-purple-900/60 transition"
+              title="Abrir painel que o parceiro acessa"
+            >
+              <span>https://www.acaifood.app.br/parceiro/afiliado</span>
+              <ExternalLink size={12} />
+            </a>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -567,7 +580,32 @@ export function AdminAffiliatesTab() {
                 <tbody className="divide-y divide-zinc-800/60">
                   {activeList.map((aff) => (
                     <tr key={aff.id} className="text-zinc-300 hover:bg-zinc-800/30 transition">
-                      <td className="py-3 px-4 font-mono font-bold text-purple-300">{aff.referral_code}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-purple-300">{aff.referral_code}</span>
+                          <button
+                            onClick={() => {
+                              const l = `https://www.acaifood.app.br/r/${aff.referral_code}`;
+                              navigator.clipboard.writeText(l);
+                              alert(`Link de indicação copiado:\n${l}`);
+                            }}
+                            title="Copiar link de indicação (/r/codigo)"
+                            className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-purple-300 rounded transition cursor-pointer"
+                          >
+                            <Copy size={12} />
+                          </button>
+                          <a
+                            href={`/r/${aff.referral_code}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Abrir página de indicação em nova aba"
+                            className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-purple-300 rounded transition"
+                          >
+                            <ExternalLink size={12} />
+                          </a>
+                        </div>
+                        <div className="text-[10px] text-zinc-500 font-mono">/r/{aff.referral_code}</div>
+                      </td>
                       <td className="py-3 px-4">
                         <div className="font-bold text-white">{aff.name}</div>
                         <div className="text-[11px] text-zinc-500">{aff.contact || aff.users?.email}</div>
