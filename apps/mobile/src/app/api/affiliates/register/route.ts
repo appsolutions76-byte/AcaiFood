@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { token, name, email, phone, how_will_promote, password } = body;
+    const { token, name, email, phone, how_will_promote, password, cidade } = body;
 
     if (!token || typeof token !== 'string') {
       return NextResponse.json({ error: 'Token de convite não informado' }, { status: 400 });
@@ -82,6 +82,7 @@ export async function POST(request: Request) {
       name: name.trim(),
       email: cleanEmail,
       phone: cleanPhone,
+      cidade: (cidade && String(cidade).trim()) || 'Belém',
       role: 'afiliado',
       status: 'active',
       split_enabled: false,

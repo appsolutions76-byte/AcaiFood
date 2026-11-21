@@ -16,6 +16,7 @@ import {
   ArrowRight,
   ShieldCheck,
   Loader2,
+  MapPin,
 } from 'lucide-react';
 
 function ConviteAfiliadoForm() {
@@ -32,6 +33,7 @@ function ConviteAfiliadoForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [cidade, setCidade] = useState('Belém');
   const [howWillPromote, setHowWillPromote] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -102,6 +104,7 @@ function ConviteAfiliadoForm() {
           name: name.trim(),
           email: email.trim(),
           phone: phone.trim(),
+          cidade: cidade.trim() || 'Belém',
           how_will_promote: howWillPromote.trim(),
           password,
         }),
@@ -254,6 +257,21 @@ function ConviteAfiliadoForm() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="(91) 98000-0000"
+              className="w-full bg-zinc-800/90 border border-zinc-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition"
+            />
+          </div>
+
+          {/* Cidade */}
+          <div>
+            <label className="block text-xs font-bold text-zinc-300 mb-1.5 flex items-center gap-1.5">
+              <MapPin size={13} className="text-purple-400" /> Cidade *
+            </label>
+            <input
+              type="text"
+              required
+              value={cidade}
+              onChange={(e) => setCidade(e.target.value)}
+              placeholder="Ex: Belém"
               className="w-full bg-zinc-800/90 border border-zinc-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition"
             />
           </div>
