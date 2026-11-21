@@ -1,8 +1,28 @@
 import type { NextConfig } from "next";
 
+const PLAY_STORE_URL =
+  "https://play.google.com/store/apps/details?id=br.app.acaifood";
+
 const nextConfig: NextConfig = {
   images: {
     dangerouslyAllowSVG: true,
+  },
+  async redirects() {
+    return [
+      // Atalhos curtos para a ficha na Play Store (usados no link da bio do
+      // Instagram, em QR codes e em materiais impressos). O navegador interno
+      // do Instagram abre play.google.com mal; sair do nosso domínio resolve.
+      {
+        source: "/app",
+        destination: PLAY_STORE_URL,
+        permanent: false,
+      },
+      {
+        source: "/baixar",
+        destination: PLAY_STORE_URL,
+        permanent: false,
+      },
+    ];
   },
   async headers() {
     return [

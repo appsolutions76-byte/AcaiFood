@@ -46,6 +46,55 @@ button,input,select{font:inherit;color:inherit}
 .top-actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:999px;cursor:pointer;font-size:13.5px}
 .btn:hover{border-color:var(--acai-2)}
+.btn-gold{background:var(--gold);color:#fff;border:0;font-weight:600}
+.btn-gold:hover{filter:brightness(1.08)}
+.btn-tax{background:linear-gradient(135deg, var(--gold) 0%, #b87a0c 100%);color:#fff;border-color:var(--gold);font-weight:600;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(201,138,22,0.25)}
+.btn-tax:hover{filter:brightness(1.08);border-color:var(--gold)}
+
+/* Modal de Ajuste de Impostos */
+.modal-backdrop{
+  position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
+  display:none;align-items:center;justify-content:center;padding:16px;
+}
+.modal-backdrop.open{display:flex}
+.modal-box{
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);
+  border-radius:20px;max-width:540px;width:100%;max-height:calc(100vh - 32px);
+  overflow-y:auto;box-shadow:0 24px 48px rgba(0,0,0,0.35);padding:24px;position:relative;
+  animation:popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes popIn{from{transform:scale(0.95);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
+.modal-header h2{font-size:18px;margin:0;font-weight:700;display:flex;align-items:center;gap:8px}
+.modal-header p{font-size:13px;color:var(--muted);margin:4px 0 0;line-height:1.4}
+.modal-close{
+  border:1px solid var(--line);background:var(--sunk);border-radius:50%;
+  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:16px;line-height:1;color:var(--muted);flex-shrink:0;
+}
+.modal-close:hover{color:var(--ink);border-color:var(--acai-2)}
+.tax-presets-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 16px}
+@media (max-width:500px){.tax-presets-grid{grid-template-columns:1fr}}
+.tax-preset-card{
+  border:1px solid var(--line);background:var(--sunk);border-radius:12px;
+  padding:10px 12px;text-align:left;cursor:pointer;transition:all 0.15s ease;
+}
+.tax-preset-card:hover{border-color:var(--acai-2);background:var(--surface)}
+.tax-preset-card.active{border-color:var(--gold);background:var(--gold-soft,rgba(201,138,22,0.12));box-shadow:0 0 0 1.5px var(--gold)}
+.tax-preset-card .t-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px}
+.tax-preset-card .t-rate{font-size:15px;font-weight:800;color:var(--gold)}
+.tax-preset-card .t-desc{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.3}
+.tax-impact-box{
+  background:var(--sunk);border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px;margin-top:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+}
+@media (max-width:480px){.tax-impact-box{grid-template-columns:1fr}}
+.tax-impact-item{text-align:center}
+.tax-impact-item .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.02em}
+.tax-impact-item .val{font-size:15px;font-weight:800;margin-top:2px}
+.tax-note{font-size:12px;color:var(--muted);background:rgba(201,138,22,0.08);border-left:3px solid var(--gold);padding:9px 12px;border-radius:0 8px 8px 0;margin-top:14px;line-height:1.45}
+.modal-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:20px;padding-top:14px;border-top:1px solid var(--line)}
 
 /* Hero verdict */
 .verdict{background:var(--hero-bg);color:var(--hero-ink);border-radius:22px;padding:26px 26px 22px;position:relative;overflow:hidden;margin-bottom:18px}
@@ -147,6 +196,7 @@ table.heat td.cur{outline:2px solid var(--ink);outline-offset:-2px}
     <div class="brand"><div class="berry" aria-hidden="true"></div>
       <div><h1>AçaíFood · simulador de viabilidade</h1><small>Belém/PA · valores em reais · tudo recalcula na hora</small></div></div>
     <div class="top-actions">
+      <button class="btn btn-tax" id="taxModalBtn" aria-haspopup="dialog" title="Ajustar alíquota de impostos caso o governo altere regras fiscais">🏛️ Impostos (<span id="taxBtnLabel">6,0%</span>)</button>
       <button class="btn" id="saveBtn">Salvar meu cenário</button>
       <button class="btn" id="loadBtn">Abrir meu cenário</button>
       <button class="btn" id="themeBtn" aria-label="Alternar tema claro e escuro">Tema</button>
@@ -160,7 +210,7 @@ table.heat td.cur{outline:2px solid var(--ink);outline-offset:-2px}
       <button data-preset="lancamento">Lançamento realista</button>
       <button data-preset="conservador">Conservador</button>
       <button data-preset="otimista">Otimista</button>
-      <button data-preset="planilha">Como nas planilhas</button>
+      <button data-preset="planilha" title="Reproduz o estudo original (adoção 3%, comissão 7,5%, sem imposto). Apenas para comparação histórica — não use como base real.">Como nas planilhas ⓘ</button>
     </div>
   </section>
 
@@ -229,6 +279,91 @@ table.heat td.cur{outline:2px solid var(--ink);outline-offset:-2px}
   <div><b id="mbBE">–</b>mês do retorno</div>
 </div>
 
+<!-- Modal de Ajuste de Impostos do Governo -->
+<div class="modal-backdrop" id="taxModal" role="dialog" aria-modal="true" aria-labelledby="taxModalTitle">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <h2 id="taxModalTitle">🏛️ Ajuste de Impostos do Governo</h2>
+        <p>Ajuste a alíquota tributária caso o governo altere o Simples Nacional ou implemente a Reforma Tributária.</p>
+      </div>
+      <button type="button" class="modal-close" id="taxModalClose" aria-label="Fechar janela">✕</button>
+    </div>
+
+    <div class="ctl" style="background:var(--sunk); padding:14px 16px; border-radius:14px; border:1px solid var(--line);">
+      <label for="modal_tax_input" style="font-weight:700; color:var(--ink); font-size:14px;">
+        <span>Alíquota efetiva sobre a comissão do app:</span>
+        <span class="val">
+          <input type="number" id="modal_tax_input" min="0" max="40" step="0.1" style="font-size:16px; width:100px; padding:4px 8px;">
+          <span class="unit" style="font-size:15px; font-weight:700;">%</span>
+        </span>
+      </label>
+      <input type="range" id="modal_tax_range" min="0" max="40" step="0.1" aria-label="Alíquota de imposto em porcentagem">
+      <div class="hint" style="display:flex; justify-content:space-between; margin-top:4px;">
+        <span>Alíquota em vigor na simulação:</span>
+        <b id="modal_tax_cur_label" style="color:var(--gold); font-size:13px;">6,0%</b>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <span style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); display:block; margin-bottom:6px;">
+        Cenários Rápidos e Regras do Governo
+      </span>
+      <div class="tax-presets-grid" id="taxPresetsGrid">
+        <button type="button" class="tax-preset-card" data-tax="6.0">
+          <div class="t-head"><span>Simples Nacional (Faixa 1)</span><span class="t-rate">6,0%</span></div>
+          <div class="t-desc">Anexo III até R$ 180k/ano. Alíquota padrão inicial.</div>
+        </button>
+        <button type="button" class="tax-preset-card" data-tax="8.78">
+          <div class="t-head"><span>Simples Nacional (Faixa 2)</span><span class="t-rate">8,78%</span></div>
+          <div class="t-desc">Faturamento de R$ 180k a R$ 360k/ano. Alíquota efetiva (nominal 11,2% − dedução R$ 9.360).</div>
+        </button>
+        <button type="button" class="tax-preset-card" data-tax="11.05">
+          <div class="t-head"><span>Simples Nacional (Faixa 3)</span><span class="t-rate">11,05%</span></div>
+          <div class="t-desc">Faturamento de R$ 360k a R$ 720k/ano. Alíquota efetiva (nominal 13,5% − dedução R$ 17.640).</div>
+        </button>
+        <button type="button" class="tax-preset-card" data-tax="16.33">
+          <div class="t-head"><span>Lucro Presumido</span><span class="t-rate">16,33%</span></div>
+          <div class="t-desc">PIS + COFINS + ISS + IRPJ + CSLL para intermediação.</div>
+        </button>
+        <button type="button" class="tax-preset-card" data-tax="26.5">
+          <div class="t-head"><span>Reforma Tributária (IBS+CBS)</span><span class="t-rate">26,5%</span></div>
+          <div class="t-desc">Alíquota padrão estimada para serviços gerais.</div>
+        </button>
+        <button type="button" class="tax-preset-card" data-tax="0.0">
+          <div class="t-head"><span>Isenção / Alíquota Zero</span><span class="t-rate">0,0%</span></div>
+          <div class="t-desc">Para análise de margem pura antes de tributos.</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Impacto financeiro calculado na hora -->
+    <div class="tax-impact-box">
+      <div class="tax-impact-item">
+        <div class="lbl">Imposto / Pedido</div>
+        <div class="val num" id="modal_tax_imp_ped">R$ 0,00</div>
+      </div>
+      <div class="tax-impact-item">
+        <div class="lbl">Imposto / Mês</div>
+        <div class="val num" id="modal_tax_imp_mes">R$ 0,00</div>
+      </div>
+      <div class="tax-impact-item">
+        <div class="lbl">Lucro Líquido / Mês</div>
+        <div class="val num" id="modal_tax_lucro_mes">R$ 0,00</div>
+      </div>
+    </div>
+
+    <div class="tax-note">
+      💡 <b>Como funciona a tributação no AçaíFood:</b> O imposto incide unicamente sobre a <b>comissão bruta da plataforma</b> (sua receita de serviço). O valor do açaí da batedeira e o valor do frete do motoboy são repasses operacionais e não são tributados como receita do app.
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn" id="taxModalReset">Restaurar 6,0%</button>
+      <button type="button" class="btn btn-gold" id="taxModalApply">Aplicar e Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
 "use strict";
@@ -268,8 +403,8 @@ const GROUPS=[
   {id:'parteLoja',l:'Parte da tarifa paga pela loja',min:0,max:100,step:1,v:33,u:'%',h:'O motoboy paga o restante.',split:true},
   {id:'estorno',l:'Pedidos estornados',min:0,max:10,step:0.5,v:1,u:'%',h:'O Asaas não devolve a tarifa; o app absorve.'},
  ]},
- {t:'Custos do app',open:false,c:[
-  {id:'simples',l:'Imposto (Simples) sobre a comissão',min:0,max:20,step:0.5,v:6,u:'%'},
+ {t:'Custos do app',open:true,c:[
+  {id:'simples',l:'Imposto sobre a comissão',min:0,max:40,step:0.1,v:6,u:'%',h:'Ajuste caso o governo mude alíquotas. Clique em 🏛️ Impostos no topo para abrir a janela tributária.'},
   {id:'manut',l:'Manutenção do app por mês',min:0,max:5000,step:50,v:300,u:'R$'},
   {id:'outros',l:'Outros custos fixos por mês',min:0,max:20000,step:100,v:0,u:'R$',h:'Equipe de vendas, marketing, contador…'},
   {id:'cac',l:'Custo para trazer cada batedeira',min:0,max:500,step:0.1,v:12.9,u:'R$'},
@@ -277,7 +412,7 @@ const GROUPS=[
 ];
 const ALL={};GROUPS.forEach(g=>g.c.forEach(c=>ALL[c.id]=c));
 const PRESETS={
- lancamento:{universo:4500,adocao:2,rampa:18,preco:20,litros:58,penetr:20,ticket:50,frete:6,subsidio:0,comVenda:5,comFrete:0,tarifa:0.99,parteApp:33,parteLoja:33,estorno:1,simples:6,manut:300,outros:0,cac:12.9},
+ lancamento:{universo:4500,adocao:2,rampa:18,preco:20,litros:58,penetr:20,ticket:50,frete:6,subsidio:0,comVenda:8,comFrete:10,tarifa:0.99,parteApp:33,parteLoja:33,estorno:1,simples:6,manut:300,outros:0,cac:12.9},
  conservador:{universo:4500,adocao:1,rampa:24,preco:18,litros:50,penetr:10,ticket:40,frete:6,subsidio:0,comVenda:5,comFrete:0,tarifa:1.99,parteApp:34,parteLoja:33,estorno:2,simples:6,manut:300,outros:500,cac:30},
  otimista:{universo:4500,adocao:5,rampa:12,preco:22,litros:65,penetr:30,ticket:55,frete:7,subsidio:0,comVenda:8,comFrete:5,tarifa:0.99,parteApp:33,parteLoja:33,estorno:0.5,simples:6,manut:300,outros:0,cac:12.9},
  planilha:{universo:4500,adocao:3,rampa:0,preco:20,litros:58,penetr:20,ticket:50,frete:0,subsidio:0,comVenda:7.5,comFrete:0,tarifa:1.99,parteApp:100,parteLoja:0,estorno:0,simples:0,manut:300,outros:0,cac:12.9},
@@ -418,6 +553,11 @@ function render(){
   // split bar
   const sb=document.getElementById('splitBar');
   if(sb)sb.innerHTML='<span style="width:'+p.parteApp+'%;background:var(--gold)" title="App"></span><span style="width:'+p.parteLoja+'%;background:var(--acai)" title="Loja"></span><span style="width:'+(r.shMoto*100)+'%;background:var(--palm)" title="Motoboy"></span>';
+  // alerta motoboy negativo
+  const motoVal=r.flow.moto;
+  let motoWarn=document.getElementById('motoWarn');
+  if(!motoWarn){motoWarn=document.createElement('div');motoWarn.id='motoWarn';motoWarn.style.cssText='margin-top:6px;font-size:12px;padding:6px 10px;border-radius:8px;border-left:3px solid var(--loss);background:var(--loss-soft);color:var(--loss);display:none;';motoWarn.innerHTML='⚠️ Com esta configuração o motoboy recebe valor negativo (R$ <b id="motoWarnVal"></b>). Reduza a parte da tarifa do motoboy ou aumente o frete.';const splitEl=document.getElementById('splitBar');if(splitEl&&splitEl.parentNode)splitEl.parentNode.appendChild(motoWarn);}
+  if(motoVal<0){motoWarn.style.display='block';const mv=document.getElementById('motoWarnVal');if(mv)mv.textContent=Math.abs(motoVal).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}else{motoWarn.style.display='none';}
 
   // verdict
   const v=document.getElementById('verdict'),vt=document.getElementById('verdictText'),vp=document.getElementById('verdictPill');
@@ -441,7 +581,7 @@ function render(){
     kpi('Lucro mensal em regime',short(r.lucroReg),'com a adesão alvo atingida',r.lucroReg>=0?'pos':'neg')+
     kpi('Lucro por pedido',brl.format(r.lucroPed),'comissão − tarifa − imposto − estornos',r.lucroPed>=0?'pos':'neg')+
     kpi('Pedidos/mês para empatar',isFinite(r.beOrders)?int.format(r.beOrders):'não empata','custos fixos ÷ lucro por pedido')+
-    kpi('Comissão mínima na venda',isFinite(r.minCom)?pctF(Math.max(0,r.minCom)):'–','para empatar com a adesão alvo')+
+    kpi('Comissão mínima na venda',isFinite(r.minCom)?pctF(Math.max(0,r.minCom)):'–','para empatar com a adesão alvo (frete fixo)')+
     kpi('Pior momento do caixa',short(r.minCum),'quanto você precisa ter guardado',r.minCum<0?'neg':'pos')+
     kpi('GMV anual pelo app',short(r.gmvAno),int.format(Math.round(r.pedBatMes))+' pedidos/mês por batedeira')+
     kpi('Fatia do mercado de Belém',pctF(share),'mercado: '+short(r.tam)+' por ano');
@@ -472,7 +612,109 @@ function render(){
       h+='<td class="num'+cur+'" style="background:'+bg+';color:'+fg+'" title="'+brl.format(x)+' por mês">'+(x/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+'</td>';});
     h+='</tr>';});
   document.getElementById('heat').innerHTML=h+'</tbody>';
+  updateTaxModalUI();
 }
+
+/* ---------- Janela Modal de Impostos do Governo ---------- */
+const taxModal = document.getElementById('taxModal');
+const taxModalBtn = document.getElementById('taxModalBtn');
+const taxModalClose = document.getElementById('taxModalClose');
+const taxModalApply = document.getElementById('taxModalApply');
+const taxModalReset = document.getElementById('taxModalReset');
+const modalTaxInput = document.getElementById('modal_tax_input');
+const modalTaxRange = document.getElementById('modal_tax_range');
+const modalTaxLabel = document.getElementById('modal_tax_cur_label');
+const taxBtnLabel = document.getElementById('taxBtnLabel');
+const taxCards = document.querySelectorAll('.tax-preset-card');
+
+function updateTaxModalUI() {
+  const r = model();
+  const impPed = document.getElementById('modal_tax_imp_ped');
+  const impMes = document.getElementById('modal_tax_imp_mes');
+  const lucroMes = document.getElementById('modal_tax_lucro_mes');
+  if (impPed) impPed.textContent = brl.format(r.imposto);
+  if (impMes) impMes.textContent = brl.format(r.pedReg * r.imposto);
+  if (lucroMes) {
+    lucroMes.textContent = brl.format(r.lucroReg);
+    lucroMes.className = 'val num ' + (r.lucroReg >= 0 ? 'pos' : 'neg');
+  }
+  const taxFormatted = (Number(S.simples) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + '%';
+  if (taxBtnLabel) taxBtnLabel.textContent = taxFormatted;
+  if (modalTaxLabel) modalTaxLabel.textContent = taxFormatted;
+  if (modalTaxInput && document.activeElement !== modalTaxInput) modalTaxInput.value = S.simples;
+  if (modalTaxRange && document.activeElement !== modalTaxRange) modalTaxRange.value = S.simples;
+  taxCards.forEach(c => {
+    const rate = Number(c.dataset.tax);
+    c.classList.toggle('active', Math.abs(rate - Number(S.simples)) < 0.05);
+  });
+}
+
+function openTaxModal() {
+  if (!taxModal) return;
+  taxModal.classList.add('open');
+  if (modalTaxInput) modalTaxInput.value = S.simples;
+  if (modalTaxRange) modalTaxRange.value = S.simples;
+  updateTaxModalUI();
+  setTimeout(() => { if (modalTaxInput) modalTaxInput.focus(); }, 60);
+}
+
+function closeTaxModal() {
+  if (taxModal) taxModal.classList.remove('open');
+}
+
+if (taxModalBtn) taxModalBtn.addEventListener('click', openTaxModal);
+if (taxModalClose) taxModalClose.addEventListener('click', closeTaxModal);
+if (taxModalApply) taxModalApply.addEventListener('click', closeTaxModal);
+if (taxModalReset) taxModalReset.addEventListener('click', () => {
+  setVal('simples', 6.0);
+  clearPreset();
+  render();
+});
+
+if (taxModal) {
+  taxModal.addEventListener('click', e => {
+    if (e.target === taxModal) closeTaxModal();
+  });
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && taxModal && taxModal.classList.contains('open')) {
+    closeTaxModal();
+  }
+});
+
+if (modalTaxRange) {
+  modalTaxRange.addEventListener('input', e => {
+    const val = Number(e.target.value);
+    setVal('simples', val);
+    clearPreset();
+    render();
+  });
+}
+
+if (modalTaxInput) {
+  modalTaxInput.addEventListener('input', e => {
+    if (e.target.value === '') return;
+    const val = Number(e.target.value);
+    setVal('simples', val, 'number');
+    clearPreset();
+    render();
+  });
+  modalTaxInput.addEventListener('change', e => {
+    const val = Number(e.target.value);
+    setVal('simples', val);
+    render();
+  });
+}
+
+taxCards.forEach(c => {
+  c.addEventListener('click', () => {
+    const val = Number(c.dataset.tax);
+    setVal('simples', val);
+    clearPreset();
+    render();
+  });
+});
 
 function drawAll(L){const r=L.r,f=L.f;
   drawProj(r.months);

@@ -46,7 +46,7 @@ const BLOCKED_STATUSES = ['blocked', 'bloqueado', 'suspended', 'suspenso'];
 
 export async function authorizeRequest(
   request: Request,
-  allowedRoles?: ('admin' | 'loja' | 'fornecedor' | 'motorista' | 'cliente')[],
+  allowedRoles?: ('admin' | 'loja' | 'fornecedor' | 'motorista' | 'cliente' | 'afiliado')[],
   options?: { allowBlocked?: boolean }
 ): Promise<AuthResult> {
   // 1. Validar tokens secretos de servidor (cron jobs e chamadas internas)
@@ -98,6 +98,7 @@ export async function authorizeRequest(
               (rawRole === 'partner' || rawRole === 'loja' || rawRole === 'batedeira') ? 'loja' :
               (rawRole === 'supplier' || rawRole === 'fornecedor') ? 'fornecedor' :
               (rawRole === 'courier' || rawRole === 'motorista' || rawRole === 'motoboy' || rawRole === 'caminhao' || rawRole === 'driver') ? 'motorista' :
+              (rawRole === 'afiliado' || rawRole === 'affiliate') ? 'afiliado' :
               'cliente';
 
             if (allowedRoles && allowedRoles.length > 0) {

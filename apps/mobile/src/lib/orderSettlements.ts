@@ -8,6 +8,7 @@ import {
   describeAsaasError
 } from '@/lib/asaasTransferLookup';
 import { snapshotModel, getPartnerCtx } from '@/lib/paymentAccount';
+import { creditAffiliateCommission } from '@/lib/affiliateCommission';
 
 /**
  * Repasses pós-entrega (modelo BaaS):
@@ -477,6 +478,13 @@ export async function settleOrderPayouts(orderId: string): Promise<SettleOrderRe
       result.driverAmount = r.amount;
       result.driverTransferId = r.transferId;
       result.driverError = r.error;
+    }
+
+    // R56: Crédito de comissão para parceiro afiliado (se houver indicação do comprador)
+    try {
+      await creditAffiliateCommission(orderId, supabase);
+    } catch (affErr) {
+      console.warn(`[orderSettlements] Falha ao creditar comissão de afiliado para pedido ${orderId}:`, affErr);
     }
 
     return result;

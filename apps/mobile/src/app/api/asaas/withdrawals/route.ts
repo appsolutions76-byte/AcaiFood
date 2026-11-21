@@ -17,12 +17,13 @@ function getAppRole(profileRole?: string) {
   if (roleStr === 'SUPPLIER' || roleStr === 'FORNECEDOR') return 'fornecedor';
   if (roleStr === 'COURIER' || roleStr === 'MOTORISTA' || roleStr === 'MOTOBOY' || roleStr === 'CAMINHAO' || roleStr === 'DRIVER') return 'motorista';
   if (roleStr === 'ADMIN' || roleStr === 'ADMINISTRADOR') return 'admin';
+  if (roleStr === 'AFILIADO' || roleStr === 'AFFILIATE') return 'afiliado';
   return 'cliente';
 }
 
 export async function GET(request: Request) {
   try {
-    const auth = await authorizeRequest(request, ['loja', 'fornecedor', 'motorista', 'admin'], { allowBlocked: true });
+    const auth = await authorizeRequest(request, ['loja', 'fornecedor', 'motorista', 'admin', 'afiliado'], { allowBlocked: true });
     if (!auth.authorized || !auth.profile) {
       return NextResponse.json({ error: auth.error || 'Não autorizado. Apenas parceiros podem consultar saques.' }, { status: 401 });
     }
@@ -30,6 +31,44 @@ export async function GET(request: Request) {
     const user = auth.profile;
     const role = getAppRole(user.role);
     const adminSupabase = getSupabaseAdmin();
+
+    // R56: Consulta de saque para parceiro afiliado
+    if (role === 'afiliado') {
+      const { data: aff } = await adminSupabase
+        .from('partner_affiliates')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const earned = Number(aff?.total_earned || 0);
+      const withdrawn = Number(aff?.total_withdrawn || 0);
+      const available = Math.max(0, Number((earned - withdrawn).toFixed(2)));
+
+      const { data: pendingRows } = await adminSupabase
+        .from('withdrawal_requests')
+        .select('*')
+        .eq('partner_id', user.id)
+        .in('status', ['PENDENTE', 'APROVADO', 'PROCESSING'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      return NextResponse.json({
+        success: true,
+        totalDisponivel: available,
+        totalBloqueado: 0,
+        pedidosAguardandoEntrega: 0,
+        subcontaAsaas: {
+          walletId: aff?.asaas_wallet_id || null,
+          status: aff?.status === 'active' ? 'APPROVED' : 'PENDING',
+          approved: aff?.status === 'active'
+        },
+        minWithdrawalValue: 20.00,
+        pendingRequest: pendingRows && pendingRows.length > 0 ? pendingRows[0] : null,
+        payoutHold: false,
+        instantPayout: false,
+        sharedAccount: { isShared: false, isOwner: true, isLinked: false, canWithdraw: true, members: 1 }
+      });
+    }
 
     // 0. Confirma saques em processamento e leva para a subconta as entregas ainda não repassadas
     await reconcilePartnerWithdrawals(user.id, role);
@@ -117,7 +156,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const auth = await authorizeRequest(request, ['loja', 'fornecedor', 'motorista', 'admin'], { allowBlocked: true });
+    const auth = await authorizeRequest(request, ['loja', 'fornecedor', 'motorista', 'admin', 'afiliado'], { allowBlocked: true });
     if (!auth.authorized || !auth.profile) {
       return NextResponse.json({ error: auth.error || 'Não autorizado. Apenas parceiros podem solicitar saques.' }, { status: 401 });
     }
@@ -126,6 +165,55 @@ export async function POST(request: Request) {
     const role = getAppRole(user.role);
     const adminSupabase = getSupabaseAdmin();
     const body = await request.json().catch(() => ({}));
+
+    // R56: Solicitação de saque de parceiro afiliado
+    if (role === 'afiliado') {
+      const { data: aff } = await adminSupabase
+        .from('partner_affiliates')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!aff || aff.status !== 'active') {
+        return NextResponse.json({ error: 'Conta de parceiro afiliado não está ativa para saques.' }, { status: 400 });
+      }
+
+      const available = Math.max(0, Number(aff.total_earned || 0) - Number(aff.total_withdrawn || 0));
+      const requested = body?.amount !== undefined ? Number(String(body.amount).replace(',', '.')) : available;
+      const minWithdrawal = 20.00;
+
+      if (!Number.isFinite(requested) || requested < minWithdrawal) {
+        return NextResponse.json({ error: `O valor mínimo para saque é R$ ${minWithdrawal.toFixed(2)}.` }, { status: 400 });
+      }
+
+      if (requested > available) {
+        return NextResponse.json({ error: `Saldo insuficiente. Disponível para saque: R$ ${available.toFixed(2)}.` }, { status: 400 });
+      }
+
+      const { data: newReq, error: insErr } = await adminSupabase
+        .from('withdrawal_requests')
+        .insert({
+          partner_id: user.id,
+          role: 'afiliado',
+          requested_amount: requested,
+          amount: requested,
+          order_ids: [],
+          status: 'PENDENTE',
+          pix_key: body?.pix_key || aff.pix_key || user.pix_key || null,
+        })
+        .select()
+        .single();
+
+      if (insErr) {
+        return NextResponse.json({ error: insErr.message }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Solicitação de saque de comissão enviada com sucesso.',
+        withdrawalRequest: newReq,
+      });
+    }
 
     // 0. R34: chave Pix/CPF trocada = saque suspenso até o admin liberar
     const payoutHold = await getPayoutHold(user.id);

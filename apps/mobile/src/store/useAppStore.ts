@@ -904,6 +904,32 @@ export const useAppStore = create<AppState>()(
           } catch (_e) {}
         }
 
+        // Verificação de cookie de afiliado parceiro (Fase 2.2)
+        let affiliateRefCode: string | null = null;
+        let matchedAffiliate: any = null;
+        if (typeof document !== 'undefined') {
+          const cookieMatch = document.cookie.match(/(?:^|;\s*)affiliate_ref=([^;]*)/);
+          if (cookieMatch) {
+            affiliateRefCode = decodeURIComponent(cookieMatch[1]).trim().toUpperCase();
+          }
+        }
+
+        if (affiliateRefCode) {
+          try {
+            const { data: aff } = await supabase
+              .from('partner_affiliates')
+              .select('id, referral_code, status, bonus_per_store, bonus_per_client')
+              .eq('referral_code', affiliateRefCode)
+              .eq('status', 'active')
+              .maybeSingle();
+            if (aff) {
+              matchedAffiliate = aff;
+            }
+          } catch (affErr) {
+            console.warn("[Affiliate] Erro ao buscar parceiro afiliado:", affErr);
+          }
+        }
+
         const insertPayload: any = {
           id: newUser.id,
           role: dbRole,
@@ -919,14 +945,16 @@ export const useAppStore = create<AppState>()(
           pix_key: dbRole !== 'CLIENT' ? (cleanedCpfCnpj || newUser.pixKey) : newUser.pixKey,
           cpf_cnpj: cleanedCpfCnpj,
           status: 'active',
-          split_enabled: false
+          split_enabled: false,
+          ...(matchedAffiliate ? { referred_by_affiliate: matchedAffiliate.id } : {})
         };
 
         let { error: dbError } = await supabase.from('users').insert(insertPayload);
 
-        if (dbError && dbError.message && dbError.message.includes('cpf_cnpj')) {
-          console.warn("Coluna cpf_cnpj não encontrada no banco, tentando fallback sem ela...");
-          delete insertPayload.cpf_cnpj;
+        if (dbError && dbError.message && (dbError.message.includes('cpf_cnpj') || dbError.message.includes('referred_by_affiliate'))) {
+          console.warn("Coluna opcional não encontrada no banco, tentando fallback sem ela...");
+          if (dbError.message.includes('cpf_cnpj')) delete insertPayload.cpf_cnpj;
+          if (dbError.message.includes('referred_by_affiliate')) delete insertPayload.referred_by_affiliate;
           const retry = await supabase.from('users').insert(insertPayload);
           dbError = retry.error;
         }
@@ -935,6 +963,28 @@ export const useAppStore = create<AppState>()(
           console.error("DB Insert Error:", dbError);
           alert(`Erro ao salvar perfil no banco de dados: ${dbError.message || JSON.stringify(dbError)}`);
           return null;
+        }
+
+        // Se o usuário foi indicado por um afiliado ativo, registra na tabela affiliate_referrals e limpa o cookie
+        if (matchedAffiliate) {
+          try {
+            const isStoreOrSupplier = dbRole === 'PARTNER' || dbRole === 'SUPPLIER' || newUser.role === 'loja' || newUser.role === 'fornecedor';
+            const bonusAmount = isStoreOrSupplier ? Number(matchedAffiliate.bonus_per_store || 0) : Number(matchedAffiliate.bonus_per_client || 0);
+
+            await supabase.from('affiliate_referrals').insert({
+              affiliate_id: matchedAffiliate.id,
+              referred_user_id: newUser.id,
+              referred_role: newUser.role,
+              bonus_amount: bonusAmount,
+              bonus_paid: false
+            });
+          } catch (refInsertErr) {
+            console.error("[Affiliate] Erro ao registrar indicação de afiliado:", refInsertErr);
+          } finally {
+            if (typeof document !== 'undefined') {
+              document.cookie = 'affiliate_ref=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+            }
+          }
         }
 
         // Se for parceiro ou fornecedor, cria vitrine e sub-conta Asaas automaticamente

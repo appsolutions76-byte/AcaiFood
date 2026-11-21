@@ -38,6 +38,8 @@ const AdminAccountLinksSection = dynamic(() => import("@/components/admin/AdminA
 const AdminLiveMapSection = dynamic(() => import("@/components/admin/AdminLiveMapSection").then(m => m.AdminLiveMapSection), { ssr: false });
 const AdminFiscalCloseSection = dynamic(() => import("@/components/admin/AdminFiscalCloseSection").then(m => m.AdminFiscalCloseSection), { ssr: false });
 const AdminRatingsSection = dynamic(() => import("@/components/ratings/AdminRatingsSection").then(m => m.AdminRatingsSection), { ssr: false });
+const AdminAffiliatesTab = dynamic(() => import("@/components/admin/AdminAffiliatesTab").then(m => m.AdminAffiliatesTab), { ssr: false });
+const AdminProfitSharingTab = dynamic(() => import("@/components/admin/AdminProfitSharingTab").then(m => m.AdminProfitSharingTab), { ssr: false });
 
 const emptySubscribe = () => () => {};
 
@@ -125,7 +127,7 @@ function AdminDashboardContent() {
   }>({ open: false, origem: null, destino: null, motorista: null });
   const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [localRates, setLocalRates] = useState<CityRates>(() => rates);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'estrutura' | 'simulador' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'fiscal' | 'mapa' | 'subcontas' | 'repasses' | 'conta' | 'pagamentos' | 'auditoria'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'estrutura' | 'simulador' | 'usuarios' | 'pedidos' | 'cidades' | 'ocorrencias' | 'ativacoes' | 'anuncios' | 'suporte' | 'saques' | 'conciliacao' | 'fiscal' | 'mapa' | 'subcontas' | 'repasses' | 'conta' | 'pagamentos' | 'auditoria' | 'afiliados' | 'socios'>('dashboard');
   const [selectedSupportUserId, setSelectedSupportUserId] = useState<string | null>(null);
   const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
   const [activationConfig, setActivationConfig] = useState<{
@@ -1950,12 +1952,13 @@ function AdminDashboardContent() {
           const groups: Array<{ id: string; label: string; badge?: number; badgeClass?: string; onEnter?: () => void; tabs: Array<[NavTab, string]> }> = [
             { id: 'inicio', label: '📊 Visão Geral', tabs: [['dashboard', '📊 Resumo'], ['estrutura', '🧭 Estrutura AçaíFood'], ['mapa', '🗺️ Mapa ao vivo']] },
             { id: 'pedidos', label: '🛒 Pedidos', tabs: [['pedidos', '🛒 Histórico de pedidos'], ['ocorrencias', '📋 Ocorrências']] },
-            { id: 'parceiros', label: '👥 Parceiros', tabs: [['usuarios', '👥 Usuários'], ['ativacoes', `🛡️ Ativações (${subsidizedPartnersCount}/${activationConfig.freeQuota})`], ['subcontas', '🏦 Subcontas Asaas e contas vinculadas']] },
+            { id: 'parceiros', label: '👥 Parceiros', tabs: [['usuarios', '👥 Usuários'], ['afiliados', '🤝 Parceiros Afiliados'], ['ativacoes', `🛡️ Ativações (${subsidizedPartnersCount}/${activationConfig.freeQuota})`], ['subcontas', '🏦 Subcontas Asaas e contas vinculadas']] },
             {
               id: 'financeiro', label: '💰 Financeiro',
               badge: partnersWithPendingPayouts.length, badgeClass: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300',
               tabs: [
                 ['saques', '💳 Saques'],
+                ['socios', '💎 Sócios Investidores'],
                 ['fiscal', '🧾 Notas do mês'],
                 ['repasses', '💸 Repasses dos pedidos'],
                 ['conta', '🏦 Conta da plataforma'],
@@ -4020,6 +4023,15 @@ function AdminDashboardContent() {
 
         {showLegacy && activeTab === 'conciliacao' && (
           <AdminReconciliationSection />
+        )}
+
+        {/* R56: Sistemas de Parceiros Afiliados e Sócios Investidores */}
+        {activeTab === 'afiliados' && (
+          <AdminAffiliatesTab />
+        )}
+
+        {activeTab === 'socios' && (
+          <AdminProfitSharingTab />
         )}
 
         {/* R50: blocos da antiga aba Conformidade, cada um na sua subaba */}
