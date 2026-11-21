@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { token, name, email, phone, how_will_promote, password, cidade } = body;
+    const { token, name, email, phone, how_will_promote, password, cidade, bairro, endereco } = body;
 
     if (!token || typeof token !== 'string') {
       return NextResponse.json({ error: 'Token de convite não informado' }, { status: 400 });
@@ -76,21 +76,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Não foi possível gerar a identificação do usuário' }, { status: 500 });
     }
 
-    // 3. Upsert em public.users com role = 'afiliado'
+    // 3. Upsert em public.users (garante cidade, bairro e endereco não-nulos)
+    const effectiveCidade = (cidade && String(cidade).trim()) || 'Belém';
+    const effectiveBairro = (bairro && String(bairro).trim()) || 'Centro';
+    const effectiveEndereco = (endereco && String(endereco).trim()) || effectiveCidade;
+
     const userPayload: any = {
       id: authUserId,
       name: name.trim(),
       email: cleanEmail,
       phone: cleanPhone,
-      cidade: (cidade && String(cidade).trim()) || 'Belém',
-      role: 'afiliado',
+      cidade: effectiveCidade,
+      bairro: effectiveBairro,
+      endereco: effectiveEndereco,
+      role: 'CLIENT', // Respeita users_role_check ('CLIENT','PARTNER','COURIER','SUPPLIER','ADMIN')
       status: 'active',
       split_enabled: false,
     };
 
-    const { error: userInsertErr } = await supabase
+    let { error: userInsertErr } = await supabase
       .from('users')
       .upsert(userPayload, { onConflict: 'id' });
+
+    // Fallback: se houver erro de role check para CLIENT, tenta com 'afiliado'
+    if (userInsertErr && userInsertErr.message?.includes('users_role_check')) {
+      userPayload.role = 'afiliado';
+      const retry = await supabase.from('users').upsert(userPayload, { onConflict: 'id' });
+      userInsertErr = retry.error;
+    }
 
     if (userInsertErr) {
       console.error('[Affiliate Register] Erro ao salvar public.users:', userInsertErr);

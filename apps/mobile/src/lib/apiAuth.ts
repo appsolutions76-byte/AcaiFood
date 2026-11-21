@@ -93,13 +93,28 @@ export async function authorizeRequest(
               return { authorized: false, error: 'Sua conta está bloqueada ou suspensa. Fale com o suporte.' };
             }
             const rawRole = String(profile.role || '').toLowerCase();
-            const userRole = 
+            let userRole = 
               (rawRole === 'admin' || rawRole === 'administrador') ? 'admin' :
               (rawRole === 'partner' || rawRole === 'loja' || rawRole === 'batedeira') ? 'loja' :
               (rawRole === 'supplier' || rawRole === 'fornecedor') ? 'fornecedor' :
               (rawRole === 'courier' || rawRole === 'motorista' || rawRole === 'motoboy' || rawRole === 'caminhao' || rawRole === 'driver') ? 'motorista' :
               (rawRole === 'afiliado' || rawRole === 'affiliate') ? 'afiliado' :
               'cliente';
+
+            // Reconhecer parceiro afiliado ativo mesmo que role na users seja CLIENT
+            if (userRole === 'cliente' && allowedRoles && allowedRoles.includes('afiliado')) {
+              try {
+                const { data: affCheck } = await supabase
+                  .from('partner_affiliates')
+                  .select('id')
+                  .eq('user_id', user.id)
+                  .eq('status', 'active')
+                  .maybeSingle();
+                if (affCheck) {
+                  userRole = 'afiliado';
+                }
+              } catch (_e) {}
+            }
 
             if (allowedRoles && allowedRoles.length > 0) {
               const isAdminAuth = allowedRoles.includes('admin') && (
