@@ -1952,13 +1952,12 @@ function AdminDashboardContent() {
           const groups: Array<{ id: string; label: string; badge?: number; badgeClass?: string; onEnter?: () => void; tabs: Array<[NavTab, string]> }> = [
             { id: 'inicio', label: '📊 Visão Geral', tabs: [['dashboard', '📊 Resumo'], ['estrutura', '🧭 Estrutura AçaíFood'], ['mapa', '🗺️ Mapa ao vivo']] },
             { id: 'pedidos', label: '🛒 Pedidos', tabs: [['pedidos', '🛒 Histórico de pedidos'], ['ocorrencias', '📋 Ocorrências']] },
-            { id: 'parceiros', label: '👥 Parceiros', tabs: [['usuarios', '👥 Usuários'], ['afiliados', '🤝 Parceiros Afiliados'], ['ativacoes', `🛡️ Ativações (${subsidizedPartnersCount}/${activationConfig.freeQuota})`], ['subcontas', '🏦 Subcontas Asaas e contas vinculadas']] },
+            { id: 'parceiros', label: '👥 Parceiros', tabs: [['usuarios', '👥 Usuários'], ['afiliados', '🤝 Parceiros Afiliados'], ['socios', '💎 Sócios Investidores'], ['ativacoes', `🛡️ Ativações (${subsidizedPartnersCount}/${activationConfig.freeQuota})`], ['subcontas', '🏦 Subcontas Asaas e contas vinculadas']] },
             {
               id: 'financeiro', label: '💰 Financeiro',
               badge: partnersWithPendingPayouts.length, badgeClass: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300',
               tabs: [
                 ['saques', '💳 Saques'],
-                ['socios', '💎 Sócios Investidores'],
                 ['fiscal', '🧾 Notas do mês'],
                 ['repasses', '💸 Repasses dos pedidos'],
                 ['conta', '🏦 Conta da plataforma'],
