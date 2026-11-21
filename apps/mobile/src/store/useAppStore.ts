@@ -911,6 +911,11 @@ export const useAppStore = create<AppState>()(
           const cookieMatch = document.cookie.match(/(?:^|;\s*)affiliate_ref=([^;]*)/);
           if (cookieMatch) {
             affiliateRefCode = decodeURIComponent(cookieMatch[1]).trim().toUpperCase();
+          } else {
+            try {
+              const ls = localStorage.getItem('affiliate_ref');
+              if (ls) affiliateRefCode = ls.trim().toUpperCase();
+            } catch (_e) {}
           }
         }
 
@@ -983,6 +988,9 @@ export const useAppStore = create<AppState>()(
           } finally {
             if (typeof document !== 'undefined') {
               document.cookie = 'affiliate_ref=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+              try {
+                localStorage.removeItem('affiliate_ref');
+              } catch (_e) {}
             }
           }
         }

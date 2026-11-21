@@ -1,5 +1,4 @@
 import React from 'react';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import WelcomeClient from './WelcomeClient';
@@ -25,7 +24,7 @@ export default async function AffiliateReferralPage({ params }: Props) {
   const { data: affiliate } = await supabase
     .from('partner_affiliates')
     .select('id, name, referral_code, status')
-    .eq('referral_code', code)
+    .ilike('referral_code', code)
     .eq('status', 'active')
     .maybeSingle();
 
@@ -34,11 +33,11 @@ export default async function AffiliateReferralPage({ params }: Props) {
     redirect('/?ref_error=afiliado_invalido');
   }
 
-  // 2. Buscar duração do cookie em affiliate_settings
+  // 2. Buscar duração do cookie em platform_settings (chave affiliate_settings)
   let cookieDays = 7;
   try {
     const { data: cfgRow } = await supabase
-      .from('platform_config')
+      .from('platform_settings')
       .select('value')
       .eq('key', 'affiliate_settings')
       .maybeSingle();
@@ -50,20 +49,11 @@ export default async function AffiliateReferralPage({ params }: Props) {
     // fallback padrão de 7 dias
   }
 
-  // 3. Salvar cookie affiliate_ref=CODIGO
-  const cookieStore = await cookies();
-  cookieStore.set('affiliate_ref', code, {
-    maxAge: cookieDays * 24 * 60 * 60,
-    path: '/',
-    httpOnly: false, // Disponível para JS no cliente para o momento do cadastro
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-  });
-
   return (
     <WelcomeClient 
       partnerName={affiliate.name}
-      referralCode={code}
+      referralCode={affiliate.referral_code || code}
+      cookieDays={cookieDays}
     />
   );
 }

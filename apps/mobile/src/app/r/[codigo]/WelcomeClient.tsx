@@ -9,17 +9,21 @@ import { Sparkles, Download, UserPlus, ArrowRight } from 'lucide-react';
 interface WelcomeClientProps {
   partnerName: string;
   referralCode: string;
+  cookieDays?: number;
 }
 
-export default function WelcomeClient({ partnerName, referralCode }: WelcomeClientProps) {
+export default function WelcomeClient({ partnerName, referralCode, cookieDays = 7 }: WelcomeClientProps) {
   const router = useRouter();
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
-    // Também garante no client-side a gravação do cookie
+    // Grava o cookie e salva no localStorage para compatibilidade máxima
     if (typeof document !== 'undefined') {
-      const maxAge = 7 * 24 * 60 * 60;
+      const maxAge = cookieDays * 24 * 60 * 60;
       document.cookie = `affiliate_ref=${encodeURIComponent(referralCode)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+      try {
+        localStorage.setItem('affiliate_ref', referralCode);
+      } catch (_e) {}
     }
 
     const timer = setInterval(() => {
@@ -34,7 +38,7 @@ export default function WelcomeClient({ partnerName, referralCode }: WelcomeClie
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [referralCode, router]);
+  }, [referralCode, router, cookieDays]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-950 via-zinc-950 to-black text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -103,6 +107,13 @@ export default function WelcomeClient({ partnerName, referralCode }: WelcomeClie
             <UserPlus size={18} />
             <span>Cadastrar agora</span>
             <ArrowRight size={16} className="text-zinc-400" />
+          </Link>
+
+          <Link
+            href="/"
+            className="text-xs text-purple-400 hover:text-purple-300 hover:underline pt-1 block font-medium transition"
+          >
+            Ou explorar o cardápio de batedeiras →
           </Link>
         </div>
 
