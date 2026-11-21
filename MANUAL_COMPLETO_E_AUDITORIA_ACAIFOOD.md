@@ -61,6 +61,8 @@ flowchart TD
 | **Fornecedor** | `/parceiros/fornecedor` | Venda no atacado de latas de açaí recém-colhidas para abastecimento de lojas. |
 | **Motoboy** | `/parceiros/motoboy` | Entregas urbanas B2C com navegação GPS em 2 pernas (Retirada e Entrega) e validação de PIN. |
 | **Caminhoneiro** | `/parceiros/caminhao` | Transporte pesado de latas (B2B) e coletas de resíduos (Caçambas/EcoPoint). |
+| **Parceiro Afiliado** | `/parceiro/afiliado` | Divulgação da plataforma com link rastreável (`/r/[codigo]`), recebendo bônus por lojas/clientes e comissões. |
+| **Sócio Investidor** | Admin (`/admin`) | Participação nos lucros líquidos mensais da plataforma com apuração e repasse via Pix. |
 | **Administrador** | `/admin` | Configuração de taxas municipais, auditoria financeira, aprovação de contas e monitoramento geral. |
 
 ---
@@ -223,10 +225,30 @@ O protocolo de PIN é o núcleo anti-fraude e de conformidade do AçaíFood em t
  - **Trava Atômica de Saque:** O endpoint de aprovação (`/api/admin/withdrawals/[id]/approve`) altera o status para `APROVADO` de forma transacional, impossibilitando saques duplicados ou concorrentes.
  - **Autenticação Criptográfica de APIs:** Todos os endpoints exigem validação rigorosa de **JWT Supabase** (`Bearer <token>`) ou autorização administrativa (`authorizeRequest`), eliminando vulnerabilidades de escalada de privilégios.
  - **Row Level Security (RLS):** As tabelas `orders`, `users`, `withdrawal_requests`, `admin_balances` e `platform_settings` possuem políticas ativas no PostgreSQL, garantindo isolamento total entre usuários.
- 
- ---
- 
- ### 🌐 Endereços Oficiais
- - **Produção Web:** [https://www.acaifood.app.br/](https://www.acaifood.app.br/)
- - **Deploy Vercel:** [https://acai-food-mobile.vercel.app/](https://acai-food-mobile.vercel.app/)
+
+---
+
+## 11. Sistema de Parceiros Afiliados (Indicações & Comissões)
+
+- **Cadastro sob Convite Exclusivo:** O administrador gera convites nominais (`/api/affiliates/invite`) com bônus por loja, bônus por cliente, % de comissão e meses de vigência (link com token expirável em 7 dias).
+- **Link Rastreável `/r/[codigo]`:** Quando um usuário acessa o link, o sistema grava um cookie de 7 dias e exibe a tela de boas-vindas. No cadastro de nova loja ou cliente, o `affiliate_id` é vinculado em `users.referred_by_affiliate`.
+- **Ledger de Comissões por Pedido:** Cada pedido concluído via indicação gera um registro na tabela `affiliate_commission_ledger`, separando a comissão devida ao afiliado e atualizando o total ganho via RPC `increment_affiliate_earned`.
+- **Painel do Afiliado (`/parceiro/afiliado`):** Interface intuitiva onde o promotor monitora cliques, bônus, comissões em tempo real, manual de operação e solicita saques para sua chave Pix cadastrada ou subconta Asaas.
+
+---
+
+## 12. Sistema de Sócios Investidores (Profit Sharing)
+
+- **Trava de Segurança (Máximo 3 Sócios Ativos):** Trigger PostgreSQL `trg_max_profit_partners` impede mais de 3 sócios investidores ativos simultaneamente no banco de dados.
+- **Apuração Mensal de Faturamento Líquido (`/api/profit-sharing/calculate`):**
+  - Receita Bruta = Comissões de Vendas B2C/B2B + Comissões de Frete + Taxas de Ativação de Lojas.
+  - Custos Deduzidos = Tarifas Asaas + Comissões de Afiliados Pagas + Outros Custos Operacionais Auditados.
+  - Faturamento Líquido = Receita Bruta − Custos Operacionais.
+- **Repasse Individual via Pix:** Cada sócio recebe o valor correspondente à sua cota percentual (`share_pct`), com status auditado (`pending`, `paid`) e registro de comprovante/recibo.
+
+---
+
+### 🌐 Endereços Oficiais
+- **Produção Web:** [https://www.acaifood.app.br/](https://www.acaifood.app.br/)
+- **Deploy Vercel:** [https://acai-food-mobile.vercel.app/](https://acai-food-mobile.vercel.app/)
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
   Link as LinkIcon,
@@ -25,8 +26,11 @@ import {
   Percent,
   Calendar,
   Layers,
+  BookOpen,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+
+const PartnerManualModal = dynamic(() => import('@/components/PartnerManualModal').then(m => m.PartnerManualModal), { ssr: false });
 
 export default function PainelAfiliadoPage() {
   const router = useRouter();
@@ -34,6 +38,7 @@ export default function PainelAfiliadoPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState('');
+  const [manualOpen, setManualOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [requestingWithdrawal, setRequestingWithdrawal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -201,6 +206,14 @@ export default function PainelAfiliadoPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setManualOpen(true)}
+              className="text-xs bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-700/60 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition cursor-pointer"
+              title="Abrir Manual do Parceiro Afiliado"
+            >
+              <BookOpen size={14} />
+              <span className="hidden sm:inline">Manual</span>
+            </button>
             <button
               onClick={loadDashboard}
               title="Atualizar dados"
@@ -562,6 +575,12 @@ export default function PainelAfiliadoPage() {
         </div>
 
       </main>
+
+      <PartnerManualModal
+        isOpen={manualOpen}
+        onClose={() => setManualOpen(false)}
+        role="afiliado"
+      />
     </div>
   );
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, BookOpen, ShoppingBag, Store, Factory, Bike, Truck, ShieldCheck, MapPin, QrCode, MessageSquare, Printer, DollarSign, FileText, Headphones } from "lucide-react";
+import { X, BookOpen, ShoppingBag, Store, Factory, Bike, Truck, ShieldCheck, MapPin, QrCode, MessageSquare, Printer, DollarSign, FileText, Headphones, Users, Share2, Sparkles, TrendingUp } from "lucide-react";
 
-export type PartnerRole = 'batedeira' | 'fornecedor' | 'motoboy' | 'caminhao' | 'login';
+export type PartnerRole = 'batedeira' | 'fornecedor' | 'motoboy' | 'caminhao' | 'afiliado' | 'login';
 
 interface PartnerManualModalProps {
   isOpen: boolean;
@@ -552,15 +552,144 @@ function ManualCaminhao() {
   );
 }
 
+// ===================== PARCEIRO AFILIADO =====================
+function ManualAfiliado() {
+  const [tab, setTab] = useState<'como_funciona' | 'links' | 'bonificacoes' | 'saques' | 'regras'>('como_funciona');
+
+  return (
+    <div className="space-y-4 text-sm animate-in fade-in duration-150">
+      <div className="flex gap-2 flex-wrap">
+        {[
+          ['como_funciona', '🚀 Como Funciona'],
+          ['links', '🔗 Seu Link Rastreável'],
+          ['bonificacoes', '💰 Bônus & Comissões'],
+          ['saques', '💸 Saques & Pagamentos'],
+          ['regras', '⚖️ Boas Práticas']
+        ].map(([k, l]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k as any)}
+            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${
+              tab === k
+                ? 'bg-purple-600 text-white'
+                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-purple-100 dark:hover:bg-zinc-700'
+            }`}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'como_funciona' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <Sparkles size={16} className="text-purple-600" /> Programa Oficial de Parceiros Afiliados AçaíFood
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
+            <p>
+              O <strong>Programa de Afiliados AçaíFood</strong> foi criado para remunerar promotores, criadores de conteúdo e parceiros locais que ajudam a expandir a rede de batedeiras e consumidores na sua cidade.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              <div className="p-3 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-200 dark:border-purple-800">
+                <span className="font-bold text-purple-900 dark:text-purple-300 block mb-1">🏪 Indicação de Lojas</span>
+                <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">Ganhe bônus fixo por cada batedeira ou fornecedor que se cadastrar pelo seu link e for homologado.</p>
+              </div>
+              <div className="p-3 bg-pink-50 dark:bg-pink-950/40 rounded-xl border border-pink-200 dark:border-pink-800">
+                <span className="font-bold text-pink-900 dark:text-pink-300 block mb-1">🥣 Novos Clientes</span>
+                <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">Receba bônus no primeiro pedido concluído de cada novo cliente indicado.</p>
+              </div>
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                <span className="font-bold text-emerald-900 dark:text-emerald-300 block mb-1">📈 Comissões Recorrentes</span>
+                <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">Receba uma porcentagem contínua sobre a comissão da plataforma durante os meses de vigência do seu contrato.</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs">
+            <p className="font-bold text-purple-900 dark:text-purple-300">📱 Painel Exclusivo:</p>
+            <p className="text-purple-800 dark:text-purple-300 mt-1">Acesse a qualquer momento <strong>/parceiro/afiliado</strong> para acompanhar seus cliques, novos cadastros, comissões acumuladas e solicitar saques.</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'links' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <Share2 size={16} className="text-purple-600" /> Seu Link de Indicação & Rastreamento
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
+            <p>1. 🏷️ <strong>Código Exclusivo</strong>: Cada parceiro possui um código alfanumérico único (ex: <code>PAULO10</code>, <code>ACAI76</code>).</p>
+            <p>2. 🌐 <strong>Link de Boas-Vindas</strong>: O seu link público tem o formato:
+              <br /><code className="bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded font-mono font-bold">https://www.acaifood.app.br/r/SEUCODIGO</code>
+            </p>
+            <p>3. 🍪 <strong>Cookie Inteligente de 7 Dias</strong>: Quando alguém clica no seu link, o navegador grava um cookie temporário por 7 dias. Mesmo que a pessoa feche e volte dias depois para cadastrar, a indicação é computada para você!</p>
+            <p>4. 📲 <strong>Divulgação em 1 Toque</strong>: No seu painel há botões diretos para copiar o link ou enviar mensagens pré-formatadas para grupos de WhatsApp e redes sociais.</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'bonificacoes' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <TrendingUp size={16} className="text-purple-600" /> Estrutura de Bônus e Comissões
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-3">
+            <div className="space-y-1">
+              <p className="font-bold text-purple-900 dark:text-purple-300">1. Bônus por Batedeira Cadastrada:</p>
+              <p className="text-zinc-600 dark:text-zinc-400">Ao cadastrar um ponto de açaí que seja homologado pela administração com conta ativa, o bônus acordado é creditado no seu saldo.</p>
+            </div>
+            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-2 space-y-1">
+              <p className="font-bold text-purple-900 dark:text-purple-300">2. Bônus por Consumidor (Cliente):</p>
+              <p className="text-zinc-600 dark:text-zinc-400">Cada novo cliente indicado que concluir o primeiro pedido pago no app gera o bônus de ativação de cliente.</p>
+            </div>
+            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-2 space-y-1">
+              <p className="font-bold text-purple-900 dark:text-purple-300">3. Comissão Recorrente sobre Pedidos:</p>
+              <p className="text-zinc-600 dark:text-zinc-400">Durante o período de vigência (ex: 6 meses), cada pedido realizado pelos usuários indicados gera uma fatia da comissão da plataforma para você, registrada no <em>Extrato de Comissões</em>.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'saques' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <DollarSign size={16} className="text-purple-600" /> Como Solicitar e Receber seus Ganhos
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
+            <p>• <strong>Valor Mínimo de Saque</strong>: O valor mínimo padrão configurado para retirada é de <strong>R$ 20,00</strong>.</p>
+            <p>• <strong>Modos de Saque</strong>:
+              <br />1. <strong>Manual via Pix</strong>: Você solicita o saque informando sua chave Pix cadastrada (CPF/CNPJ, E-mail ou Telefone). A administração aprova e envia o comprovante.
+              <br />2. <strong>Automático via Subconta Asaas</strong>: Se vinculado à conta Asaas, o saldo pode ser transferido diretamente pelo sistema.
+            </p>
+            <p>• <strong>Prazo de Liquidação</strong>: Saques solicitados são analisados e liquidados com agilidade, ficando registrados no histórico de transferências.</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'regras' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <ShieldCheck size={16} className="text-purple-600" /> Diretrizes e Boas Práticas do Parceiro
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
+            <p>✅ <strong>O que é incentivado:</strong> Apresentar o aplicativo para batedeiras do seu bairro, divulgar seu link em grupos de família, amigos e redes sociais, e criar conteúdo demonstrando como pedir açaí com frete justo por GPS.</p>
+            <p>❌ <strong>O que é proibido:</strong> Práticas de SPAM em massa em grupos desconhecidos, criar contas falsas para benefício próprio ou prometer condições não existentes no aplicativo. Contas que violarem as regras podem ser suspensas.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ===================== TELA DE LOGIN / CADASTRO / GERAL =====================
 function ManualLogin() {
-  const [tab, setTab] = useState<'cliente' | 'como_funciona' | 'cadastro' | 'login'>('cliente');
+  const [tab, setTab] = useState<'cliente' | 'como_funciona' | 'afiliado' | 'cadastro' | 'login'>('cliente');
   return (
     <div className="space-y-4 text-sm">
       <div className="flex gap-2 flex-wrap">
         {[
           ['cliente', '🛒 Sou Cliente (Como Comprar)'],
           ['como_funciona', '🥑 Visão do Ecossistema'],
+          ['afiliado', '🤝 Parceiro Afiliado'],
           ['cadastro', '📝 Cadastro & Perfis'],
           ['login', '🔑 Como Entrar']
         ].map(([k, l]) => (
@@ -570,7 +699,7 @@ function ManualLogin() {
             className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${
               tab === k
                 ? 'bg-purple-600 text-white'
-                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-purple-100'
+                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-purple-100 dark:hover:bg-zinc-700'
             }`}
           >
             {l}
@@ -580,10 +709,12 @@ function ManualLogin() {
 
       {tab === 'cliente' && <ManualCliente />}
 
+      {tab === 'afiliado' && <ManualAfiliado />}
+
       {tab === 'como_funciona' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           <h4 className="font-bold text-zinc-900 dark:text-white">🥑 O que é a Rede AçaíFood?</h4>
-          <p className="text-xs text-zinc-600 dark:text-zinc-400">Plataforma multisserviço integrada que conecta o consumidor, as batedeiras de açaí, os produtores atacadistas, a logística urbana/pesada e a sustentabilidade ecológica no Brasil.</p>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">Plataforma multisserviço integrada que conecta o consumidor, as batedeiras de açaí, os produtores atacadistas, a logística urbana/pesada, parceiros afiliados e a sustentabilidade ecológica no Brasil.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <div className="bg-purple-50 dark:bg-purple-950/30 p-3 rounded-xl border border-purple-200 dark:border-purple-800">
               <span className="font-bold block mb-1">🛒 1. Varejo B2C Completo</span>
@@ -617,6 +748,7 @@ function ManualLogin() {
               <br />• 🏭 <strong>Fornecedor</strong>: Para vender açaí em grande escala no atacado.
               <br />• 🛵 <strong>Motoboy</strong>: Para fazer entregas urbanas B2C.
               <br />• 🚛 <strong>Caminhoneiro / Caçamba</strong>: Para fretes B2B e coleta de resíduos.
+              <br />• 🤝 <strong>Afiliado</strong>: Ativado via link exclusivo de convite do parceiro.
             </p>
             <p>4. Informe seu <strong>CPF ou CNPJ do Titular (Chave Pix Obrigatória)</strong>.</p>
             <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 space-y-1">
@@ -625,7 +757,7 @@ function ManualLogin() {
                 Por determinação legal do <strong>Banco Central do Brasil</strong> e conformidade com o <strong>Asaas</strong>, a conta bancária para recebimento e o cadastro no aplicativo <strong>devem pertencer obrigatoriamente à mesma titularidade (mesmo CPF ou CNPJ)</strong>.
               </p>
             </div>
-            <p>5. Complete o endereço com <strong>Cidade e Bairro</strong> para cálculo territorial correto.</p>
+            <p>5. Complete o endereço com <strong>Cidade, Bairro e Endereço</strong> para cálculo territorial correto e roteamento por GPS.</p>
             <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-300 mt-2 space-y-1">
               <p className="font-bold">🛡️ Ativação Inteligente Asaas:</p>
               <p>• Contas contam com ativação conforme limite de vagas de fundadores liberadas pela administração.</p>
@@ -657,6 +789,7 @@ const config: Record<PartnerRole, { title: string; subtitle: string; color: stri
   fornecedor:  { title: '📖 Manual do Fornecedor (B2B)', subtitle: 'Vendas atacadistas, despacho de caminhões e repasses', color: 'bg-emerald-900', Content: ManualFornecedor },
   motoboy:     { title: '📖 Manual do Motoboy Urbano', subtitle: 'Radar de corridas sob demanda, rotas OSRM e PIN de entrega', color: 'bg-zinc-800', Content: ManualMotoboy },
   caminhao:    { title: '📖 Manual do Caminhoneiro', subtitle: 'Fretes atacadistas B2B, caçambas de resíduos e saque Pix', color: 'bg-blue-900', Content: ManualCaminhao },
+  afiliado:    { title: '📖 Manual do Parceiro Afiliado', subtitle: 'Programa de indicação, bônus por lojas/clientes e comissões', color: 'bg-gradient-to-r from-purple-900 to-pink-900', Content: ManualAfiliado },
   login:       { title: '📖 Guia do Usuário & Manual AçaíFood', subtitle: 'Guia completo para clientes, lojas, fornecedores e transportadores', color: 'bg-zinc-900', Content: ManualLogin },
 };
 

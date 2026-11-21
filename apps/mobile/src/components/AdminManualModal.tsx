@@ -8,7 +8,7 @@ interface AdminManualModalProps {
   onClose: () => void;
 }
 
-type Section = 'visao_geral' | 'taxas' | 'usuarios' | 'saques' | 'pagamentos' | 'operacao_radar' | 'seguranca' | 'ocorrencias' | 'suporte_anuncios' | 'notas_vinculos';
+type Section = 'visao_geral' | 'taxas' | 'usuarios' | 'saques' | 'pagamentos' | 'operacao_radar' | 'seguranca' | 'ocorrencias' | 'suporte_anuncios' | 'notas_vinculos' | 'afiliados_socios';
 
 const sections: { key: Section; label: string; icon: React.ReactNode }[] = [
   { key: 'visao_geral',      label: '1. Visão Geral',             icon: <BookOpen size={13} /> },
@@ -21,6 +21,7 @@ const sections: { key: Section; label: string; icon: React.ReactNode }[] = [
   { key: 'ocorrencias',      label: '8. Relatório de Ocorrências', icon: <BookOpen size={13} /> },
   { key: 'suporte_anuncios', label: '9. Suporte & Anúncios',      icon: <Headphones size={13} /> },
   { key: 'notas_vinculos',   label: '10. Notas do mês & Contas vinculadas', icon: <DollarSign size={13} /> },
+  { key: 'afiliados_socios', label: '11. Afiliados & Sócios',     icon: <Users size={13} /> },
 ];
 
 export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
@@ -92,7 +93,7 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                 <p className="font-bold text-zinc-800 dark:text-white mb-2">🖥️ Abas do painel (cada uma com subabas):</p>
                 <p>📊 <strong>Visão Geral</strong>: Resumo do período (pedidos, receita com <em>taxas de vendas</em> e <em>taxas de transporte</em> separadas, bruta e líquida, faturamento dos parceiros) · Mapa ao vivo.</p>
                 <p>🛒 <strong>Pedidos</strong>: Histórico de pedidos (rotas, comprovantes, baixa de contingência) · Ocorrências.</p>
-                <p>👥 <strong>Parceiros</strong>: Usuários · Ativações · Subcontas Asaas e contas vinculadas (mesmo CPF/CNPJ).</p>
+                <p>👥 <strong>Parceiros</strong>: Usuários · Parceiros Afiliados · Ativações · Subcontas Asaas e contas vinculadas · Sócios Investidores.</p>
                 <p>💰 <strong>Financeiro</strong>: Saques · Notas do mês (valor da nota por parceiro) · Repasses dos pedidos · Conta da plataforma (saldo Asaas).</p>
                 <p>🎧 <strong>Suporte</strong> e 📢 <strong>Anúncios</strong>: Atendimento em tempo real e publicidade.</p>
                 <p>⚙️ <strong>Configurações</strong>: Pagamentos (modelo de cobrança, tarifa nos estornos, validação de saques) · Cidades e taxas · Simulador · Auditoria (log, SLA e requisições ao Asaas).</p>
@@ -309,6 +310,37 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                 <p>• Saldo único por subconta e <strong>um saque aberto por vez</strong> para todas as contas do grupo (trava no banco).</p>
                 <p>• Desvincular só é possível sem pedidos, corridas ou saques em andamento.</p>
                 <p>• <strong>Para o suporte Asaas:</strong> em ⚙️ Configurações → Auditoria, a lista <em>Requisições enviadas ao Asaas</em> tem o botão <em>Copiar para o suporte</em> (o que o app enviou e o que o Asaas respondeu, sem chaves).</p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'afiliados_socios' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">🤝 Parceiros Afiliados & 💼 Sócios Investidores</h3>
+              <p>
+                Em <strong>👥 Parceiros</strong>, duas novas abas gerenciam os programas de incentivo e participação societária da plataforma:
+              </p>
+
+              {/* Afiliados */}
+              <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 text-xs space-y-2.5">
+                <p className="font-bold text-purple-900 dark:text-purple-300 text-sm flex items-center gap-1.5">
+                  📢 1. Parceiros Afiliados (👥 Parceiros → Parceiros Afiliados)
+                </p>
+                <p>• <strong>Geração de Convites:</strong> O cadastro de afiliados é controlado por convite. Clique em <em>"Gerar Novo Convite"</em>, defina o nome do promotor, contato, bônus por loja ativada (R$), bônus por cliente no 1º pedido (R$), percentual de comissão recorrente (%) e meses de vigência (padrão 6 meses).</p>
+                <p>• <strong>Link de Convite:</strong> O app gera o link único <code>/parceiro/convite?token=...</code> com validade de 7 dias para o promotor se cadastrar e definir sua senha.</p>
+                <p>• <strong>Rastreamento:</strong> Cada afiliado ganha o código único (ex: <code>PAULO10</code>) e divulga seu link <code>/r/[codigo]</code> com cookie de 7 dias.</p>
+                <p>• <strong>Auditoria de Comissões:</strong> Visualize o total gerado, indicações ativas, ledger de comissões por pedido e o modo de saque (manual via Pix ou automático Asaas).</p>
+              </div>
+
+              {/* Sócios Investidores */}
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-2.5">
+                <p className="font-bold text-emerald-900 dark:text-emerald-300 text-sm flex items-center gap-1.5">
+                  💼 2. Sócios Investidores (👥 Parceiros → Sócios Investidores)
+                </p>
+                <p>• <strong>Regra dos 3 Sócios:</strong> O sistema possui trava no banco de dados para no máximo <strong>3 sócios investidores ativos</strong> simultaneamente.</p>
+                <p>• <strong>Cadastro do Sócio:</strong> Nome completo, chave Pix com tipo (CPF, CNPJ, Telefone, E-mail, Aleatória), percentual de participação (ex: 5% ou 10%) e data de início.</p>
+                <p>• <strong>Cálculo Automático do Repasse Mensal:</strong> O botão <em>"Calcular Mês"</em> apura o faturamento bruto (comissões da plataforma + taxas de ativação), deduz os custos Asaas, custos de comissões de afiliados e outros custos operacionais para chegar ao <strong>Faturamento Líquido Real</strong> e calcular a cota exata de cada sócio.</p>
+                <p>• <strong>Baixa de Pagamento com Comprovante:</strong> Após efetuar a transferência Pix para a chave do sócio, clique em <em>"Registrar Pagamento"</em> anexando o comprovante ou notas da transação.</p>
               </div>
             </div>
           )}
