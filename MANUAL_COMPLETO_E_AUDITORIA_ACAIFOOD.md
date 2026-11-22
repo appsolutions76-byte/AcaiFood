@@ -234,6 +234,10 @@ O protocolo de PIN é o núcleo anti-fraude e de conformidade do AçaíFood em t
 - **Link Rastreável `/r/[codigo]`:** Quando um usuário acessa o link, o sistema grava um cookie de 7 dias e exibe a tela de boas-vindas. No cadastro de nova loja ou cliente, o `affiliate_id` é vinculado em `users.referred_by_affiliate`.
 - **Ledger de Comissões por Pedido:** Cada pedido concluído via indicação gera um registro na tabela `affiliate_commission_ledger`, separando a comissão devida ao afiliado e atualizando o total ganho via RPC `increment_affiliate_earned`.
 - **Painel do Afiliado (`/parceiro/afiliado`):** Interface intuitiva onde o promotor monitora cliques, bônus, comissões em tempo real, manual de operação e solicita saques para sua chave Pix cadastrada ou subconta Asaas.
+- **Fluxo Financeiro de Pagamento:**
+  - *Origem:* Os ganhos do afiliado saem exclusivamente da comissão de intermediação retida pela plataforma (AçaíFood), sem onerar batedeiras ou entregadores.
+  - *Solicitação:* O afiliado solicita saque no painel quando acumular R$ 20,00 ou mais, informando sua chave Pix (mesmo titular CPF/CNPJ).
+  - *Liquidação:* O administrador aprova o saque na aba **💰 Financeiro → Saques**, transfere o Pix e dá baixa com status `PAGO`.
 
 ---
 

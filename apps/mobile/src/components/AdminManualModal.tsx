@@ -172,7 +172,8 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                 <p>3. <strong>Confirmação:</strong> O saque fica <code>Em Processamento</code> até o Asaas confirmar a transferência (webhook). Só então vira <code>PAGO</code>. Se o Asaas recusar, o saque volta como falho e o saldo continua na conta do parceiro.</p>
                 <p>4. <strong>Tarifa:</strong> A tarifa Pix do Asaas é descontada do valor enviado. Há valor mínimo e um saque em andamento por parceiro.</p>
                 <p>5. <strong>⚡ Sincronizar:</strong> Na aba <em>Em Processamento</em>, o botão <em>"⚡ Liquidar Pix / Sincronizar"</em> consulta o Asaas pela referência do saque e atualiza o status, sem criar Pix duplicado.</p>
-                <p>6. <strong>Rejeição com Justificativa:</strong> Em caso de inconsistência cadastral ou suspeita de fraude, clique em <em>"❌ Rejeitar"</em> e informe o motivo.</p>
+                <p>6. <strong>📢 Saques de Afiliados (Comissões de Indicação):</strong> As solicitações de saque dos parceiros afiliados entram nesta mesma esteira de saques com o rótulo <code>Afiliado</code>. Quando o afiliado solicita saque no painel dele (mínimo de R$ 20,00), confira o valor e a chave Pix informada, realize a transferência Pix e clique em <em>"✅ Aprovar / Pagar"</em> para liquidar e abater do saldo dele.</p>
+                <p>7. <strong>Rejeição com Justificativa:</strong> Em caso de inconsistência cadastral ou suspeita de fraude, clique em <em>"❌ Rejeitar"</em> e informe o motivo.</p>
               </div>
             </div>
           )}
@@ -330,6 +331,14 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                 <p>• <strong>Link de Convite:</strong> O app gera o link único <code>/parceiro/convite?token=...</code> com validade de 7 dias para o promotor se cadastrar e definir sua senha.</p>
                 <p>• <strong>Rastreamento:</strong> Cada afiliado ganha o código único (ex: <code>PAULO10</code>) e divulga seu link <code>/r/[codigo]</code> com cookie de 7 dias.</p>
                 <p>• <strong>Auditoria de Comissões:</strong> Visualize o total gerado, indicações ativas, ledger de comissões por pedido e o modo de saque (manual via Pix ou automático Asaas).</p>
+                
+                <div className="mt-2 pt-2 border-t border-purple-200 dark:border-purple-800/60 space-y-1.5 bg-purple-100/60 dark:bg-purple-950/60 p-2.5 rounded-xl">
+                  <p className="font-bold text-purple-900 dark:text-purple-200 text-xs">💸 Como Funciona o Pagamento do Parceiro Afiliado (Passo a Passo):</p>
+                  <p>1. <strong>Origem dos Ganhos:</strong> O dinheiro das comissões e bônus sai <strong>exclusivamente da fatia da plataforma</strong> (AçaíFood), nunca descontando das batedeiras ou dos motoboys.</p>
+                  <p>2. <strong>Acúmulo Automático:</strong> Os créditos entram no saldo do parceiro em tempo real quando o cliente conclui o pedido com o PIN de entrega validado, ou quando você homologa uma nova loja indicada.</p>
+                  <p>3. <strong>Solicitação de Saque:</strong> No painel dele (<code>/parceiro/afiliado</code>), ao atingir o mínimo de <strong>R$ 20,00</strong>, o parceiro clica em <em>"Solicitar Saque Pix"</em>, informando o valor e sua chave Pix.</p>
+                  <p>4. <strong>Baixa pelo Administrador:</strong> O pedido aparece na aba <strong>💰 Financeiro → Saques</strong> com papel <code>Afiliado</code>. Você efetua a transferência Pix para a chave do parceiro (mesma titularidade) e clica em <em>"✅ Aprovar / Pagar"</em> para liquidar e registrar a saída no sistema.</p>
+                </div>
               </div>
 
               {/* Sócios Investidores */}
