@@ -554,24 +554,25 @@ function ManualCaminhao() {
 
 // ===================== PARCEIRO AFILIADO =====================
 function ManualAfiliado() {
-  const [tab, setTab] = useState<'como_funciona' | 'links' | 'bonificacoes' | 'saques' | 'regras'>('como_funciona');
+  const [tab, setTab] = useState<'como_ganha' | 'saque_pix' | 'links' | 'regras' | 'faq'>('como_ganha');
 
   return (
     <div className="space-y-4 text-sm animate-in fade-in duration-150">
+      {/* Abas */}
       <div className="flex gap-2 flex-wrap">
         {[
-          ['como_funciona', '🚀 Como Funciona'],
-          ['links', '🔗 Seu Link Rastreável'],
-          ['bonificacoes', '💰 Bônus & Comissões'],
-          ['saques', '💸 Saques & Pagamentos'],
-          ['regras', '⚖️ Boas Práticas']
+          ['como_ganha', '🥣 Como Você Ganha'],
+          ['saque_pix', '💸 Como Sacar via Pix'],
+          ['links', '🔗 Link & Onde Divulgar'],
+          ['regras', '🛡️ Regras & Titularidade'],
+          ['faq', '❓ Dúvidas Frequentes']
         ].map(([k, l]) => (
           <button
             key={k}
             onClick={() => setTab(k as any)}
             className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${
               tab === k
-                ? 'bg-purple-600 text-white'
+                ? 'bg-purple-600 text-white shadow-md'
                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-purple-100 dark:hover:bg-zinc-700'
             }`}
           >
@@ -580,99 +581,172 @@ function ManualAfiliado() {
         ))}
       </div>
 
-      {tab === 'como_funciona' && (
+      {/* 1. COMO VOCÊ GANHA */}
+      {tab === 'como_ganha' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-            <Sparkles size={16} className="text-purple-600" /> Programa Oficial de Parceiros Afiliados AçaíFood
+            <Sparkles size={16} className="text-purple-600" /> Os 3 Modos de Lucrar com o AçaíFood
           </h4>
-          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
-            <p>
-              O <strong>Programa de Afiliados AçaíFood</strong> foi criado para remunerar promotores, criadores de conteúdo e parceiros locais que ajudam a expandir a rede de batedeiras e consumidores na sua cidade.
+          
+          <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 text-xs">
+            <p className="font-bold text-purple-900 dark:text-purple-300">💡 De onde vem o seu pagamento?</p>
+            <p className="text-purple-800 dark:text-purple-300 mt-1">
+              O seu dinheiro sai <strong>100% da comissão de marketing da plataforma AçaíFood</strong>! Ou seja, <strong>não desconta nada da batedeira</strong> e <strong>nem do motoboy</strong>. Você pode divulgar com total tranquilidade sabendo que está ajudando o comércio local da sua cidade.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-              <div className="p-3 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-200 dark:border-purple-800">
-                <span className="font-bold text-purple-900 dark:text-purple-300 block mb-1">🏪 Indicação de Lojas</span>
-                <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">Ganhe bônus fixo por cada batedeira ou fornecedor que se cadastrar pelo seu link e for homologado.</p>
-              </div>
-              <div className="p-3 bg-pink-50 dark:bg-pink-950/40 rounded-xl border border-pink-200 dark:border-pink-800">
-                <span className="font-bold text-pink-900 dark:text-pink-300 block mb-1">🥣 Novos Clientes</span>
-                <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">Receba bônus no primeiro pedido concluído de cada novo cliente indicado.</p>
-              </div>
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                <span className="font-bold text-emerald-900 dark:text-emerald-300 block mb-1">📈 Comissões Recorrentes</span>
-                <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">Receba uma porcentagem contínua sobre a comissão da plataforma durante os meses de vigência do seu contrato.</p>
-              </div>
-            </div>
           </div>
-          <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs">
-            <p className="font-bold text-purple-900 dark:text-purple-300">📱 Painel Exclusivo:</p>
-            <p className="text-purple-800 dark:text-purple-300 mt-1">Acesse a qualquer momento <strong>/parceiro/afiliado</strong> para acompanhar seus cliques, novos cadastros, comissões acumuladas e solicitar saques.</p>
+
+          <div className="space-y-2.5">
+            {/* Ganho 1: Batedeira */}
+            <div className="bg-zinc-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-purple-900 dark:text-purple-300 text-xs flex items-center gap-1.5">
+                  🏪 1. Bônus por Batedeira Cadastrada
+                </span>
+                <span className="text-[10px] bg-purple-500/20 text-purple-300 font-bold px-2 py-0.5 rounded">Bônus Fixo</span>
+              </div>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Apresente o aplicativo para batedeiras e pontos de açaí do seu bairro. Quando a loja se cadastrar pelo seu link e for homologada e ativada pela administração, o bônus acordado cai direto no seu saldo.
+              </p>
+            </div>
+
+            {/* Ganho 2: Cliente */}
+            <div className="bg-zinc-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-pink-900 dark:text-pink-300 text-xs flex items-center gap-1.5">
+                  🥣 2. Bônus por Novo Cliente (1º Pedido)
+                </span>
+                <span className="text-[10px] bg-pink-500/20 text-pink-300 font-bold px-2 py-0.5 rounded">Ativação</span>
+              </div>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Compartilhe com amigos, familiares e grupos. Assim que o novo cliente concluir e receber seu <strong>primeiro pedido pago</strong> com validação do PIN de entrega, o bônus de cliente é creditado.
+              </p>
+            </div>
+
+            {/* Ganho 3: Comissão Recorrente */}
+            <div className="bg-zinc-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-emerald-900 dark:text-emerald-300 text-xs flex items-center gap-1.5">
+                  📈 3. Comissão Recorrente sobre Cada Pedido
+                </span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded">Renda Contínua</span>
+              </div>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Durante todo o período do seu contrato (ex: 6 meses), <strong>cada pedido</strong> feito pelas pessoas ou lojas que você indicou gera uma fatia da comissão para você em tempo real, somando no seu extrato.
+              </p>
+            </div>
           </div>
         </div>
       )}
 
+      {/* 2. COMO SACAR VIA PIX */}
+      {tab === 'saque_pix' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <DollarSign size={16} className="text-emerald-600" /> Passo a Passo de Como Sacar via Pix
+          </h4>
+
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-3">
+            <div className="flex items-start gap-2.5">
+              <div className="w-6 h-6 rounded-full bg-purple-600 text-white font-black text-xs flex items-center justify-center shrink-0">1</div>
+              <div>
+                <p className="font-bold text-zinc-900 dark:text-white">Confira seu Saldo Disponível:</p>
+                <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">
+                  O valor mínimo para realizar o resgate é de <strong>R$ 20,00</strong>. No topo do seu painel, você vê o cartão azul <em>"Saldo Disponível"</em>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5">
+              <div className="w-6 h-6 rounded-full bg-purple-600 text-white font-black text-xs flex items-center justify-center shrink-0">2</div>
+              <div>
+                <p className="font-bold text-zinc-900 dark:text-white">Preencha o Pedido de Saque:</p>
+                <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">
+                  No formulário <em>"Solicitar Saque via Pix"</em>, digite o valor que deseja retirar (ex: R$ 50,00) e a sua chave Pix (CPF, Telefone ou E-mail).
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5">
+              <div className="w-6 h-6 rounded-full bg-purple-600 text-white font-black text-xs flex items-center justify-center shrink-0">3</div>
+              <div>
+                <p className="font-bold text-zinc-900 dark:text-white">Clique em "Solicitar Saque":</p>
+                <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">
+                  O sistema abate o valor do saldo disponível e registra o pedido como <code>PENDENTE</code> na esteira administrativa.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5">
+              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0">4</div>
+              <div>
+                <p className="font-bold text-emerald-900 dark:text-emerald-300">Receba o Pix na sua Conta:</p>
+                <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">
+                  A administração do AçaíFood confere a chave, efetua a transferência Pix e confirma o pagamento. O status muda para <code>PAGO</code> e o dinheiro cai imediatamente no seu banco.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs">
+            <p className="font-bold text-amber-900 dark:text-amber-300">🛡️ Regra da Mesma Titularidade (Banco Central):</p>
+            <p className="text-amber-800 dark:text-amber-300 mt-1">
+              A chave Pix de destino <strong>deve pertencer ao mesmo titular (mesmo CPF ou CNPJ)</strong> cadastrado na plataforma AçaíFood. Não são permitidos saques para contas de parentes ou amigos.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 3. LINKS & DIVULGAÇÃO */}
       {tab === 'links' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-            <Share2 size={16} className="text-purple-600" /> Seu Link de Indicação & Rastreamento
+            <Share2 size={16} className="text-purple-600" /> Seu Link Rastreável & Onde Divulgar
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
-            <p>1. 🏷️ <strong>Código Exclusivo</strong>: Cada parceiro possui um código alfanumérico único (ex: <code>PAULO10</code>, <code>ACAI76</code>).</p>
-            <p>2. 🌐 <strong>Link de Boas-Vindas</strong>: O seu link público tem o formato:
-              <br /><code className="bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded font-mono font-bold">https://www.acaifood.app.br/r/SEUCODIGO</code>
-            </p>
-            <p>3. 🍪 <strong>Cookie Inteligente de 7 Dias</strong>: Quando alguém clica no seu link, o navegador grava um cookie temporário por 7 dias. Mesmo que a pessoa feche e volte dias depois para cadastrar, a indicação é computada para você!</p>
-            <p>4. 📲 <strong>Divulgação em 1 Toque</strong>: No seu painel há botões diretos para copiar o link ou enviar mensagens pré-formatadas para grupos de WhatsApp e redes sociais.</p>
+            <p>1. 🌐 <strong>Formato do Link:</strong> <code>https://www.acaifood.app.br/r/SEUCODIGO</code></p>
+            <p>2. 🍪 <strong>Cookie Inteligente de 7 Dias:</strong> Quando alguém clica no seu link, o navegador memoriza a indicação por 7 dias. Mesmo se a pessoa não comprar na hora, quando ela voltar e fizer o pedido, o crédito vai para você!</p>
+            <p>3. 📲 <strong>Melhores Lugares para Divulgar:</strong></p>
+            <ul className="pl-4 space-y-1 list-disc text-zinc-600 dark:text-zinc-400">
+              <li><strong>Bio do Instagram & TikTok:</strong> Coloque seu link no perfil das suas redes sociais.</li>
+              <li><strong>Grupos de Família e WhatsApp:</strong> Use o botão "WhatsApp" no painel para mandar o convite pronto.</li>
+              <li><strong>Batedeiras do Bairro:</strong> Visite pontos de açaí locais e mostre que o AçaíFood tem impressão térmica automática e atrai novos clientes.</li>
+            </ul>
           </div>
         </div>
       )}
 
-      {tab === 'bonificacoes' && (
-        <div className="space-y-3 animate-in fade-in duration-150">
-          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-            <TrendingUp size={16} className="text-purple-600" /> Estrutura de Bônus e Comissões
-          </h4>
-          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-3">
-            <div className="space-y-1">
-              <p className="font-bold text-purple-900 dark:text-purple-300">1. Bônus por Batedeira Cadastrada:</p>
-              <p className="text-zinc-600 dark:text-zinc-400">Ao cadastrar um ponto de açaí que seja homologado pela administração com conta ativa, o bônus acordado é creditado no seu saldo.</p>
-            </div>
-            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-2 space-y-1">
-              <p className="font-bold text-purple-900 dark:text-purple-300">2. Bônus por Consumidor (Cliente):</p>
-              <p className="text-zinc-600 dark:text-zinc-400">Cada novo cliente indicado que concluir o primeiro pedido pago no app gera o bônus de ativação de cliente.</p>
-            </div>
-            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-2 space-y-1">
-              <p className="font-bold text-purple-900 dark:text-purple-300">3. Comissão Recorrente sobre Pedidos:</p>
-              <p className="text-zinc-600 dark:text-zinc-400">Durante o período de vigência (ex: 6 meses), cada pedido realizado pelos usuários indicados gera uma fatia da comissão da plataforma para você, registrada no <em>Extrato de Comissões</em>.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === 'saques' && (
-        <div className="space-y-3 animate-in fade-in duration-150">
-          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-            <DollarSign size={16} className="text-purple-600" /> Como Solicitar e Receber seus Ganhos
-          </h4>
-          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2.5">
-            <p>• <strong>Valor Mínimo de Saque</strong>: O valor mínimo padrão configurado para retirada é de <strong>R$ 20,00</strong>.</p>
-            <p>• <strong>Modos de Saque</strong>:
-              <br />1. <strong>Manual via Pix</strong>: Você solicita o saque informando sua chave Pix cadastrada (CPF/CNPJ, E-mail ou Telefone). A administração aprova e envia o comprovante.
-              <br />2. <strong>Automático via Subconta Asaas</strong>: Se vinculado à conta Asaas, o saldo pode ser transferido diretamente pelo sistema.
-            </p>
-            <p>• <strong>Prazo de Liquidação</strong>: Saques solicitados são analisados e liquidados com agilidade, ficando registrados no histórico de transferências.</p>
-          </div>
-        </div>
-      )}
-
+      {/* 4. REGRAS & BOAS PRÁTICAS */}
       {tab === 'regras' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
             <ShieldCheck size={16} className="text-purple-600" /> Diretrizes e Boas Práticas do Parceiro
           </h4>
           <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-            <p>✅ <strong>O que é incentivado:</strong> Apresentar o aplicativo para batedeiras do seu bairro, divulgar seu link em grupos de família, amigos e redes sociais, e criar conteúdo demonstrando como pedir açaí com frete justo por GPS.</p>
-            <p>❌ <strong>O que é proibido:</strong> Práticas de SPAM em massa em grupos desconhecidos, criar contas falsas para benefício próprio ou prometer condições não existentes no aplicativo. Contas que violarem as regras podem ser suspensas.</p>
+            <p>✅ <strong>Incentivado:</strong> Apresentar o aplicativo com transparência, demonstrar como pedir açaí fresquinho com frete justo por GPS e incentivar comércios a modernizarem seus pedidos.</p>
+            <p>❌ <strong>Proibido:</strong> Práticas de SPAM massivo em grupos desconhecidos, criar contas falsas para benefício próprio ou prometer promoções inexistentes. Contas com práticas abusivas podem ter saques bloqueados.</p>
+          </div>
+        </div>
+      )}
+
+      {/* 5. FAQ (DÚVIDAS FREQUENTES) */}
+      {tab === 'faq' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          <h4 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <Users size={16} className="text-purple-600" /> Perguntas Frequentes do Afiliado
+          </h4>
+          <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-3">
+            <div>
+              <p className="font-bold text-purple-900 dark:text-purple-300">Quanto tempo dura o meu comissionamento?</p>
+              <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">O contrato de parceria tem vigência padrão de <strong>6 meses</strong>, podendo ser renovado mediante o seu desempenho de divulgação.</p>
+            </div>
+            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-2">
+              <p className="font-bold text-purple-900 dark:text-purple-300">Quantos saques posso pedir?</p>
+              <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">Sempre que tiver R$ 20,00 ou mais acumulado, você pode solicitar um novo saque. Assim que o anterior for pago, o próximo fica liberado.</p>
+            </div>
+            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-2">
+              <p className="font-bold text-purple-900 dark:text-purple-300">Onde vejo quem comprou pelo meu link?</p>
+              <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">Na tabela <strong>Extrato de Comissões por Pedido</strong> no final do seu painel, onde consta o código do pedido, a data e o valor creditado.</p>
+            </div>
           </div>
         </div>
       )}

@@ -27,6 +27,9 @@ import {
   Calendar,
   Layers,
   BookOpen,
+  Zap,
+  Store,
+  HelpCircle,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -315,6 +318,92 @@ export default function PainelAfiliadoPage() {
               R$ {(data?.metrics?.available_balance || 0).toFixed(2)}
             </div>
             <p className="text-[11px] text-zinc-500 mt-1">Liberado para saque</p>
+          </div>
+        </div>
+
+        {/* CARD GUIA DIDÁTICO: COMO GANHA E COMO SACA VIA PIX */}
+        <div className="bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-purple-950/30 border border-purple-500/30 rounded-3xl p-5 sm:p-6 shadow-lg">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 mb-1">
+                <Sparkles size={12} /> Guia Rápido do Afiliado
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-white">
+                Como Você Ganha & Como Sacar via Pix
+              </h3>
+              <p className="text-xs text-zinc-400">
+                Transparência total: você é remunerado pela receita da plataforma, sem tirar 1 centavo da batedeira ou entregador.
+              </p>
+            </div>
+            <button
+              onClick={() => setManualOpen(true)}
+              className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer self-start md:self-auto shrink-0"
+            >
+              <BookOpen size={15} />
+              <span>Ver Manual Completo</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+            {/* Como Ganha */}
+            <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-2xl p-4 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-2">
+                <DollarSign size={14} className="text-purple-400" /> 3 Formas de Ganhar Dinheiro
+              </h4>
+              <ul className="space-y-2.5 text-xs text-zinc-300">
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-purple-900/60 text-purple-300 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">1</span>
+                  <div>
+                    <strong className="text-white">Bônus por Batedeira (R$ {Number(data?.rules?.bonus_per_store || 0).toFixed(2)}):</strong> creditado assim que a loja indicada se cadastra e conclui suas primeiras vendas.
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-purple-900/60 text-purple-300 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">2</span>
+                  <div>
+                    <strong className="text-white">Bônus por Cliente (R$ {Number(data?.rules?.bonus_per_client || 0).toFixed(2)}):</strong> creditado assim que seu amigo indicado recebe o 1º pedido entregue.
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-purple-900/60 text-purple-300 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">3</span>
+                  <div>
+                    <strong className="text-emerald-400">Comissão Recorrente ({(Number(data?.rules?.commission_pct || 0) * 100).toFixed(1)}% por {data?.rules?.commission_months || 6} meses):</strong> toda vez que seus indicados pedirem açaí durante a vigência, você ganha comissão automática direto no saldo.
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            {/* Como Sacar via Pix */}
+            <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-2xl p-4 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-2">
+                <Zap size={14} className="text-emerald-400" /> Como Sacar via Pix
+              </h4>
+              <ul className="space-y-2.5 text-xs text-zinc-300">
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">A</span>
+                  <div>
+                    <strong className="text-white">Valor Mínimo:</strong> atinja o saldo mínimo de <strong className="text-emerald-400">R$ 20,00</strong> em comissões acumuladas.
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">B</span>
+                  <div>
+                    <strong className="text-white">Chave Pix Válida:</strong> preencha sua chave (CPF, Celular, E-mail ou Aleatória) no formulário abaixo.
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">C</span>
+                  <div>
+                    <strong className="text-white">Mesma Titularidade:</strong> por regulação do Banco Central (Res. BCB 1/2020), a chave Pix deve pertencer ao mesmo CPF/CNPJ do seu cadastro.
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">D</span>
+                  <div>
+                    <strong className="text-white">Transferência Pix:</strong> o valor é processado e enviado direto para a sua conta bancária.
+                  </div>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 
