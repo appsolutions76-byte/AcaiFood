@@ -1,31 +1,47 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAppStore, Role, User } from "@/store/useAppStore";
-import { supabase, getAuthHeaders } from "@/lib/supabase";
-import { ShieldCheck, BookOpen, Sparkles, CheckCircle2, QrCode, Copy, ArrowRight, Clock, AlertCircle, Store, Truck, Bike, PackageOpen, User as UserIcon, Recycle, ArrowLeft } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { PartnerManualModal } from "@/components/PartnerManualModal";
-import { SeloAsaas } from "@/components/SeloAsaas";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
+import { PartnerManualModal } from "@/components/PartnerManualModal";
+import { SeloAsaas } from "@/components/SeloAsaas";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { getAuthHeaders, supabase } from "@/lib/supabase";
+import { Role, useAppStore, User } from "@/store/useAppStore";
+import {
+  ArrowRight,
+  Bike,
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  Copy,
+  PackageOpen,
+  QrCode,
+  Recycle,
+  ShieldCheck,
+  Sparkles,
+  Store,
+  Truck,
+  User as UserIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { Suspense, useEffect, useState } from "react";
 
 function CadastroForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const defaultRole = searchParams?.get('role') || 'cliente';
-  const returnUrl = searchParams?.get('returnUrl') || searchParams?.get('redirect') || '';
-  
+  const defaultRole = searchParams?.get("role") || "cliente";
+  const returnUrl =
+    searchParams?.get("returnUrl") || searchParams?.get("redirect") || "";
+
   const registerUser = useAppStore((state: any) => state.registerUser);
   const linkAsaasAccount = useAppStore((state: any) => state.linkAsaasAccount);
   const cities = useAppStore((state: any) => state.cities);
   const fetchCities = useAppStore((state: any) => state.fetchCities);
-  
+
   const [role, setRole] = useState<Role>(defaultRole as Role);
   const [veiculo, setVeiculo] = useState("Moto"); // Para motoristas
-  
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cpfCnpj, setCpfCnpj] = useState("");
@@ -37,12 +53,12 @@ function CadastroForm() {
   const [cep, setCep] = useState("");
   const [cidade, setCidade] = useState("Belém");
   const [bairro, setBairro] = useState("");
-  
+
   // KYC Asaas BaaS
   const [birthDate, setBirthDate] = useState("");
   const [monthlyIncome, setMonthlyIncome] = useState("");
   const [companyType, setCompanyType] = useState("MEI");
-  
+
   // Aceites Regulatórios
   const [termosAcaiFood, setTermosAcaiFood] = useState(false);
   const [termosAsaas, setTermosAsaas] = useState(false);
@@ -54,8 +70,10 @@ function CadastroForm() {
   const [asaasModalOpen, setAsaasModalOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [isRegisteringAtStore, setIsRegisteringAtStore] = useState(true);
-  
-  const [step, setStep] = useState(searchParams?.get('role') || searchParams?.get('pendingUserId') ? 1 : 0); // 0 = Escolher Perfil, 1 = Formulario, 2 = Ativação
+
+  const [step, setStep] = useState(
+    searchParams?.get("role") || searchParams?.get("pendingUserId") ? 1 : 0,
+  ); // 0 = Escolher Perfil, 1 = Formulario, 2 = Ativação
   const [newUserId, setNewUserId] = useState("");
 
   // Estado da cota e taxa de ativação
@@ -68,11 +86,11 @@ function CadastroForm() {
     isFree: boolean;
   }>({
     activationEnabled: true,
-    activationFee: 12.90,
+    activationFee: 12.9,
     freeQuota: 50,
     subsidizedCount: 0,
     freeSlotsRemaining: 50,
-    isFree: true
+    isFree: true,
   });
 
   // Estado de pagamento Pix
@@ -88,26 +106,26 @@ function CadastroForm() {
 
   useEffect(() => {
     fetchCities();
-    fetch('/api/asaas/activation')
-      .then(res => {
+    fetch("/api/asaas/activation")
+      .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
-      .then(data => {
+      .then((data) => {
         if (data && data.success) {
           setActivationInfo({
             activationEnabled: Boolean(data.activationEnabled),
-            activationFee: Number(data.activationFee || 12.90),
+            activationFee: Number(data.activationFee || 12.9),
             freeQuota: Number(data.freeQuota || 50),
             subsidizedCount: Number(data.subsidizedCount || 0),
             freeSlotsRemaining: Number(data.freeSlotsRemaining || 0),
-            isFree: Boolean(data.isFree)
+            isFree: Boolean(data.isFree),
           });
         }
       })
-      .catch(_e => console.warn("Aviso ao carregar info de ativação:", _e));
+      .catch((_e) => console.warn("Aviso ao carregar info de ativação:", _e));
 
-    const pendingId = searchParams?.get('pendingUserId');
+    const pendingId = searchParams?.get("pendingUserId");
     if (pendingId) {
       setNewUserId(pendingId);
       setStep(2);
@@ -116,109 +134,148 @@ function CadastroForm() {
       if (storeUser && storeUser.id === pendingId && storeUser.role) {
         setRole(storeUser.role as any);
       } else {
-        supabase.from('users').select('role').eq('id', pendingId).maybeSingle().then(({ data }) => {
-          if (data?.role) {
-            const r = String(data.role).toLowerCase();
-            if (r.includes('partner') || r.includes('loja')) setRole('loja');
-            else if (r.includes('supplier') || r.includes('fornecedor')) setRole('fornecedor');
-            else if (r.includes('courier') || r.includes('motoboy') || r.includes('motorista')) setRole('motorista');
-          }
-        });
+        supabase
+          .from("users")
+          .select("role")
+          .eq("id", pendingId)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data?.role) {
+              const r = String(data.role).toLowerCase();
+              if (r.includes("partner") || r.includes("loja")) setRole("loja");
+              else if (r.includes("supplier") || r.includes("fornecedor"))
+                setRole("fornecedor");
+              else if (
+                r.includes("courier") ||
+                r.includes("motoboy") ||
+                r.includes("motorista")
+              )
+                setRole("motorista");
+            }
+          });
       }
 
-      getAuthHeaders().then(h => fetch('/api/asaas/activation', {
-        method: 'POST',
-        headers: h,
-        body: JSON.stringify({ userId: pendingId })
-      }))
-      .then(r => r.json())
-      .then(actData => {
-        if (actData?.isFounderSubsidized || actData?.isPaid) {
-          setPixData({ isFreeGranted: Boolean(actData?.isFounderSubsidized) });
-          setIsPaymentConfirmed(true);
-        } else if (actData?.paymentId) {
-          setPixData({
-            paymentId: actData.paymentId,
-            pixQrCode: actData.pixQrCode,
-            pixCopiaECola: actData.pixCopiaECola,
-            isFreeGranted: false
-          });
-        }
-      })
-      .catch(_err => console.warn('Aviso ao carregar ativação pendente:', _err));
+      getAuthHeaders()
+        .then((h) =>
+          fetch("/api/asaas/activation", {
+            method: "POST",
+            headers: h,
+            body: JSON.stringify({ userId: pendingId }),
+          }),
+        )
+        .then((r) => r.json())
+        .then((actData) => {
+          if (actData?.isFounderSubsidized || actData?.isPaid) {
+            setPixData({
+              isFreeGranted: Boolean(actData?.isFounderSubsidized),
+            });
+            setIsPaymentConfirmed(true);
+          } else if (actData?.paymentId) {
+            setPixData({
+              paymentId: actData.paymentId,
+              pixQrCode: actData.pixQrCode,
+              pixCopiaECola: actData.pixCopiaECola,
+              isFreeGranted: false,
+            });
+          }
+        })
+        .catch((_err) =>
+          console.warn("Aviso ao carregar ativação pendente:", _err),
+        );
     }
   }, [fetchCities, searchParams]);
 
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // 1. Validações de Aceites
-    if (role === 'cliente') {
+    if (role === "cliente") {
       if (!termosAcaiFood) {
-        alert("Você deve aceitar os Termos de Uso e Política de Privacidade para continuar.");
+        alert(
+          "Você deve aceitar os Termos de Uso e Política de Privacidade para continuar.",
+        );
         return;
       }
     } else {
       if (!termosAcaiFood || !termosAsaas || !mandatoAsaas || !pixConsent) {
-        alert("Para atuar como parceiro, é obrigatório marcar e aceitar todos os 4 termos regulatórios (Termos AçaíFood, Termos Asaas, Mandato de Subconta e Consentimento Pix).");
+        alert(
+          "Para atuar como parceiro, é obrigatório marcar e aceitar todos os 4 termos regulatórios (Termos AçaíFood, Termos Asaas, Mandato de Subconta e Consentimento Pix).",
+        );
         return;
       }
     }
-    
-    let icon = '👤';
-    if (role === 'loja') icon = '🏪';
-    if (role === 'fornecedor') icon = '👨‍🌾';
-    if (role === 'motorista' && veiculo === 'Moto') icon = '🛵';
-    if (role === 'motorista' && veiculo === 'Caminhão') icon = '🚚';
-    if (role === 'motorista' && veiculo === 'Caçamba') icon = '🚛';
+
+    let icon = "👤";
+    if (role === "loja") icon = "🏪";
+    if (role === "fornecedor") icon = "👨‍🌾";
+    if (role === "motorista" && veiculo === "Moto") icon = "🛵";
+    if (role === "motorista" && veiculo === "Caminhão") icon = "🚚";
+    if (role === "motorista" && veiculo === "Caçamba") icon = "🚛";
 
     const cleanCpf = cpfCnpj.replace(/\D/g, "");
     const cleanCep = cep.replace(/\D/g, "");
 
-    if (role !== 'cliente') {
+    if (role !== "cliente") {
       if (!cleanCpf || (cleanCpf.length !== 11 && cleanCpf.length !== 14)) {
-        alert("Para parceiros, o preenchimento de um CPF (11 dígitos) ou CNPJ (14 dígitos) válido é obrigatório. Ele será utilizado como sua Chave Pix oficial de recebimento de repasses (mesma titularidade).");
+        alert(
+          "Para parceiros, o preenchimento de um CPF (11 dígitos) ou CNPJ (14 dígitos) válido é obrigatório. Ele será utilizado como sua Chave Pix oficial de recebimento de repasses (mesma titularidade).",
+        );
         return;
       }
 
       if (!cleanCep || cleanCep.length !== 8) {
-        alert("Informe um CEP válido com 8 dígitos para a conformidade da sua subconta bancária.");
+        alert(
+          "Informe um CEP válido com 8 dígitos para a conformidade da sua subconta bancária.",
+        );
         return;
       }
 
       const cleanPhone = telefone.replace(/\D/g, "");
       if (cleanPhone.length !== 10 && cleanPhone.length !== 11) {
-        alert("Informe seu celular com DDD (ex.: 91 98888-7777). Ele é obrigatório para abrir a sua conta de pagamento Asaas.");
+        alert(
+          "Informe seu celular com DDD (ex.: 91 98888-7777). Ele é obrigatório para abrir a sua conta de pagamento Asaas.",
+        );
         return;
       }
 
       if (!endereco.trim() || !addressNumber.trim() || !bairro.trim()) {
-        alert("Informe rua, número e bairro. Esses dados vão para a abertura da sua conta de pagamento Asaas e precisam ser verdadeiros.");
+        alert(
+          "Informe rua, número e bairro. Esses dados vão para a abertura da sua conta de pagamento Asaas e precisam ser verdadeiros.",
+        );
         return;
       }
 
-      const incomeValueCheck = Number(String(monthlyIncome).replace(',', '.'));
+      const incomeValueCheck = Number(String(monthlyIncome).replace(",", "."));
       if (isNaN(incomeValueCheck) || incomeValueCheck < 100) {
-        alert(cleanCpf.length === 14
-          ? "Informe o faturamento mensal da empresa (mínimo R$ 100). Ele é exigido pelo Asaas/Banco Central."
-          : "Informe sua renda mensal (mínimo R$ 100). Ela é exigida pelo Asaas/Banco Central.");
+        alert(
+          cleanCpf.length === 14
+            ? "Informe o faturamento mensal da empresa (mínimo R$ 100). Ele é exigido pelo Asaas/Banco Central."
+            : "Informe sua renda mensal (mínimo R$ 100). Ela é exigida pelo Asaas/Banco Central.",
+        );
         return;
       }
 
       if (cleanCpf.length === 11) {
         if (!birthDate) {
-          alert("Data de nascimento é obrigatória para cadastro de parceiro com CPF.");
+          alert(
+            "Data de nascimento é obrigatória para cadastro de parceiro com CPF.",
+          );
           return;
         }
         const bDate = new Date(birthDate);
-        const ageYears = (Date.now() - bDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+        const ageYears =
+          (Date.now() - bDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
         if (isNaN(ageYears) || ageYears < 18 || ageYears > 120) {
-          alert("O titular da conta deve ter no mínimo 18 anos completos para operar na plataforma.");
+          alert(
+            "O titular da conta deve ter no mínimo 18 anos completos para operar na plataforma.",
+          );
           return;
         }
       } else if (cleanCpf.length === 14) {
         if (!companyType) {
-          alert("Selecione o tipo de empresa (MEI, Sociedade Limitada, Individual ou Associação).");
+          alert(
+            "Selecione o tipo de empresa (MEI, Sociedade Limitada, Individual ou Associação).",
+          );
           return;
         }
       }
@@ -231,21 +288,31 @@ function CadastroForm() {
     let lat = -1.45575;
     let lng = -48.49018;
 
-    if (role === 'cliente' || role === 'motorista' || isRegisteringAtStore) {
+    if (role === "cliente" || role === "motorista" || isRegisteringAtStore) {
       try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, enableHighAccuracy: false });
-        });
+        const position = await new Promise<GeolocationPosition>(
+          (resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              timeout: 4000,
+              enableHighAccuracy: false,
+            });
+          },
+        );
         lat = position.coords.latitude;
         lng = position.coords.longitude;
       } catch (geoErr) {
-        console.warn("GPS não obtido. Utilizando coordenadas padrão da cidade base.", geoErr);
+        console.warn(
+          "GPS não obtido. Utilizando coordenadas padrão da cidade base.",
+          geoErr,
+        );
       }
     }
 
     try {
       // O campo é type="number" em reais (ex.: 2500 = R$ 2.500,00). Não dividir por 100.
-      const parsedIncome = monthlyIncome ? Number(String(monthlyIncome).replace(',', '.')) : undefined;
+      const parsedIncome = monthlyIncome
+        ? Number(String(monthlyIncome).replace(",", "."))
+        : undefined;
 
       const data: any = {
         role,
@@ -264,42 +331,55 @@ function CadastroForm() {
         cpfCnpj: cleanCpf,
         birthDate: birthDate || undefined,
         monthlyIncome: parsedIncome,
-        companyType: cleanCpf.length === 14 ? companyType : undefined
+        companyType: cleanCpf.length === 14 ? companyType : undefined,
       };
-      
-      if (role !== 'cliente') {
+
+      if (role !== "cliente") {
         data.pixKey = cleanCpf; // A Chave Pix é OBRIGATORIAMENTE o CPF/CNPJ do titular cadastrado
       }
-      if (role === 'motorista') {
+      if (role === "motorista") {
         data.veiculo = veiculo;
       }
-      if (role === 'loja') {
+      if (role === "loja") {
         data.priceB2C = { popular: 18, medio: 25, grosso: 33 };
         data.freteSubsidyPct = 0;
       }
-      if (role === 'fornecedor') {
+      if (role === "fornecedor") {
         data.priceB2B = 140;
         data.freteSubsidyPct = 0;
       }
 
       const newUser = await registerUser(data as Omit<User, "id">);
       setIsLocating(false);
-      
+
       if (newUser) {
         const authHeaders = await getAuthHeaders();
 
         // 1) Registrar os aceites (cl. 8.2.4). A versão é definida pelo servidor.
-        const documentsToAccept = role === 'cliente'
-          ? ['acaifood_terms', 'acaifood_privacy', 'asaas_terms', 'asaas_privacy']
-          : ['acaifood_terms', 'acaifood_privacy', 'asaas_terms', 'asaas_privacy', 'subaccount_mandate', 'pix_random_key_consent'];
+        const documentsToAccept =
+          role === "cliente"
+            ? [
+                "acaifood_terms",
+                "acaifood_privacy",
+                "asaas_terms",
+                "asaas_privacy",
+              ]
+            : [
+                "acaifood_terms",
+                "acaifood_privacy",
+                "asaas_terms",
+                "asaas_privacy",
+                "subaccount_mandate",
+                "pix_random_key_consent",
+              ];
 
         let termsOk = false;
         for (let attempt = 0; attempt < 2 && !termsOk; attempt++) {
           try {
-            const termsRes = await fetch('/api/terms/accept', {
-              method: 'POST',
+            const termsRes = await fetch("/api/terms/accept", {
+              method: "POST",
               headers: authHeaders,
-              body: JSON.stringify({ documents: documentsToAccept })
+              body: JSON.stringify({ documents: documentsToAccept }),
             });
             termsOk = termsRes.ok;
           } catch (_tErr) {
@@ -307,14 +387,16 @@ function CadastroForm() {
           }
         }
         if (!termsOk) {
-          alert("Sua conta foi criada, mas não conseguimos registrar o aceite dos termos. Entre novamente no app para concluir o aceite.");
+          alert(
+            "Sua conta foi criada, mas não conseguimos registrar o aceite dos termos. Entre novamente no app para concluir o aceite.",
+          );
         }
 
-        if (role === 'cliente') {
-          if (returnUrl && returnUrl.startsWith('/')) {
+        if (role === "cliente") {
+          if (returnUrl && returnUrl.startsWith("/")) {
             router.push(returnUrl);
           } else {
-            router.push('/');
+            router.push("/");
           }
         } else {
           setNewUserId(newUser.id);
@@ -324,8 +406,8 @@ function CadastroForm() {
           //    quando estiver com documento e selfie em mãos (R32).
           if (termsOk) {
             try {
-              const subRes = await fetch('/api/asaas/subaccount', {
-                method: 'POST',
+              const subRes = await fetch("/api/asaas/subaccount", {
+                method: "POST",
                 headers: authHeaders,
                 body: JSON.stringify({
                   userId: newUser.id,
@@ -338,43 +420,49 @@ function CadastroForm() {
                   bairro,
                   cidade,
                   postalCode: cleanCep,
-                  birthDate: cleanCpf.length === 11 ? birthDate : undefined,
+                  birthDate: cleanCpf.length === 11 ? (birthDate && birthDate.includes('/') ? birthDate.split('/').reverse().join('-') : birthDate) : undefined,
                   monthlyIncome: parsedIncome,
                   companyType: cleanCpf.length === 14 ? companyType : undefined,
-                  saveOnly: true
-                })
+                  saveOnly: true,
+                }),
               });
               if (!subRes.ok) {
-                console.warn("Aviso: dados da conta de pagamento não salvos no cadastro; o parceiro informa em Minha conta Asaas.");
+                console.warn(
+                  "Aviso: dados da conta de pagamento não salvos no cadastro; o parceiro informa em Minha conta Asaas.",
+                );
               }
             } catch (_sErr) {
-              console.warn("Aviso ao salvar dados da conta de pagamento no cadastro");
+              console.warn(
+                "Aviso ao salvar dados da conta de pagamento no cadastro",
+              );
             }
           }
 
           // 3) Taxa de ativação da plataforma (respeita a flag no servidor)
           try {
-            const actRes = await fetch('/api/asaas/activation', {
-              method: 'POST',
+            const actRes = await fetch("/api/asaas/activation", {
+              method: "POST",
               headers: authHeaders,
               body: JSON.stringify({
                 userId: newUser.id,
                 name,
                 email,
                 cpfCnpj: cleanCpf,
-                phone: telefone
-              })
+                phone: telefone,
+              }),
             });
             const actData = await actRes.json();
             if (actData.isFounderSubsidized || actData.isPaid) {
-              setPixData({ isFreeGranted: Boolean(actData.isFounderSubsidized) });
+              setPixData({
+                isFreeGranted: Boolean(actData.isFounderSubsidized),
+              });
               setIsPaymentConfirmed(true);
             } else if (actData.paymentId) {
               setPixData({
                 paymentId: actData.paymentId,
                 pixQrCode: actData.pixQrCode,
                 pixCopiaECola: actData.pixCopiaECola,
-                isFreeGranted: false
+                isFreeGranted: false,
               });
             }
           } catch (_e) {
@@ -396,12 +484,17 @@ function CadastroForm() {
     if (!newUserId) return;
     if (!silent) setIsCheckingPayment(true);
     try {
-      const res = await fetch(`/api/asaas/activation?userId=${newUserId}${pixData?.paymentId ? `&paymentId=${pixData.paymentId}` : ''}`, { headers: await getAuthHeaders() });
+      const res = await fetch(
+        `/api/asaas/activation?userId=${newUserId}${pixData?.paymentId ? `&paymentId=${pixData.paymentId}` : ""}`,
+        { headers: await getAuthHeaders() },
+      );
       const data = await res.json();
       if (data?.userStatus?.isPaid) {
         setIsPaymentConfirmed(true);
       } else if (!silent) {
-        alert("Pagamento ainda em processamento. Aguarde alguns segundos após pagar no seu banco e tente novamente.");
+        alert(
+          "Pagamento ainda em processamento. Aguarde alguns segundos após pagar no seu banco e tente novamente.",
+        );
       }
     } catch (_e) {
       if (!silent) alert("Erro ao checar status. Tente novamente.");
@@ -428,87 +521,251 @@ function CadastroForm() {
   };
 
   const handleGoToPartnerPanel = () => {
-    const roleStr = String(role || '').toLowerCase();
-    const veicStr = String(veiculo || '').toLowerCase();
+    const roleStr = String(role || "").toLowerCase();
+    const veicStr = String(veiculo || "").toLowerCase();
 
-    if (returnUrl && returnUrl.startsWith('/convite/')) router.push(returnUrl);
-    else if (roleStr === 'loja') router.push('/parceiros/batedeira');
-    else if (roleStr === 'fornecedor') router.push('/parceiros/fornecedor');
-    else if (roleStr === 'caminhao' || (roleStr === 'motorista' && (veicStr.includes('caminh') || veicStr.includes('caçamb')))) router.push('/parceiros/caminhao');
-    else if (roleStr === 'motoboy' || roleStr === 'motorista') router.push('/parceiros/motoboy');
+    if (returnUrl && returnUrl.startsWith("/convite/")) router.push(returnUrl);
+    else if (roleStr === "loja") router.push("/parceiros/batedeira");
+    else if (roleStr === "fornecedor") router.push("/parceiros/fornecedor");
+    else if (
+      roleStr === "caminhao" ||
+      (roleStr === "motorista" &&
+        (veicStr.includes("caminh") || veicStr.includes("caçamb")))
+    )
+      router.push("/parceiros/caminhao");
+    else if (roleStr === "motoboy" || roleStr === "motorista")
+      router.push("/parceiros/motoboy");
     else {
-      if (returnUrl && returnUrl.startsWith('/')) {
+      if (returnUrl && returnUrl.startsWith("/")) {
         router.push(returnUrl);
       } else {
-        router.push('/');
+        router.push("/");
       }
     }
   };
 
   const getTermosText = () => {
-    switch(role) {
-      case 'cliente':
+    switch (role) {
+      case "cliente":
         return (
           <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
-            <p><strong>1. Uso da Plataforma:</strong> O AçaíFood atua exclusivamente como intermediador tecnológico entre você (cliente) e as lojas cadastradas.</p>
-            <p><strong>2. Responsabilidade do Produto:</strong> A qualidade, o preparo, a integridade e o cumprimento das normas sanitárias do açaí e demais produtos são de inteira e exclusiva responsabilidade da Batedeira (Loja) que preparou o pedido. O AçaíFood não manuseia alimentos.</p>
-            <p><strong>3. Entregas:</strong> O tempo de entrega é uma estimativa e pode variar devido a condições climáticas, trânsito ou demanda da loja.</p>
-            <p><strong>3.1 Pagamento:</strong> Você paga o Pix diretamente à loja (o nome dela aparece no seu banco). A comissão do AçaíFood é separada automaticamente pelo Asaas. Só informe o PIN de entrega depois de receber o pedido: é ele que conclui a entrega e libera o pagamento do entregador. Cancelamentos antes do preparo são estornados para a conta de origem.</p>
-            <p><strong>4. Prestação de Serviços Financeiros:</strong> Os serviços financeiros e de pagamentos disponibilizados por meio da presente plataforma, incluindo abertura e manutenção de conta de pagamento, processamento de transações, emissão de boletos, transferências, pagamentos e demais movimentações de valores, são prestados pelo <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong>, instituição de pagamento autorizada a funcionar pelo <strong>Banco Central do Brasil</strong>. A <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como integradora tecnológica e distribuidora da experiência do produto, não sendo instituição financeira ou de pagamento, nem realizando intermediação financeira em nome próprio. O cliente declara ciência de que o relacionamento financeiro/ de pagamentos e a responsabilidade regulatória pelos serviços acima descritos são do <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong>, nos termos da regulamentação vigente.</p>
+            <p>
+              <strong>1. Uso da Plataforma:</strong> O AçaíFood atua
+              exclusivamente como intermediador tecnológico entre você (cliente)
+              e as lojas cadastradas.
+            </p>
+            <p>
+              <strong>2. Responsabilidade do Produto:</strong> A qualidade, o
+              preparo, a integridade e o cumprimento das normas sanitárias do
+              açaí e demais produtos são de inteira e exclusiva responsabilidade
+              da Batedeira (Loja) que preparou o pedido. O AçaíFood não manuseia
+              alimentos.
+            </p>
+            <p>
+              <strong>3. Entregas:</strong> O tempo de entrega é uma estimativa
+              e pode variar devido a condições climáticas, trânsito ou demanda
+              da loja.
+            </p>
+            <p>
+              <strong>3.1 Pagamento:</strong> Você paga o Pix diretamente à loja
+              (o nome dela aparece no seu banco). A comissão do AçaíFood é
+              separada automaticamente pelo Asaas. Só informe o PIN de entrega
+              depois de receber o pedido: é ele que conclui a entrega e libera o
+              pagamento do entregador. Cancelamentos antes do preparo são
+              estornados para a conta de origem.
+            </p>
+            <p>
+              <strong>4. Prestação de Serviços Financeiros:</strong> Os serviços
+              financeiros e de pagamentos disponibilizados por meio da presente
+              plataforma, incluindo abertura e manutenção de conta de pagamento,
+              processamento de transações, emissão de boletos, transferências,
+              pagamentos e demais movimentações de valores, são prestados pelo{" "}
+              <strong>
+                ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.
+              </strong>
+              , instituição de pagamento autorizada a funcionar pelo{" "}
+              <strong>Banco Central do Brasil</strong>. A{" "}
+              <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como
+              integradora tecnológica e distribuidora da experiência do produto,
+              não sendo instituição financeira ou de pagamento, nem realizando
+              intermediação financeira em nome próprio. O cliente declara
+              ciência de que o relacionamento financeiro/ de pagamentos e a
+              responsabilidade regulatória pelos serviços acima descritos são do{" "}
+              <strong>
+                ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.
+              </strong>
+              , nos termos da regulamentação vigente.
+            </p>
           </div>
         );
-      case 'loja':
-      case 'fornecedor':
+      case "loja":
+      case "fornecedor":
         return (
           <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
-            <p><strong>1. Qualidade e Legalidade:</strong> Você assume total responsabilidade pela qualidade do produto fornecido, garantindo que ele segue todas as normas sanitárias e da vigilância em saúde locais.</p>
-            <p><strong>2. Obrigações Fiscais:</strong> A emissão de notas fiscais e o recolhimento de impostos sobre a venda dos produtos é de sua responsabilidade exclusiva. O AçaíFood apenas emite recibos pelas taxas de uso da plataforma.</p>
-            <p><strong>3. Vínculo:</strong> A utilização desta plataforma não cria vínculo empregatício, societário ou de franquia entre o Parceiro e o AçaíFood. A plataforma cobra apenas a comissão (split) sobre as vendas e o frete intermediados.</p>
-            <p><strong>3.1 Recebimento e corridas:</strong> O cliente paga o Pix diretamente na sua conta Asaas (venda + frete). A comissão do AçaíFood é separada automaticamente pelo Asaas no mesmo Pix. Quando você chama uma corrida, qualquer entregador cadastrado pode aceitar; depois do PIN de entrega, o app paga automaticamente a corrida da sua conta para a do entregador. Pedidos não entregues e corridas a pagar ficam reservados no seu saldo.</p>
-            <p><strong>4. Prestação de Serviços Financeiros:</strong> Os serviços financeiros e de pagamentos disponibilizados por meio da presente plataforma, incluindo abertura e manutenção de conta de pagamento, processamento de transações, emissão de boletos, transferências, pagamentos e demais movimentações de valores, são prestados pelo <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong>, instituição de pagamento autorizada a funcionar pelo <strong>Banco Central do Brasil</strong>. A <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como integradora tecnológica e distribuidora da experiência do produto, não sendo instituição financeira ou de pagamento, nem realizando intermediação financeira em nome próprio. O cliente declara ciência de que o relacionamento financeiro/ de pagamentos e a responsabilidade regulatória pelos serviços acima descritos são do <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong>, nos termos da regulamentação vigente.</p>
+            <p>
+              <strong>1. Qualidade e Legalidade:</strong> Você assume total
+              responsabilidade pela qualidade do produto fornecido, garantindo
+              que ele segue todas as normas sanitárias e da vigilância em saúde
+              locais.
+            </p>
+            <p>
+              <strong>2. Obrigações Fiscais:</strong> A emissão de notas fiscais
+              e o recolhimento de impostos sobre a venda dos produtos é de sua
+              responsabilidade exclusiva. O AçaíFood apenas emite recibos pelas
+              taxas de uso da plataforma.
+            </p>
+            <p>
+              <strong>3. Vínculo:</strong> A utilização desta plataforma não
+              cria vínculo empregatício, societário ou de franquia entre o
+              Parceiro e o AçaíFood. A plataforma cobra apenas a comissão
+              (split) sobre as vendas e o frete intermediados.
+            </p>
+            <p>
+              <strong>3.1 Recebimento e corridas:</strong> O cliente paga o Pix
+              diretamente na sua conta Asaas (venda + frete). A comissão do
+              AçaíFood é separada automaticamente pelo Asaas no mesmo Pix.
+              Quando você chama uma corrida, qualquer entregador cadastrado pode
+              aceitar; depois do PIN de entrega, o app paga automaticamente a
+              corrida da sua conta para a do entregador. Pedidos não entregues e
+              corridas a pagar ficam reservados no seu saldo.
+            </p>
+            <p>
+              <strong>4. Prestação de Serviços Financeiros:</strong> Os serviços
+              financeiros e de pagamentos disponibilizados por meio da presente
+              plataforma, incluindo abertura e manutenção de conta de pagamento,
+              processamento de transações, emissão de boletos, transferências,
+              pagamentos e demais movimentações de valores, são prestados pelo{" "}
+              <strong>
+                ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.
+              </strong>
+              , instituição de pagamento autorizada a funcionar pelo{" "}
+              <strong>Banco Central do Brasil</strong>. A{" "}
+              <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como
+              integradora tecnológica e distribuidora da experiência do produto,
+              não sendo instituição financeira ou de pagamento, nem realizando
+              intermediação financeira em nome próprio. O cliente declara
+              ciência de que o relacionamento financeiro/ de pagamentos e a
+              responsabilidade regulatória pelos serviços acima descritos são do{" "}
+              <strong>
+                ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.
+              </strong>
+              , nos termos da regulamentação vigente.
+            </p>
             <div className="pt-1">
               <SeloAsaas variant="positivo" width={140} height={42} />
             </div>
           </div>
         );
-      case 'motorista':
+      case "motorista":
         return (
           <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
-            <p><strong>1. Trabalho Autônomo:</strong> Você atua como profissional independente (autônomo), sem qualquer vínculo empregatício, subordinação ou exclusividade com o AçaíFood ou com as Lojas parceiras.</p>
-            <p><strong>2. Responsabilidade Veicular:</strong> É de sua inteira responsabilidade a manutenção do veículo utilizado, os custos operacionais (combustível, internet) e a manutenção de sua CNH regularizada.</p>
-            <p><strong>3. Acidentes e Infrações:</strong> O AçaíFood é isento de responsabilidades civis ou criminais decorrentes de acidentes de trânsito, infrações ou danos a terceiros ocorridos durante o trajeto. Conduza com prudência.</p>
-            <p><strong>3.1 Recebimento:</strong> Você aceita corridas de qualquer loja. Depois que digita o PIN de entrega do cliente, o valor da corrida é transferido automaticamente da conta Asaas da loja para a sua. O saque vai para chave Pix do seu CPF.</p>
-            <p><strong>4. Prestação de Serviços Financeiros:</strong> Os serviços financeiros e de pagamentos disponibilizados por meio da presente plataforma, incluindo abertura e manutenção de conta de pagamento, processamento de transações, emissão de boletos, transferências, pagamentos e demais movimentações de valores, são prestados pelo <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong>, instituição de pagamento autorizada a funcionar pelo <strong>Banco Central do Brasil</strong>. A <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como integradora tecnológica e distribuidora da experiência do produto, não sendo instituição financeira ou de pagamento, nem realizando intermediação financeira em nome próprio. O cliente declara ciência de que o relacionamento financeiro/ de pagamentos e a responsabilidade regulatória pelos serviços acima descritos são do <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong>, nos termos da regulamentação vigente.</p>
+            <p>
+              <strong>1. Trabalho Autônomo:</strong> Você atua como profissional
+              independente (autônomo), sem qualquer vínculo empregatício,
+              subordinação ou exclusividade com o AçaíFood ou com as Lojas
+              parceiras.
+            </p>
+            <p>
+              <strong>2. Responsabilidade Veicular:</strong> É de sua inteira
+              responsabilidade a manutenção do veículo utilizado, os custos
+              operacionais (combustível, internet) e a manutenção de sua CNH
+              regularizada.
+            </p>
+            <p>
+              <strong>3. Acidentes e Infrações:</strong> O AçaíFood é isento de
+              responsabilidades civis ou criminais decorrentes de acidentes de
+              trânsito, infrações ou danos a terceiros ocorridos durante o
+              trajeto. Conduza com prudência.
+            </p>
+            <p>
+              <strong>3.1 Recebimento:</strong> Você aceita corridas de qualquer
+              loja. Depois que digita o PIN de entrega do cliente, o valor da
+              corrida é transferido automaticamente da conta Asaas da loja para
+              a sua. O saque vai para chave Pix do seu CPF.
+            </p>
+            <p>
+              <strong>4. Prestação de Serviços Financeiros:</strong> Os serviços
+              financeiros e de pagamentos disponibilizados por meio da presente
+              plataforma, incluindo abertura e manutenção de conta de pagamento,
+              processamento de transações, emissão de boletos, transferências,
+              pagamentos e demais movimentações de valores, são prestados pelo{" "}
+              <strong>
+                ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.
+              </strong>
+              , instituição de pagamento autorizada a funcionar pelo{" "}
+              <strong>Banco Central do Brasil</strong>. A{" "}
+              <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como
+              integradora tecnológica e distribuidora da experiência do produto,
+              não sendo instituição financeira ou de pagamento, nem realizando
+              intermediação financeira em nome próprio. O cliente declara
+              ciência de que o relacionamento financeiro/ de pagamentos e a
+              responsabilidade regulatória pelos serviços acima descritos são do{" "}
+              <strong>
+                ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.
+              </strong>
+              , nos termos da regulamentação vigente.
+            </p>
             <div className="pt-1">
               <SeloAsaas variant="positivo" width={140} height={42} />
             </div>
           </div>
         );
       default:
-        return <p className="text-sm text-zinc-500">Ao usar a plataforma, você concorda com nossas políticas de privacidade e conduta. Os serviços financeiros e de pagamentos são prestados pelo ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A., instituição de pagamento autorizada a funcionar pelo Banco Central do Brasil, atuando a ELETROMECANICA BAIA exclusivamente como integradora tecnológica e distribuidora da experiência do produto.</p>;
+        return (
+          <p className="text-sm text-zinc-500">
+            Ao usar a plataforma, você concorda com nossas políticas de
+            privacidade e conduta. Os serviços financeiros e de pagamentos são
+            prestados pelo ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO
+            S.A., instituição de pagamento autorizada a funcionar pelo Banco
+            Central do Brasil, atuando a ELETROMECANICA BAIA exclusivamente como
+            integradora tecnológica e distribuidora da experiência do produto.
+          </p>
+        );
     }
   };
 
   return (
     <>
-      <PartnerManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} role="login" />
-      
+      <PartnerManualModal
+        isOpen={manualOpen}
+        onClose={() => setManualOpen(false)}
+        role="login"
+      />
+
       {/* PASSO 0: ESCOLHA VISUAL DE PERFIL NA CADEIA DO AÇAÍ */}
       {step === 0 && (
         <div className="max-w-3xl mx-auto w-full p-4 sm:p-6 flex flex-col justify-center animate-in fade-in zoom-in-95 duration-200">
           <div className="text-center mb-8">
             <div className="flex flex-col justify-center items-center mb-4 text-center">
-              <img src="/banner.png?v=6" alt="Marca Oficial AçaíFood" className="w-32 h-32 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-2 max-w-xs">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
+              <img
+                src="/banner.png?v=6"
+                alt="Marca Oficial AçaíFood"
+                className="w-32 h-32 rounded-2xl shadow-xl border-2 border-purple-500 object-contain"
+              />
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-2 max-w-xs">
+                AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da
+                Cadeia do Açaí.
+              </p>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight mb-2">
               Quem é você na cadeia do Açaí?
             </h2>
             <p className="text-zinc-500 dark:text-zinc-400 text-sm sm:text-base max-w-lg mx-auto">
-              Escolha o seu perfil de atuação para acessar as ferramentas focadas no seu negócio.
+              Escolha o seu perfil de atuação para acessar as ferramentas
+              focadas no seu negócio.
             </p>
             <p className="mt-3 text-center text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-              Ou <Link href={returnUrl ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : "/login"} className="font-bold text-purple-600 hover:text-purple-500 underline">faça login se já for cadastrado</Link>
+              Ou{" "}
+              <Link
+                href={
+                  returnUrl
+                    ? `/login?returnUrl=${encodeURIComponent(returnUrl)}`
+                    : "/login"
+                }
+                className="font-bold text-purple-600 hover:text-purple-500 underline"
+              >
+                faça login se já for cadastrado
+              </Link>
             </p>
           </div>
 
@@ -517,7 +774,7 @@ function CadastroForm() {
             <button
               type="button"
               onClick={() => {
-                setRole('cliente');
+                setRole("cliente");
                 setStep(1);
               }}
               className="group md:col-span-2 lg:col-span-3 text-left w-full cursor-pointer focus:outline-none"
@@ -527,7 +784,9 @@ function CadastroForm() {
                   <UserIcon size={32} />
                 </div>
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-0.5">Cliente (Consumidor Final)</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-0.5">
+                    Cliente (Consumidor Final)
+                  </h3>
                   <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
                     Quero apenas pedir açaí para mim ou para minha família.
                   </p>
@@ -539,7 +798,7 @@ function CadastroForm() {
             <button
               type="button"
               onClick={() => {
-                setRole('loja');
+                setRole("loja");
                 setStep(1);
               }}
               className="group text-left w-full cursor-pointer focus:outline-none"
@@ -549,9 +808,12 @@ function CadastroForm() {
                   <Store size={28} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">Batedeira (Ponto de Açaí)</h3>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">
+                    Batedeira (Ponto de Açaí)
+                  </h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Para quem bate e vende o açaí pronto (Varejo B2C). Receba pedidos de clientes.
+                    Para quem bate e vende o açaí pronto (Varejo B2C). Receba
+                    pedidos de clientes.
                   </p>
                 </div>
               </div>
@@ -561,7 +823,7 @@ function CadastroForm() {
             <button
               type="button"
               onClick={() => {
-                setRole('fornecedor');
+                setRole("fornecedor");
                 setStep(1);
               }}
               className="group text-left w-full cursor-pointer focus:outline-none"
@@ -571,9 +833,12 @@ function CadastroForm() {
                   <PackageOpen size={28} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">Fornecedor (Atacadista)</h3>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">
+                    Fornecedor (Atacadista)
+                  </h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Para quem vende o fruto bruto ou caixas de açaí (Atacado B2B) para as batedeiras.
+                    Para quem vende o fruto bruto ou caixas de açaí (Atacado
+                    B2B) para as batedeiras.
                   </p>
                 </div>
               </div>
@@ -583,8 +848,8 @@ function CadastroForm() {
             <button
               type="button"
               onClick={() => {
-                setRole('motorista');
-                setVeiculo('Moto');
+                setRole("motorista");
+                setVeiculo("Moto");
                 setStep(1);
               }}
               className="group text-left w-full cursor-pointer focus:outline-none"
@@ -594,9 +859,12 @@ function CadastroForm() {
                   <Bike size={28} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">Entregador (Motoboy)</h3>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">
+                    Entregador (Motoboy)
+                  </h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Logística leve B2C. Entregue pedidos fracionados aos clientes finais.
+                    Logística leve B2C. Entregue pedidos fracionados aos
+                    clientes finais.
                   </p>
                 </div>
               </div>
@@ -606,8 +874,8 @@ function CadastroForm() {
             <button
               type="button"
               onClick={() => {
-                setRole('motorista');
-                setVeiculo('Caminhão');
+                setRole("motorista");
+                setVeiculo("Caminhão");
                 setStep(1);
               }}
               className="group text-left w-full cursor-pointer focus:outline-none"
@@ -617,9 +885,12 @@ function CadastroForm() {
                   <Truck size={28} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">Caminhão Fruto Açaí</h3>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">
+                    Caminhão Fruto Açaí
+                  </h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Logística pesada B2B. Transporte cargas de fruto e caixas até as lojas.
+                    Logística pesada B2B. Transporte cargas de fruto e caixas
+                    até as lojas.
                   </p>
                 </div>
               </div>
@@ -629,8 +900,8 @@ function CadastroForm() {
             <button
               type="button"
               onClick={() => {
-                setRole('motorista');
-                setVeiculo('Caçamba');
+                setRole("motorista");
+                setVeiculo("Caçamba");
                 setStep(1);
               }}
               className="group text-left w-full cursor-pointer focus:outline-none"
@@ -640,9 +911,12 @@ function CadastroForm() {
                   <Recycle size={28} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">Caçamba Logística Reversa</h3>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-0.5">
+                    Caçamba Logística Reversa
+                  </h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Retirada de caroço de açaí nas batedeiras para levar ao ecoponto.
+                    Retirada de caroço de açaí nas batedeiras para levar ao
+                    ecoponto.
                   </p>
                 </div>
               </div>
@@ -660,11 +934,16 @@ function CadastroForm() {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <h3 className="text-base font-bold text-zinc-900 dark:text-white">Termos Financeiros</h3>
-                    <span className="px-1.5 py-0.5 text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded uppercase tracking-wider">Asaas</span>
+                    <h3 className="text-base font-bold text-zinc-900 dark:text-white">
+                      Termos Financeiros
+                    </h3>
+                    <span className="px-1.5 py-0.5 text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded uppercase tracking-wider">
+                      Asaas
+                    </span>
                   </div>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                    Serviços financeiros prestados e regulados pelo Asaas Gestão Financeira Instituição de Pagamento S.A.
+                    Serviços financeiros prestados e regulados pelo Asaas Gestão
+                    Financeira Instituição de Pagamento S.A.
                   </p>
                   <div className="flex items-center gap-2 pt-0.5">
                     <SeloAsaas variant="positivo" width={110} height={32} />
@@ -680,36 +959,60 @@ function CadastroForm() {
         <>
           <div className="sm:mx-auto sm:w-full sm:max-w-md">
             <div className="flex flex-col justify-center items-center mb-4 text-center">
-              <img src="/banner.png?v=6" alt="Marca Oficial AçaíFood" className="w-36 h-36 rounded-2xl shadow-xl border-2 border-purple-500 object-contain" />
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-2 max-w-xs">AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.</p>
+              <img
+                src="/banner.png?v=6"
+                alt="Marca Oficial AçaíFood"
+                className="w-36 h-36 rounded-2xl shadow-xl border-2 border-purple-500 object-contain"
+              />
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-2 max-w-xs">
+                AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da
+                Cadeia do Açaí.
+              </p>
             </div>
             <h2 className="text-center text-3xl font-extrabold text-zinc-900 dark:text-white">
               Crie sua Conta
             </h2>
             <p className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
-              Ou <Link href={returnUrl ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : "/login"} className="font-medium text-purple-600 hover:text-purple-500">faça login se já for cadastrado</Link>
+              Ou{" "}
+              <Link
+                href={
+                  returnUrl
+                    ? `/login?returnUrl=${encodeURIComponent(returnUrl)}`
+                    : "/login"
+                }
+                className="font-medium text-purple-600 hover:text-purple-500"
+              >
+                faça login se já for cadastrado
+              </Link>
             </p>
           </div>
 
           <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
-            
             {/* Banner de Vagas Promocionais para Parceiros */}
-            {role !== 'cliente' && (
+            {role !== "cliente" && (
               <div className="mb-4 bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-emerald-500/10 border border-amber-300 dark:border-amber-700/60 rounded-2xl p-4 shadow-sm flex items-center gap-3">
                 <div className="bg-amber-500 text-white p-2.5 rounded-xl shrink-0 shadow-md">
                   <Sparkles size={20} />
                 </div>
                 <div>
-                  {activationInfo.isFree && activationInfo.freeSlotsRemaining > 0 ? (
+                  {activationInfo.isFree &&
+                  activationInfo.freeSlotsRemaining > 0 ? (
                     <>
                       <div className="flex items-center gap-2">
                         <span className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
                           100% Grátis
                         </span>
-                        <p className="text-xs font-bold text-zinc-900 dark:text-white">Vaga Fundador Disponível!</p>
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white">
+                          Vaga Fundador Disponível!
+                        </p>
                       </div>
                       <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
-                        Restam <strong>{activationInfo.freeSlotsRemaining} de {activationInfo.freeQuota}</strong> vagas com taxa Asaas isenta pelo app.
+                        Restam{" "}
+                        <strong>
+                          {activationInfo.freeSlotsRemaining} de{" "}
+                          {activationInfo.freeQuota}
+                        </strong>{" "}
+                        vagas com taxa Asaas isenta pelo app.
                       </p>
                     </>
                   ) : (
@@ -718,13 +1021,38 @@ function CadastroForm() {
                         <span className="bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-purple-300 dark:border-purple-800">
                           Ativação Comercial
                         </span>
-                        <p className="text-xs font-bold text-zinc-900 dark:text-white">Ativação na plataforma AçaíFood</p>
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white">
+                          Ativação na plataforma AçaíFood
+                        </p>
                       </div>
                       <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
-                        {activationInfo.freeQuota > 0 && activationInfo.freeSlotsRemaining <= 0 ? (
-                          <>Vagas de fundador preenchidas (<strong>0 de {activationInfo.freeQuota} vagas restantes</strong>). Taxa de ativação da plataforma AçaíFood de apenas <strong>R$ {activationInfo.activationFee.toFixed(2).replace('.', ',')}</strong> via Pix.</>
+                        {activationInfo.freeQuota > 0 &&
+                        activationInfo.freeSlotsRemaining <= 0 ? (
+                          <>
+                            Vagas de fundador preenchidas (
+                            <strong>
+                              0 de {activationInfo.freeQuota} vagas restantes
+                            </strong>
+                            ). Taxa de ativação da plataforma AçaíFood de apenas{" "}
+                            <strong>
+                              R${" "}
+                              {activationInfo.activationFee
+                                .toFixed(2)
+                                .replace(".", ",")}
+                            </strong>{" "}
+                            via Pix.
+                          </>
                         ) : (
-                          <>Taxa de ativação da plataforma AçaíFood de apenas <strong>R$ {activationInfo.activationFee.toFixed(2).replace('.', ',')}</strong> via Pix.</>
+                          <>
+                            Taxa de ativação da plataforma AçaíFood de apenas{" "}
+                            <strong>
+                              R${" "}
+                              {activationInfo.activationFee
+                                .toFixed(2)
+                                .replace(".", ",")}
+                            </strong>{" "}
+                            via Pix.
+                          </>
                         )}
                       </p>
                     </>
@@ -745,115 +1073,188 @@ function CadastroForm() {
                     <span>Trocar Perfil</span>
                   </button>
                   <span className="text-[11px] font-extrabold uppercase px-2.5 py-1 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
-                    {role === 'cliente' ? '👤 Cliente' : role === 'loja' ? '🏪 Batedeira' : role === 'fornecedor' ? '📦 Fornecedor' : `🛵 Logística (${veiculo})`}
+                    {role === "cliente"
+                      ? "👤 Cliente"
+                      : role === "loja"
+                        ? "🏪 Batedeira"
+                        : role === "fornecedor"
+                          ? "📦 Fornecedor"
+                          : `🛵 Logística (${veiculo})`}
                   </span>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Tipo de Perfil</label>
-                  <select 
-                    value={role} 
-                    onChange={e => setRole(e.target.value as Role)}
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Tipo de Perfil
+                  </label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as Role)}
                     className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
                   >
                     <option value="cliente">Cliente (Pedir Açaí)</option>
                     <option value="loja">Batedeira (Ponto de Venda)</option>
-                    <option value="fornecedor">Fornecedor (Vender Fruto)</option>
-                    <option value="motorista">Logística (Entregas e Fretes)</option>
+                    <option value="fornecedor">
+                      Fornecedor (Vender Fruto)
+                    </option>
+                    <option value="motorista">
+                      Logística (Entregas e Fretes)
+                    </option>
                   </select>
                 </div>
 
-                {role === 'motorista' && (
+                {role === "motorista" && (
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Veículo</label>
-                    <select 
-                      value={veiculo} 
-                      onChange={e => setVeiculo(e.target.value)}
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Veículo
+                    </label>
+                    <select
+                      value={veiculo}
+                      onChange={(e) => setVeiculo(e.target.value)}
                       className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
                     >
                       <option value="Moto">Moto (B2C)</option>
                       <option value="Caminhão">Caminhão (B2B)</option>
-                      <option value="Caçamba">Caçamba (Logística Reversa)</option>
+                      <option value="Caçamba">
+                        Caçamba (Logística Reversa)
+                      </option>
                     </select>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Nome ou Razão Social</label>
-                  <input type="text" required value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Nome ou Razão Social
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    CPF ou CNPJ do Titular {role !== 'cliente' && <span className="text-purple-600 font-bold">(Chave Pix Obrigatória)</span>}
+                    CPF ou CNPJ do Titular{" "}
+                    {role !== "cliente" && (
+                      <span className="text-purple-600 font-bold">
+                        (Chave Pix Obrigatória)
+                      </span>
+                    )}
                   </label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={cpfCnpj} 
-                    onChange={e => {
+                  <input
+                    type="text"
+                    required
+                    value={cpfCnpj}
+                    onChange={(e) => {
                       setCpfCnpj(e.target.value);
-                      if (role !== 'cliente') setPixKey(e.target.value.replace(/\D/g, ''));
-                    }} 
-                    placeholder="000.000.000-00 ou 00.000.000/0000-00" 
-                    className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" 
+                      if (role !== "cliente")
+                        setPixKey(e.target.value.replace(/\D/g, ""));
+                    }}
+                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                    className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
                   />
-                  {role !== 'cliente' && (
+                  {role !== "cliente" && (
                     <div className="text-[11px] text-purple-900 dark:text-purple-300 mt-1.5 flex items-start gap-1.5 bg-purple-50 dark:bg-purple-950/40 p-2.5 rounded-xl border border-purple-200 dark:border-purple-800/60 leading-relaxed">
                       <span className="text-base leading-none">🛡️</span>
-                      <span><strong>Mesma Titularidade Obrigatória:</strong> Por segurança patrimonial e conformidade bancária (BACEN/Asaas), a conta bancária receptora deve pertencer ao mesmo titular deste CPF/CNPJ. Seus repasses Pix serão creditados exclusivamente para esta chave.</span>
+                      <span>
+                        <strong>Mesma Titularidade Obrigatória:</strong> Por
+                        segurança patrimonial e conformidade bancária
+                        (BACEN/Asaas), a conta bancária receptora deve pertencer
+                        ao mesmo titular deste CPF/CNPJ. Seus repasses Pix serão
+                        creditados exclusivamente para esta chave.
+                      </span>
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Cidade Base</label>
-                  <select 
-                    value={cidade} 
-                    onChange={e => setCidade(e.target.value)}
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Cidade Base
+                  </label>
+                  <select
+                    value={cidade}
+                    onChange={(e) => setCidade(e.target.value)}
                     className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
                   >
                     {cities.length > 0 ? (
-                        cities.filter((c: any) => c.status === 'active').map((c: any) => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
-                       ))
+                      cities
+                        .filter((c: any) => c.status === "active")
+                        .map((c: any) => (
+                          <option key={c.id} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))
                     ) : (
-                       <option value="Belém">Belém</option>
+                      <option value="Belém">Belém</option>
                     )}
                   </select>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">CEP {role !== 'cliente' && <span className="text-purple-600 font-bold">*</span>}</label>
-                    <input 
-                      type="text" 
-                      required={role !== 'cliente'} 
-                      value={cep} 
-                      onChange={e => setCep(e.target.value)} 
-                      placeholder="66000-000" 
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      CEP{" "}
+                      {role !== "cliente" && (
+                        <span className="text-purple-600 font-bold">*</span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      required={role !== "cliente"}
+                      value={cep}
+                      onChange={(e) => setCep(e.target.value)}
+                      placeholder="66000-000"
                       maxLength={9}
-                      className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" 
+                      className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Bairro</label>
-                    <input type="text" required value={bairro} onChange={e => setBairro(e.target.value)} className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Bairro
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={bairro}
+                      onChange={(e) => setBairro(e.target.value)}
+                      className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
+                    />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Logradouro / Rua</label>
-                    <input type="text" required value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Ex: Av. Nazaré" className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Logradouro / Rua
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={endereco}
+                      onChange={(e) => setEndereco(e.target.value)}
+                      placeholder="Ex: Av. Nazaré"
+                      className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Número</label>
-                    <input type="text" required value={addressNumber} onChange={e => setAddressNumber(e.target.value)} placeholder="123 ou S/N" className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Número
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={addressNumber}
+                      onChange={(e) => setAddressNumber(e.target.value)}
+                      placeholder="123 ou S/N"
+                      className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
+                    />
                   </div>
                 </div>
 
                 {/* CAMPOS ESPECÍFICOS DE KYC PARA PARCEIROS (CONTRATO ASAAS CL. 8.2.3) */}
-                {role !== 'cliente' && (
+                {role !== "cliente" && (
                   <div className="bg-purple-50/70 dark:bg-purple-950/30 p-4 rounded-2xl border border-purple-200 dark:border-purple-800/60 space-y-3">
                     <div className="flex items-center gap-2">
                       <span className="text-base">🏦</span>
@@ -862,29 +1263,41 @@ function CadastroForm() {
                       </h4>
                     </div>
 
-                    {cpfCnpj.replace(/\D/g, '').length === 14 ? (
+                    {cpfCnpj.replace(/\D/g, "").length === 14 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">Tipo Societário</label>
+                          <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                            Tipo Societário
+                          </label>
                           <select
                             value={companyType}
-                            onChange={e => setCompanyType(e.target.value)}
+                            onChange={(e) => setCompanyType(e.target.value)}
                             className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-white focus:ring-purple-500 outline-none"
                           >
-                            <option value="MEI">MEI (Microempreendedor Individual)</option>
-                            <option value="LIMITED">LTDA (Sociedade Limitada)</option>
-                            <option value="INDIVIDUAL">EI (Empresário Individual)</option>
-                            <option value="ASSOCIATION">Associação / Cooperativa</option>
+                            <option value="MEI">
+                              MEI (Microempreendedor Individual)
+                            </option>
+                            <option value="LIMITED">
+                              LTDA (Sociedade Limitada)
+                            </option>
+                            <option value="INDIVIDUAL">
+                              EI (Empresário Individual)
+                            </option>
+                            <option value="ASSOCIATION">
+                              Associação / Cooperativa
+                            </option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">Faturamento Mensal (R$)</label>
+                          <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                            Faturamento Mensal (R$)
+                          </label>
                           <input
                             type="number"
                             required
                             min={100}
                             value={monthlyIncome}
-                            onChange={e => setMonthlyIncome(e.target.value)}
+                            onChange={(e) => setMonthlyIncome(e.target.value)}
                             placeholder="Ex: 5000"
                             className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-white focus:ring-purple-500 outline-none"
                           />
@@ -893,23 +1306,27 @@ function CadastroForm() {
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">Data de Nascimento (Titular +18)</label>
+                          <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                            Data de Nascimento (Titular +18)
+                          </label>
                           <input
                             type="date"
                             required
                             value={birthDate}
-                            onChange={e => setBirthDate(e.target.value)}
+                            onChange={(e) => setBirthDate(e.target.value)}
                             className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-white focus:ring-purple-500 outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">Renda Mensal Declarada (R$)</label>
+                          <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                            Renda Mensal Declarada (R$)
+                          </label>
                           <input
                             type="number"
                             required
                             min={100}
                             value={monthlyIncome}
-                            onChange={e => setMonthlyIncome(e.target.value)}
+                            onChange={(e) => setMonthlyIncome(e.target.value)}
                             placeholder="Ex: 2500"
                             className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-white focus:ring-purple-500 outline-none"
                           />
@@ -919,63 +1336,130 @@ function CadastroForm() {
                   </div>
                 )}
 
-                {(role === 'loja' || role === 'fornecedor') && (
+                {(role === "loja" || role === "fornecedor") && (
                   <div className="bg-purple-50 dark:bg-purple-950/20 p-4 rounded-xl border border-purple-200 dark:border-purple-900 my-2">
-                    <label className="block text-xs uppercase text-purple-800 dark:text-purple-300 font-bold mb-2">📍 Localização de Cadastro</label>
+                    <label className="block text-xs uppercase text-purple-800 dark:text-purple-300 font-bold mb-2">
+                      📍 Localização de Cadastro
+                    </label>
                     <div className="space-y-2">
                       <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                        <input 
-                          type="radio" 
-                          name="loc_mode" 
-                          checked={isRegisteringAtStore === true} 
-                          onChange={() => setIsRegisteringAtStore(true)} 
+                        <input
+                          type="radio"
+                          name="loc_mode"
+                          checked={isRegisteringAtStore === true}
+                          onChange={() => setIsRegisteringAtStore(true)}
                           className="text-purple-600 focus:ring-purple-500"
                         />
-                        <span>Estou no meu estabelecimento físico agora (capturar GPS)</span>
+                        <span>
+                          Estou no meu estabelecimento físico agora (capturar
+                          GPS)
+                        </span>
                       </label>
                       <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                        <input 
-                          type="radio" 
-                          name="loc_mode" 
-                          checked={isRegisteringAtStore === false} 
-                          onChange={() => setIsRegisteringAtStore(false)} 
+                        <input
+                          type="radio"
+                          name="loc_mode"
+                          checked={isRegisteringAtStore === false}
+                          onChange={() => setIsRegisteringAtStore(false)}
                           className="text-purple-600 focus:ring-purple-500"
                         />
-                        <span>Estou em outro local (definir GPS padrão e ajustar depois)</span>
+                        <span>
+                          Estou em outro local (definir GPS padrão e ajustar
+                          depois)
+                        </span>
                       </label>
                     </div>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Telefone (WhatsApp)</label>
-                  <input type="tel" required value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(91) 90000-0000" className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Telefone (WhatsApp)
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
+                    placeholder="(91) 90000-0000"
+                    className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">E-mail</label>
-                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    E-mail
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Senha</label>
-                  <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none" />
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Senha
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="mt-1 block w-full border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  />
                 </div>
 
                 {/* SEÇÃO DE ACEITES REGULATÓRIOS (CONTRATO ASAAS CL. 8.2.4) */}
                 <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
-                  {role === 'cliente' ? (
+                  {role === "cliente" ? (
                     <div className="flex items-start gap-2.5">
-                      <input 
-                        type="checkbox" 
-                        id="termos_cliente" 
-                        required 
-                        checked={termosAcaiFood} 
-                        onChange={e => setTermosAcaiFood(e.target.checked)} 
-                        className="mt-1 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer shrink-0" 
+                      <input
+                        type="checkbox"
+                        id="termos_cliente"
+                        required
+                        checked={termosAcaiFood}
+                        onChange={(e) => setTermosAcaiFood(e.target.checked)}
+                        className="mt-1 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer shrink-0"
                       />
-                      <label htmlFor="termos_cliente" className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                        Li e concordo com os <button type="button" onClick={() => setTermosModalOpen(true)} className="text-purple-600 font-bold hover:underline">Termos de Uso e Política de Privacidade do AçaíFood</button>, e declaro ciência de que os serviços financeiros e de pagamentos são prestados pelo <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong> (<a href="https://www.asaas.com/termos-de-uso" target="_blank" rel="noopener noreferrer" className="text-purple-600 underline">Termos Asaas</a> | <a href="https://www.asaas.com/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="text-purple-600 underline">Política Asaas</a>).
+                      <label
+                        htmlFor="termos_cliente"
+                        className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed"
+                      >
+                        Li e concordo com os{" "}
+                        <button
+                          type="button"
+                          onClick={() => setTermosModalOpen(true)}
+                          className="text-purple-600 font-bold hover:underline"
+                        >
+                          Termos de Uso e Política de Privacidade do AçaíFood
+                        </button>
+                        , e declaro ciência de que os serviços financeiros e de
+                        pagamentos são prestados pelo{" "}
+                        <strong>
+                          ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.
+                        </strong>{" "}
+                        (
+                        <a
+                          href="https://www.asaas.com/termos-de-uso"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-purple-600 underline"
+                        >
+                          Termos Asaas
+                        </a>{" "}
+                        |{" "}
+                        <a
+                          href="https://www.asaas.com/politica-de-privacidade"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-purple-600 underline"
+                        >
+                          Política Asaas
+                        </a>
+                        ).
                       </label>
                     </div>
                   ) : (
@@ -985,58 +1469,121 @@ function CadastroForm() {
                       </p>
 
                       <div className="flex items-start gap-2">
-                        <input 
-                          type="checkbox" 
-                          id="termos_acai" 
-                          required 
-                          checked={termosAcaiFood} 
-                          onChange={e => setTermosAcaiFood(e.target.checked)} 
-                          className="mt-0.5 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer shrink-0" 
+                        <input
+                          type="checkbox"
+                          id="termos_acai"
+                          required
+                          checked={termosAcaiFood}
+                          onChange={(e) => setTermosAcaiFood(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer shrink-0"
                         />
-                        <label htmlFor="termos_acai" className="text-[11px] text-zinc-600 dark:text-zinc-400">
-                          <strong>1. Termos AçaíFood:</strong> Li e aceito os <button type="button" onClick={() => setTermosModalOpen(true)} className="text-purple-600 font-bold hover:underline">Termos de Uso e Política de Privacidade</button> da plataforma.
+                        <label
+                          htmlFor="termos_acai"
+                          className="text-[11px] text-zinc-600 dark:text-zinc-400"
+                        >
+                          <strong>1. Termos AçaíFood:</strong> Li e aceito os{" "}
+                          <button
+                            type="button"
+                            onClick={() => setTermosModalOpen(true)}
+                            className="text-purple-600 font-bold hover:underline"
+                          >
+                            Termos de Uso e Política de Privacidade
+                          </button>{" "}
+                          da plataforma.
                         </label>
                       </div>
 
                       <div className="flex items-start gap-2">
-                        <input 
-                          type="checkbox" 
-                          id="termos_asaas" 
-                          required 
-                          checked={termosAsaas} 
-                          onChange={e => setTermosAsaas(e.target.checked)} 
-                          className="mt-0.5 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer shrink-0" 
+                        <input
+                          type="checkbox"
+                          id="termos_asaas"
+                          required
+                          checked={termosAsaas}
+                          onChange={(e) => setTermosAsaas(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer shrink-0"
                         />
-                        <label htmlFor="termos_asaas" className="text-[11px] text-zinc-600 dark:text-zinc-400">
-                          <strong>2. Termos do Asaas:</strong> Li e concordo com os <a href="https://www.asaas.com/termos-de-uso" target="_blank" rel="noopener noreferrer" className="text-purple-600 font-bold underline">Termos Gerais de Uso</a> e a <a href="https://www.asaas.com/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="text-purple-600 font-bold underline">Política de Privacidade</a> do <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong>
+                        <label
+                          htmlFor="termos_asaas"
+                          className="text-[11px] text-zinc-600 dark:text-zinc-400"
+                        >
+                          <strong>2. Termos do Asaas:</strong> Li e concordo com
+                          os{" "}
+                          <a
+                            href="https://www.asaas.com/termos-de-uso"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-purple-600 font-bold underline"
+                          >
+                            Termos Gerais de Uso
+                          </a>{" "}
+                          e a{" "}
+                          <a
+                            href="https://www.asaas.com/politica-de-privacidade"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-purple-600 font-bold underline"
+                          >
+                            Política de Privacidade
+                          </a>{" "}
+                          do{" "}
+                          <strong>
+                            ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO
+                            S.A.
+                          </strong>
                         </label>
                       </div>
 
                       <div className="flex items-start gap-2">
-                        <input 
-                          type="checkbox" 
-                          id="mandato_asaas" 
-                          required 
-                          checked={mandatoAsaas} 
-                          onChange={e => setMandatoAsaas(e.target.checked)} 
-                          className="mt-0.5 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer shrink-0" 
+                        <input
+                          type="checkbox"
+                          id="mandato_asaas"
+                          required
+                          checked={mandatoAsaas}
+                          onChange={(e) => setMandatoAsaas(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer shrink-0"
                         />
-                        <label htmlFor="mandato_asaas" className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-tight">
-                          <strong>3. Mandato de Subconta:</strong> Autorizo a <strong>Eletromecânica Baia Ltda (CNPJ 42.035.623/0001-40)</strong>, nos termos do <a href="/termos-de-uso" target="_blank" className="text-purple-600 font-bold underline">Mandato</a>, a abrir e movimentar a minha subconta Asaas: emitir as cobranças Pix dos meus pedidos com split da comissão, pagar automaticamente as corridas após o PIN de entrega, manter reservados os valores de pedidos em andamento, estornar pedidos cancelados e fazer saques só para chave do meu CPF/CNPJ.
+                        <label
+                          htmlFor="mandato_asaas"
+                          className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-tight"
+                        >
+                          <strong>3. Mandato de Subconta:</strong> Autorizo a{" "}
+                          <strong>
+                            Eletromecânica Baia Ltda (CNPJ 42.035.623/0001-40)
+                          </strong>
+                          , nos termos do{" "}
+                          <a
+                            href="/termos-de-uso"
+                            target="_blank"
+                            className="text-purple-600 font-bold underline"
+                          >
+                            Mandato
+                          </a>
+                          , a abrir e movimentar a minha subconta Asaas: emitir
+                          as cobranças Pix dos meus pedidos com split da
+                          comissão, pagar automaticamente as corridas após o PIN
+                          de entrega, manter reservados os valores de pedidos em
+                          andamento, estornar pedidos cancelados e fazer saques
+                          só para chave do meu CPF/CNPJ.
                         </label>
                       </div>
 
                       <div className="flex items-start gap-2">
-                        <input 
-                          type="checkbox" 
-                          id="pix_consent" 
-                          required 
-                          checked={pixConsent} 
-                          onChange={e => setPixConsent(e.target.checked)} 
-                          className="mt-0.5 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer shrink-0" 
+                        <input
+                          type="checkbox"
+                          id="pix_consent"
+                          required
+                          checked={pixConsent}
+                          onChange={(e) => setPixConsent(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 text-purple-600 rounded border-zinc-300 focus:ring-purple-500 cursor-pointer shrink-0"
                         />
-                        <label htmlFor="pix_consent" className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-tight">
-                          <strong>4. Chave Pix Aleatória:</strong> Autorizo a criação de chave Pix aleatória (EVP) na minha subconta Asaas para receber os Pix dos clientes e as transferências automáticas da plataforma.
+                        <label
+                          htmlFor="pix_consent"
+                          className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-tight"
+                        >
+                          <strong>4. Chave Pix Aleatória:</strong> Autorizo a
+                          criação de chave Pix aleatória (EVP) na minha subconta
+                          Asaas para receber os Pix dos clientes e as
+                          transferências automáticas da plataforma.
                         </label>
                       </div>
                     </div>
@@ -1044,8 +1591,16 @@ function CadastroForm() {
                 </div>
 
                 <div className="pt-2">
-                  <button type="submit" disabled={isLocating} className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-black text-white bg-purple-600 hover:bg-purple-700 focus:outline-none transition active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
-                    {isLocating ? 'Obtendo GPS...' : (role === 'cliente' ? 'Criar Conta e Começar' : 'Criar Conta Parceira')}
+                  <button
+                    type="submit"
+                    disabled={isLocating}
+                    className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-black text-white bg-purple-600 hover:bg-purple-700 focus:outline-none transition active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {isLocating
+                      ? "Obtendo GPS..."
+                      : role === "cliente"
+                        ? "Criar Conta e Começar"
+                        : "Criar Conta Parceira"}
                   </button>
                 </div>
               </form>
@@ -1068,33 +1623,43 @@ function CadastroForm() {
 
       {step === 2 && (
         <div className="sm:mx-auto sm:w-full sm:max-w-md animate-in fade-in duration-300">
-           <div className="bg-white dark:bg-zinc-900 w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800">
-            
+          <div className="bg-white dark:bg-zinc-900 w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800">
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-800 to-indigo-800 p-6 text-white text-center shrink-0">
               <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
                 <ShieldCheck size={32} />
               </div>
               <h3 className="text-xl font-black">
-                {isPaymentConfirmed ? '🎉 Conta Ativada com Sucesso!' : '🔒 Quase Pronto: Ativação Parceiro'}
+                {isPaymentConfirmed
+                  ? "🎉 Conta Ativada com Sucesso!"
+                  : "🔒 Quase Pronto: Ativação Parceiro"}
               </h3>
               <p className="text-purple-100 text-xs mt-1">
-                {isPaymentConfirmed ? 'Ativação confirmada' : 'Ativação da plataforma AçaíFood'}
+                {isPaymentConfirmed
+                  ? "Ativação confirmada"
+                  : "Ativação da plataforma AçaíFood"}
               </p>
             </div>
-            
+
             <div className="p-6 text-center space-y-4">
-              
               {/* CASO 1: Parceiro Fundador ou Pix Confirmado */}
               {isPaymentConfirmed ? (
                 <>
                   <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 text-left space-y-2">
                     <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-black text-sm">
                       <CheckCircle2 size={20} className="text-emerald-600" />
-                      {pixData?.isFreeGranted ? 'Vaga Fundador Garantida (100% Grátis)' : 'Taxa de Ativação Paga com Sucesso!'}
+                      {pixData?.isFreeGranted
+                        ? "Vaga Fundador Garantida (100% Grátis)"
+                        : "Taxa de Ativação Paga com Sucesso!"}
                     </div>
                     <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                      Sua conta já está cadastrada. Próximo passo: no seu painel, em <strong>Minha conta Asaas</strong>, abra a sua conta de pagamento quando estiver com <strong>documento com foto e celular para a selfie</strong> em mãos.
+                      Sua conta já está cadastrada. Próximo passo: no seu
+                      painel, em <strong>Minha conta Asaas</strong>, abra a sua
+                      conta de pagamento quando estiver com{" "}
+                      <strong>
+                        documento com foto e celular para a selfie
+                      </strong>{" "}
+                      em mãos.
                     </p>
                   </div>
 
@@ -1102,20 +1667,29 @@ function CadastroForm() {
                     <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
                       <span className="text-lg">💰</span>
                       <div>
-                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Split Automático Ativo</p>
-                        <p className="text-[11px] text-zinc-500">Receba seus repasses diretamente na sua chave Pix</p>
+                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                          Split Automático Ativo
+                        </p>
+                        <p className="text-[11px] text-zinc-500">
+                          Receba seus repasses diretamente na sua chave Pix
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
                       <span className="text-lg">🛡️</span>
                       <div>
-                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Conta de pagamento Asaas</p>
-                        <p className="text-[11px] text-zinc-500">Aberta por você em "Minha conta Asaas", com envio de documento e selfie na hora</p>
+                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                          Conta de pagamento Asaas
+                        </p>
+                        <p className="text-[11px] text-zinc-500">
+                          Aberta por você em "Minha conta Asaas", com envio de
+                          documento e selfie na hora
+                        </p>
                       </div>
                     </div>
                   </div>
 
-                  <button 
+                  <button
                     onClick={handleGoToPartnerPanel}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95 text-sm"
                   >
@@ -1131,39 +1705,49 @@ function CadastroForm() {
                       Taxa de ativação da plataforma AçaíFood
                     </p>
                     <p className="text-[11px] text-purple-700 dark:text-purple-300">
-                      Para liberar sua conta de recebimentos, realize o pagamento via Pix:
+                      Para liberar sua conta de recebimentos, realize o
+                      pagamento via Pix:
                     </p>
                     <p className="text-lg font-black text-purple-900 dark:text-purple-100 mt-2">
-                      R$ {activationInfo.activationFee.toFixed(2).replace('.', ',')}
+                      R${" "}
+                      {activationInfo.activationFee
+                        .toFixed(2)
+                        .replace(".", ",")}
                     </p>
                   </div>
 
                   {/* QR CODE DISPLAY */}
                   {pixData?.pixQrCode ? (
                     <div className="flex flex-col items-center justify-center p-3 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-inner">
-                      <img 
-                        src={`data:image/png;base64,${pixData.pixQrCode}`} 
-                        alt="QR Code Pix Ativação" 
+                      <img
+                        src={`data:image/png;base64,${pixData.pixQrCode}`}
+                        alt="QR Code Pix Ativação"
                         className="w-48 h-48 rounded-lg object-contain"
                       />
-                      <span className="text-[10px] text-zinc-400 mt-2 font-mono">Escaneie no app do seu banco</span>
+                      <span className="text-[10px] text-zinc-400 mt-2 font-mono">
+                        Escaneie no app do seu banco
+                      </span>
                     </div>
                   ) : (
                     <div className="p-6 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex flex-col items-center">
                       <QrCode size={48} className="text-zinc-400 mb-2" />
-                      <p className="text-xs text-zinc-500">Gerando QR Code Pix...</p>
+                      <p className="text-xs text-zinc-500">
+                        Gerando QR Code Pix...
+                      </p>
                     </div>
                   )}
 
                   {/* Copia e Cola */}
                   {pixData?.pixCopiaECola && (
                     <div className="space-y-1 text-left">
-                      <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400">Pix Copia e Cola:</label>
+                      <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400">
+                        Pix Copia e Cola:
+                      </label>
                       <div className="flex items-center gap-2">
-                        <input 
-                          type="text" 
-                          readOnly 
-                          value={pixData.pixCopiaECola} 
+                        <input
+                          type="text"
+                          readOnly
+                          value={pixData.pixCopiaECola}
                           className="bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-[10px] font-mono p-2.5 rounded-xl w-full text-zinc-700 dark:text-zinc-300 select-all"
                         />
                         <button
@@ -1172,50 +1756,78 @@ function CadastroForm() {
                           className="bg-purple-600 hover:bg-purple-700 text-white font-bold p-2.5 rounded-xl text-xs shrink-0 flex items-center gap-1 shadow transition active:scale-95"
                         >
                           <Copy size={14} />
-                          {copiedPix ? 'Copiado!' : 'Copiar'}
+                          {copiedPix ? "Copiado!" : "Copiar"}
                         </button>
                       </div>
                     </div>
                   )}
 
                   <div className="pt-2">
-                    <button 
+                    <button
                       onClick={() => checkPixStatus(false)}
                       disabled={isCheckingPayment}
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95 text-sm disabled:opacity-50"
                     >
-                      {isCheckingPayment ? '⏳ Verificando no Asaas...' : '✅ Já Paguei o Pix'}
+                      {isCheckingPayment
+                        ? "⏳ Verificando no Asaas..."
+                        : "✅ Já Paguei o Pix"}
                     </button>
                   </div>
                 </>
               )}
-              
+
               <p className="text-[11px] text-zinc-400">
-                Seus dados e pagamentos são protegidos pela infraestrutura bancária Asaas.
+                Seus dados e pagamentos são protegidos pela infraestrutura
+                bancária Asaas.
               </p>
             </div>
           </div>
         </div>
       )}
-      
+
       {termosModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
             <div className="bg-zinc-800 text-white p-5 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-lg">📜 Termos de Uso e Responsabilidade</h3>
-                <button type="button" onClick={() => setTermosModalOpen(false)} className="text-zinc-400 hover:text-white font-bold text-2xl leading-none">&times;</button>
+              <h3 className="font-bold text-lg">
+                📜 Termos de Uso e Responsabilidade
+              </h3>
+              <button
+                type="button"
+                onClick={() => setTermosModalOpen(false)}
+                className="text-zinc-400 hover:text-white font-bold text-2xl leading-none"
+              >
+                &times;
+              </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto">
               <h4 className="font-bold text-zinc-800 dark:text-white mb-4 text-lg border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                Para o Perfil: <span className="capitalize text-purple-600">{role}</span>
+                Para o Perfil:{" "}
+                <span className="capitalize text-purple-600">{role}</span>
               </h4>
               {getTermosText()}
             </div>
 
             <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800">
-                <button type="button" onClick={() => setTermosModalOpen(false)} className="px-5 py-2.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition">Fechar</button>
-                <button type="button" onClick={() => { setTermosAcaiFood(true); setTermosAsaas(true); setTermosModalOpen(false); }} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition shadow-sm">Li e Concordo</button>
+              <button
+                type="button"
+                onClick={() => setTermosModalOpen(false)}
+                className="px-5 py-2.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 rounded-xl font-bold transition"
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTermosAcaiFood(true);
+                  setTermosAsaas(true);
+                  setTermosModalOpen(false);
+                }}
+                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition shadow-sm"
+              >
+                Li e Concordo
+              </button>
             </div>
           </div>
         </div>
@@ -1227,23 +1839,34 @@ function CadastroForm() {
             <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-zinc-900 text-white p-5 flex justify-between items-center shrink-0 border-b border-blue-500/30">
               <div className="flex items-center gap-3">
                 <SeloAsaas variant="negativo-branco" width={110} height={32} />
-                <h3 className="font-bold text-base sm:text-lg text-white">Termo de Responsabilidade Financeira</h3>
+                <h3 className="font-bold text-base sm:text-lg text-white">
+                  Termo de Responsabilidade Financeira
+                </h3>
               </div>
-              <button 
-                type="button" 
-                onClick={() => setAsaasModalOpen(false)} 
+              <button
+                type="button"
+                onClick={() => setAsaasModalOpen(false)}
                 className="text-zinc-400 hover:text-white font-bold text-2xl leading-none p-1 rounded-lg hover:bg-white/10 transition"
               >
                 &times;
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto space-y-4 text-sm text-zinc-700 dark:text-zinc-300">
               <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl text-blue-900 dark:text-blue-200 text-xs flex items-start gap-2.5">
-                <ShieldCheck className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" size={18} />
+                <ShieldCheck
+                  className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5"
+                  size={18}
+                />
                 <div>
-                  <strong className="block text-sm mb-0.5">Instituição de Pagamento Autorizada pelo Banco Central do Brasil</strong>
-                  <span>Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ 19.540.550/0001-21</span>
+                  <strong className="block text-sm mb-0.5">
+                    Instituição de Pagamento Autorizada pelo Banco Central do
+                    Brasil
+                  </strong>
+                  <span>
+                    Asaas Gestão Financeira Instituição de Pagamento S.A., CNPJ
+                    19.540.550/0001-21
+                  </span>
                 </div>
               </div>
 
@@ -1252,22 +1875,40 @@ function CadastroForm() {
                   4. Prestação de Serviços Financeiros
                 </h4>
                 <p>
-                  Os serviços financeiros e de pagamentos disponibilizados por meio da presente plataforma, incluindo abertura e manutenção de conta de pagamento, processamento de transações, emissão de boletos, transferências, pagamentos e demais movimentações de valores, são prestados pelo <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong>, instituição de pagamento autorizada a funcionar pelo <strong>Banco Central do Brasil</strong>.
+                  Os serviços financeiros e de pagamentos disponibilizados por
+                  meio da presente plataforma, incluindo abertura e manutenção
+                  de conta de pagamento, processamento de transações, emissão de
+                  boletos, transferências, pagamentos e demais movimentações de
+                  valores, são prestados pelo{" "}
+                  <strong>
+                    ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.
+                  </strong>
+                  , instituição de pagamento autorizada a funcionar pelo{" "}
+                  <strong>Banco Central do Brasil</strong>.
                 </p>
                 <p>
-                  A <strong>ELETROMECANICA BAIA</strong> atua exclusivamente como integradora tecnológica e distribuidora da experiência do produto, não sendo instituição financeira ou de pagamento, nem realizando intermediação financeira em nome próprio.
+                  A <strong>ELETROMECANICA BAIA</strong> atua exclusivamente
+                  como integradora tecnológica e distribuidora da experiência do
+                  produto, não sendo instituição financeira ou de pagamento, nem
+                  realizando intermediação financeira em nome próprio.
                 </p>
                 <p>
-                  O cliente declara ciência de que o relacionamento financeiro/ de pagamentos e a responsabilidade regulatória pelos serviços acima descritos são do <strong>ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.</strong>, nos termos da regulamentação vigente.
+                  O cliente declara ciência de que o relacionamento financeiro/
+                  de pagamentos e a responsabilidade regulatória pelos serviços
+                  acima descritos são do{" "}
+                  <strong>
+                    ASAAS GESTÃO FINANCEIRA INSTITUIÇÃO DE PAGAMENTO S.A.
+                  </strong>
+                  , nos termos da regulamentação vigente.
                 </p>
               </div>
             </div>
 
             <div className="p-4 bg-zinc-50 dark:bg-zinc-900/80 flex items-center justify-between border-t border-zinc-200 dark:border-zinc-800">
               <SeloAsaas variant="positivo" width={130} height={36} />
-              <button 
-                type="button" 
-                onClick={() => setAsaasModalOpen(false)} 
+              <button
+                type="button"
+                onClick={() => setAsaasModalOpen(false)}
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-sm text-sm"
               >
                 Entendido
@@ -1295,7 +1936,8 @@ export default function CadastroPage() {
       </div>
 
       <p className="text-center text-xs text-zinc-700 dark:text-zinc-300 font-medium mt-6">
-        AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do Açaí.
+        AçaíFood © 2026 • Tecnologia, Logística e Sustentabilidade da Cadeia do
+        Açaí.
       </p>
     </div>
   );
