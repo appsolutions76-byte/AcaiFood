@@ -889,6 +889,54 @@ export const useAppStore = create<AppState>()(
 
         const cleanedCpfCnpj = newUser.cpfCnpj ? newUser.cpfCnpj.replace(/\D/g, '') : null;
 
+        // R58 — Validação de dígitos verificadores CPF/CNPJ
+        const validarCPF = (cpf: string): boolean => {
+          if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+          let soma = 0;
+          for (let i = 0; i < 9; i++) soma += parseInt(cpf[i]) * (10 - i);
+          let r = (soma * 10) % 11;
+          if (r === 10 || r === 11) r = 0;
+          if (r !== parseInt(cpf[9])) return false;
+          soma = 0;
+          for (let i = 0; i < 10; i++) soma += parseInt(cpf[i]) * (11 - i);
+          r = (soma * 10) % 11;
+          if (r === 10 || r === 11) r = 0;
+          return r === parseInt(cpf[10]);
+        };
+        const validarCNPJ = (cnpj: string): boolean => {
+          if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
+          const calc = (n: string, pesos: number[]) => {
+            let s = 0;
+            for (let i = 0; i < pesos.length; i++) s += parseInt(n[i]) * pesos[i];
+            const r = s % 11;
+            return r < 2 ? 0 : 11 - r;
+          };
+          const d1 = calc(cnpj, [5,4,3,2,9,8,7,6,5,4,3,2]);
+          if (d1 !== parseInt(cnpj[12])) return false;
+          const d2 = calc(cnpj, [6,5,4,3,2,9,8,7,6,5,4,3,2]);
+          return d2 === parseInt(cnpj[13]);
+        };
+        if (cleanedCpfCnpj) {
+          if (cleanedCpfCnpj.length === 11 && !validarCPF(cleanedCpfCnpj)) {
+            alert("CPF inválido. Verifique os dígitos e tente novamente.");
+            return null;
+          }
+          if (cleanedCpfCnpj.length === 14 && !validarCNPJ(cleanedCpfCnpj)) {
+            alert("CNPJ inválido. Verifique os dígitos e tente novamente.");
+            return null;
+          }
+          // R58 — Verifica CPF/CNPJ duplicado antes de inserir
+          const { data: cpfExiste } = await supabase
+            .from('users')
+            .select('id')
+            .eq('cpf_cnpj', cleanedCpfCnpj)
+            .maybeSingle();
+          if (cpfExiste) {
+            alert("Este CPF/CNPJ já está cadastrado na plataforma. Se você já tem uma conta, faça login. Se precisar de ajuda, entre em contato com o suporte.");
+            return null;
+          }
+        }
+
         // Trava de Vagas e Custo: Determina se o parceiro tem vaga gratuita ou taxa comercial
         let isFreePartner = true;
 
@@ -956,17 +1004,25 @@ export const useAppStore = create<AppState>()(
 
         let { error: dbError } = await supabase.from('users').insert(insertPayload);
 
-        if (dbError && dbError.message && (dbError.message.includes('cpf_cnpj') || dbError.message.includes('referred_by_affiliate'))) {
-          console.warn("Coluna opcional não encontrada no banco, tentando fallback sem ela...");
-          if (dbError.message.includes('cpf_cnpj')) delete insertPayload.cpf_cnpj;
-          if (dbError.message.includes('referred_by_affiliate')) delete insertPayload.referred_by_affiliate;
+        // R58 — Fallback apenas para coluna referred_by_affiliate (opcional). CPF nunca é descartado silenciosamente.
+        if (dbError && dbError.message && dbError.message.includes('referred_by_affiliate')) {
+          console.warn("Coluna referred_by_affiliate não encontrada, tentando sem ela...");
+          delete insertPayload.referred_by_affiliate;
           const retry = await supabase.from('users').insert(insertPayload);
           dbError = retry.error;
         }
 
         if (dbError) {
           console.error("DB Insert Error:", dbError);
-          alert(`Erro ao salvar perfil no banco de dados: ${dbError.message || JSON.stringify(dbError)}`);
+          // R58 — Mensagens amigáveis em português
+          const msg = dbError.message || '';
+          if (msg.includes('duplicate') || msg.includes('unique') || msg.includes('cpf_cnpj')) {
+            alert("Este CPF/CNPJ já está cadastrado na plataforma. Se você já tem uma conta, faça login. Se precisar de ajuda, entre em contato com o suporte.");
+          } else if (msg.includes('email')) {
+            alert("Este e-mail já está cadastrado. Por favor, faça login ou utilize outro e-mail.");
+          } else {
+            alert("Não foi possível salvar seu cadastro. Verifique sua conexão e tente novamente. Se o problema persistir, entre em contato com o suporte.");
+          }
           return null;
         }
 
