@@ -50,11 +50,14 @@ export function AsaasAccountStatusCard() {
     endereco: '',
     addressNumber: '',
     bairro: '',
-    phone: ''
+    phone: '',
+    cpfCnpjInput: ''
   });
 
-  const cpfCnpj = onlyDigits(currentUser?.cpfCnpj);
+  const cpfCnpjSaved = onlyDigits(currentUser?.cpfCnpj);
+  const cpfCnpj = cpfCnpjSaved || onlyDigits(form.cpfCnpjInput);
   const isCnpj = cpfCnpj.length === 14;
+  const needsCpf = !cpfCnpjSaved || (cpfCnpjSaved.length !== 11 && cpfCnpjSaved.length !== 14);
 
   const fetchDocStatus = async (resync = false) => {
     if (!currentUser?.id) return;
@@ -138,8 +141,18 @@ export function AsaasAccountStatusCard() {
     e.preventDefault();
     const income = Number(String(form.monthlyIncome).replace(',', '.'));
     if (!cpfCnpj || (cpfCnpj.length !== 11 && cpfCnpj.length !== 14)) {
-      setMessage('Seu cadastro está sem CPF/CNPJ válido. Fale com o suporte.');
+      setMessage('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.');
       return;
+    }
+    // Se o CPF/CNPJ foi digitado agora (não existia no perfil), salva no banco antes de abrir a conta
+    if (needsCpf && cpfCnpj) {
+      try {
+        const { error } = await supabase.from('users').update({ cpf_cnpj: cpfCnpj }).eq('id', currentUser.id);
+        if (error) { setMessage('Não foi possível salvar o CPF/CNPJ. Tente novamente.'); return; }
+        useAppStore.setState((state: any) => ({
+          currentUser: state.currentUser ? { ...state.currentUser, cpfCnpj } : state.currentUser
+        }));
+      } catch { setMessage('Erro ao salvar CPF/CNPJ.'); return; }
     }
     if (isNaN(income) || income < 100) {
       setMessage(isCnpj ? 'Informe o faturamento mensal (mínimo R$ 100).' : 'Informe sua renda mensal (mínimo R$ 100).');
@@ -249,6 +262,22 @@ export function AsaasAccountStatusCard() {
         <p className="text-xs text-amber-800/80 dark:text-amber-300">Use seus dados verdadeiros: eles vão para o Asaas e o Banco Central.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {needsCpf && (
+            <div className="sm:col-span-2">
+              <label className={label}>CPF ou CNPJ <span className="text-amber-600">*</span></label>
+              <input
+                type="text"
+                required
+                inputMode="numeric"
+                maxLength={18}
+                className={input}
+                value={form.cpfCnpjInput}
+                onChange={e => setForm({ ...form, cpfCnpjInput: e.target.value })}
+                placeholder="Somente números: 000.000.000-00 ou 00.000.000/0001-00"
+              />
+              <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5">Use seus dados reais — enviados ao Asaas e ao Banco Central.</p>
+            </div>
+          )}
           {isCnpj ? (
             <div>
               <label className={label}>Tipo de empresa</label>

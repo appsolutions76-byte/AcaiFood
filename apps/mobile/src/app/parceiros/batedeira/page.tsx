@@ -502,7 +502,15 @@ export default function BatedeiraDashboard() {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
 
-      await store.updateUserLocation(currentUser.id, lat, lng);
+      // Chama API diretamente (sem filtro de deslocamento do store)
+      const sessionRes = await supabase.auth.getSession();
+      const token = sessionRes.data?.session?.access_token;
+      const res = await fetch('/api/user/location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ latitude: lat, longitude: lng })
+      });
+      if (!res.ok) throw new Error('API error');
       alert("✅ GPS do estabelecimento atualizado com sucesso para as novas coordenadas!");
       const s = useAppStore.getState();
       s.fetchAllUsers(true);

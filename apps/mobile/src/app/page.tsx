@@ -201,7 +201,14 @@ export default function StorefrontPage() {
         setIsLocating(false);
 
         if (currentUser?.id) {
-          await store.updateUserLocation(currentUser.id, lat, lng);
+          // Chama API diretamente (sem filtro de deslocamento do store)
+          const { getAuthHeaders } = await import('@/lib/supabase');
+          const headers = await getAuthHeaders();
+          await fetch('/api/user/location', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ latitude: lat, longitude: lng })
+          });
         }
         alert(`📍 Localização GPS atualizada com sucesso!\n\nCoordenadas: ${lat.toFixed(4)}, ${lng.toFixed(4)}\nAs distâncias e fretes das batedeiras foram recalculados para sua posição atual.`);
       },
