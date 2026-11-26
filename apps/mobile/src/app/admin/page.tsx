@@ -3023,6 +3023,22 @@ function AdminDashboardContent() {
                                       <span className="text-xl">{u.icon}</span>
                                       <div>
                                           <p className="font-bold text-zinc-800 dark:text-zinc-200">{u.name}</p>
+                                          {/* R59 — telefone clicável logo abaixo do nome */}
+                                          {(u.telefone || (u as any).phone) && (() => {
+                                            const tel = (u.telefone || (u as any).phone || '').replace(/\D/g, '');
+                                            const telFmt = (u.telefone || (u as any).phone);
+                                            return (
+                                              <a
+                                                href={`https://wa.me/55${tel}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                title="Abrir WhatsApp"
+                                                className="inline-flex items-center gap-1 text-[10px] text-emerald-700 dark:text-emerald-400 hover:underline font-mono"
+                                              >
+                                                📱 {telFmt}
+                                              </a>
+                                            );
+                                          })()}
                                           <p className="text-[10px] text-zinc-500 font-mono">{u.id}</p>
                                       </div>
                                   </div>
