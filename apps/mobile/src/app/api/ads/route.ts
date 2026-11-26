@@ -55,8 +55,8 @@ export const DEFAULT_ADS: AdItem[] = [
     mediaUrl: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=1200&q=80',
     thumbnailUrl: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=200&q=60',
     placement: 'home_banner',
-    targetType: 'store',
-    targetValue: 'ponto_do_acai',
+    targetType: 'url',
+    targetValue: 'https://www.acaifood.app.br/',
     city: 'ALL',
     isActive: true,
     viewsCount: 120,
@@ -71,8 +71,8 @@ export const DEFAULT_ADS: AdItem[] = [
     mediaUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&q=80',
     thumbnailUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&q=60',
     placement: 'home_banner',
-    targetType: 'store',
-    targetValue: 'churrasco_b10',
+    targetType: 'url',
+    targetValue: 'https://www.acaifood.app.br/',
     city: 'ALL',
     isActive: true,
     viewsCount: 105,
@@ -87,8 +87,8 @@ export const DEFAULT_ADS: AdItem[] = [
     mediaUrl: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=800&q=80',
     thumbnailUrl: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=200&q=60',
     placement: 'home_story',
-    targetType: 'store',
-    targetValue: 'ponto_do_acai',
+    targetType: 'url',
+    targetValue: 'https://www.acaifood.app.br/',
     city: 'ALL',
     isActive: true,
     viewsCount: 95,
@@ -103,8 +103,8 @@ export const DEFAULT_ADS: AdItem[] = [
     mediaUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80',
     thumbnailUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&q=60',
     placement: 'home_story',
-    targetType: 'store',
-    targetValue: 'churrasco_b10',
+    targetType: 'url',
+    targetValue: 'https://www.acaifood.app.br/',
     city: 'ALL',
     isActive: true,
     viewsCount: 88,
@@ -113,48 +113,64 @@ export const DEFAULT_ADS: AdItem[] = [
   }
 ];
 
+// Lê anúncios da fonte correta: platform_config (key='ads') com fallback para
+// asaas_platform_wallet_id (legado) e depois para DEFAULT_ADS hardcoded.
+async function loadAdsFromDb(): Promise<AdItem[]> {
+  const supabase = getSupabaseAdmin();
+
+  // 1. Fonte principal: platform_config (tabela dedicada, criada no R16)
+  try {
+    const { data: cfgRow } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'ads')
+      .maybeSingle();
+
+    if (cfgRow?.value && Array.isArray(cfgRow.value) && cfgRow.value.length > 0) {
+      return cfgRow.value as AdItem[];
+    }
+  } catch (_e) {}
+
+  // 2. Fallback legado: asaas_platform_wallet_id (campo antigo)
+  try {
+    const { data: legacyRow } = await supabase
+      .from('platform_settings')
+      .select('asaas_platform_wallet_id')
+      .limit(1)
+      .maybeSingle();
+
+    if (legacyRow?.asaas_platform_wallet_id) {
+      const parsed = JSON.parse(legacyRow.asaas_platform_wallet_id);
+      if (parsed && Array.isArray(parsed.ads) && parsed.ads.length > 0) {
+        return parsed.ads as AdItem[];
+      }
+    }
+  } catch (_e) {}
+
+  // 3. Fallback final: DEFAULT_ADS hardcoded
+  return DEFAULT_ADS;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const city = searchParams.get('city');
     const placement = searchParams.get('placement');
 
-    const supabase = getSupabaseAdmin();
-    const { data: row } = await supabase
-      .from('platform_settings')
-      .select('asaas_platform_wallet_id')
-      .limit(1)
-      .maybeSingle();
+    const ads = await loadAdsFromDb();
 
-    let ads: AdItem[] = DEFAULT_ADS;
-
-    if (row?.asaas_platform_wallet_id) {
-      try {
-        const parsed = JSON.parse(row.asaas_platform_wallet_id);
-        if (parsed && Array.isArray(parsed.ads) && parsed.ads.length > 0) {
-          const dbAds: AdItem[] = parsed.ads;
-          const activeBanners = dbAds.filter(a => 
-            (a.placement === 'home_banner' || a.placement === 'banner' || a.placement === 'both') && 
-            a.isActive !== false && (a as any).active !== false
-          );
-          
-          if (activeBanners.length < 3) {
-            const dbIds = new Set(dbAds.map(a => a.id));
-            const missingDefaults = DEFAULT_ADS.filter(d => !dbIds.has(d.id));
-            ads = [...dbAds, ...missingDefaults];
-          } else {
-            ads = dbAds;
-          }
-        }
-      } catch (_e) {}
-    }
-
+    // Filtra apenas ativos
     let filtered = ads.filter(a => a.isActive !== false && (a as any).active !== false);
 
+    // Filtra por cidade (se informada e não for ALL)
     if (city && city !== 'ALL' && city !== 'all') {
-      filtered = filtered.filter(a => !a.city || a.city === 'ALL' || a.city === 'all' || a.city.toLowerCase() === city.toLowerCase());
+      filtered = filtered.filter(a =>
+        !a.city || a.city === 'ALL' || a.city === 'all' ||
+        a.city.toLowerCase() === city.toLowerCase()
+      );
     }
 
+    // Filtra por placement (se informado)
     if (placement) {
       filtered = filtered.filter(a => {
         const p = a.placement;
@@ -165,10 +181,7 @@ export async function GET(request: Request) {
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      ads: filtered
-    });
+    return NextResponse.json({ success: true, ads: filtered });
   } catch (error: any) {
     console.error('Erro GET /api/ads:', error);
     return NextResponse.json({ success: true, ads: DEFAULT_ADS });
@@ -186,24 +199,17 @@ export async function POST(request: Request) {
     }
 
     const supabase = getSupabaseAdmin();
-    const { data: firstRow } = await supabase
-      .from('platform_settings')
-      .select('id, asaas_platform_wallet_id')
-      .limit(1)
+
+    // Lê da fonte principal
+    const { data: cfgRow } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'ads')
       .maybeSingle();
 
-    if (!firstRow?.id) {
-      return NextResponse.json({ success: true });
-    }
-
-    let currentCfg: any = {};
-    if (firstRow.asaas_platform_wallet_id) {
-      try {
-        currentCfg = JSON.parse(firstRow.asaas_platform_wallet_id) || {};
-      } catch (_e) {}
-    }
-
-    let ads: AdItem[] = Array.isArray(currentCfg.ads) && currentCfg.ads.length > 0 ? currentCfg.ads : DEFAULT_ADS;
+    let ads: AdItem[] = cfgRow?.value && Array.isArray(cfgRow.value) && cfgRow.value.length > 0
+      ? (cfgRow.value as AdItem[])
+      : DEFAULT_ADS;
 
     ads = ads.map(a => {
       if (a.id === adId) {
@@ -216,12 +222,9 @@ export async function POST(request: Request) {
       return a;
     });
 
-    currentCfg.ads = ads;
-
     await supabase
-      .from('platform_settings')
-      .update({ asaas_platform_wallet_id: JSON.stringify(currentCfg) })
-      .eq('id', firstRow.id);
+      .from('platform_config')
+      .upsert({ key: 'ads', value: ads, updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
     return NextResponse.json({ success: true });
   } catch (_e) {

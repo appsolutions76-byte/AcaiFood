@@ -1,9 +1,54 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
-import { AdItem } from '@/app/api/ads/route';
+import { AdItem, DEFAULT_ADS } from '@/app/api/ads/route';
 
 export const dynamic = 'force-dynamic';
+
+// Lê anúncios da fonte correta: platform_config (key='ads') com fallback legado
+async function loadAdsAdmin(supabase: ReturnType<typeof getSupabaseAdmin>): Promise<AdItem[]> {
+  // 1. Fonte principal: platform_config
+  try {
+    const { data: cfgRow } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'ads')
+      .maybeSingle();
+
+    if (cfgRow?.value && Array.isArray(cfgRow.value) && cfgRow.value.length > 0) {
+      return cfgRow.value as AdItem[];
+    }
+  } catch (_e) {}
+
+  // 2. Fallback legado: asaas_platform_wallet_id
+  try {
+    const { data: legacyRow } = await supabase
+      .from('platform_settings')
+      .select('asaas_platform_wallet_id')
+      .limit(1)
+      .maybeSingle();
+
+    if (legacyRow?.asaas_platform_wallet_id) {
+      const parsed = JSON.parse(legacyRow.asaas_platform_wallet_id);
+      if (parsed && Array.isArray(parsed.ads) && parsed.ads.length > 0) {
+        return parsed.ads as AdItem[];
+      }
+    }
+  } catch (_e) {}
+
+  // 3. Fallback final: DEFAULT_ADS
+  return [...DEFAULT_ADS];
+}
+
+// Salva anúncios na fonte principal: platform_config (key='ads')
+async function saveAdsAdmin(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  ads: AdItem[]
+): Promise<void> {
+  await supabase
+    .from('platform_config')
+    .upsert({ key: 'ads', value: ads, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+}
 
 export async function GET(request: Request) {
   const auth = await authorizeRequest(request, ['admin']);
@@ -11,33 +56,8 @@ export async function GET(request: Request) {
 
   try {
     const supabase = getSupabaseAdmin();
-    const { data: row } = await supabase
-      .from('platform_settings')
-      .select('asaas_platform_wallet_id')
-      .limit(1)
-      .maybeSingle();
-
-    let ads: AdItem[] = [];
-
-    if (row?.asaas_platform_wallet_id) {
-      try {
-        const parsed = JSON.parse(row.asaas_platform_wallet_id);
-        if (parsed && Array.isArray(parsed.ads) && parsed.ads.length > 0) {
-          ads = parsed.ads;
-        }
-      } catch (_e) {}
-    }
-
-    // Se ainda não houver anúncios salvos no banco, inicializa com DEFAULT_ADS
-    if (ads.length === 0) {
-      const { DEFAULT_ADS } = await import('@/app/api/ads/route');
-      ads = DEFAULT_ADS;
-    }
-
-    return NextResponse.json({
-      success: true,
-      ads
-    });
+    const ads = await loadAdsAdmin(supabase);
+    return NextResponse.json({ success: true, ads });
   } catch (error: any) {
     console.error('Erro GET /api/admin/ads:', error);
     return NextResponse.json({ error: error.message || 'Erro ao carregar anúncios' }, { status: 500 });
@@ -53,21 +73,7 @@ export async function POST(request: Request) {
     const { action, ad, adId } = body; // action: 'save' | 'delete' | 'toggle'
 
     const supabase = getSupabaseAdmin();
-    const { data: firstRow } = await supabase
-      .from('platform_settings')
-      .select('id, asaas_platform_wallet_id')
-      .limit(1)
-      .maybeSingle();
-
-    let currentCfg: any = {};
-    if (firstRow?.asaas_platform_wallet_id) {
-      try {
-        currentCfg = JSON.parse(firstRow.asaas_platform_wallet_id) || {};
-      } catch (_e) {}
-    }
-
-    const { DEFAULT_ADS } = await import('@/app/api/ads/route');
-    let ads: AdItem[] = Array.isArray(currentCfg.ads) && currentCfg.ads.length > 0 ? currentCfg.ads : [...DEFAULT_ADS];
+    let ads = await loadAdsAdmin(supabase);
 
     if (action === 'save' && ad) {
       const existingIdx = ads.findIndex(a => a.id === ad.id);
@@ -120,25 +126,9 @@ export async function POST(request: Request) {
       });
     }
 
-    currentCfg.ads = ads;
+    await saveAdsAdmin(supabase, ads);
 
-    if (firstRow?.id) {
-      const { error: updErr } = await supabase
-        .from('platform_settings')
-        .update({ asaas_platform_wallet_id: JSON.stringify(currentCfg) })
-        .eq('id', firstRow.id);
-      if (updErr) throw updErr;
-    } else {
-      const { error: insErr } = await supabase
-        .from('platform_settings')
-        .insert({ asaas_platform_wallet_id: JSON.stringify(currentCfg) });
-      if (insErr) throw insErr;
-    }
-
-    return NextResponse.json({
-      success: true,
-      ads
-    });
+    return NextResponse.json({ success: true, ads });
   } catch (error: any) {
     console.error('Erro POST /api/admin/ads:', error);
     return NextResponse.json({ error: error.message || 'Erro ao atualizar anúncios' }, { status: 500 });

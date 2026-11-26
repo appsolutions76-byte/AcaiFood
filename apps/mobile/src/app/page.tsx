@@ -11,6 +11,7 @@ import { OrderRatingCard } from "@/components/ratings/OrderRatingCard";
 import type { MapPoint } from "@/components/MapModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdBannerCarousel } from "@/components/AdBannerCarousel";
+import { AdStoriesRow } from "@/components/AdStoriesRow";
 import { SupportChatButton } from "@/components/SupportChatButton";
 import { AsaasPartnerBadge } from "@/components/AsaasPartnerBadge";
 import { AppSolutionsBrandCard } from "@/components/AppSolutionsBrandCard";
@@ -1093,11 +1094,19 @@ export default function StorefrontPage() {
           </div>
         </div>
 
+        {/* STORIES COMERCIAIS */}
+        {!selectedStoreId && (
+          <AdStoriesRow
+            city={currentUser?.cidade}
+            onSelectStore={(id) => handleSelectStore(id)}
+          />
+        )}
+
         {/* CARROSSEL DE BANNERS COMERCIAIS */}
         {!selectedStoreId && (
-          <AdBannerCarousel 
-            city={currentUser?.cidade} 
-            onSelectStore={(id) => handleSelectStore(id)} 
+          <AdBannerCarousel
+            city={currentUser?.cidade}
+            onSelectStore={(id) => handleSelectStore(id)}
           />
         )}
 

@@ -2,7 +2,43 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { AdItem } from "@/app/api/ads/route";
-import { X, Volume2, VolumeX, ShoppingBag, Sparkles, Store } from "lucide-react";
+import { X, Volume2, VolumeX, ShoppingBag, Sparkles } from "lucide-react";
+
+// Fallback de stories para exibir enquanto não há dados no banco
+const DEFAULT_CLIENT_STORIES: AdItem[] = [
+  {
+    id: 'ad-story-1',
+    title: 'Açaí Grosso Especial',
+    advertiserName: 'Ponto do Açaí',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=800&q=80',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=200&q=60',
+    placement: 'home_story',
+    targetType: 'url',
+    targetValue: 'https://www.acaifood.app.br/',
+    city: 'ALL',
+    isActive: true,
+    viewsCount: 95,
+    clicksCount: 19,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'ad-story-2',
+    title: 'Açaí com Tapioca e Peixe Frito',
+    advertiserName: 'Churrasco do B10',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&q=60',
+    placement: 'home_story',
+    targetType: 'url',
+    targetValue: 'https://www.acaifood.app.br/',
+    city: 'ALL',
+    isActive: true,
+    viewsCount: 88,
+    clicksCount: 15,
+    createdAt: new Date().toISOString()
+  }
+];
 
 interface AdStoriesRowProps {
   city?: string;
@@ -10,7 +46,7 @@ interface AdStoriesRowProps {
 }
 
 export function AdStoriesRow({ city, onSelectStore }: AdStoriesRowProps) {
-  const [stories, setStories] = useState<AdItem[]>([]);
+  const [stories, setStories] = useState<AdItem[]>(DEFAULT_CLIENT_STORIES);
   const [activeStory, setActiveStory] = useState<AdItem | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -24,9 +60,10 @@ export function AdStoriesRow({ city, onSelectStore }: AdStoriesRowProps) {
         const res = await fetch(`/api/ads${query}`);
         if (res.ok) {
           const data = await res.json();
-          if (data?.ads && Array.isArray(data.ads) && isMounted) {
+          if (data?.ads && Array.isArray(data.ads) && data.ads.length > 0 && isMounted) {
             setStories(data.ads);
           }
+          // Se a API retornar vazio, mantém o DEFAULT_CLIENT_STORIES já carregado no estado
         }
       } catch (_e) {}
     };
