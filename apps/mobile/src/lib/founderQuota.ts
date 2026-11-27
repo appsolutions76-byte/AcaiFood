@@ -13,13 +13,16 @@ export interface CategoryQuota {
 export interface CityBreakdownItem {
   city: string;
   normalizedCity: string;
+  isCustom: boolean;
   storesSubsidized: number;
   storesPaid: number;
   storesFreeQuota: number;
+  storesActivationFee: number;
   storesFreeSlotsRemaining: number;
   couriersSubsidized: number;
   couriersPaid: number;
   couriersFreeQuota: number;
+  couriersActivationFee: number;
   couriersFreeSlotsRemaining: number;
 }
 
@@ -107,14 +110,14 @@ export async function getFounderQuotaStatus(
   }
 
   // Valores padrão globais
-  let activationFee = 12.90;
-  let freeQuota = 50;
+  let activationFee = 15.0;
+  let freeQuota = 60;
   let activationEnabled = true;
 
-  let storeFreeQuota = 20;
-  let storeActivationFee = 12.90;
+  let storeFreeQuota = 30;
+  let storeActivationFee = 15.0;
   let courierFreeQuota = 30;
-  let courierActivationFee = 12.90;
+  let courierActivationFee = 15.0;
   let cityConfigs: Record<string, any> = {};
 
   try {
@@ -134,13 +137,13 @@ export async function getFounderQuotaStatus(
 
     // Novos parâmetros específicos de lojas e motoboys
     if (cfg?.storeFreeQuota !== undefined) storeFreeQuota = Number(cfg.storeFreeQuota);
-    else storeFreeQuota = Math.round(freeQuota * 0.4); // 40% para lojas por padrão se não configurado
+    else storeFreeQuota = Math.round(freeQuota * 0.5);
 
     if (cfg?.storeActivationFee !== undefined) storeActivationFee = Number(cfg.storeActivationFee);
     else storeActivationFee = activationFee;
 
     if (cfg?.courierFreeQuota !== undefined) courierFreeQuota = Number(cfg.courierFreeQuota);
-    else courierFreeQuota = Math.max(0, freeQuota - storeFreeQuota); // restante para motoboys
+    else courierFreeQuota = Math.max(0, freeQuota - storeFreeQuota);
 
     if (cfg?.courierActivationFee !== undefined) courierActivationFee = Number(cfg.courierActivationFee);
     else courierActivationFee = activationFee;
@@ -278,9 +281,24 @@ export async function getFounderQuotaStatus(
     }
   } catch (_e) {}
 
-  // Cálculo de vagas restantes
-  const storeSlotsLeft = Math.max(0, storeFreeQuota - storesSubsidizedCount);
-  const courierSlotsLeft = Math.max(0, courierFreeQuota - couriersSubsidizedCount);
+  // Configuração efetiva para o escopo atual
+  const targetNormCity = normalizeCity(targetCityStr);
+  let effectiveStoreQuota = storeFreeQuota;
+  let effectiveStoreFee = storeActivationFee;
+  let effectiveCourierQuota = courierFreeQuota;
+  let effectiveCourierFee = courierActivationFee;
+
+  if (targetNormCity && cityConfigs[targetNormCity]) {
+    const cCfg = cityConfigs[targetNormCity];
+    if (cCfg.storeFreeQuota !== undefined) effectiveStoreQuota = Number(cCfg.storeFreeQuota);
+    if (cCfg.storeActivationFee !== undefined) effectiveStoreFee = Number(cCfg.storeActivationFee);
+    if (cCfg.courierFreeQuota !== undefined) effectiveCourierQuota = Number(cCfg.courierFreeQuota);
+    if (cCfg.courierActivationFee !== undefined) effectiveCourierFee = Number(cCfg.courierActivationFee);
+  }
+
+  // Cálculo de vagas restantes usando as cotas efetivas
+  const storeSlotsLeft = Math.max(0, effectiveStoreQuota - storesSubsidizedCount);
+  const courierSlotsLeft = Math.max(0, effectiveCourierQuota - couriersSubsidizedCount);
   const freeSlotsRemaining = Math.max(0, freeQuota - subsidizedCount);
 
   // Determinar se para o usuário ou target atual é gratuito
@@ -295,34 +313,40 @@ export async function getFounderQuotaStatus(
       isFree = isUserAlreadyFounder;
     } else if (isTargetStore) {
       isFree = storeSlotsLeft > 0;
-      relevantFee = storeActivationFee;
+      relevantFee = effectiveStoreFee;
     } else if (isTargetCourier) {
       isFree = courierSlotsLeft > 0;
-      relevantFee = courierActivationFee;
+      relevantFee = effectiveCourierFee;
     } else {
       isFree = freeSlotsRemaining > 0;
     }
   }
 
-  if (isTargetStore) relevantFee = storeActivationFee;
-  if (isTargetCourier) relevantFee = courierActivationFee;
+  if (isTargetStore) relevantFee = effectiveStoreFee;
+  if (isTargetCourier) relevantFee = effectiveCourierFee;
 
   // Montar array de cidades para o Admin
   const cityBreakdown: CityBreakdownItem[] = Array.from(cityMap.entries()).map(([norm, val]) => {
     const cCfg = cityConfigs[norm] || {};
+    const hasCustom = Boolean(cityConfigs[norm]);
     const cStoreQuota = cCfg.storeFreeQuota !== undefined ? Number(cCfg.storeFreeQuota) : storeFreeQuota;
+    const cStoreFee = cCfg.storeActivationFee !== undefined ? Number(cCfg.storeActivationFee) : storeActivationFee;
     const cCourierQuota = cCfg.courierFreeQuota !== undefined ? Number(cCfg.courierFreeQuota) : courierFreeQuota;
+    const cCourierFee = cCfg.courierActivationFee !== undefined ? Number(cCfg.courierActivationFee) : courierActivationFee;
 
     return {
       city: val.originalCity,
       normalizedCity: norm,
+      isCustom: hasCustom,
       storesSubsidized: val.storesSubsidized,
       storesPaid: val.storesPaid,
       storesFreeQuota: cStoreQuota,
+      storesActivationFee: cStoreFee,
       storesFreeSlotsRemaining: Math.max(0, cStoreQuota - val.storesSubsidized),
       couriersSubsidized: val.couriersSubsidized,
       couriersPaid: val.couriersPaid,
       couriersFreeQuota: cCourierQuota,
+      couriersActivationFee: cCourierFee,
       couriersFreeSlotsRemaining: Math.max(0, cCourierQuota - val.couriersSubsidized),
     };
   });
@@ -342,8 +366,8 @@ export async function getFounderQuotaStatus(
     targetCity: targetCityStr,
 
     stores: {
-      freeQuota: storeFreeQuota,
-      activationFee: storeActivationFee,
+      freeQuota: effectiveStoreQuota,
+      activationFee: effectiveStoreFee,
       subsidizedCount: storesSubsidizedCount,
       paidCount: storesPaidCount,
       pendingCount: storesPendingCount,
@@ -351,8 +375,8 @@ export async function getFounderQuotaStatus(
     },
 
     couriers: {
-      freeQuota: courierFreeQuota,
-      activationFee: courierActivationFee,
+      freeQuota: effectiveCourierQuota,
+      activationFee: effectiveCourierFee,
       subsidizedCount: couriersSubsidizedCount,
       paidCount: couriersPaidCount,
       pendingCount: couriersPendingCount,

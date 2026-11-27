@@ -178,6 +178,17 @@ function AdminDashboardContent() {
     cityConfigs: {}
   });
   const [selectedActivationCity, setSelectedActivationCity] = useState<string>('all');
+  const [cityModalData, setCityModalData] = useState<{
+    open: boolean;
+    city: string;
+    normalizedCity: string;
+    storeFreeQuota: number;
+    storeActivationFee: number;
+    courierFreeQuota: number;
+    courierActivationFee: number;
+    isCustom: boolean;
+  } | null>(null);
+  const [isSavingCityModal, setIsSavingCityModal] = useState(false);
   const [adsList, setAdsList] = useState<any[]>([]);
   const [isLoadingAds, setIsLoadingAds] = useState(false);
   const [isSavingAd, setIsSavingAd] = useState(false);
@@ -634,6 +645,115 @@ function AdminDashboardContent() {
       alert("Erro ao salvar: " + err.message);
     } finally {
       setIsSavingActivationConfig(false);
+    }
+  };
+
+  const handleOpenCityModal = (cb: any) => {
+    const existing = activationConfig.cityConfigs?.[cb.normalizedCity];
+    const isCustom = Boolean(existing);
+
+    setCityModalData({
+      open: true,
+      city: cb.city,
+      normalizedCity: cb.normalizedCity,
+      isCustom,
+      storeFreeQuota: Number(existing?.storeFreeQuota ?? cb.storesFreeQuota ?? activationConfig.storeFreeQuota ?? 30),
+      storeActivationFee: Number(existing?.storeActivationFee ?? cb.storesActivationFee ?? activationConfig.storeActivationFee ?? 15),
+      courierFreeQuota: Number(existing?.courierFreeQuota ?? cb.couriersFreeQuota ?? activationConfig.courierFreeQuota ?? 30),
+      courierActivationFee: Number(existing?.courierActivationFee ?? cb.couriersActivationFee ?? activationConfig.courierActivationFee ?? 15)
+    });
+  };
+
+  const handleSaveCityModal = async () => {
+    if (!cityModalData) return;
+    setIsSavingCityModal(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 'Content-Type': 'application/json' };
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
+      const updatedCityConfigs = { ...(activationConfig.cityConfigs || {}) };
+
+      if (cityModalData.isCustom) {
+        updatedCityConfigs[cityModalData.normalizedCity] = {
+          storeFreeQuota: Math.max(0, Number(cityModalData.storeFreeQuota) || 0),
+          storeActivationFee: Math.max(0, Number(cityModalData.storeActivationFee) || 0),
+          courierFreeQuota: Math.max(0, Number(cityModalData.courierFreeQuota) || 0),
+          courierActivationFee: Math.max(0, Number(cityModalData.courierActivationFee) || 0),
+        };
+      } else {
+        delete updatedCityConfigs[cityModalData.normalizedCity];
+      }
+
+      const res = await fetch('/api/admin/activation-config', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          activationFee: activationConfig.activationFee,
+          freeQuota: (Number(activationConfig.storeFreeQuota) || 0) + (Number(activationConfig.courierFreeQuota) || 0),
+          activationEnabled: activationConfig.activationEnabled,
+          storeFreeQuota: Number(activationConfig.storeFreeQuota),
+          storeActivationFee: Number(activationConfig.storeActivationFee),
+          courierFreeQuota: Number(activationConfig.courierFreeQuota),
+          courierActivationFee: Number(activationConfig.courierActivationFee),
+          cityConfigs: updatedCityConfigs
+        })
+      });
+
+      const data = await res.json();
+      if (data && data.success) {
+        showToast(`✅ Regras para ${cityModalData.city} salvas com sucesso!`);
+        setCityModalData(null);
+        fetchActivationConfig(selectedActivationCity);
+      } else {
+        alert("Erro ao salvar regras da cidade: " + (data.error || 'Falha'));
+      }
+    } catch (err: any) {
+      alert("Erro ao salvar: " + err.message);
+    } finally {
+      setIsSavingCityModal(false);
+    }
+  };
+
+  const handleResetCityModal = async () => {
+    if (!cityModalData) return;
+    if (!confirm(`Deseja remover as regras personalizadas de ${cityModalData.city} e voltar a usar o padrão da plataforma?`)) return;
+
+    setIsSavingCityModal(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: any = { 'Content-Type': 'application/json' };
+      if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+
+      const updatedCityConfigs = { ...(activationConfig.cityConfigs || {}) };
+      delete updatedCityConfigs[cityModalData.normalizedCity];
+
+      const res = await fetch('/api/admin/activation-config', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          activationFee: activationConfig.activationFee,
+          freeQuota: (Number(activationConfig.storeFreeQuota) || 0) + (Number(activationConfig.courierFreeQuota) || 0),
+          activationEnabled: activationConfig.activationEnabled,
+          storeFreeQuota: Number(activationConfig.storeFreeQuota),
+          storeActivationFee: Number(activationConfig.storeActivationFee),
+          courierFreeQuota: Number(activationConfig.courierFreeQuota),
+          courierActivationFee: Number(activationConfig.courierActivationFee),
+          cityConfigs: updatedCityConfigs
+        })
+      });
+
+      const data = await res.json();
+      if (data && data.success) {
+        showToast(`✅ ${cityModalData.city} restaurada para o padrão geral da plataforma!`);
+        setCityModalData(null);
+        fetchActivationConfig(selectedActivationCity);
+      }
+    } catch (err: any) {
+      alert("Erro ao restaurar: " + err.message);
+    } finally {
+      setIsSavingCityModal(false);
     }
   };
 
@@ -3641,7 +3761,19 @@ function AdminDashboardContent() {
                       {activationConfig.cityBreakdown.map((cb: any) => (
                         <tr key={cb.normalizedCity} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
                           <td className="p-3.5 font-bold text-zinc-900 dark:text-white">
-                            📍 {cb.city}
+                            <div className="flex items-center gap-2">
+                              <span>📍 {cb.city}</span>
+                              {cb.isCustom && (
+                                <span className="bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                                  ✨ Personalizada
+                                </span>
+                              )}
+                            </div>
+                            {cb.isCustom && (
+                              <p className="text-[10px] text-zinc-500 font-normal mt-0.5">
+                                Pix Lojas: R$ {cb.storesActivationFee.toFixed(2)} | Pix Motos: R$ {cb.couriersActivationFee.toFixed(2)}
+                              </p>
+                            )}
                           </td>
                           <td className="p-3.5 text-center font-bold text-purple-600 dark:text-purple-400">
                             {cb.storesSubsidized} <span className="text-zinc-400 font-normal">/ {cb.storesFreeQuota}</span>
@@ -3660,20 +3792,178 @@ function AdminDashboardContent() {
                             </span>
                           </td>
                           <td className="p-3.5 text-right">
-                            <button
-                              onClick={() => {
-                                setSelectedActivationCity(cb.city);
-                                fetchActivationConfig(cb.city);
-                              }}
-                              className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-purple-100 dark:hover:bg-purple-950 text-zinc-700 dark:text-zinc-300 hover:text-purple-600 dark:hover:text-purple-300 transition"
-                            >
-                              Filtrar
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenCityModal(cb)}
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition active:scale-95 flex items-center gap-1"
+                                title="Ajustar cotas e taxa Pix exclusivas para esta cidade"
+                              >
+                                <span>⚙️</span>
+                                <span>Ajustar</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedActivationCity(cb.city);
+                                  fetchActivationConfig(cb.city);
+                                }}
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition"
+                              >
+                                Filtrar
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {/* Modal de Ajuste de Cotas e Preços por Cidade */}
+            {cityModalData && (
+              <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white p-5 flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">📍</span>
+                      <div>
+                        <h3 className="font-black text-base leading-tight">Ajustar Regras: {cityModalData.city}</h3>
+                        <p className="text-[11px] text-purple-200">Vagas gratuitas e taxa Pix exclusivas para esta praça</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setCityModalData(null)}
+                      className="text-white/80 hover:text-white font-bold text-2xl leading-none cursor-pointer"
+                    >
+                      &times;
+                    </button>
+                  </div>
+
+                  <div className="p-6 space-y-4">
+                    {/* Status de Personalização */}
+                    <div className="bg-purple-50/60 dark:bg-purple-950/30 p-3.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white">Regra Personalizada para {cityModalData.city}</p>
+                        <p className="text-[11px] text-zinc-500">Se desmarcado, esta cidade segue o padrão geral da plataforma.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={cityModalData.isCustom}
+                        onChange={e => setCityModalData(prev => prev ? ({ ...prev, isCustom: e.target.checked }) : null)}
+                        className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                      />
+                    </div>
+
+                    {cityModalData.isCustom ? (
+                      <div className="space-y-4 animate-in fade-in duration-200">
+                        {/* Batedeiras / Lojas */}
+                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/60 space-y-3">
+                          <h5 className="font-bold text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1.5 uppercase tracking-wide">
+                            🏪 Batedeiras & Lojas
+                          </h5>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
+                                Vagas Gratuitas
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={cityModalData.storeFreeQuota}
+                                onChange={e => setCityModalData(prev => prev ? ({ ...prev, storeFreeQuota: Number(e.target.value) }) : null)}
+                                className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
+                                Taxa Pix (R$)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.10"
+                                min="0"
+                                value={cityModalData.storeActivationFee}
+                                onChange={e => setCityModalData(prev => prev ? ({ ...prev, storeActivationFee: Number(e.target.value) }) : null)}
+                                className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Motoboys / Entregadores */}
+                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/60 space-y-3">
+                          <h5 className="font-bold text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wide">
+                            🛵 Motoboys & Entregadores
+                          </h5>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
+                                Vagas Gratuitas
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={cityModalData.courierFreeQuota}
+                                onChange={e => setCityModalData(prev => prev ? ({ ...prev, courierFreeQuota: Number(e.target.value) }) : null)}
+                                className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
+                                Taxa Pix (R$)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.10"
+                                min="0"
+                                value={cityModalData.courierActivationFee}
+                                onChange={e => setCityModalData(prev => prev ? ({ ...prev, courierActivationFee: Number(e.target.value) }) : null)}
+                                className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-zinc-100 dark:bg-zinc-800/40 rounded-xl text-center text-xs text-zinc-500 space-y-1">
+                        <p className="font-bold text-zinc-700 dark:text-zinc-300">Seguindo Regra Geral da Plataforma</p>
+                        <p className="text-[11px]">
+                          Lojas: {activationConfig.storeFreeQuota} vagas (R$ {Number(activationConfig.storeActivationFee).toFixed(2)}) | Motoboys: {activationConfig.courierFreeQuota} vagas (R$ {Number(activationConfig.courierActivationFee).toFixed(2)})
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-between gap-2 border-t border-zinc-200 dark:border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => setCityModalData(null)}
+                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition"
+                    >
+                      Cancelar
+                    </button>
+                    <div className="flex items-center gap-2">
+                      {cityModalData.isCustom && (
+                        <button
+                          type="button"
+                          onClick={handleResetCityModal}
+                          disabled={isSavingCityModal}
+                          className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition"
+                        >
+                          Restaurar Padrão
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleSaveCityModal}
+                        disabled={isSavingCityModal}
+                        className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition shadow flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {isSavingCityModal ? 'Salvando...' : '💾 Salvar Cidade'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
