@@ -3400,6 +3400,11 @@ function AdminDashboardContent() {
                                         }`}>
                                             ⭐ Avaliações: {cityRatesObj.ratings_enabled ? 'Ativas' : 'Desligadas'}
                                         </span>
+                                        {activationConfig.cityConfigs?.[c.name.trim().toLowerCase()] && (
+                                          <span className="px-1.5 py-0.5 rounded border text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+                                            ✨ Vagas/Adesão Personalizadas
+                                          </span>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="p-4">
@@ -3432,9 +3437,31 @@ function AdminDashboardContent() {
                                                 setLocalRates(getRatesForCity(c.name, rates, cities));
                                                 setRatesModalOpen(true);
                                             }}
-                                            className="px-2.5 py-1.5 text-[10px] font-bold rounded shadow-sm bg-purple-600 hover:bg-purple-700 text-white transition flex items-center gap-1"
+                                            className="px-2.5 py-1.5 text-[10px] font-bold rounded shadow-sm bg-purple-600 hover:bg-purple-700 text-white transition flex items-center gap-1 active:scale-95"
                                         >
                                             ⚙️ Taxas da Cidade
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                const norm = c.name.trim().toLowerCase();
+                                                const existing = activationConfig.cityConfigs?.[norm];
+                                                const cb = activationConfig.cityBreakdown?.find((item: any) => item.normalizedCity === norm);
+                                                setCityModalData({
+                                                    open: true,
+                                                    city: c.name,
+                                                    normalizedCity: norm,
+                                                    isCustom: Boolean(existing),
+                                                    storeFreeQuota: Number(existing?.storeFreeQuota ?? cb?.storesFreeQuota ?? activationConfig.storeFreeQuota ?? 30),
+                                                    storeActivationFee: Number(existing?.storeActivationFee ?? cb?.storesActivationFee ?? activationConfig.storeActivationFee ?? 15),
+                                                    courierFreeQuota: Number(existing?.courierFreeQuota ?? cb?.couriersFreeQuota ?? activationConfig.courierFreeQuota ?? 30),
+                                                    courierActivationFee: Number(existing?.courierActivationFee ?? cb?.couriersActivationFee ?? activationConfig.courierActivationFee ?? 15)
+                                                });
+                                            }}
+                                            className="px-2.5 py-1.5 text-[10px] font-bold rounded shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1 active:scale-95"
+                                            title="Ajustar vagas gratuitas e taxa de adesão desta cidade"
+                                        >
+                                            🛡️ Vagas & Adesão
                                         </button>
                                         <button onClick={() => { if(typeof store.updateCityStatus === 'function') { store.updateCityStatus(c.id, c.status === 'active' ? 'paused' : 'active'); showToast(`Cidade ${c.name} ${c.status === 'active' ? 'pausada' : 'ativada'}`); } }} className={`px-2 py-1.5 text-[10px] font-bold rounded shadow-sm ${c.status === 'active' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}>
                                             {c.status === 'active' ? 'Pausar' : 'Ativar'}
@@ -3816,154 +3843,6 @@ function AdminDashboardContent() {
                       ))}
                     </tbody>
                   </table>
-                </div>
-              </div>
-            )}
-
-            {/* Modal de Ajuste de Cotas e Preços por Cidade */}
-            {cityModalData && (
-              <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200">
-                  <div className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white p-5 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">📍</span>
-                      <div>
-                        <h3 className="font-black text-base leading-tight">Ajustar Regras: {cityModalData.city}</h3>
-                        <p className="text-[11px] text-purple-200">Vagas gratuitas e taxa Pix exclusivas para esta praça</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setCityModalData(null)}
-                      className="text-white/80 hover:text-white font-bold text-2xl leading-none cursor-pointer"
-                    >
-                      &times;
-                    </button>
-                  </div>
-
-                  <div className="p-6 space-y-4">
-                    {/* Status de Personalização */}
-                    <div className="bg-purple-50/60 dark:bg-purple-950/30 p-3.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-zinc-900 dark:text-white">Regra Personalizada para {cityModalData.city}</p>
-                        <p className="text-[11px] text-zinc-500">Se desmarcado, esta cidade segue o padrão geral da plataforma.</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={cityModalData.isCustom}
-                        onChange={e => setCityModalData(prev => prev ? ({ ...prev, isCustom: e.target.checked }) : null)}
-                        className="w-4 h-4 text-purple-600 rounded cursor-pointer"
-                      />
-                    </div>
-
-                    {cityModalData.isCustom ? (
-                      <div className="space-y-4 animate-in fade-in duration-200">
-                        {/* Batedeiras / Lojas */}
-                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/60 space-y-3">
-                          <h5 className="font-bold text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1.5 uppercase tracking-wide">
-                            🏪 Batedeiras & Lojas
-                          </h5>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
-                                Vagas Gratuitas
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={cityModalData.storeFreeQuota}
-                                onChange={e => setCityModalData(prev => prev ? ({ ...prev, storeFreeQuota: Number(e.target.value) }) : null)}
-                                className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
-                                Taxa Pix (R$)
-                              </label>
-                              <input
-                                type="number"
-                                step="0.10"
-                                min="0"
-                                value={cityModalData.storeActivationFee}
-                                onChange={e => setCityModalData(prev => prev ? ({ ...prev, storeActivationFee: Number(e.target.value) }) : null)}
-                                className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Motoboys / Entregadores */}
-                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/60 space-y-3">
-                          <h5 className="font-bold text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wide">
-                            🛵 Motoboys & Entregadores
-                          </h5>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
-                                Vagas Gratuitas
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={cityModalData.courierFreeQuota}
-                                onChange={e => setCityModalData(prev => prev ? ({ ...prev, courierFreeQuota: Number(e.target.value) }) : null)}
-                                className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
-                                Taxa Pix (R$)
-                              </label>
-                              <input
-                                type="number"
-                                step="0.10"
-                                min="0"
-                                value={cityModalData.courierActivationFee}
-                                onChange={e => setCityModalData(prev => prev ? ({ ...prev, courierActivationFee: Number(e.target.value) }) : null)}
-                                className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-4 bg-zinc-100 dark:bg-zinc-800/40 rounded-xl text-center text-xs text-zinc-500 space-y-1">
-                        <p className="font-bold text-zinc-700 dark:text-zinc-300">Seguindo Regra Geral da Plataforma</p>
-                        <p className="text-[11px]">
-                          Lojas: {activationConfig.storeFreeQuota} vagas (R$ {Number(activationConfig.storeActivationFee).toFixed(2)}) | Motoboys: {activationConfig.courierFreeQuota} vagas (R$ {Number(activationConfig.courierActivationFee).toFixed(2)})
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-4 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-between gap-2 border-t border-zinc-200 dark:border-zinc-800">
-                    <button
-                      type="button"
-                      onClick={() => setCityModalData(null)}
-                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition"
-                    >
-                      Cancelar
-                    </button>
-                    <div className="flex items-center gap-2">
-                      {cityModalData.isCustom && (
-                        <button
-                          type="button"
-                          onClick={handleResetCityModal}
-                          disabled={isSavingCityModal}
-                          className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition"
-                        >
-                          Restaurar Padrão
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleSaveCityModal}
-                        disabled={isSavingCityModal}
-                        className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition shadow flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        {isSavingCityModal ? 'Salvando...' : '💾 Salvar Cidade'}
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -5441,6 +5320,78 @@ function AdminDashboardContent() {
               )}
 
               {selectedCityForRates && (
+                <div className="pb-4 border-t border-zinc-200 dark:border-zinc-800 pt-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+                        <span>🛡️</span> Vagas Gratuitas (Fundadores) & Preço de Adesão — {selectedCityForRates.name}
+                      </h4>
+                      <p className="text-xs text-zinc-500">
+                        Configure vagas subsidiadas e o valor da taxa Pix pós-cota desta cidade.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const norm = selectedCityForRates.name.trim().toLowerCase();
+                        const existing = activationConfig.cityConfigs?.[norm];
+                        const cb = activationConfig.cityBreakdown?.find((item: any) => item.normalizedCity === norm);
+                        setCityModalData({
+                          open: true,
+                          city: selectedCityForRates.name,
+                          normalizedCity: norm,
+                          isCustom: Boolean(existing),
+                          storeFreeQuota: Number(existing?.storeFreeQuota ?? cb?.storesFreeQuota ?? activationConfig.storeFreeQuota ?? 30),
+                          storeActivationFee: Number(existing?.storeActivationFee ?? cb?.storesActivationFee ?? activationConfig.storeActivationFee ?? 15),
+                          courierFreeQuota: Number(existing?.courierFreeQuota ?? cb?.couriersFreeQuota ?? activationConfig.courierFreeQuota ?? 30),
+                          courierActivationFee: Number(existing?.courierActivationFee ?? cb?.couriersActivationFee ?? activationConfig.courierActivationFee ?? 15)
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm transition flex items-center gap-1.5 shrink-0 self-start sm:self-auto active:scale-95"
+                    >
+                      ⚙️ Ajustar Vagas e Preço de Adesão
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const norm = selectedCityForRates.name.trim().toLowerCase();
+                    const cCfg = activationConfig.cityConfigs?.[norm];
+                    const isCustom = Boolean(cCfg);
+                    const sQuota = cCfg?.storeFreeQuota ?? activationConfig.storeFreeQuota ?? 30;
+                    const sFee = cCfg?.storeActivationFee ?? activationConfig.storeActivationFee ?? 15;
+                    const cQuota = cCfg?.courierFreeQuota ?? activationConfig.courierFreeQuota ?? 30;
+                    const cFee = cCfg?.courierActivationFee ?? activationConfig.courierActivationFee ?? 15;
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-zinc-50 dark:bg-zinc-800/40 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700/60">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-purple-600 dark:text-purple-400">🏪 Batedeiras & Lojas</span>
+                            {isCustom ? (
+                              <span className="text-[10px] bg-purple-500/20 text-purple-300 font-bold px-1.5 py-0.5 rounded">Personalizada</span>
+                            ) : (
+                              <span className="text-[10px] text-zinc-400">Padrão Geral</span>
+                            )}
+                          </div>
+                          <p className="text-zinc-600 dark:text-zinc-300 font-semibold">{sQuota} vagas grátis • Taxa: R$ {Number(sFee).toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">🛵 Motoboys & Entregadores</span>
+                            {isCustom ? (
+                              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded">Personalizada</span>
+                            ) : (
+                              <span className="text-[10px] text-zinc-400">Padrão Geral</span>
+                            )}
+                          </div>
+                          <p className="text-zinc-600 dark:text-zinc-300 font-semibold">{cQuota} vagas grátis • Taxa: R$ {Number(cFee).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {selectedCityForRates && (
                 <div className="pb-4 border-t border-zinc-200 dark:border-zinc-800 pt-4 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
@@ -5790,6 +5741,154 @@ function AdminDashboardContent() {
                 <button onClick={handleConfirmPasswordModal} className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition text-xs shadow-md">
                     {pwdModalMode === 'create' ? 'Criar Senha' : 'Confirmar'}
                 </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Global de Ajuste de Cotas e Preços por Cidade */}
+      {cityModalData && (
+        <div className="fixed inset-0 bg-black/70 z-[300] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white p-5 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📍</span>
+                <div>
+                  <h3 className="font-black text-base leading-tight">Ajustar Regras: {cityModalData.city}</h3>
+                  <p className="text-[11px] text-purple-200">Vagas gratuitas e taxa Pix exclusivas para esta praça</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCityModalData(null)}
+                className="text-white/80 hover:text-white font-bold text-2xl leading-none cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Status de Personalização */}
+              <div className="bg-purple-50/60 dark:bg-purple-950/30 p-3.5 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-zinc-900 dark:text-white">Regra Personalizada para {cityModalData.city}</p>
+                  <p className="text-[11px] text-zinc-500">Se desmarcado, esta cidade segue o padrão geral da plataforma.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={cityModalData.isCustom}
+                  onChange={e => setCityModalData(prev => prev ? ({ ...prev, isCustom: e.target.checked }) : null)}
+                  className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                />
+              </div>
+
+              {cityModalData.isCustom ? (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Batedeiras / Lojas */}
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/60 space-y-3">
+                    <h5 className="font-bold text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1.5 uppercase tracking-wide">
+                      🏪 Batedeiras & Lojas
+                    </h5>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
+                          Vagas Gratuitas
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={cityModalData.storeFreeQuota}
+                          onChange={e => setCityModalData(prev => prev ? ({ ...prev, storeFreeQuota: Number(e.target.value) }) : null)}
+                          className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
+                          Taxa Pix (R$)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.10"
+                          min="0"
+                          value={cityModalData.storeActivationFee}
+                          onChange={e => setCityModalData(prev => prev ? ({ ...prev, storeActivationFee: Number(e.target.value) }) : null)}
+                          className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Motoboys / Entregadores */}
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/60 space-y-3">
+                    <h5 className="font-bold text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wide">
+                      🛵 Motoboys & Entregadores
+                    </h5>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
+                          Vagas Gratuitas
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={cityModalData.courierFreeQuota}
+                          onChange={e => setCityModalData(prev => prev ? ({ ...prev, courierFreeQuota: Number(e.target.value) }) : null)}
+                          className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 block mb-1">
+                          Taxa Pix (R$)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.10"
+                          min="0"
+                          value={cityModalData.courierActivationFee}
+                          onChange={e => setCityModalData(prev => prev ? ({ ...prev, courierActivationFee: Number(e.target.value) }) : null)}
+                          className="w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-zinc-100 dark:bg-zinc-800/40 rounded-xl text-center text-xs text-zinc-500 space-y-1">
+                  <p className="font-bold text-zinc-700 dark:text-zinc-300">Seguindo Regra Geral da Plataforma</p>
+                  <p className="text-[11px]">
+                    Lojas: {activationConfig.storeFreeQuota} vagas (R$ {Number(activationConfig.storeActivationFee).toFixed(2)}) | Motoboys: {activationConfig.courierFreeQuota} vagas (R$ {Number(activationConfig.courierActivationFee).toFixed(2)})
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-between gap-2 border-t border-zinc-200 dark:border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setCityModalData(null)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition"
+              >
+                Cancelar
+              </button>
+              <div className="flex items-center gap-2">
+                {cityModalData.isCustom && (
+                  <button
+                    type="button"
+                    onClick={handleResetCityModal}
+                    disabled={isSavingCityModal}
+                    className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition"
+                  >
+                    Restaurar Padrão
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveCityModal}
+                  disabled={isSavingCityModal}
+                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition shadow flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isSavingCityModal ? 'Salvando...' : '💾 Salvar Cidade'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
