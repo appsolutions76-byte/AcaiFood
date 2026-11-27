@@ -93,6 +93,10 @@ function CadastroForm() {
     isFree: true,
   });
 
+  // Estado de dados pendentes para pagamento prévio de ativação
+  const [pendingPartnerData, setPendingPartnerData] = useState<any | null>(null);
+  const [isFinalizingAccount, setIsFinalizingAccount] = useState(false);
+
   // Estado de pagamento Pix
   const [pixData, setPixData] = useState<{
     paymentId?: string;
@@ -117,13 +121,23 @@ function CadastroForm() {
       })
       .then((data) => {
         if (data && data.success) {
+          const isStore = targetRole === "loja";
+          const isCourier = targetRole === "motorista";
+          const quota = isStore ? data.stores : isCourier ? data.couriers : null;
+
+          const fee = Number(quota?.activationFee ?? data.activationFee ?? 15);
+          const quotaVal = Number(quota?.freeQuota ?? data.freeQuota ?? 30);
+          const subsidized = Number(quota?.subsidizedCount ?? data.subsidizedCount ?? 0);
+          const freeSlots = Number(quota?.freeSlotsRemaining ?? data.freeSlotsRemaining ?? 0);
+          const isFree = Boolean(!data.activationEnabled || (quota ? freeSlots > 0 : data.isFree));
+
           setActivationInfo({
-            activationEnabled: Boolean(data.activationEnabled),
-            activationFee: Number(data.activationFee || 12.9),
-            freeQuota: Number(data.freeQuota || 50),
-            subsidizedCount: Number(data.subsidizedCount || 0),
-            freeSlotsRemaining: Number(data.freeSlotsRemaining || 0),
-            isFree: Boolean(data.isFree),
+            activationEnabled: Boolean(data.activationEnabled !== false),
+            activationFee: fee,
+            freeQuota: quotaVal,
+            subsidizedCount: subsidized,
+            freeSlotsRemaining: freeSlots,
+            isFree,
           });
         }
       })
@@ -364,13 +378,69 @@ function CadastroForm() {
         data.freteSubsidyPct = 0;
       }
 
-      const newUser = await registerUser(data as Omit<User, "id">);
+      // Regra de Proteção: Parceiro fora da cota DEVE pagar o Pix ANTES de criar a conta no banco
+      const isFreeTier = activationInfo.isFree && activationInfo.freeSlotsRemaining > 0;
+      const needsPrePayment = role !== "cliente" && activationInfo.activationEnabled && !isFreeTier;
+
+      if (needsPrePayment) {
+        setIsLocating(false);
+        setPendingPartnerData(data);
+
+        // Gera o Pix no Asaas usando os dados informados, sem criar conta no banco ainda
+        const actRes = await fetch("/api/asaas/activation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role,
+            city: cidade,
+            name,
+            email,
+            cpfCnpj: cleanCpf,
+            phone: telefone,
+          }),
+        });
+        const actData = await actRes.json();
+
+        if (actData?.isPaid || actData?.isFounderSubsidized) {
+          // Já pago anteriormente para este CPF ou concedida isenção
+          await finalizeAccountCreation(data, actData?.paymentId);
+        } else if (actData?.paymentId) {
+          setPixData({
+            paymentId: actData.paymentId,
+            pixQrCode: actData.pixQrCode,
+            pixCopiaECola: actData.pixCopiaECola,
+            isFreeGranted: false,
+          });
+          setStep(2);
+        } else {
+          alert("Não foi possível gerar a cobrança Pix no Asaas: " + (actData?.error || "Verifique seus dados."));
+        }
+        return;
+      }
+
+      // Cliente ou Parceiro com vaga gratuita: cria a conta diretamente
+      await finalizeAccountCreation(data);
+
+    } catch (_err) {
+      setIsLocating(false);
+      alert("Ocorreu um erro no processo de cadastro. Tente novamente.");
+    }
+  };
+
+  const finalizeAccountCreation = async (partnerPayload?: any, paymentIdParam?: string) => {
+    const payload = partnerPayload || pendingPartnerData;
+    if (!payload) return;
+    setIsFinalizingAccount(true);
+
+    try {
+      const newUser = await registerUser(payload as Omit<User, "id">);
       setIsLocating(false);
 
       if (newUser) {
+        setNewUserId(newUser.id);
         const authHeaders = await getAuthHeaders();
 
-        // 1) Registrar os aceites (cl. 8.2.4). A versão é definida pelo servidor.
+        // 1) Registrar aceites regulatórios
         const documentsToAccept =
           role === "cliente"
             ? [
@@ -401,11 +471,6 @@ function CadastroForm() {
             termsOk = false;
           }
         }
-        if (!termsOk) {
-          alert(
-            "Sua conta foi criada, mas não conseguimos registrar o aceite dos termos. Entre novamente no app para concluir o aceite.",
-          );
-        }
 
         if (role === "cliente") {
           if (returnUrl && returnUrl.startsWith("/")) {
@@ -413,99 +478,90 @@ function CadastroForm() {
           } else {
             router.push("/");
           }
-        } else {
-          setNewUserId(newUser.id);
+          return;
+        }
 
-          // 2) Guardar os dados reais da conta de pagamento (cl. 8.2.3). A subconta Asaas NÃO é
-          //    aberta aqui (o Asaas cobra cada abertura): o parceiro abre em "Minha conta Asaas"
-          //    quando estiver com documento e selfie em mãos (R32).
-          if (termsOk) {
-            try {
-              const subRes = await fetch("/api/asaas/subaccount", {
-                method: "POST",
-                headers: authHeaders,
-                body: JSON.stringify({
-                  userId: newUser.id,
-                  name,
-                  email,
-                  cpfCnpj: cleanCpf,
-                  phone: telefone,
-                  endereco,
-                  addressNumber,
-                  bairro,
-                  cidade,
-                  postalCode: cleanCep,
-                  birthDate: cleanCpf.length === 11 ? (birthDate && birthDate.includes('/') ? birthDate.split('/').reverse().join('-') : birthDate) : undefined,
-                  monthlyIncome: parsedIncome,
-                  companyType: cleanCpf.length === 14 ? companyType : undefined,
-                  saveOnly: true,
-                }),
-              });
-              if (!subRes.ok) {
-                console.warn(
-                  "Aviso: dados da conta de pagamento não salvos no cadastro; o parceiro informa em Minha conta Asaas.",
-                );
-              }
-            } catch (_sErr) {
-              console.warn(
-                "Aviso ao salvar dados da conta de pagamento no cadastro",
-              );
-            }
-          }
-
-          // 3) Taxa de ativação da plataforma (respeita a flag no servidor)
+        // 2) Salvar dados de pagamento da subconta
+        if (termsOk) {
           try {
-            const actRes = await fetch("/api/asaas/activation", {
+            await fetch("/api/asaas/subaccount", {
               method: "POST",
               headers: authHeaders,
               body: JSON.stringify({
                 userId: newUser.id,
-                name,
-                email,
-                cpfCnpj: cleanCpf,
-                phone: telefone,
+                name: payload.name,
+                email: payload.email,
+                cpfCnpj: payload.cpfCnpj,
+                phone: payload.telefone,
+                endereco: payload.endereco,
+                addressNumber: payload.addressNumber,
+                bairro: payload.bairro,
+                cidade: payload.cidade,
+                postalCode: payload.postalCode,
+                birthDate: payload.birthDate,
+                monthlyIncome: payload.monthlyIncome,
+                companyType: payload.companyType,
+                saveOnly: true,
               }),
             });
-            const actData = await actRes.json();
-            if (actData.isFounderSubsidized || actData.isPaid) {
-              setPixData({
-                isFreeGranted: Boolean(actData.isFounderSubsidized),
-              });
-              setIsPaymentConfirmed(true);
-            } else if (actData.paymentId) {
-              setPixData({
-                paymentId: actData.paymentId,
-                pixQrCode: actData.pixQrCode,
-                pixCopiaECola: actData.pixCopiaECola,
-                isFreeGranted: false,
-              });
-            }
-          } catch (_e) {
-            console.warn("Aviso ao inicializar ativação");
-          }
+          } catch (_sErr) {}
+        }
 
+        // 3) Ativação no banco vinculando o pagamento ou gratuidade
+        const isFreeTier = activationInfo.isFree && activationInfo.freeSlotsRemaining > 0;
+        try {
+          await fetch("/api/asaas/activation", {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({
+              userId: newUser.id,
+              forceFounder: isFreeTier,
+              paymentId: paymentIdParam || pixData?.paymentId
+            }),
+          });
+        } catch (_e) {}
+
+        setIsPaymentConfirmed(true);
+        setPendingPartnerData(null);
+
+        if (isFreeTier) {
+          setPixData({ isFreeGranted: true });
           setStep(2);
+        } else {
+          // Pós-pagamento confirmado: encaminha diretamente ao painel
+          handleGoToPartnerPanel();
         }
       } else {
         alert("Erro ao criar conta. Verifique os dados informados.");
       }
-    } catch (_err) {
+    } catch (err: any) {
+      console.error("Erro ao finalizar criação da conta:", err);
+      alert("Erro ao criar conta: " + (err.message || "Tente novamente."));
+    } finally {
+      setIsFinalizingAccount(false);
       setIsLocating(false);
-      alert("Ocorreu um erro no processo de cadastro. Tente novamente.");
     }
   };
 
   const checkPixStatus = async (silent = false) => {
-    if (!newUserId) return;
+    const payId = pixData?.paymentId;
+    if (!payId && !newUserId) return;
     if (!silent) setIsCheckingPayment(true);
     try {
-      const res = await fetch(
-        `/api/asaas/activation?userId=${newUserId}${pixData?.paymentId ? `&paymentId=${pixData.paymentId}` : ""}`,
-        { headers: await getAuthHeaders() },
-      );
+      const url = newUserId
+        ? `/api/asaas/activation?userId=${newUserId}${payId ? `&paymentId=${payId}` : ""}`
+        : `/api/asaas/activation?paymentId=${payId}`;
+
+      const res = await fetch(url, {
+        headers: newUserId ? await getAuthHeaders() : { "Content-Type": "application/json" }
+      });
       const data = await res.json();
-      if (data?.userStatus?.isPaid) {
+      if (data?.isPaid || data?.userStatus?.isPaid) {
         setIsPaymentConfirmed(true);
+        // Se tinha cadastro pendente de criação, cria e ativa agora!
+        if (pendingPartnerData && !newUserId) {
+          await finalizeAccountCreation(pendingPartnerData, payId);
+        }
       } else if (!silent) {
         alert(
           "Pagamento ainda em processamento. Aguarde alguns segundos após pagar no seu banco e tente novamente.",
@@ -519,13 +575,13 @@ function CadastroForm() {
   };
 
   useEffect(() => {
-    if (step === 2 && !isPaymentConfirmed && newUserId) {
+    if (step === 2 && !isPaymentConfirmed && (newUserId || pixData?.paymentId)) {
       const interval = setInterval(() => {
         checkPixStatus(true);
       }, 4000);
       return () => clearInterval(interval);
     }
-  }, [step, isPaymentConfirmed, newUserId, pixData?.paymentId]);
+  }, [step, isPaymentConfirmed, newUserId, pixData?.paymentId, pendingPartnerData]);
 
   const handleCopyPix = () => {
     if (pixData?.pixCopiaECola) {
@@ -1608,14 +1664,18 @@ function CadastroForm() {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    disabled={isLocating}
+                    disabled={isLocating || isFinalizingAccount}
                     className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-black text-white bg-purple-600 hover:bg-purple-700 focus:outline-none transition active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     {isLocating
                       ? "Obtendo GPS..."
-                      : role === "cliente"
-                        ? "Criar Conta e Começar"
-                        : "Criar Conta Parceira"}
+                      : isFinalizingAccount
+                        ? "Criando sua conta..."
+                        : role === "cliente"
+                          ? "Criar Conta e Começar"
+                          : activationInfo.isFree && activationInfo.freeSlotsRemaining > 0
+                            ? "Criar Conta Gratuita (Vaga Fundador)"
+                            : `Avançar para Ativação Pix (R$ ${activationInfo.activationFee.toFixed(2).replace(".", ",")})`}
                   </button>
                 </div>
               </form>
@@ -1779,13 +1839,23 @@ function CadastroForm() {
 
                   <div className="pt-2">
                     <button
-                      onClick={() => checkPixStatus(false)}
-                      disabled={isCheckingPayment}
+                      onClick={() => {
+                        if (isPaymentConfirmed) {
+                          handleGoToPartnerPanel();
+                        } else {
+                          checkPixStatus(false);
+                        }
+                      }}
+                      disabled={isCheckingPayment || isFinalizingAccount}
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95 text-sm disabled:opacity-50"
                     >
-                      {isCheckingPayment
-                        ? "⏳ Verificando no Asaas..."
-                        : "✅ Já Paguei o Pix"}
+                      {isFinalizingAccount
+                        ? "🚀 Criando sua conta e ativando..."
+                        : isCheckingPayment
+                          ? "⏳ Verificando no Asaas..."
+                          : isPaymentConfirmed
+                            ? "🚀 Pagamento Confirmado! Acessar Painel"
+                            : "✅ Já Paguei o Pix"}
                     </button>
                   </div>
                 </>

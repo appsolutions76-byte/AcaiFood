@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeRequest, unauthorizedResponse } from '@/lib/apiAuth';
 import { getAsaasApiKey, getAsaasBaseUrl } from '@/lib/asaasConfig';
-import { getFounderQuotaStatus } from '@/lib/founderQuota';
+import { getFounderQuotaStatus, isStoreRole, isCourierRole } from '@/lib/founderQuota';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,18 +14,58 @@ export async function GET(request: Request) {
     const queryRole = searchParams.get('role') || undefined;
     const queryCity = searchParams.get('city') || undefined;
 
+    // Se for verificação direta de pagamento por paymentId (usado no fluxo de pré-cadastro antes de criar a conta)
+    if (!userId && paymentId) {
+      const ASAAS_API_KEY = await getAsaasApiKey();
+      const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
+
+      if (!ASAAS_API_KEY) {
+        return NextResponse.json({ error: 'ASAAS_API_KEY não configurada' }, { status: 400 });
+      }
+
+      try {
+        const payRes = await fetch(`${ASAAS_URL}/payments/${paymentId}`, {
+          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+        });
+
+        if (payRes.ok) {
+          const payData = await payRes.json();
+          const isPaid = payData?.status === 'RECEIVED' || payData?.status === 'CONFIRMED';
+          return NextResponse.json({
+            success: true,
+            isPaid,
+            status: payData?.status,
+            paymentId: payData?.id,
+            value: payData?.value
+          });
+        }
+      } catch (_err) {
+        console.warn('Aviso ao consultar paymentId no Asaas:', _err);
+      }
+    }
+
     // Se não houver userId, é uma consulta pública sobre a cota de ativação (usada pela tela de cadastro pública)
     if (!userId) {
       const quota = await getFounderQuotaStatus({ role: queryRole, city: queryCity });
+
+      const isStore = isStoreRole(queryRole);
+      const isCourier = isCourierRole(queryRole);
+
+      // Números específicos para o papel solicitado (se informado), ou consolidado geral
+      const effectiveFreeQuota = isStore ? quota.stores.freeQuota : isCourier ? quota.couriers.freeQuota : quota.freeQuota;
+      const effectiveSubsidized = isStore ? quota.stores.subsidizedCount : isCourier ? quota.couriers.subsidizedCount : quota.subsidizedCount;
+      const effectiveFreeSlots = isStore ? quota.stores.freeSlotsRemaining : isCourier ? quota.couriers.freeSlotsRemaining : quota.freeSlotsRemaining;
+      const effectiveFee = isStore ? quota.stores.activationFee : isCourier ? quota.couriers.activationFee : quota.activationFee;
+
       return NextResponse.json({
         success: true,
-        // Propriedades retrocompatíveis
+        // Propriedades retrocompatíveis refinadas para o papel solicitado
         activationEnabled: quota.activationEnabled,
-        activationFee: quota.activationFee,
-        freeQuota: quota.freeQuota,
-        subsidizedCount: quota.subsidizedCount,
-        freeSlotsRemaining: quota.freeSlotsRemaining,
-        isFree: quota.isFree,
+        activationFee: effectiveFee,
+        freeQuota: effectiveFreeQuota,
+        subsidizedCount: effectiveSubsidized,
+        freeSlotsRemaining: effectiveFreeSlots,
+        isFree: !quota.activationEnabled || effectiveFreeSlots > 0,
         userStatus: null,
         // Propriedades estruturadas por papel e cidade
         targetRole: quota.targetRole,
@@ -63,11 +103,16 @@ export async function GET(request: Request) {
       city: effectiveCity
     });
 
-    const { activationFee, freeQuota, activationEnabled, subsidizedCount, freeSlotsRemaining, isUserAlreadyFounder, isFree } = quota;
+    const isStore = isStoreRole(effectiveRole);
+    const isCourier = isCourierRole(effectiveRole);
+    const effectiveFee = isStore ? quota.stores.activationFee : isCourier ? quota.couriers.activationFee : quota.activationFee;
+    const effectiveFreeQuota = isStore ? quota.stores.freeQuota : isCourier ? quota.couriers.freeQuota : quota.freeQuota;
+    const effectiveSubsidized = isStore ? quota.stores.subsidizedCount : isCourier ? quota.couriers.subsidizedCount : quota.subsidizedCount;
+    const effectiveFreeSlots = isStore ? quota.stores.freeSlotsRemaining : isCourier ? quota.couriers.freeSlotsRemaining : quota.freeSlotsRemaining;
 
     let userActivationStatus: any = null;
     if (user) {
-      let isPaid = Boolean(user.asaas_wallet_id || user.asaas_account_id || isUserAlreadyFounder);
+      let isPaid = Boolean(user.asaas_wallet_id || user.asaas_account_id || quota.isUserAlreadyFounder);
 
       const ASAAS_API_KEY = await getAsaasApiKey();
       const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
@@ -98,7 +143,7 @@ export async function GET(request: Request) {
       userActivationStatus = {
         userId: user.id,
         isPaid,
-        isFounderSubsidized: isUserAlreadyFounder,
+        isFounderSubsidized: quota.isUserAlreadyFounder,
         asaasLinked: Boolean(user.asaas_wallet_id),
         paymentId: paymentId || null
       };
@@ -106,12 +151,12 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      activationEnabled,
-      activationFee,
-      freeQuota,
-      subsidizedCount,
-      freeSlotsRemaining,
-      isFree,
+      activationEnabled: quota.activationEnabled,
+      activationFee: effectiveFee,
+      freeQuota: effectiveFreeQuota,
+      subsidizedCount: effectiveSubsidized,
+      freeSlotsRemaining: effectiveFreeSlots,
+      isFree: quota.isFree,
       userStatus: userActivationStatus,
       targetRole: quota.targetRole,
       targetCity: quota.targetCity,
@@ -126,16 +171,158 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
-  if (!auth.authorized) return unauthorizedResponse(auth.error);
-
   try {
     const body = await request.json();
-    const { userId, forceFounder, role: bodyRole, city: bodyCity } = body;
+    const { userId, forceFounder, role: bodyRole, city: bodyCity, cpfCnpj, name: bodyName, email: bodyEmail, phone: bodyPhone } = body;
 
+    // -----------------------------------------------------------------------------------
+    // FLUXO DE PRÉ-CADASTRO (Sem conta criada ainda: paga o Pix primeiro para liberar a conta)
+    // -----------------------------------------------------------------------------------
     if (!userId) {
-      return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 });
+      const cleanCpf = String(cpfCnpj || '').replace(/\D/g, '');
+      const cleanPhone = String(bodyPhone || '').replace(/\D/g, '');
+      const payerName = String(bodyName || '').trim();
+      const payerEmail = String(bodyEmail || '').trim();
+
+      if (!payerName || !payerEmail || !(cleanCpf.length === 11 || cleanCpf.length === 14)) {
+        return NextResponse.json({
+          error: 'Informe nome, e-mail e CPF/CNPJ válidos para gerar a ativação.'
+        }, { status: 400 });
+      }
+
+      // Checa a cota para o perfil e cidade solicitados
+      const quota = await getFounderQuotaStatus({ role: bodyRole, city: bodyCity });
+      const isStore = isStoreRole(bodyRole);
+      const isCourier = isCourierRole(bodyRole);
+      const effectiveSlots = isStore ? quota.stores.freeSlotsRemaining : isCourier ? quota.couriers.freeSlotsRemaining : quota.freeSlotsRemaining;
+      const effectiveFee = isStore ? quota.stores.activationFee : isCourier ? quota.couriers.activationFee : quota.activationFee;
+
+      // Se ainda tiver vaga de fundador para esse perfil, NÃO cobra nada!
+      if (!quota.activationEnabled || effectiveSlots > 0) {
+        return NextResponse.json({
+          success: true,
+          isFounderSubsidized: true,
+          freeSlotsRemaining: effectiveSlots,
+          message: 'Vaga gratuita garantida!'
+        });
+      }
+
+      // Cota esgotada: gerar Pix no Asaas
+      const ASAAS_API_KEY = await getAsaasApiKey();
+      const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
+
+      if (!ASAAS_API_KEY) {
+        return NextResponse.json({ error: 'ASAAS_API_KEY não configurada' }, { status: 400 });
+      }
+
+      let customerId = '';
+      try {
+        const custSearchRes = await fetch(`${ASAAS_URL}/customers?cpfCnpj=${encodeURIComponent(cleanCpf)}`, {
+          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+        });
+        const custSearchData = await custSearchRes.json();
+        if (custSearchData?.data?.length > 0) {
+          customerId = custSearchData.data[0].id;
+        } else {
+          const createCustRes = await fetch(`${ASAAS_URL}/customers`, {
+            method: 'POST',
+            headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: payerName,
+              email: payerEmail,
+              cpfCnpj: cleanCpf,
+              mobilePhone: cleanPhone || undefined
+            })
+          });
+          const newCustData = await createCustRes.json();
+          if (newCustData?.id) {
+            customerId = newCustData.id;
+          } else {
+            const msg = Array.isArray(newCustData?.errors) ? newCustData.errors.map((e: any) => e.description).join(', ') : '';
+            return NextResponse.json({ error: `O Asaas recusou os dados: ${msg || 'Confira seus dados.'}` }, { status: 400 });
+          }
+        }
+      } catch (_err) {
+        console.warn('Aviso ao registrar cliente Asaas pré-cadastro:', _err);
+      }
+
+      if (!customerId) {
+        return NextResponse.json({ error: 'Falha ao conectar com gateway Asaas para cobrança' }, { status: 400 });
+      }
+
+      // Verificar se já existe Pix pendente ou pago para este CPF
+      let payData: any = null;
+      try {
+        const existRes = await fetch(`${ASAAS_URL}/payments?externalReference=ACTIVATE_CPF_${cleanCpf}`, {
+          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+        });
+        if (existRes.ok) {
+          const existJson = await existRes.json();
+          const existingList = Array.isArray(existJson?.data) ? existJson.data : [];
+          const paidPay = existingList.find((p: any) => p.status === 'RECEIVED' || p.status === 'CONFIRMED');
+          if (paidPay) {
+            return NextResponse.json({
+              success: true,
+              isPaid: true,
+              isFounderSubsidized: false,
+              paymentId: paidPay.id,
+              message: 'Ativação já paga com sucesso!'
+            });
+          }
+          const pendingPay = existingList.find((p: any) => p.status === 'PENDING');
+          if (pendingPay?.id) {
+            payData = pendingPay;
+          }
+        }
+      } catch (_exErr) {}
+
+      if (!payData) {
+        const dueDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const paymentPayload = {
+          customer: customerId,
+          billingType: 'PIX',
+          value: effectiveFee,
+          dueDate: dueDate,
+          description: `Taxa de ativação AçaíFood (${isStore ? 'Batedeira' : isCourier ? 'Motoboy' : 'Parceiro'})`,
+          externalReference: `ACTIVATE_CPF_${cleanCpf}`
+        };
+
+        const payRes = await fetch(`${ASAAS_URL}/payments`, {
+          method: 'POST',
+          headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify(paymentPayload)
+        });
+
+        payData = await payRes.json();
+        if (!payData?.id) {
+          return NextResponse.json({ error: payData?.errors?.[0]?.description || 'Erro ao gerar Pix no Asaas' }, { status: 400 });
+        }
+      }
+
+      const qrRes = await fetch(`${ASAAS_URL}/payments/${payData.id}/pixQrCode`, {
+        headers: { 'access_token': ASAAS_API_KEY }
+      });
+      const qrData = qrRes.ok ? await qrRes.json() : null;
+
+      if (!qrData || !qrData.encodedImage || !qrData.payload) {
+        return NextResponse.json({ error: 'Falha ao obter QR Code do Asaas' }, { status: 502 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        isFounderSubsidized: false,
+        paymentId: payData.id,
+        pixQrCode: qrData.encodedImage,
+        pixCopiaECola: qrData.payload,
+        value: effectiveFee
+      });
     }
+
+    // -----------------------------------------------------------------------------------
+    // FLUXO DE USUÁRIO JÁ CADASTRADO (Autenticado, no Guard ou Admin)
+    // -----------------------------------------------------------------------------------
+    const auth = await authorizeRequest(request, ['admin', 'loja', 'fornecedor', 'motorista', 'cliente']);
+    if (!auth.authorized) return unauthorizedResponse(auth.error);
 
     const callerId = auth.user?.id || auth.profile?.id;
     const isAdmin = auth.source === 'internal_secret' || String(auth.profile?.role || '').toLowerCase() === 'admin';
@@ -160,18 +347,20 @@ export async function POST(request: Request) {
       city: effectiveCity
     });
 
-    const { activationFee, activationEnabled, freeSlotsRemaining, isUserAlreadyFounder } = quota;
+    const isStore = isStoreRole(effectiveRole);
+    const isCourier = isCourierRole(effectiveRole);
+    const effectiveFee = isStore ? quota.stores.activationFee : isCourier ? quota.couriers.activationFee : quota.activationFee;
+    const effectiveFreeSlots = isStore ? quota.stores.freeSlotsRemaining : isCourier ? quota.couriers.freeSlotsRemaining : quota.freeSlotsRemaining;
 
-    // Validação de segurança: apenas admin autenticado ou segredo interno pode forçar subsídio gratuito
     let isForceAdmin = false;
     if (forceFounder) {
-      const auth = await authorizeRequest(request, ['admin']);
-      if (auth.authorized && (auth.profile?.role === 'admin' || auth.profile?.role === 'ADMIN' || auth.source === 'internal_secret')) {
+      const authAdmin = await authorizeRequest(request, ['admin']);
+      if (authAdmin.authorized && (authAdmin.profile?.role === 'admin' || authAdmin.profile?.role === 'ADMIN' || authAdmin.source === 'internal_secret')) {
         isForceAdmin = true;
       }
     }
 
-    const qualifiesForFree = isForceAdmin || !activationEnabled || isUserAlreadyFounder;
+    const qualifiesForFree = isForceAdmin || !quota.activationEnabled || quota.isUserAlreadyFounder;
 
     if (qualifiesForFree) {
       await supabase
@@ -182,7 +371,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         isFounderSubsidized: true,
-        freeSlotsRemaining,
+        freeSlotsRemaining: effectiveFreeSlots,
         message: 'Vaga de fundador garantida com sucesso!'
       });
     }
@@ -194,7 +383,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ASAAS_API_KEY não configurada' }, { status: 400 });
     }
 
-    // Dados do pagador vêm do cadastro no banco (nada inventado, nada do navegador)
     let payerEmail = String(user?.email || '').trim();
     if (!payerEmail && !isAdmin) payerEmail = String(auth.user?.email || '').trim();
     const cleanCpf = String(user?.cpf_cnpj || '').replace(/\D/g, '');
@@ -208,7 +396,6 @@ export async function POST(request: Request) {
     }
 
     let customerId = '';
-
     try {
       const custSearchRes = await fetch(`${ASAAS_URL}/customers?cpfCnpj=${encodeURIComponent(cleanCpf)}`, {
         headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
@@ -244,7 +431,6 @@ export async function POST(request: Request) {
     }
 
     let payData: any = null;
-
     try {
       const existRes = await fetch(`${ASAAS_URL}/payments?externalReference=ACTIVATE_${userId}`, {
         headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
@@ -274,7 +460,7 @@ export async function POST(request: Request) {
       const paymentPayload = {
         customer: customerId,
         billingType: 'PIX',
-        value: activationFee,
+        value: effectiveFee,
         dueDate: dueDate,
         description: 'Taxa de ativação da plataforma AçaíFood',
         externalReference: `ACTIVATE_${userId}`
@@ -312,7 +498,7 @@ export async function POST(request: Request) {
       pixQrCode: qrData.encodedImage,
       pixCopiaECola: qrData.payload,
       invoiceUrl: payData.invoiceUrl || payData.bankSlipUrl,
-      value: activationFee
+      value: effectiveFee
     });
 
   } catch (error: any) {
