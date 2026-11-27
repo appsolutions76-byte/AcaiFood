@@ -50,11 +50,30 @@ export async function GET(request: Request) {
     }
 
     // 2. Buscar indicações (affiliate_referrals)
-    const { data: referrals } = await supabase
+    const { data: rawReferrals } = await supabase
       .from('affiliate_referrals')
-      .select('id, referred_role, referred_at, activated_at, bonus_paid, bonus_amount, users!affiliate_referrals_referred_user_id_fkey(name, email)')
+      .select('id, referred_user_id, referred_role, referred_at, activated_at, bonus_paid, bonus_amount, users!affiliate_referrals_referred_user_id_fkey(name, email)')
       .eq('affiliate_id', affiliate.id)
       .order('referred_at', { ascending: false });
+
+    // Buscar regras de comissão (base da comissão por indicado/perfil)
+    const { data: cfgRow } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'affiliate_referral_rules')
+      .maybeSingle();
+
+    const rules = cfgRow?.value || { referral_basis: {}, affiliate_defaults: {} };
+    const referrals = (rawReferrals || []).map((r: any) => {
+      const basis =
+        rules?.referral_basis?.[r.referred_user_id] ||
+        rules?.affiliate_defaults?.[affiliate.id]?.[r.referred_role] ||
+        'platform_revenue';
+      return {
+        ...r,
+        commission_basis: basis, // 'platform_revenue' | 'net_revenue'
+      };
+    });
 
     // 3. Buscar comissões do ledger (últimos 20)
     const { data: ledger } = await supabase

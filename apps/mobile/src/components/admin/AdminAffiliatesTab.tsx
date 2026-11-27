@@ -65,6 +65,7 @@ export function AdminAffiliatesTab() {
 
   // Edição de Afiliado
   const [editDraft, setEditDraft] = useState<any>({});
+  const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
 
   const getHeaders = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -269,6 +270,49 @@ export function AdminAffiliatesTab() {
       console.error("Erro ao carregar detalhes:", err);
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  const handleToggleReferralBasis = async (referral: any) => {
+    if (!referral.referred_user_id) return;
+    const currentBasis = referral.commission_basis || 'platform_revenue';
+    const nextBasis = currentBasis === 'net_revenue' ? 'platform_revenue' : 'net_revenue';
+
+    setTogglingUserId(referral.referred_user_id);
+    // Atualização otimista
+    setDetailsData((prev) =>
+      prev.map((item) =>
+        item.referred_user_id === referral.referred_user_id
+          ? { ...item, commission_basis: nextBasis }
+          : item
+      )
+    );
+
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/affiliates/referrals', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          referred_user_id: referral.referred_user_id,
+          basis: nextBasis,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error('Falha ao atualizar base de comissão');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Erro ao alternar chave de comissão.');
+      // Reverter
+      setDetailsData((prev) =>
+        prev.map((item) =>
+          item.referred_user_id === referral.referred_user_id
+            ? { ...item, commission_basis: currentBasis }
+            : item
+        )
+      );
+    } finally {
+      setTogglingUserId(null);
     }
   };
 
@@ -944,28 +988,63 @@ export function AdminAffiliatesTab() {
                   Nenhum registro encontrado para este parceiro.
                 </div>
               ) : detailsModal.type === "referrals" ? (
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-zinc-800 text-zinc-500">
-                      <th className="py-2">Indicado</th>
-                      <th className="py-2">Papel</th>
-                      <th className="py-2">Data</th>
-                      <th className="py-2">Bônus</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-800/60">
-                    {detailsData.map((r: any) => (
-                      <tr key={r.id} className="text-zinc-300">
-                        <td className="py-2 font-medium text-white">{r.users?.name || "Usuário"}</td>
-                        <td className="py-2 capitalize">{r.referred_role || "Cliente"}</td>
-                        <td className="py-2">{new Date(r.referred_at).toLocaleDateString("pt-BR")}</td>
-                        <td className="py-2 font-bold text-purple-300">
-                          R$ {Number(r.bonus_amount || 0).toFixed(2)} ({r.bonus_paid ? "Pago" : "Pendente"})
-                        </td>
+                <div className="space-y-3">
+                  <div className="bg-purple-950/30 border border-purple-800/40 rounded-xl p-3 flex items-center justify-between text-xs text-purple-200">
+                    <span className="flex items-center gap-2">
+                      <Sparkles size={14} className="text-purple-400" />
+                      <span>
+                        <strong>Chave de Base de Comissão:</strong> Clique no botão de cada indicado para alternar entre <strong>🏛️ Taxa Plataforma</strong> (1,5% da comissão do app) ou <strong>⚡ Líquido Indicado</strong> (1,5% do valor líquido movimentado).
+                      </span>
+                    </span>
+                  </div>
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-800 text-zinc-500">
+                        <th className="py-2">Indicado</th>
+                        <th className="py-2">Papel</th>
+                        <th className="py-2">Data</th>
+                        <th className="py-2">Bônus</th>
+                        <th className="py-2 text-right">Base de Comissão (Chave)</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/60">
+                      {detailsData.map((r: any) => {
+                        const isNet = r.commission_basis === "net_revenue";
+                        const isBusy = togglingUserId === r.referred_user_id;
+                        return (
+                          <tr key={r.id} className="text-zinc-300">
+                            <td className="py-2 font-medium text-white">{r.users?.name || "Usuário"}</td>
+                            <td className="py-2 capitalize">{r.referred_role || "Cliente"}</td>
+                            <td className="py-2">{new Date(r.referred_at).toLocaleDateString("pt-BR")}</td>
+                            <td className="py-2 font-bold text-purple-300">
+                              R$ {Number(r.bonus_amount || 0).toFixed(2)} ({r.bonus_paid ? "Pago" : "Pendente"})
+                            </td>
+                            <td className="py-2 text-right">
+                              <button
+                                onClick={() => handleToggleReferralBasis(r)}
+                                disabled={isBusy}
+                                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer border inline-flex items-center gap-1.5 ${
+                                  isNet
+                                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/25"
+                                    : "bg-purple-500/15 border-purple-500/40 text-purple-300 hover:bg-purple-500/25"
+                                } ${isBusy ? "opacity-50 cursor-wait" : ""}`}
+                                title="Clique para alternar entre Receita Líquida do Indicado e Taxa da Plataforma"
+                              >
+                                {isBusy ? (
+                                  <RefreshCw size={11} className="animate-spin" />
+                                ) : isNet ? (
+                                  <>⚡ Líquido Indicado</>
+                                ) : (
+                                  <>🏛️ Taxa Plataforma</>
+                                )}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <table className="w-full text-left text-xs">
                   <thead>
