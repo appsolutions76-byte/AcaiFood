@@ -188,13 +188,44 @@ export async function GET(request: Request) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Rate-limit simples em memória para o POST de tracking de views/cliques.
+// Evita que um atacante infle contadores com chamadas em loop.
+// Limite: 60 eventos por IP a cada 60 segundos.
+// ---------------------------------------------------------------------------
+const RL_WINDOW_MS = 60_000;
+const RL_MAX = 60;
+const rlMap = new Map<string, { count: number; resetAt: number }>();
+
+function rlAllow(ip: string): boolean {
+  const now = Date.now();
+  const entry = rlMap.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    rlMap.set(ip, { count: 1, resetAt: now + RL_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RL_MAX) return false;
+  entry.count += 1;
+  return true;
+}
+
 // Rota para contabilizar impressões e cliques de anúncios de forma ultraleve
 export async function POST(request: Request) {
   try {
+    // Rate limit por IP — impede inflação artificial de métricas
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+
+    if (!rlAllow(ip)) {
+      return NextResponse.json({ success: false, error: 'Muitas requisições' }, { status: 429 });
+    }
+
     const body = await request.json();
     const { adId, action } = body; // action: 'view' | 'click'
 
-    if (!adId || !action) {
+    if (!adId || !['view', 'click'].includes(action)) {
       return NextResponse.json({ success: false, error: 'Parâmetros inválidos' }, { status: 400 });
     }
 
@@ -211,15 +242,18 @@ export async function POST(request: Request) {
       ? (cfgRow.value as AdItem[])
       : DEFAULT_ADS;
 
-    ads = ads.map(a => {
-      if (a.id === adId) {
-        return {
-          ...a,
-          viewsCount: action === 'view' ? (a.viewsCount || 0) + 1 : (a.viewsCount || 0),
-          clicksCount: action === 'click' ? (a.clicksCount || 0) + 1 : (a.clicksCount || 0),
-        };
-      }
-      return a;
+    const targetIdx = ads.findIndex(a => a.id === adId);
+    if (targetIdx === -1) {
+      return NextResponse.json({ success: false, error: 'Anúncio não encontrado' }, { status: 404 });
+    }
+
+    ads = ads.map((a, i) => {
+      if (i !== targetIdx) return a;
+      return {
+        ...a,
+        viewsCount: action === 'view' ? (a.viewsCount || 0) + 1 : (a.viewsCount || 0),
+        clicksCount: action === 'click' ? (a.clicksCount || 0) + 1 : (a.clicksCount || 0),
+      };
     });
 
     await supabase

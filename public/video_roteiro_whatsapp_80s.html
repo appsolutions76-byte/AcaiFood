@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AçaíFood — Vídeo Montado (Roteiro WhatsApp 4 Cenas / 80s)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-brand { font-family: 'Outfit', sans-serif; }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.4), inset 0 0 15px rgba(168, 85, 247, 0.2); }
+      50% { box-shadow: 0 0 35px rgba(234, 179, 8, 0.6), inset 0 0 25px rgba(168, 85, 247, 0.5); }
+    }
+    .pulse-glow { animation: pulse-glow 2.5s infinite ease-in-out; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #0b0716; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #4c1d95; border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
+  </style>
+</head>
+<body class="bg-[#07040d] text-slate-100 min-h-screen antialiased flex flex-col p-2 md:p-6 custom-scroll selection:bg-purple-600 selection:text-white">
+
+  <!-- Container Geral -->
+  <div class="max-w-7xl mx-auto w-full space-y-4">
+    
+    <!-- Top Header -->
+    <header class="flex flex-col md:flex-row items-start md:items-center justify-between pb-3 border-b border-purple-900/40 gap-3 bg-purple-950/20 p-4 rounded-2xl border backdrop-blur-md">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <span class="text-3xl">🎬🥣</span>
+          <div>
+            <h1 class="text-xl md:text-2xl font-black font-brand tracking-tight bg-gradient-to-r from-purple-300 via-pink-400 to-amber-300 bg-clip-text text-transparent">
+              AçaíFood — Vídeo Montado (Roteiro Oficial do WhatsApp)
+            </h1>
+            <p class="text-xs text-purple-200/80 font-medium">
+              4 Cenas Sincronizadas: <span class="text-amber-400 font-bold">1. Abertura</span> • <span class="text-purple-400 font-bold">2. Plataforma</span> • <span class="text-indigo-400 font-bold">3. Três Públicos</span> • <span class="text-emerald-400 font-bold">4. Encerramento</span>
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+        <button id="btnInstagramUi" onclick="toggleInstagramOverlay()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md border border-pink-400/40">
+          <span>📸</span> <span id="instaUiLabel">Ver Safe Zone Instagram</span>
+        </button>
+        <button id="btnToggleMode" onclick="toggleAspectRatio()" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-purple-800/60 text-purple-200 text-xs font-bold transition flex items-center gap-1.5 shadow-md">
+          <span id="modeIcon">📱</span> <span id="modeLabel">Formato 9:16 (Reels/TikTok)</span>
+        </button>
+        <button id="btnRecord" onclick="startRecordingVideo()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-purple-600 to-amber-500 hover:from-red-500 hover:to-amber-400 text-white font-bold text-xs tracking-wide shadow-lg shadow-purple-950/80 transition flex items-center gap-2 border border-amber-400/30">
+          <span class="animate-pulse text-base">🔴</span> <span>Gravar e Baixar Vídeo HD (80s)</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Barra de Controle de Áudio e Locução -->
+    <div class="bg-purple-950/30 border border-purple-800/40 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex items-center gap-2 text-purple-200 font-semibold">
+          <span class="text-base">🎙️</span>
+          <span>Locução Sincronizada com o Roteiro (pt-BR):</span>
+          <span class="bg-purple-900/60 text-amber-300 px-2.5 py-0.5 rounded text-[11px] font-mono border border-purple-700">Abertura, Plataforma, Batedor, Entregador, Comprador e CTA</span>
+        </div>
+        <div class="flex items-center gap-2 text-emerald-400 text-[11px] font-medium">
+          <span>🎵 Trilha Dinâmica + SFX + Legendas Integradas</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleMusic()" id="btnToggleMusic" class="px-2.5 py-1 rounded-lg bg-purple-900/50 hover:bg-purple-800/70 border border-purple-700/50 text-purple-300 text-[11px] font-semibold flex items-center gap-1 transition">
+          <span id="musicIcon">🎶</span> Trilha Ativa
+        </button>
+        <button onclick="toggleSpeech()" id="btnMuteSpeech" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-purple-800/50 text-purple-300 text-[11px] font-semibold flex items-center gap-1 transition">
+          <span id="muteIcon">🔊</span> Voz Ativa
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Stage Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      
+      <!-- Video Player Canvas Stage (Left/Center) -->
+      <div class="lg:col-span-8 flex flex-col items-center justify-center bg-slate-950/90 border border-purple-900/50 rounded-2xl p-3 md:p-6 shadow-2xl relative overflow-hidden">
+        
+        <!-- Live Recording Indicator Overlay -->
+        <div id="recordIndicator" class="hidden absolute top-4 left-4 z-30 bg-red-600/90 backdrop-blur-md text-white text-xs font-black px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-lg animate-pulse">
+          <span class="w-2.5 h-2.5 rounded-full bg-white"></span> RENDERIZANDO E GRAVANDO VÍDEO HD (AGUARDE ATÉ O FIM)
+        </div>
+
+        <!-- Canvas Container -->
+        <div id="canvasWrapper" class="relative flex items-center justify-center rounded-2xl overflow-hidden shadow-2xl border-2 border-purple-800/60 bg-black">
+          <canvas id="videoCanvas" width="1080" height="1920" class="w-full max-w-[360px] md:max-w-[430px] max-h-[720px] object-contain rounded-xl"></canvas>
+        </div>
+
+        <!-- Video Player Control Bar -->
+        <div class="w-full max-w-2xl mt-4 space-y-2 bg-slate-900/90 border border-purple-900/50 p-3.5 rounded-xl shadow-lg">
+          
+          <!-- Timeline Slider & Markers -->
+          <div class="relative flex items-center group">
+            <input type="range" id="timeSlider" min="0" max="80" step="0.1" value="0" oninput="onSliderSeek(this.value)" class="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400 relative z-10">
+          </div>
+
+          <!-- Time & Controls Row -->
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 font-mono font-bold">
+              <span id="timeCurrent" class="text-amber-300">00:00</span>
+              <span class="text-slate-600">/</span>
+              <span class="text-slate-400">01:20</span>
+              <span id="liveActorPill" class="ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-900/80 text-amber-200 border border-amber-700/60">🌟 CENA 1 — ABERTURA</span>
+            </div>
+
+            <!-- Playback Buttons -->
+            <div class="flex items-center gap-2">
+              <button onclick="seekDelta(-5)" title="Voltar 5s" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-200 transition">
+                ⏪ -5s
+              </button>
+              <button id="btnPlayPause" onclick="togglePlay()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white font-bold flex items-center gap-1.5 shadow-md shadow-purple-950 transition">
+                <span id="playIcon">▶️</span> <span id="playLabel">Assistir Vídeo</span>
+              </button>
+              <button onclick="seekDelta(5)" title="Avançar 5s" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-200 transition">
+                +5s ⏩
+              </button>
+              <button onclick="restartVideo()" title="Reiniciar" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-200 transition">
+                🔄
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Interactive Scene List & Script Details -->
+      <div class="lg:col-span-4 flex flex-col space-y-3">
+        <div class="bg-purple-950/20 border border-purple-900/40 p-4 rounded-2xl flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-black text-amber-300 font-brand uppercase tracking-wider">Roteiro Montado (WhatsApp)</h2>
+            <p class="text-xs text-slate-400">Fiel ao print compartilhado</p>
+          </div>
+          <span class="text-xs px-2 py-1 rounded bg-purple-900/60 text-purple-300 font-mono font-bold">Total: 80s</span>
+        </div>
+
+        <!-- List of Scene Cards -->
+        <div id="scenesList" class="space-y-2.5 overflow-y-auto max-h-[660px] pr-1 custom-scroll">
+          <!-- Dynamically populated by JS -->
+        </div>
+
+        <!-- Official CTA Card -->
+        <div class="p-3.5 rounded-xl bg-gradient-to-br from-purple-900/50 via-slate-900 to-amber-950/40 border border-amber-500/30 text-xs space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-amber-300 flex items-center gap-1.5">🌐 Link Oficial do AçaíFood</span>
+            <span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-1.5 py-0.5 rounded font-mono">ONLINE</span>
+          </div>
+          <p class="text-slate-300 text-[11px]">
+            Direcione os batedores, motoboys e clientes para:
+          </p>
+          <a href="https://www.acaifood.app.br/" target="_blank" class="block text-center py-2 px-3 rounded-lg bg-amber-400 hover:bg-amber-300 text-purple-950 font-black tracking-wide transition shadow-lg">
+            www.acaifood.app.br ↗
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // ROTEIRO EXATO DO PRINT DO WHATSAPP (TOTAL: 80s)
+    // ==========================================
+    const scenes = [
+      {
+        id: 1,
+        timeStart: 0,
+        timeEnd: 12,
+        sceneNumber: "CENA 1",
+        sceneType: "Abertura (gancho)",
+        actor: "VOCÊ APARECE FALANDO",
+        actorColor: "#f59e0b",
+        actorIcon: "🥣",
+        title: "Gancho: Você gosta de açaí?",
+        narration: "Você gosta de açaí? Já pensou em encontrar tudo o que precisa em um só lugar? Agora isso é possível!",
+        subtitle: "Você gosta de açaí? Já pensou em encontrar tudo o que precisa em um só lugar?",
+        badge: "Agora isso é possível!",
+        sound: "bell"
+      },
+      {
+        id: 2,
+        timeStart: 12,
+        timeEnd: 26,
+        sceneNumber: "CENA 2",
+        sceneType: "Apresentação da plataforma",
+        actor: "TELA DA PLATAFORMA",
+        actorColor: "#a855f7",
+        actorIcon: "📱",
+        title: "A Plataforma AçaíFood",
+        narration: "Chegou uma plataforma que conecta batedores de açaí, entregadores e compradores, tudo em um só lugar!",
+        subtitle: "Conecta batedores de açaí, entregadores e compradores, tudo em um só lugar!",
+        badge: "Tudo em um só lugar!",
+        sound: "whoosh"
+      },
+      {
+        id: 3,
+        timeStart: 26,
+        timeEnd: 42,
+        sceneNumber: "CENA 3A",
+        sceneType: "Público 1: Batedor de açaí",
+        actor: "É BATEDOR DE AÇAÍ?",
+        actorColor: "#6366f1",
+        actorIcon: "👨‍🍳",
+        title: "Batedor: Mais Oportunidades",
+        narration: "É batedor de açaí? Cadastre-se e tenha mais oportunidades para divulgar e comercializar seu produto.",
+        subtitle: "É batedor de açaí? Cadastre-se e tenha mais oportunidades para divulgar e comercializar seu produto.",
+        badge: "Cadastre seu Ponto!",
+        sound: "register"
+      },
+      {
+        id: 4,
+        timeStart: 42,
+        timeEnd: 56,
+        sceneNumber: "CENA 3B",
+        sceneType: "Público 2: Entregador",
+        actor: "É ENTREGADOR?",
+        actorColor: "#eab308",
+        actorIcon: "🛵",
+        title: "Entregador: Oportunidades de Entrega",
+        narration: "É entregador? Faça seu cadastro e conecte-se a oportunidades de entrega.",
+        subtitle: "É entregador? Faça seu cadastro e conecte-se a oportunidades de entrega.",
+        badge: "Oportunidades de Entrega!",
+        sound: "moto"
+      },
+      {
+        id: 5,
+        timeStart: 56,
+        timeEnd: 68,
+        sceneNumber: "CENA 3C",
+        sceneType: "Público 3: Comprador",
+        actor: "É COMPRADOR?",
+        actorColor: "#ec4899",
+        actorIcon: "😋",
+        title: "Comprador: Praticidade na Compra",
+        narration: "É comprador? Encontre opções de açaí e tenha mais praticidade na hora de comprar.",
+        subtitle: "É comprador? Encontre opções de açaí e tenha mais praticidade na hora de comprar.",
+        badge: "Praticidade na Compra!",
+        sound: "bell"
+      },
+      {
+        id: 6,
+        timeStart: 68,
+        timeEnd: 80,
+        sceneNumber: "CENA 4",
+        sceneType: "Encerramento (chamada para ação)",
+        actor: "ENCERRAMENTO GERAL",
+        actorColor: "#10b981",
+        actorIcon: "✨",
+        title: "Conecte-se ao AçaíFood",
+        narration: "Não importa se você vende, entrega ou consome açaí. Essa plataforma foi feita para conectar você! Faça seu cadastro e venha fazer parte dessa novidade!",
+        subtitle: "Essa plataforma foi feita para conectar você! Faça seu cadastro: www.acaifood.app.br",
+        badge: "Desse jeito vai funcionar! 🚀",
+        sound: "jingle"
+      }
+    ];
+
+    // ==========================================
+    // ESTADO E VARIÁVEIS DO PLAYER & CANVAS
+    // ==========================================
+    let isPlaying = false;
+    let isVerticalMode = true; // true = 9:16 (1080x1920), false = 16:9 (1920x1080)
+    let showInstagramOverlay = false;
+    let currentTime = 0;
+    const TOTAL_DURATION = 80;
+    let lastAnimTimestamp = null;
+    let animFrameId = null;
+
+    let isAudioInitialized = false;
+    let isSpeechEnabled = true;
+    let isMusicEnabled = true;
+    let activeSceneId = null;
+
+    const canvas = document.getElementById('videoCanvas');
+    const ctx = canvas.getContext('2d');
+    const timeSlider = document.getElementById('timeSlider');
+    const timeCurrent = document.getElementById('timeCurrent');
+    const liveActorPill = document.getElementById('liveActorPill');
+    const btnPlayPause = document.getElementById('btnPlayPause');
+    const playIcon = document.getElementById('playIcon');
+    const playLabel = document.getElementById('playLabel');
+
+    // Partículas de açaí e farinha
+    const particles = [];
+    for (let i = 0; i < 40; i++) {
+      particles.push({
+        x: Math.random(),
+        y: Math.random(),
+        speedY: 0.04 + Math.random() * 0.12,
+        size: 3 + Math.random() * 6,
+        color: Math.random() > 0.4 ? '#fef08a' : '#d8b4fe'
+      });
+    }
+
+    // ==========================================
+    // SISTEMA DE ÁUDIO & SFX
+    // ==========================================
+    let audioCtx = null;
+    let audioDestNode = null;
+    let masterGainNode = null;
+    let musicInterval = null;
+
+    async function initAudioSystem() {
+      if (isAudioInitialized) return;
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+        audioDestNode = audioCtx.createMediaStreamDestination();
+        masterGainNode = audioCtx.createGain();
+        masterGainNode.gain.value = 0.8;
+        masterGainNode.connect(audioCtx.destination);
+        masterGainNode.connect(audioDestNode);
+        isAudioInitialized = true;
+      } catch (e) {
+        console.warn('AudioContext error:', e);
+      }
+    }
+
+    const soundEngine = {
+      playSfx(type) {
+        if (!audioCtx) initAudioSystem();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+
+        if (type === 'bell') {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, now);
+          osc.frequency.exponentialRampToValueAtTime(1760, now + 0.3);
+          g.gain.setValueAtTime(0.15, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+          osc.connect(g);
+          g.connect(masterGainNode);
+          osc.start(now);
+          osc.stop(now + 0.65);
+        } else if (type === 'whoosh') {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(200, now);
+          osc.frequency.linearRampToValueAtTime(600, now + 0.25);
+          g.gain.setValueAtTime(0.1, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          osc.connect(g);
+          g.connect(masterGainNode);
+          osc.start(now);
+          osc.stop(now + 0.45);
+        } else if (type === 'register') {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.1);
+          osc.frequency.setValueAtTime(783.99, now + 0.2);
+          g.gain.setValueAtTime(0.12, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          osc.connect(g);
+          g.connect(masterGainNode);
+          osc.start(now);
+          osc.stop(now + 0.45);
+        } else if (type === 'moto') {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120, now);
+          osc.frequency.linearRampToValueAtTime(280, now + 0.5);
+          g.gain.setValueAtTime(0.1, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+          osc.connect(g);
+          g.connect(masterGainNode);
+          osc.start(now);
+          osc.stop(now + 0.75);
+        } else if (type === 'jingle') {
+          [440, 554.37, 659.25, 880].forEach((freq, idx) => {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+            g.gain.setValueAtTime(0.15, now + idx * 0.12);
+            g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.3);
+            osc.connect(g);
+            g.connect(masterGainNode);
+            osc.start(now + idx * 0.12);
+            osc.stop(now + idx * 0.12 + 0.35);
+          });
+        }
+      }
+    };
+
+    function startBackgroundMusic() {
+      if (!isMusicEnabled || !audioCtx) return;
+      stopBackgroundMusic();
+      const chords = [
+        [220, 277.18, 329.63],
+        [164.81, 207.65, 246.94],
+        [185.00, 220.00, 277.18],
+        [146.83, 185.00, 220.00]
+      ];
+      let step = 0;
+      musicInterval = setInterval(() => {
+        if (!isPlaying || !isMusicEnabled || !audioCtx) return;
+        const now = audioCtx.currentTime;
+        const currentChord = chords[step % chords.length];
+        currentChord.forEach(f => {
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now);
+          g.gain.setValueAtTime(0.02, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+          osc.connect(g);
+          g.connect(masterGainNode);
+          osc.start(now);
+          osc.stop(now + 1.9);
+        });
+        step++;
+      }, 1800);
+    }
+
+    function stopBackgroundMusic() {
+      if (musicInterval) {
+        clearInterval(musicInterval);
+        musicInterval = null;
+      }
+    }
+
+    function toggleMusic() {
+      isMusicEnabled = !isMusicEnabled;
+      const btn = document.getElementById('btnToggleMusic');
+      const icon = document.getElementById('musicIcon');
+      if (isMusicEnabled) {
+        btn.classList.replace('bg-slate-900', 'bg-purple-900/50');
+        icon.textContent = '🎶';
+        if (isPlaying) startBackgroundMusic();
+      } else {
+        btn.classList.replace('bg-purple-900/50', 'bg-slate-900');
+        icon.textContent = '🔇';
+        stopBackgroundMusic();
+      }
+    }
+
+    // Locução automática em português (pt-BR)
+    function playSceneNarration(sceneId) {
+      if (!isSpeechEnabled) return;
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const scene = scenes.find(s => s.id === sceneId);
+        if (!scene) return;
+
+        const utterance = new SpeechSynthesisUtterance(scene.narration);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 1.05;
+        utterance.pitch = scene.id === 4 ? 0.95 : scene.id === 5 ? 1.15 : 1.0;
+
+        const voices = window.speechSynthesis.getVoices();
+        const ptVoice = voices.find(v => v.lang.includes('pt-BR') || v.lang.includes('pt'));
+        if (ptVoice) utterance.voice = ptVoice;
+
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function stopSceneNarration() {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    }
+
+    function toggleSpeech() {
+      isSpeechEnabled = !isSpeechEnabled;
+      const btn = document.getElementById('btnMuteSpeech');
+      const icon = document.getElementById('muteIcon');
+      if (isSpeechEnabled) {
+        icon.textContent = '🔊';
+        btn.classList.replace('bg-red-950/40', 'bg-slate-900');
+        btn.querySelector('span:nth-child(2)').textContent = 'Voz Ativa';
+        if (isPlaying && activeSceneId) playSceneNarration(activeSceneId);
+      } else {
+        icon.textContent = '🔇';
+        btn.classList.replace('bg-slate-900', 'bg-red-950/40');
+        btn.querySelector('span:nth-child(2)').textContent = 'Voz Mudo';
+        stopSceneNarration();
+      }
+    }
+
+    // ==========================================
+    // RENDERIZAÇÃO GRÁFICA NO CANVAS
+    // ==========================================
+    function getSceneAtTime(time) {
+      for (let i = 0; i < scenes.length; i++) {
+        if (time >= scenes[i].timeStart && time < scenes[i].timeEnd) {
+          const duration = scenes[i].timeEnd - scenes[i].timeStart;
+          const progress = (time - scenes[i].timeStart) / duration;
+          return { scene: scenes[i], progress };
+        }
+      }
+      return { scene: scenes[scenes.length - 1], progress: 1.0 };
+    }
+
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function drawSceneVisual(ctx, scene, w, h, progress, time) {
+      const cx = w / 2;
+      const cy = h * 0.45;
+
+      if (scene.id === 1) {
+        // CENA 1: TIGELA DE AÇAÍ COM BANANA E GRANOLA + GANCHO
+        ctx.save();
+        // Tigela de Açaí
+        ctx.fillStyle = '#ec4899';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 140, 360, 200, 0, 0, Math.PI);
+        ctx.fill();
+        ctx.lineWidth = 14;
+        ctx.strokeStyle = '#f472b6';
+        ctx.stroke();
+
+        // Polpa espessa de açaí roxo profundo
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 140, 340, 95, 0, 0, Math.PI * 2);
+        const acaiGrad = ctx.createRadialGradient(cx, cy + 140, 40, cx, cy + 140, 300);
+        acaiGrad.addColorStop(0, '#4c1d95');
+        acaiGrad.addColorStop(0.7, '#3b0764');
+        acaiGrad.addColorStop(1, '#1e1b4b');
+        ctx.fillStyle = acaiGrad;
+        ctx.fill();
+
+        // Bananas fatiadas no açaí
+        for (let i = 0; i < 4; i++) {
+          const bx = cx - 180 + i * 110;
+          const by = cy + 90 - (i % 2) * 20;
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.ellipse(bx, by, 45, 38, 0.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ca8a04';
+          ctx.beginPath();
+          ctx.arc(bx, by, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Granola e farinha crocante
+        ctx.fillStyle = '#d97706';
+        for (let i = 0; i < 60; i++) {
+          const gx = cx - 220 + ((i * 17) % 440);
+          const gy = cy + 130 + ((i * 11) % 65);
+          ctx.beginPath();
+          ctx.arc(gx, gy, 4 + (i % 4), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Card Chamativo
+        ctx.fillStyle = '#f59e0b';
+        roundRect(ctx, cx - 300, cy - 280, 600, 90, 24);
+        ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'black 40px Outfit';
+        ctx.textAlign = 'center';
+        ctx.fillText('VOCÊ GOSTA DE AÇAÍ? 🥣', cx, cy - 220);
+        ctx.restore();
+
+      } else if (scene.id === 2) {
+        // CENA 2: APRESENTAÇÃO DA PLATAFORMA AÇAÍFOOD NO CELULAR
+        ctx.save();
+        const phoneW = 540;
+        const phoneH = 880;
+        roundRect(ctx, cx - phoneW/2, cy - phoneH/2 + 20, phoneW, phoneH, 50);
+        ctx.fillStyle = '#090514';
+        ctx.fill();
+        ctx.lineWidth = 10;
+        ctx.strokeStyle = '#a855f7';
+        ctx.stroke();
+
+        roundRect(ctx, cx - phoneW/2 + 15, cy - phoneH/2 + 35, phoneW - 30, phoneH - 30, 40);
+        ctx.fillStyle = '#1e1138';
+        ctx.fill();
+
+        // Topo do app
+        ctx.fillStyle = '#7e22ce';
+        roundRect(ctx, cx - phoneW/2 + 30, cy - phoneH/2 + 60, phoneW - 60, 100, 20);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 38px Outfit';
+        ctx.textAlign = 'center';
+        ctx.fillText('AçaíFood 🍇', cx, cy - phoneH/2 + 125);
+
+        // Mapa conectando 3 públicos
+        ctx.fillStyle = '#2e1065';
+        roundRect(ctx, cx - phoneW/2 + 30, cy - 200, phoneW - 60, 400, 24);
+        ctx.fill();
+
+        const pLoja = { x: cx - 140, y: cy - 90, label: 'Batedores 👨‍🍳', color: '#6366f1' };
+        const pMoto = { x: cx, y: cy + 80, label: 'Entregadores 🛵', color: '#eab308' };
+        const pCliente = { x: cx + 140, y: cy - 70, label: 'Compradores 😋', color: '#ec4899' };
+
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#c084fc';
+        ctx.beginPath();
+        ctx.moveTo(pLoja.x, pLoja.y);
+        ctx.lineTo(pMoto.x, pMoto.y);
+        ctx.lineTo(pCliente.x, pCliente.y);
+        ctx.closePath();
+        ctx.stroke();
+
+        [pLoja, pMoto, pCliente].forEach(p => {
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 35, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = '#ffffff';
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 24px Plus Jakarta Sans';
+          ctx.fillText(p.label, p.x, p.y + 60);
+        });
+
+        // Banner inferior
+        ctx.fillStyle = '#10b981';
+        roundRect(ctx, cx - phoneW/2 + 30, cy + 240, phoneW - 60, 90, 18);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 30px Outfit';
+        ctx.fillText('⚡ TUDO EM UM SÓ LUGAR!', cx, cy + 295);
+        ctx.restore();
+
+      } else if (scene.id === 3) {
+        // CENA 3A: É BATEDOR DE AÇAÍ?
+        ctx.save();
+        // Card do Batedor (Foto de Batedor preparando o açaí)
+        ctx.fillStyle = '#1e1b4b';
+        roundRect(ctx, cx - 340, cy - 280, 680, 560, 36);
+        ctx.fill();
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = '#6366f1';
+        ctx.stroke();
+
+        // Tigela/Balde derramando açaí
+        ctx.fillStyle = '#312e81';
+        ctx.beginPath();
+        ctx.arc(cx, cy - 50, 130, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = '#818cf8';
+        ctx.stroke();
+
+        // Açaí caindo
+        ctx.fillStyle = '#4c1d95';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - 30, 100, 75, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Gotas
+        ctx.fillStyle = '#a855f7';
+        for (let i = 0; i < 8; i++) {
+          ctx.beginPath();
+          ctx.arc(cx - 60 + i * 18, cy + 80 + (i % 3) * 20, 8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Título
+        ctx.fillStyle = '#6366f1';
+        roundRect(ctx, cx - 280, cy - 340, 560, 85, 20);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'black 38px Outfit';
+        ctx.textAlign = 'center';
+        ctx.fillText('👨‍🍳 É BATEDOR DE AÇAÍ?', cx, cy - 285);
+
+        // Vantagem
+        ctx.fillStyle = '#22c55e';
+        roundRect(ctx, cx - 260, cy + 180, 520, 75, 18);
+        ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 30px Plus Jakarta Sans';
+        ctx.fillText('Divulgue & Comercialize Mais!', cx, cy + 230);
+        ctx.restore();
+
+      } else if (scene.id === 4) {
+        // CENA 3B: É ENTREGADOR?
+        ctx.save();
+        ctx.fillStyle = '#1c1917';
+        roundRect(ctx, cx - 340, cy - 280, 680, 560, 36);
+        ctx.fill();
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = '#eab308';
+        ctx.stroke();
+
+        // Moto e Bag
+        ctx.fillStyle = '#292524';
+        roundRect(ctx, cx - 180, cy - 40, 360, 180, 24);
+        ctx.fill();
+
+        // Bag Vermelha / Verde de Entrega
+        ctx.fillStyle = '#dc2626';
+        roundRect(ctx, cx - 120, cy - 180, 180, 170, 20);
+        ctx.fill();
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#facc15';
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 28px Outfit';
+        ctx.textAlign = 'center';
+        ctx.fillText('ENTREGA 🛵', cx - 30, cy - 90);
+
+        // Rodas
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(cx - 100, cy + 160, 70, 0, Math.PI * 2);
+        ctx.arc(cx + 140, cy + 160, 70, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = '#94a3b8';
+        ctx.stroke();
+
+        // Título
+        ctx.fillStyle = '#eab308';
+        roundRect(ctx, cx - 260, cy - 340, 520, 85, 20);
+        ctx.fill();
+        ctx.fillStyle = '#000000';
+        ctx.font = 'black 38px Outfit';
+        ctx.fillText('🛵 É ENTREGADOR?', cx, cy - 285);
+
+        // Vantagem
+        ctx.fillStyle = '#f59e0b';
+        roundRect(ctx, cx - 260, cy + 200, 520, 75, 18);
+        ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 30px Plus Jakarta Sans';
+        ctx.fillText('Oportunidades de Entrega!', cx, cy + 250);
+        ctx.restore();
+
+      } else if (scene.id === 5) {
+        // CENA 3C: É COMPRADOR?
+        ctx.save();
+        ctx.fillStyle = '#2b1028';
+        roundRect(ctx, cx - 340, cy - 280, 680, 560, 36);
+        ctx.fill();
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = '#ec4899';
+        ctx.stroke();
+
+        // Tigela de Açaí saborosa
+        ctx.fillStyle = '#4c0519';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 40, 240, 130, 0, 0, Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#500724';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 40, 220, 60, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Colher e felicidade
+        ctx.save();
+        ctx.translate(cx + 120, cy - 20);
+        ctx.rotate(-0.35);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(-15, -160, 30, 180);
+        ctx.beginPath();
+        ctx.ellipse(0, 30, 45, 60, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Título
+        ctx.fillStyle = '#ec4899';
+        roundRect(ctx, cx - 260, cy - 340, 520, 85, 20);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'black 38px Outfit';
+        ctx.textAlign = 'center';
+        ctx.fillText('😋 É COMPRADOR?', cx, cy - 285);
+
+        // Vantagem
+        ctx.fillStyle = '#f43f5e';
+        roundRect(ctx, cx - 260, cy + 180, 520, 75, 18);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 30px Plus Jakarta Sans';
+        ctx.fillText('Mais Praticidade na Compra!', cx, cy + 230);
+        ctx.restore();
+
+      } else if (scene.id === 6) {
+        // CENA 4: ENCERRAMENTO & CHAMADA PARA AÇÃO
+        ctx.save();
+        ctx.fillStyle = '#0f0c1a';
+        roundRect(ctx, cx - 380, cy - 240, 760, 540, 36);
+        ctx.fill();
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = '#10b981';
+        ctx.stroke();
+
+        ctx.fillStyle = '#10b981';
+        ctx.font = 'bold 42px Outfit';
+        ctx.textAlign = 'center';
+        ctx.fillText('✨ A PLATAFORMA FOI FEITA', cx, cy - 150);
+        ctx.fillText('PARA CONECTAR VOCÊ!', cx, cy - 90);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 30px Plus Jakarta Sans';
+        ctx.fillText('Não importa se você vende, entrega ou consome.', cx, cy - 10);
+
+        // Botão Link Oficial
+        ctx.fillStyle = '#f59e0b';
+        roundRect(ctx, cx - 320, cy + 60, 640, 110, 25);
+        ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'black 48px Outfit';
+        ctx.fillText('www.acaifood.app.br', cx, cy + 135);
+
+        // Badge de Sucesso
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 28px Outfit';
+        ctx.fillText('🚀 DESSE JEITO VAI FUNCIONAR!', cx, cy + 230);
+        ctx.restore();
+      }
+    }
+
+    function renderFrame(time) {
+      const { scene, progress } = getSceneAtTime(time);
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // Fundo Gradiente
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+      bgGrad.addColorStop(0, '#0a0518');
+      bgGrad.addColorStop(0.5, '#150a2c');
+      bgGrad.addColorStop(1, '#06030c');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Glow radial do tema
+      ctx.save();
+      const radGrad = ctx.createRadialGradient(w/2, h/2, 100, w/2, h/2, 900);
+      radGrad.addColorStop(0, scene.actorColor + '30');
+      radGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = radGrad;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+
+      // BARRA DE PROGRESSO SUPERIOR
+      ctx.fillStyle = '#ffffff15';
+      ctx.fillRect(40, 50, w - 80, 12);
+      ctx.fillStyle = scene.actorColor;
+      ctx.fillRect(40, 50, (w - 80) * (time / TOTAL_DURATION), 12);
+
+      // BADGE SUPERIOR DA CENA
+      ctx.fillStyle = '#130d24';
+      roundRect(ctx, 40, 90, w - 80, 110, 24);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = scene.actorColor;
+      ctx.stroke();
+
+      ctx.fillStyle = scene.actorColor;
+      ctx.font = 'bold 34px Outfit';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${scene.actorIcon} ${scene.sceneNumber}: ${scene.sceneType}`, 70, 155);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 28px Plus Jakarta Sans';
+      ctx.textAlign = 'right';
+      ctx.fillText(fmtTime(time) + ' / 01:20', w - 70, 155);
+
+      // DESENHO PRINCIPAL DA CENA
+      drawSceneVisual(ctx, scene, w, h, progress, time);
+
+      // RODAPÉ: Legenda na SAFE ZONE do Instagram
+      const subBoxH = 260;
+      const subBoxY = isVerticalMode ? (h - subBoxH - 250) : (h - subBoxH - 40);
+
+      ctx.fillStyle = '#090514f5';
+      roundRect(ctx, 40, subBoxY, w - 80, subBoxH, 28);
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#a855f750';
+      ctx.stroke();
+
+      // Título da cena
+      ctx.fillStyle = scene.actorColor;
+      ctx.font = 'bold 30px Outfit';
+      ctx.textAlign = 'center';
+      ctx.fillText(scene.title, w / 2, subBoxY + 50);
+
+      // Texto exato do roteiro
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 32px Plus Jakarta Sans';
+      wrapText(ctx, `"${scene.subtitle}"`, w / 2, subBoxY + 115, w - 160, 44);
+
+      // Rodapé Oficial
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '600 22px Plus Jakarta Sans';
+      ctx.fillText('AçaíFood • www.acaifood.app.br', w / 2, subBoxY + 225);
+
+      // Overlay do Instagram
+      if (isVerticalMode && showInstagramOverlay) {
+        drawInstagramUiOverlay(ctx, w, h);
+      }
+    }
+
+    function toggleInstagramOverlay() {
+      showInstagramOverlay = !showInstagramOverlay;
+      const label = document.getElementById('instaUiLabel');
+      label.textContent = showInstagramOverlay ? 'Ocultar Safe Zone' : 'Ver Safe Zone Instagram';
+      renderFrame(currentTime);
+    }
+
+    function drawInstagramUiOverlay(ctx, w, h) {
+      ctx.save();
+      // Zona 1:1 do feed
+      ctx.strokeStyle = '#e11d4880';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 8]);
+      const feedTop = (h - w) / 2;
+      ctx.strokeRect(0, feedTop, w, w);
+      ctx.fillStyle = '#e11d48';
+      ctx.font = 'bold 22px Plus Jakarta Sans';
+      ctx.textAlign = 'left';
+      ctx.fillText('📐 Área Quadrada do Feed (1:1)', 20, feedTop - 10);
+      ctx.setLineDash([]);
+
+      // Botões Reels laterais
+      const btnX = w - 100;
+      const icons = [
+        { icon: '❤️', label: '14.8K', y: h - 680 },
+        { icon: '💬', label: '920', y: h - 550 },
+        { icon: '✈️', label: 'Compartilhar', y: h - 420 },
+        { icon: '⋮', label: '', y: h - 310 }
+      ];
+
+      icons.forEach(btn => {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '48px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(btn.icon, btnX, btn.y);
+        if (btn.label) {
+          ctx.font = 'bold 22px Plus Jakarta Sans';
+          ctx.fillText(btn.label, btnX, btn.y + 40);
+        }
+      });
+
+      // Legenda inferior do Reels
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#7e22ce';
+      ctx.beginPath();
+      ctx.arc(80, h - 160, 35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🍇', 80, h - 150);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px Plus Jakarta Sans';
+      ctx.fillText('@acaifood.app.br', 135, h - 165);
+
+      ctx.font = '24px Plus Jakarta Sans';
+      ctx.fillStyle = '#f1f5f9';
+      ctx.fillText('AçaíFood conecta batedores, entregadores e compradores! 🚀', 50, h - 90);
+
+      ctx.font = '22px Plus Jakarta Sans';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText('🎵 Áudio original • AçaíFood Oficial', 50, h - 40);
+      ctx.restore();
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(' ');
+      let line = '';
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          ctx.fillText(line, x, y);
+          line = words[n] + ' ';
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, y);
+    }
+
+    // ==========================================
+    // ANIMAÇÃO E CONTROLES
+    // ==========================================
+    function animationLoop(timestamp) {
+      if (!lastAnimTimestamp) lastAnimTimestamp = timestamp;
+      const delta = (timestamp - lastAnimTimestamp) / 1000;
+      lastAnimTimestamp = timestamp;
+
+      if (isPlaying) {
+        currentTime += delta;
+        if (currentTime >= TOTAL_DURATION) {
+          currentTime = TOTAL_DURATION;
+          pauseVideo();
+        }
+        checkSceneChange(currentTime);
+        timeSlider.value = currentTime;
+        updateUI();
+      }
+
+      renderFrame(currentTime);
+
+      if (isPlaying || mediaRecorder && mediaRecorder.state === 'recording') {
+        animFrameId = requestAnimationFrame(animationLoop);
+      }
+    }
+
+    function togglePlay() {
+      if (isPlaying) {
+        pauseVideo();
+      } else {
+        playVideo();
+      }
+    }
+
+    async function playVideo() {
+      await initAudioSystem();
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+      if (currentTime >= TOTAL_DURATION) {
+        currentTime = 0;
+      }
+      isPlaying = true;
+      lastAnimTimestamp = null;
+      playIcon.textContent = '⏸️';
+      playLabel.textContent = 'Pausar';
+      startBackgroundMusic();
+      checkSceneChange(currentTime, true);
+      animFrameId = requestAnimationFrame(animationLoop);
+    }
+
+    function pauseVideo() {
+      isPlaying = false;
+      playIcon.textContent = '▶️';
+      playLabel.textContent = 'Assistir Vídeo';
+      stopBackgroundMusic();
+      stopSceneNarration();
+      if (animFrameId) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+      }
+      renderFrame(currentTime);
+    }
+
+    function restartVideo() {
+      seekTo(0);
+      playVideo();
+    }
+
+    function seekTo(time) {
+      currentTime = Math.max(0, Math.min(TOTAL_DURATION, time));
+      timeSlider.value = currentTime;
+      updateUI();
+      checkSceneChange(currentTime, true);
+      renderFrame(currentTime);
+    }
+
+    function seekDelta(seconds) {
+      seekTo(currentTime + seconds);
+    }
+
+    function onSliderSeek(val) {
+      seekTo(parseFloat(val));
+    }
+
+    function checkSceneChange(time, force = false) {
+      const { scene } = getSceneAtTime(time);
+      if (scene.id !== activeSceneId || force) {
+        activeSceneId = scene.id;
+        soundEngine.playSfx(scene.sound);
+        if (isPlaying) {
+          playSceneNarration(scene.id);
+        }
+        highlightActiveSceneCard(scene.id);
+      }
+    }
+
+    function fmtTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function updateUI() {
+      timeCurrent.textContent = fmtTime(currentTime);
+      const { scene } = getSceneAtTime(currentTime);
+      liveActorPill.textContent = `${scene.actorIcon} ${scene.sceneNumber} — ${scene.actor}`;
+      liveActorPill.style.borderColor = scene.actorColor;
+      liveActorPill.style.color = scene.actorColor;
+    }
+
+    function toggleAspectRatio() {
+      isVerticalMode = !isVerticalMode;
+      const btn = document.getElementById('btnToggleMode');
+      const icon = document.getElementById('modeIcon');
+      const label = document.getElementById('modeLabel');
+
+      if (isVerticalMode) {
+        canvas.width = 1080;
+        canvas.height = 1920;
+        canvas.className = "w-full max-w-[360px] md:max-w-[430px] max-h-[720px] object-contain rounded-xl";
+        icon.textContent = "📱";
+        label.textContent = "Formato 9:16 (Reels/TikTok)";
+      } else {
+        canvas.width = 1920;
+        canvas.height = 1080;
+        canvas.className = "w-full max-w-[680px] max-h-[460px] object-contain rounded-xl";
+        icon.textContent = "🖥️";
+        label.textContent = "Formato 16:9 (YouTube/Site)";
+      }
+      renderFrame(currentTime);
+    }
+
+    function buildSceneCards() {
+      const container = document.getElementById('scenesList');
+      container.innerHTML = '';
+      scenes.forEach(s => {
+        const card = document.createElement('div');
+        card.id = `card-scene-${s.id}`;
+        card.className = "p-3 rounded-xl border border-purple-900/40 bg-purple-950/20 hover:bg-purple-900/40 transition cursor-pointer space-y-1.5";
+        card.onclick = () => {
+          seekTo(s.timeStart);
+          if (!isPlaying) playVideo();
+        };
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold" style="color: ${s.actorColor}">${s.actorIcon} ${s.sceneNumber}: ${s.sceneType}</span>
+            <span class="text-[10px] text-slate-400 font-mono">${fmtTime(s.timeStart)} - ${fmtTime(s.timeEnd)}</span>
+          </div>
+          <h4 class="text-xs font-bold text-slate-200">${s.title}</h4>
+          <p class="text-[11px] text-slate-400 line-clamp-2">"${s.narration}"</p>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function highlightActiveSceneCard(sceneId) {
+      scenes.forEach(s => {
+        const el = document.getElementById(`card-scene-${s.id}`);
+        if (!el) return;
+        if (s.id === sceneId) {
+          el.className = "p-3 rounded-xl border-2 bg-purple-900/60 shadow-lg space-y-1.5 transition";
+          el.style.borderColor = s.actorColor;
+        } else {
+          el.className = "p-3 rounded-xl border border-purple-900/40 bg-purple-950/20 hover:bg-purple-900/40 transition cursor-pointer space-y-1.5";
+          el.style.borderColor = 'rgba(88, 28, 135, 0.4)';
+        }
+      });
+    }
+
+    // ==========================================
+    // GRAVAÇÃO E DOWNLOAD DO VÍDEO
+    // ==========================================
+    let mediaRecorder = null;
+    let recordedChunks = [];
+
+    async function startRecordingVideo() {
+      await initAudioSystem();
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+
+      seekTo(0);
+      recordedChunks = [];
+
+      const canvasStream = canvas.captureStream(60);
+      const audioTracks = audioDestNode.stream.getAudioTracks();
+
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...audioTracks
+      ]);
+
+      let options = { mimeType: 'video/webm;codecs=vp9,opus' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm' };
+      }
+
+      try {
+        mediaRecorder = new MediaRecorder(combinedStream, options);
+      } catch (e) {
+        alert('Erro ao iniciar gravador MediaRecorder: ' + e.message);
+        return;
+      }
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'video_acaifood_roteiro_whatsapp_80s.webm';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }, 100);
+
+        document.getElementById('recordIndicator').classList.add('hidden');
+        document.getElementById('btnRecord').innerHTML = '<span>✅ Vídeo Gravado e Baixado!</span>';
+        setTimeout(() => {
+          document.getElementById('btnRecord').innerHTML = '<span class="animate-pulse text-base">🔴</span> <span>Gravar e Baixar Vídeo HD (80s)</span>';
+        }, 4000);
+      };
+
+      mediaRecorder.start();
+      document.getElementById('recordIndicator').classList.remove('hidden');
+
+      playVideo();
+
+      const checkRecordFinish = setInterval(() => {
+        if (currentTime >= TOTAL_DURATION || !isPlaying) {
+          clearInterval(checkRecordFinish);
+          if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
+        }
+      }, 500);
+    }
+
+    buildSceneCards();
+    renderFrame(0);
+    updateUI();
+  </script>
+</body>
+</html>

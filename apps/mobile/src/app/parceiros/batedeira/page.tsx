@@ -38,6 +38,7 @@ import type { PixModalData } from "@/components/PixModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PartnerShareModal, StoreShareCard } from "@/components/PartnerShareModal";
 import { SupportChatButton } from "@/components/SupportChatButton";
+import { LocationAlertModal } from "@/components/LocationAlertModal";
 import {
   getPrinterConfig,
   savePrinterConfig,
@@ -3856,6 +3857,9 @@ export default function BatedeiraDashboard() {
           setPhotoModalData(prev => ({ ...prev, open: false }));
         }}
       />
+
+      {/* ALERTA UMA VEZ: atualizar GPS estando no estabelecimento */}
+      <LocationAlertModal userRole={currentUser?.role} onUpdateGPS={handleUpdateGPS} />
 
       {/* BOTÃO FLUTUANTE DE ATENDIMENTO / SUPORTE GERAL */}
       <SupportChatButton currentUser={currentUser} />

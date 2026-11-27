@@ -12,17 +12,28 @@ export async function GET(request: Request) {
   if (!auth.authorized) return unauthorizedResponse(auth.error);
 
   try {
-    const quota = await getFounderQuotaStatus();
+    const { searchParams } = new URL(request.url);
+    const city = searchParams.get('city') || undefined;
+
+    const quota = await getFounderQuotaStatus({ city });
 
     return NextResponse.json({
       success: true,
+      // Propriedades existentes (100% retrocompatíveis)
       activationFee: quota.activationFee,
       freeQuota: quota.freeQuota,
       activationEnabled: quota.activationEnabled,
       subsidizedCount: quota.subsidizedCount,
       paidCount: quota.paidCount,
       pendingCount: quota.pendingCount,
-      freeSlotsRemaining: quota.freeSlotsRemaining
+      freeSlotsRemaining: quota.freeSlotsRemaining,
+
+      // Novas propriedades estruturadas
+      stores: quota.stores,
+      couriers: quota.couriers,
+      cityBreakdown: quota.cityBreakdown || [],
+      cityConfigs: quota.cityConfigs || {},
+      targetCity: quota.targetCity || null
     });
 
   } catch (error: any) {
@@ -37,7 +48,16 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { activationFee, freeQuota, activationEnabled } = body;
+    const {
+      activationFee,
+      freeQuota,
+      activationEnabled,
+      storeFreeQuota,
+      storeActivationFee,
+      courierFreeQuota,
+      courierActivationFee,
+      cityConfigs
+    } = body;
 
     const supabase = getSupabaseAdmin();
 
@@ -49,23 +69,53 @@ export async function POST(request: Request) {
 
     const currentCfg: any = (await getPlatformConfig('activation')) || {};
 
-    const updatedCfg = {
+    const updatedCfg: any = {
+      ...currentCfg,
       activationFee: activationFee !== undefined ? Number(activationFee) : (currentCfg.activationFee ?? 12.90),
       freeQuota: freeQuota !== undefined ? Number(freeQuota) : (currentCfg.freeQuota ?? 50),
       activationEnabled: activationEnabled !== undefined ? Boolean(activationEnabled) : (firstRow?.activation_fee_enabled ?? true),
       updatedAt: new Date().toISOString()
     };
 
-    if (!Number.isFinite(updatedCfg.activationFee) || updatedCfg.activationFee < 0 || !Number.isFinite(updatedCfg.freeQuota) || updatedCfg.freeQuota < 0) {
-      return NextResponse.json({ error: 'Valores inválidos' }, { status: 400 });
+    // Atualização de Lojas
+    if (storeFreeQuota !== undefined) updatedCfg.storeFreeQuota = Math.max(0, Number(storeFreeQuota));
+    else if (updatedCfg.storeFreeQuota === undefined) updatedCfg.storeFreeQuota = 20;
+
+    if (storeActivationFee !== undefined) updatedCfg.storeActivationFee = Math.max(0, Number(storeActivationFee));
+    else if (updatedCfg.storeActivationFee === undefined) updatedCfg.storeActivationFee = updatedCfg.activationFee;
+
+    // Atualização de Motoboys
+    if (courierFreeQuota !== undefined) updatedCfg.courierFreeQuota = Math.max(0, Number(courierFreeQuota));
+    else if (updatedCfg.courierFreeQuota === undefined) updatedCfg.courierFreeQuota = 30;
+
+    if (courierActivationFee !== undefined) updatedCfg.courierActivationFee = Math.max(0, Number(courierActivationFee));
+    else if (updatedCfg.courierActivationFee === undefined) updatedCfg.courierActivationFee = updatedCfg.activationFee;
+
+    // Se cityConfigs for fornecido
+    if (cityConfigs !== undefined && typeof cityConfigs === 'object') {
+      updatedCfg.cityConfigs = cityConfigs;
     }
 
-    const saved = await setPlatformConfig('activation', { activationFee: updatedCfg.activationFee, freeQuota: updatedCfg.freeQuota });
+    // Manter a cota global sincronizada (soma das cotas ou fallback)
+    if (storeFreeQuota !== undefined || courierFreeQuota !== undefined) {
+      updatedCfg.freeQuota = (updatedCfg.storeFreeQuota || 0) + (updatedCfg.courierFreeQuota || 0);
+    }
+
+    if (
+      !Number.isFinite(updatedCfg.activationFee) || updatedCfg.activationFee < 0 ||
+      !Number.isFinite(updatedCfg.freeQuota) || updatedCfg.freeQuota < 0 ||
+      !Number.isFinite(updatedCfg.storeFreeQuota) || updatedCfg.storeFreeQuota < 0 ||
+      !Number.isFinite(updatedCfg.courierFreeQuota) || updatedCfg.courierFreeQuota < 0
+    ) {
+      return NextResponse.json({ error: 'Valores numéricos inválidos para cotas ou taxas' }, { status: 400 });
+    }
+
+    const saved = await setPlatformConfig('activation', updatedCfg);
     if (!saved.ok) {
       return NextResponse.json({ error: saved.error }, { status: 500 });
     }
 
-    // A flag que vale é a COLUNA activation_fee_enabled (lida por founderQuota/activation)
+    // A flag que vale no banco legado é activation_fee_enabled
     if (firstRow?.id) {
       const { error: updErr } = await supabase
         .from('platform_settings')

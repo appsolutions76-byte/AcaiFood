@@ -11,19 +11,27 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const paymentId = searchParams.get('paymentId');
+    const queryRole = searchParams.get('role') || undefined;
+    const queryCity = searchParams.get('city') || undefined;
 
     // Se não houver userId, é uma consulta pública sobre a cota de ativação (usada pela tela de cadastro pública)
     if (!userId) {
-      const quota = await getFounderQuotaStatus();
+      const quota = await getFounderQuotaStatus({ role: queryRole, city: queryCity });
       return NextResponse.json({
         success: true,
+        // Propriedades retrocompatíveis
         activationEnabled: quota.activationEnabled,
         activationFee: quota.activationFee,
         freeQuota: quota.freeQuota,
         subsidizedCount: quota.subsidizedCount,
         freeSlotsRemaining: quota.freeSlotsRemaining,
         isFree: quota.isFree,
-        userStatus: null
+        userStatus: null,
+        // Propriedades estruturadas por papel e cidade
+        targetRole: quota.targetRole,
+        targetCity: quota.targetCity,
+        stores: quota.stores,
+        couriers: quota.couriers
       });
     }
 
@@ -38,54 +46,62 @@ export async function GET(request: Request) {
     }
 
     const supabase = getSupabaseAdmin();
-    const quota = await getFounderQuotaStatus(userId || undefined);
+
+    // Obter dados do usuário para papel e cidade
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, name, role, cidade, asaas_wallet_id, asaas_account_id, status')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const effectiveRole = queryRole || user?.role;
+    const effectiveCity = queryCity || user?.cidade;
+
+    const quota = await getFounderQuotaStatus({
+      userId,
+      role: effectiveRole,
+      city: effectiveCity
+    });
+
     const { activationFee, freeQuota, activationEnabled, subsidizedCount, freeSlotsRemaining, isUserAlreadyFounder, isFree } = quota;
 
     let userActivationStatus: any = null;
-    if (userId) {
-      const { data: user } = await supabase
-        .from('users')
-        .select('id, name, role, asaas_wallet_id, asaas_account_id, status')
-        .eq('id', userId)
-        .maybeSingle();
+    if (user) {
+      let isPaid = Boolean(user.asaas_wallet_id || user.asaas_account_id || isUserAlreadyFounder);
 
-      if (user) {
-        let isPaid = Boolean(user.asaas_wallet_id || user.asaas_account_id || isUserAlreadyFounder);
+      const ASAAS_API_KEY = await getAsaasApiKey();
+      const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
 
-        const ASAAS_API_KEY = await getAsaasApiKey();
-        const ASAAS_URL = getAsaasBaseUrl(ASAAS_API_KEY);
-
-        if (!isPaid && ASAAS_API_KEY) {
-          try {
-            const searchUrl = paymentId 
-              ? `${ASAAS_URL}/payments/${paymentId}`
-              : `${ASAAS_URL}/payments?externalReference=ACTIVATE_${userId}`;
-            
-            const res = await fetch(searchUrl, {
-              headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
-            });
-            if (res.ok) {
-              const payData = await res.json();
-              const paymentList = Array.isArray(payData?.data) ? payData.data : [payData];
-              if (paymentList.some((p: any) => p && (p.status === 'RECEIVED' || p.status === 'CONFIRMED'))) {
-                isPaid = true;
-                await supabase
-                  .from('users')
-                  .update({ status: 'active' })
-                  .eq('id', userId);
-              }
+      if (!isPaid && ASAAS_API_KEY) {
+        try {
+          const searchUrl = paymentId 
+            ? `${ASAAS_URL}/payments/${paymentId}`
+            : `${ASAAS_URL}/payments?externalReference=ACTIVATE_${userId}`;
+          
+          const res = await fetch(searchUrl, {
+            headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' }
+          });
+          if (res.ok) {
+            const payData = await res.json();
+            const paymentList = Array.isArray(payData?.data) ? payData.data : [payData];
+            if (paymentList.some((p: any) => p && (p.status === 'RECEIVED' || p.status === 'CONFIRMED'))) {
+              isPaid = true;
+              await supabase
+                .from('users')
+                .update({ status: 'active' })
+                .eq('id', userId);
             }
-          } catch (_err) {}
-        }
-
-        userActivationStatus = {
-          userId: user.id,
-          isPaid,
-          isFounderSubsidized: isUserAlreadyFounder,
-          asaasLinked: Boolean(user.asaas_wallet_id),
-          paymentId: paymentId || null
-        };
+          }
+        } catch (_err) {}
       }
+
+      userActivationStatus = {
+        userId: user.id,
+        isPaid,
+        isFounderSubsidized: isUserAlreadyFounder,
+        asaasLinked: Boolean(user.asaas_wallet_id),
+        paymentId: paymentId || null
+      };
     }
 
     return NextResponse.json({
@@ -96,7 +112,11 @@ export async function GET(request: Request) {
       subsidizedCount,
       freeSlotsRemaining,
       isFree,
-      userStatus: userActivationStatus
+      userStatus: userActivationStatus,
+      targetRole: quota.targetRole,
+      targetCity: quota.targetCity,
+      stores: quota.stores,
+      couriers: quota.couriers
     });
 
   } catch (error: any) {
@@ -111,7 +131,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { userId, forceFounder } = body;
+    const { userId, forceFounder, role: bodyRole, city: bodyCity } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 });
@@ -125,8 +145,22 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    const quota = await getFounderQuotaStatus(userId);
-    const { activationFee, freeQuota, activationEnabled, subsidizedCount, freeSlotsRemaining, isUserAlreadyFounder } = quota;
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, name, email, cpf_cnpj, phone, telefone, role, cidade, status, asaas_wallet_id, asaas_account_id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const effectiveRole = bodyRole || user?.role;
+    const effectiveCity = bodyCity || user?.cidade;
+
+    const quota = await getFounderQuotaStatus({
+      userId,
+      role: effectiveRole,
+      city: effectiveCity
+    });
+
+    const { activationFee, activationEnabled, freeSlotsRemaining, isUserAlreadyFounder } = quota;
 
     // Validação de segurança: apenas admin autenticado ou segredo interno pode forçar subsídio gratuito
     let isForceAdmin = false;
@@ -148,7 +182,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         isFounderSubsidized: true,
-        freeSlotsRemaining: freeSlotsRemaining,
+        freeSlotsRemaining,
         message: 'Vaga de fundador garantida com sucesso!'
       });
     }
@@ -161,16 +195,11 @@ export async function POST(request: Request) {
     }
 
     // Dados do pagador vêm do cadastro no banco (nada inventado, nada do navegador)
-    const { data: payer } = await supabase
-      .from('users')
-      .select('name, email, cpf_cnpj, phone, telefone')
-      .eq('id', userId)
-      .maybeSingle();
-    let payerEmail = String(payer?.email || '').trim();
+    let payerEmail = String(user?.email || '').trim();
     if (!payerEmail && !isAdmin) payerEmail = String(auth.user?.email || '').trim();
-    const cleanCpf = String(payer?.cpf_cnpj || '').replace(/\D/g, '');
-    const cleanPhone = String(payer?.phone || payer?.telefone || '').replace(/\D/g, '');
-    const payerName = String(payer?.name || '').trim();
+    const cleanCpf = String(user?.cpf_cnpj || '').replace(/\D/g, '');
+    const cleanPhone = String(user?.phone || user?.telefone || '').replace(/\D/g, '');
+    const payerName = String(user?.name || '').trim();
 
     if (!payerName || !payerEmail || !(cleanCpf.length === 11 || cleanCpf.length === 14)) {
       return NextResponse.json({

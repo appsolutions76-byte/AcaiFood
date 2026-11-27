@@ -138,6 +138,14 @@ function AdminDashboardContent() {
     paidCount: number;
     pendingCount: number;
     freeSlotsRemaining: number;
+    storeFreeQuota: number;
+    storeActivationFee: number;
+    courierFreeQuota: number;
+    courierActivationFee: number;
+    stores?: any;
+    couriers?: any;
+    cityBreakdown?: any[];
+    cityConfigs?: Record<string, any>;
   }>({
     activationFee: 12.90,
     freeQuota: 50,
@@ -145,8 +153,31 @@ function AdminDashboardContent() {
     subsidizedCount: 0,
     paidCount: 0,
     pendingCount: 0,
-    freeSlotsRemaining: 50
+    freeSlotsRemaining: 50,
+    storeFreeQuota: 20,
+    storeActivationFee: 12.90,
+    courierFreeQuota: 30,
+    courierActivationFee: 12.90,
+    stores: {
+      freeQuota: 20,
+      activationFee: 12.90,
+      subsidizedCount: 0,
+      paidCount: 0,
+      pendingCount: 0,
+      freeSlotsRemaining: 20
+    },
+    couriers: {
+      freeQuota: 30,
+      activationFee: 12.90,
+      subsidizedCount: 0,
+      paidCount: 0,
+      pendingCount: 0,
+      freeSlotsRemaining: 30
+    },
+    cityBreakdown: [],
+    cityConfigs: {}
   });
+  const [selectedActivationCity, setSelectedActivationCity] = useState<string>('all');
   const [adsList, setAdsList] = useState<any[]>([]);
   const [isLoadingAds, setIsLoadingAds] = useState(false);
   const [isSavingAd, setIsSavingAd] = useState(false);
@@ -531,24 +562,38 @@ function AdminDashboardContent() {
     (store.currentUser.email as string)?.toLowerCase() === 'appsolutions76@gmail.com'
   );
 
-  const fetchActivationConfig = async () => {
+  const fetchActivationConfig = async (cityFilter?: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const authHeaders: any = {};
       if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`;
 
-      const res = await fetch('/api/admin/activation-config', { headers: authHeaders });
+      const targetCity = cityFilter && cityFilter !== 'all' ? cityFilter : '';
+      const url = targetCity 
+        ? `/api/admin/activation-config?city=${encodeURIComponent(targetCity)}`
+        : '/api/admin/activation-config';
+
+      const res = await fetch(url, { headers: authHeaders });
       const data = await res.json();
       if (data && data.success) {
-        setActivationConfig({
+        setActivationConfig(prev => ({
+          ...prev,
           activationFee: Number(data.activationFee ?? 12.90),
           freeQuota: Number(data.freeQuota ?? 50),
           activationEnabled: Boolean(data.activationEnabled !== false),
           subsidizedCount: Number(data.subsidizedCount ?? 0),
           paidCount: Number(data.paidCount ?? 0),
           pendingCount: Number(data.pendingCount ?? 0),
-          freeSlotsRemaining: Number(data.freeSlotsRemaining ?? 50)
-        });
+          freeSlotsRemaining: Number(data.freeSlotsRemaining ?? 50),
+          storeFreeQuota: Number(data.stores?.freeQuota ?? prev.storeFreeQuota ?? 20),
+          storeActivationFee: Number(data.stores?.activationFee ?? prev.storeActivationFee ?? data.activationFee ?? 12.90),
+          courierFreeQuota: Number(data.couriers?.freeQuota ?? prev.courierFreeQuota ?? 30),
+          courierActivationFee: Number(data.couriers?.activationFee ?? prev.courierActivationFee ?? data.activationFee ?? 12.90),
+          stores: data.stores || prev.stores,
+          couriers: data.couriers || prev.couriers,
+          cityBreakdown: data.cityBreakdown || [],
+          cityConfigs: data.cityConfigs || {}
+        }));
       } else {
         console.warn("Aviso ao carregar config de ativação:", data?.error || res.statusText);
       }
@@ -569,14 +614,19 @@ function AdminDashboardContent() {
         headers: authHeaders,
         body: JSON.stringify({
           activationFee: activationConfig.activationFee,
-          freeQuota: activationConfig.freeQuota,
-          activationEnabled: activationConfig.activationEnabled
+          freeQuota: (Number(activationConfig.storeFreeQuota) || 0) + (Number(activationConfig.courierFreeQuota) || 0),
+          activationEnabled: activationConfig.activationEnabled,
+          storeFreeQuota: Number(activationConfig.storeFreeQuota),
+          storeActivationFee: Number(activationConfig.storeActivationFee),
+          courierFreeQuota: Number(activationConfig.courierFreeQuota),
+          courierActivationFee: Number(activationConfig.courierActivationFee),
+          cityConfigs: activationConfig.cityConfigs
         })
       });
       const data = await res.json();
       if (data && data.success) {
-        showToast("✅ Configurações de ativação de parceiros salvas!");
-        fetchActivationConfig();
+        showToast("✅ Configurações de vagas e taxas salvas com sucesso!");
+        fetchActivationConfig(selectedActivationCity);
       } else {
         alert("Erro ao salvar: " + (data.error || 'Falha'));
       }
@@ -3293,50 +3343,182 @@ function AdminDashboardContent() {
 
         {activeTab === 'ativacoes' && (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-            {/* Header / KPIs de Ativação */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                <p className="text-zinc-500 dark:text-zinc-400 text-xs uppercase font-bold">🎁 Vagas Fundador Usadas</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-black text-purple-600 dark:text-purple-400">{subsidizedPartnersCount}</span>
-                  <span className="text-xs text-zinc-500">de {activationConfig.freeQuota} vagas</span>
-                </div>
-                <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full mt-3 overflow-hidden">
-                  <div 
-                    className="bg-purple-600 h-full rounded-full transition-all"
-                    style={{ width: `${Math.min(100, (subsidizedPartnersCount / Math.max(1, activationConfig.freeQuota)) * 100)}%` }}
-                  />
+            {/* Barra de Filtro de Cidade */}
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🏙️</span>
+                <div>
+                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Filtrar Vagas por Praça / Cidade</h3>
+                  <p className="text-[11px] text-zinc-500">Acompanhe cotas e vagas gratuitas separadas por região</p>
                 </div>
               </div>
-
-              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                <p className="text-zinc-500 dark:text-zinc-400 text-xs uppercase font-bold">✨ Vagas Gratuitas Restantes</p>
-                <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{freeSlotsLeft}</p>
-                <p className="text-[11px] text-zinc-500 mt-1">Isenção para os próximos cadastros</p>
-              </div>
-
-              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                <p className="text-zinc-500 dark:text-zinc-400 text-xs uppercase font-bold">💳 Ativações Pagas (Pix)</p>
-                <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{activationConfig.paidCount}</p>
-                <p className="text-[11px] text-zinc-500 mt-1">Taxas de R$ {activationConfig.activationFee.toFixed(2)} pagas</p>
-              </div>
-
-              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                <p className="text-zinc-500 dark:text-zinc-400 text-xs uppercase font-bold">🛡️ Proteção Anti-Curiosos</p>
-                <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">Ativa</p>
-                <p className="text-[11px] text-zinc-500 mt-1">Subcontas criadas apenas sob demanda</p>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <select
+                  value={selectedActivationCity}
+                  onChange={(e) => {
+                    const c = e.target.value;
+                    setSelectedActivationCity(c);
+                    fetchActivationConfig(c);
+                  }}
+                  className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-xs font-bold rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500 w-full sm:w-60"
+                >
+                  <option value="all">🌐 Todas as Cidades (Visão Consolidada)</option>
+                  {cities.map((city: any) => (
+                    <option key={city.id || city.name} value={city.name}>
+                      📍 {city.name} {city.uf ? `(${city.uf})` : ''}
+                    </option>
+                  ))}
+                  {activationConfig.cityBreakdown
+                    ?.filter((cb: any) => !cities.some((c: any) => c.name.toLowerCase() === cb.city.toLowerCase()))
+                    .map((cb: any) => (
+                      <option key={cb.normalizedCity} value={cb.city}>
+                        📍 {cb.city}
+                      </option>
+                    ))}
+                </select>
+                {selectedActivationCity !== 'all' && (
+                  <button
+                    onClick={() => {
+                      setSelectedActivationCity('all');
+                      fetchActivationConfig('all');
+                    }}
+                    className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold whitespace-nowrap px-2"
+                  >
+                    Limpar
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Painel de Ajuste de Taxa & Cota */}
-            {showLegacy && (
+            {/* Painéis Separados: Lojas/Batedeiras vs Motoboys/Entregadores */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* Card Lojas / Batedeiras */}
+              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border-2 border-purple-200 dark:border-purple-900/60 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2.5 bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 rounded-xl text-lg shadow-sm">
+                      🏪
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-zinc-900 dark:text-white">Batedeiras & Lojas</h4>
+                      <p className="text-[11px] text-zinc-500">Cota exclusiva para estabelecimentos parceiros</p>
+                    </div>
+                  </div>
+                  <span className="bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800">
+                    Lojas Fundadoras
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 my-4">
+                  <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <p className="text-[10px] uppercase font-bold text-zinc-500">Vagas Usadas</p>
+                    <p className="text-xl font-black text-purple-600 dark:text-purple-400 mt-0.5">
+                      {activationConfig.stores?.subsidizedCount ?? 0}
+                      <span className="text-[11px] font-normal text-zinc-400 ml-1">/ {activationConfig.stores?.freeQuota ?? 20}</span>
+                    </p>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                    <p className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Restantes</p>
+                    <p className="text-xl font-black text-emerald-600 dark:text-emerald-300 mt-0.5">
+                      {activationConfig.stores?.freeSlotsRemaining ?? 0}
+                    </p>
+                  </div>
+                  <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <p className="text-[10px] uppercase font-bold text-zinc-500">Taxa Pós-Cota</p>
+                    <p className="text-base font-black text-zinc-900 dark:text-white mt-1">
+                      R$ {Number(activationConfig.stores?.activationFee ?? 12.90).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Barra de Progresso Lojas */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px] font-bold text-zinc-500">
+                    <span>Ocupação das vagas gratuitas</span>
+                    <span>
+                      {Math.round(((activationConfig.stores?.subsidizedCount ?? 0) / Math.max(1, activationConfig.stores?.freeQuota ?? 20)) * 100)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-purple-600 h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, ((activationConfig.stores?.subsidizedCount ?? 0) / Math.max(1, activationConfig.stores?.freeQuota ?? 20)) * 100)}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Motoboys / Entregadores */}
+              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border-2 border-emerald-200 dark:border-emerald-900/60 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 rounded-xl text-lg shadow-sm">
+                      🛵
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-zinc-900 dark:text-white">Motoboys & Entregadores</h4>
+                      <p className="text-[11px] text-zinc-500">Cota exclusiva para pilotos e motoristas</p>
+                    </div>
+                  </div>
+                  <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+                    Pilotos Fundadores
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 my-4">
+                  <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <p className="text-[10px] uppercase font-bold text-zinc-500">Vagas Usadas</p>
+                    <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                      {activationConfig.couriers?.subsidizedCount ?? 0}
+                      <span className="text-[11px] font-normal text-zinc-400 ml-1">/ {activationConfig.couriers?.freeQuota ?? 30}</span>
+                    </p>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                    <p className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Restantes</p>
+                    <p className="text-xl font-black text-emerald-600 dark:text-emerald-300 mt-0.5">
+                      {activationConfig.couriers?.freeSlotsRemaining ?? 0}
+                    </p>
+                  </div>
+                  <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <p className="text-[10px] uppercase font-bold text-zinc-500">Taxa Pós-Cota</p>
+                    <p className="text-base font-black text-zinc-900 dark:text-white mt-1">
+                      R$ {Number(activationConfig.couriers?.activationFee ?? 12.90).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Barra de Progresso Motoboys */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px] font-bold text-zinc-500">
+                    <span>Ocupação das vagas gratuitas</span>
+                    <span>
+                      {Math.round(((activationConfig.couriers?.subsidizedCount ?? 0) / Math.max(1, activationConfig.couriers?.freeQuota ?? 30)) * 100)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, ((activationConfig.couriers?.subsidizedCount ?? 0) / Math.max(1, activationConfig.couriers?.freeQuota ?? 30)) * 100)}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Painel de Ajuste de Cotas e Taxas (Lojas vs Motoboys) */}
             <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4">
                 <div>
                   <h3 className="font-bold text-base text-zinc-900 dark:text-white flex items-center gap-2">
-                    <span>⚙️</span> Parâmetros de Cobrança e Vagas Gratuitas
+                    <span>⚙️</span> Parâmetros de Vagas Gratuitas e Taxas Pix
                   </h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">Defina quantas vagas fundadoras você quer subsidiar e o valor da taxa Pix para os demais.</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Defina individualmente quantas vagas gratuitas são subsidiadas para batedeiras e para motoboys.
+                  </p>
                 </div>
                 <button
                   onClick={handleSaveActivationConfig}
@@ -3347,52 +3529,153 @@ function AdminDashboardContent() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">
-                    Cota de Vagas Gratuitas (Fundadores)
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Cota Lojas */}
+                <div className="p-3.5 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/40 rounded-xl">
+                  <label className="text-xs font-bold text-purple-900 dark:text-purple-300 block mb-1">
+                    🏪 Vagas Gratuitas: Lojas
                   </label>
                   <input
                     type="number"
                     min="0"
-                    value={activationConfig.freeQuota}
-                    onChange={e => setActivationConfig(prev => ({ ...prev, freeQuota: Number(e.target.value) }))}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                    value={activationConfig.storeFreeQuota}
+                    onChange={e => setActivationConfig(prev => ({ ...prev, storeFreeQuota: Number(e.target.value) }))}
+                    className="w-full bg-white dark:bg-zinc-800 border border-purple-300 dark:border-purple-800 rounded-xl p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
                   />
-                  <span className="text-[11px] text-zinc-500">Ex: 50 primeiras contas gratuitas</span>
+                  <span className="text-[10px] text-zinc-500 block mt-1">Primeiras lojas 100% grátis</span>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">
-                    Valor da Taxa de Ativação Pix (R$)
+                {/* Taxa Lojas */}
+                <div className="p-3.5 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/40 rounded-xl">
+                  <label className="text-xs font-bold text-purple-900 dark:text-purple-300 block mb-1">
+                    💳 Taxa Pix: Lojas (R$)
                   </label>
                   <input
                     type="number"
                     step="0.10"
                     min="0"
-                    value={activationConfig.activationFee}
-                    onChange={e => setActivationConfig(prev => ({ ...prev, activationFee: Number(e.target.value) }))}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                    value={activationConfig.storeActivationFee}
+                    onChange={e => setActivationConfig(prev => ({ ...prev, storeActivationFee: Number(e.target.value) }))}
+                    className="w-full bg-white dark:bg-zinc-800 border border-purple-300 dark:border-purple-800 rounded-xl p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
                   />
-                  <span className="text-[11px] text-zinc-500">Cobrado via Pix a partir da vaga 51</span>
+                  <span className="text-[10px] text-zinc-500 block mt-1">Cobrada após esgotar as vagas</span>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">
-                    Status da Cobrança de Ativação
+                {/* Cota Motoboys */}
+                <div className="p-3.5 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl">
+                  <label className="text-xs font-bold text-emerald-900 dark:text-emerald-300 block mb-1">
+                    🛵 Vagas Gratuitas: Motoboys
                   </label>
-                  <select
-                    value={activationConfig.activationEnabled ? 'true' : 'false'}
-                    onChange={e => setActivationConfig(prev => ({ ...prev, activationEnabled: e.target.value === 'true' }))}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="true">✅ Ativada (Cobra após cota)</option>
-                    <option value="false">⏸️ Desativada (Todas gratuitas)</option>
-                  </select>
-                  <span className="text-[11px] text-zinc-500">Controla a regra geral da plataforma</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={activationConfig.courierFreeQuota}
+                    onChange={e => setActivationConfig(prev => ({ ...prev, courierFreeQuota: Number(e.target.value) }))}
+                    className="w-full bg-white dark:bg-zinc-800 border border-emerald-300 dark:border-emerald-800 rounded-xl p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-[10px] text-zinc-500 block mt-1">Primeiros pilotos 100% grátis</span>
+                </div>
+
+                {/* Taxa Motoboys */}
+                <div className="p-3.5 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl">
+                  <label className="text-xs font-bold text-emerald-900 dark:text-emerald-300 block mb-1">
+                    💳 Taxa Pix: Motoboys (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.10"
+                    min="0"
+                    value={activationConfig.courierActivationFee}
+                    onChange={e => setActivationConfig(prev => ({ ...prev, courierActivationFee: Number(e.target.value) }))}
+                    className="w-full bg-white dark:bg-zinc-800 border border-emerald-300 dark:border-emerald-800 rounded-xl p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-[10px] text-zinc-500 block mt-1">Cobrada após esgotar as vagas</span>
                 </div>
               </div>
+
+              {/* Status Geral de Cobrança */}
+              <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-800/40 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                <div>
+                  <p className="text-xs font-bold text-zinc-900 dark:text-white">Status Geral da Cobrança de Ativação</p>
+                  <p className="text-[11px] text-zinc-500">Se desativada, todos os novos cadastros entram 100% gratuitos independente da cota.</p>
+                </div>
+                <select
+                  value={activationConfig.activationEnabled ? 'true' : 'false'}
+                  onChange={e => setActivationConfig(prev => ({ ...prev, activationEnabled: e.target.value === 'true' }))}
+                  className="bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="true">✅ Ativada (Cobra via Pix após cota)</option>
+                  <option value="false">⏸️ Desativada (Todas 100% Gratuitas)</option>
+                </select>
+              </div>
             </div>
+
+            {/* Distribuição de Vagas por Cidades (Breakdown) */}
+            {activationConfig.cityBreakdown && activationConfig.cityBreakdown.length > 0 && (
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">📍</span>
+                    <h3 className="font-bold text-sm text-zinc-900 dark:text-white">
+                      Ocupação de Vagas por Cidade / Praça
+                    </h3>
+                  </div>
+                  <span className="text-xs text-zinc-500 font-medium">
+                    {activationConfig.cityBreakdown.length} cidades com atividade
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-max">
+                    <thead className="bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+                      <tr>
+                        <th className="p-3.5">Cidade</th>
+                        <th className="p-3.5 text-center">🏪 Lojas Fundadoras</th>
+                        <th className="p-3.5 text-center">🏪 Lojas Vagas Restantes</th>
+                        <th className="p-3.5 text-center">🛵 Motoboys Fundadores</th>
+                        <th className="p-3.5 text-center">🛵 Motoboys Vagas Restantes</th>
+                        <th className="p-3.5 text-right">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                      {activationConfig.cityBreakdown.map((cb: any) => (
+                        <tr key={cb.normalizedCity} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                          <td className="p-3.5 font-bold text-zinc-900 dark:text-white">
+                            📍 {cb.city}
+                          </td>
+                          <td className="p-3.5 text-center font-bold text-purple-600 dark:text-purple-400">
+                            {cb.storesSubsidized} <span className="text-zinc-400 font-normal">/ {cb.storesFreeQuota}</span>
+                          </td>
+                          <td className="p-3.5 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${cb.storesFreeSlotsRemaining > 0 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                              {cb.storesFreeSlotsRemaining} vagas
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-center font-bold text-emerald-600 dark:text-emerald-400">
+                            {cb.couriersSubsidized} <span className="text-zinc-400 font-normal">/ {cb.couriersFreeQuota}</span>
+                          </td>
+                          <td className="p-3.5 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${cb.couriersFreeSlotsRemaining > 0 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                              {cb.couriersFreeSlotsRemaining} vagas
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-right">
+                            <button
+                              onClick={() => {
+                                setSelectedActivationCity(cb.city);
+                                fetchActivationConfig(cb.city);
+                              }}
+                              className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-purple-100 dark:hover:bg-purple-950 text-zinc-700 dark:text-zinc-300 hover:text-purple-600 dark:hover:text-purple-300 transition"
+                            >
+                              Filtrar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
 
             {/* Tabela de Parceiros e Status de Homologação */}

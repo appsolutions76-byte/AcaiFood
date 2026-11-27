@@ -104,9 +104,13 @@ function CadastroForm() {
   const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
   const [copiedPix, setCopiedPix] = useState(false);
 
-  useEffect(() => {
-    fetchCities();
-    fetch("/api/asaas/activation")
+  const loadActivationInfo = (targetRole?: string, targetCity?: string) => {
+    const params = new URLSearchParams();
+    if (targetRole && targetRole !== "cliente") params.set("role", targetRole);
+    if (targetCity) params.set("city", targetCity);
+
+    const url = `/api/asaas/activation${params.toString() ? `?${params.toString()}` : ""}`;
+    fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -124,6 +128,11 @@ function CadastroForm() {
         }
       })
       .catch((_e) => console.warn("Aviso ao carregar info de ativação:", _e));
+  };
+
+  useEffect(() => {
+    fetchCities();
+    loadActivationInfo(role, cidade);
 
     const pendingId = searchParams?.get("pendingUserId");
     if (pendingId) {
@@ -184,6 +193,12 @@ function CadastroForm() {
         );
     }
   }, [fetchCities, searchParams]);
+
+  useEffect(() => {
+    if (role !== "cliente") {
+      loadActivationInfo(role, cidade);
+    }
+  }, [role, cidade]);
 
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1003,7 +1018,7 @@ function CadastroForm() {
                           100% Grátis
                         </span>
                         <p className="text-xs font-bold text-zinc-900 dark:text-white">
-                          Vaga Fundador Disponível!
+                          Vaga Fundador {role === "loja" ? "de Batedeira" : role === "motorista" ? "de Motoboy" : ""} Disponível!
                         </p>
                       </div>
                       <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
@@ -1012,7 +1027,7 @@ function CadastroForm() {
                           {activationInfo.freeSlotsRemaining} de{" "}
                           {activationInfo.freeQuota}
                         </strong>{" "}
-                        vagas com taxa Asaas isenta pelo app.
+                        vagas gratuitas {cidade ? `em ${cidade}` : ""} com taxa Asaas isenta pelo app.
                       </p>
                     </>
                   ) : (
@@ -1029,7 +1044,7 @@ function CadastroForm() {
                         {activationInfo.freeQuota > 0 &&
                         activationInfo.freeSlotsRemaining <= 0 ? (
                           <>
-                            Vagas de fundador preenchidas (
+                            Vagas de fundador {role === "loja" ? "para lojas" : role === "motorista" ? "para motoboys" : ""} preenchidas {cidade ? `em ${cidade}` : ""} (
                             <strong>
                               0 de {activationInfo.freeQuota} vagas restantes
                             </strong>
