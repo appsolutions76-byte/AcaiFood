@@ -20,6 +20,7 @@ export interface FreightParams {
 }
 
 const num = (v: any, def: number) => {
+  if (v === null || v === undefined || v === '') return def;
   const n = Number(v);
   return Number.isFinite(n) ? n : def;
 };

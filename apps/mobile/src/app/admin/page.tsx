@@ -1956,15 +1956,32 @@ function AdminDashboardContent() {
     if (isSavingRates) return;
     setIsSavingRates(true);
     try {
+      const ratesToSave = { ...localRates };
+      if (ratesToSave.courier_payment_mode === 'MIN_KM') {
+        if (ratesToSave.courier_min_fee === undefined || ratesToSave.courier_min_fee === null) ratesToSave.courier_min_fee = 6;
+        if (ratesToSave.courier_min_km === undefined || ratesToSave.courier_min_km === null) ratesToSave.courier_min_km = 3;
+        if (ratesToSave.courier_extra_km_fee === undefined || ratesToSave.courier_extra_km_fee === null) ratesToSave.courier_extra_km_fee = 1.5;
+      }
+      if (ratesToSave.transporter_payment_mode === 'MIN_KM') {
+        if (ratesToSave.transporter_min_fee === undefined || ratesToSave.transporter_min_fee === null) ratesToSave.transporter_min_fee = 150;
+        if (ratesToSave.transporter_min_km === undefined || ratesToSave.transporter_min_km === null) ratesToSave.transporter_min_km = 3;
+        if (ratesToSave.transporter_extra_km_fee === undefined || ratesToSave.transporter_extra_km_fee === null) ratesToSave.transporter_extra_km_fee = 4;
+      }
+      if (ratesToSave.ecopoint_payment_mode === 'MIN_KM') {
+        if (ratesToSave.ecopoint_min_fee === undefined || ratesToSave.ecopoint_min_fee === null) ratesToSave.ecopoint_min_fee = 50;
+        if (ratesToSave.ecopoint_min_km === undefined || ratesToSave.ecopoint_min_km === null) ratesToSave.ecopoint_min_km = 3;
+        if (ratesToSave.ecopoint_extra_km_fee === undefined || ratesToSave.ecopoint_extra_km_fee === null) ratesToSave.ecopoint_extra_km_fee = 8;
+      }
+
       if (selectedCityForRates) {
         if (typeof store.saveCityRates === 'function') {
-          await store.saveCityRates(selectedCityForRates.id, localRates);
+          await store.saveCityRates(selectedCityForRates.id, ratesToSave);
         }
         setRatesModalOpen(false);
         showToast(`✅ Taxas de ${selectedCityForRates.name} salvas com sucesso!`);
       } else {
         if (typeof store.saveRates === 'function') {
-          await store.saveRates(localRates);
+          await store.saveRates(ratesToSave);
         }
         setRatesModalOpen(false);
         showToast("✅ Taxas Globais salvas com sucesso!");
