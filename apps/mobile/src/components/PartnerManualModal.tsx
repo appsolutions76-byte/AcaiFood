@@ -220,9 +220,15 @@ function ManualBatedeira() {
             <p>6. 💬 <strong>Chat Integrado & Suporte</strong>: Comunique-se com o cliente/motoboy pelo chat do pedido ou acione o suporte central.</p>
             <p>7. ↩️ <strong>Cancelamento com Estorno</strong>: Você pode recusar ou cancelar até o pedido ficar pronto (antes da retirada). O Asaas devolve 100% ao cliente a partir da sua conta, e a comissão do app volta junto.</p>
           </div>
-          <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs">
-            <p className="font-bold text-purple-900 dark:text-purple-300">💡 Gestão de Frete Promocional:</p>
-            <p className="text-purple-800 dark:text-purple-300 mt-1">Na aba <em>Cardápio & Preços</em>, configure o <strong>Subsídio de Frete</strong> (de 0% a 100%): a parte subsidiada sai do seu valor de venda para atrair mais clientes na sua região.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800">
+              <p className="font-bold text-purple-900 dark:text-purple-300">💡 Gestão de Frete Promocional:</p>
+              <p className="text-purple-800 dark:text-purple-300 mt-1">Na aba <em>Cardápio & Preços</em>, configure o <strong>Subsídio de Frete</strong> (de 0% a 100%): a parte subsidiada sai do seu valor de venda para atrair mais clientes na sua região.</p>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800">
+              <p className="font-bold text-emerald-900 dark:text-emerald-300">✨ Batedeira Fundadora:</p>
+              <p className="text-emerald-800 dark:text-emerald-300 mt-1">Lojas cadastradas dentro da cota de fundadores da sua cidade têm taxa de adesão 100% isenta, com vaga vitalícia de parceiro pioneiro na praça.</p>
+            </div>
           </div>
         </div>
       )}
@@ -507,6 +513,12 @@ function ManualMotoboy() {
         </p>
         <p className="text-zinc-600 dark:text-zinc-400">
           • <strong>Lojas que me indicam & Avaliações:</strong> Quando ativo na sua cidade, aceite ou encerre convites de lojas quando quiser, veja o selo <em>&quot;🤝 Te indicou&quot;</em> no radar e avalie clientes e lojas com 1 a 5 estrelas após concluir a entrega.
+        </p>
+      </div>
+      <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs space-y-1">
+        <p className="font-bold text-emerald-900 dark:text-emerald-300">✨ Piloto Fundador & Vagas Gratuitas:</p>
+        <p className="text-emerald-800 dark:text-emerald-300">
+          Entregadores que se cadastram dentro da cota de vagas gratuitas da sua cidade ganham o status de <strong>Piloto Fundador</strong> com isenção total de taxa de ativação. A cota é exclusiva e independente das vagas de batedeiras.
         </p>
       </div>
       <ContasVinculadasInfo />
@@ -832,11 +844,12 @@ function ManualLogin() {
               </p>
             </div>
             <p>5. Complete o endereço com <strong>Cidade, Bairro e Endereço</strong> para cálculo territorial correto e roteamento por GPS.</p>
-            <div className="bg-purple-50 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-300 mt-2 space-y-1">
-              <p className="font-bold">🛡️ Ativação Inteligente Asaas:</p>
-              <p>• Contas contam com ativação conforme limite de vagas de fundadores liberadas pela administração.</p>
-              <p>• Parceiros aceitam os Termos, o Mandato e o Consentimento Pix. Com isso, o app abre a sua <strong>conta Asaas em seu nome</strong> (subconta); envie os documentos pedidos pelo Asaas.</p>
-              <p>• Lojas e fornecedores só recebem pedidos, e motoboys e caminhoneiros só aceitam corridas, com a conta Asaas <strong>aprovada</strong>.</p>
+            <div className="bg-purple-50 dark:bg-purple-950/40 p-3.5 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-300 mt-2 space-y-2">
+              <p className="font-bold flex items-center gap-1.5 text-sm">✨ Vagas Fundador Gratuitas & Ativação Segura via Pix:</p>
+              <p>• <strong>Vaga Gratuita Garantida na Sua Praça:</strong> Ao escolher o perfil de <strong>Batedeira</strong> ou <strong>Motoboy</strong> e selecionar a sua Cidade, o formulário verifica instantaneamente a cota promocional de fundadores da sua região. Se houver vaga livre, o seu cadastro é <strong>100% gratuito</strong> e isento de taxas de adesão!</p>
+              <p>• <strong>Cotas Exclusivas por Categoria:</strong> As vagas são separadas: batedeiras possuem suas próprias cotas de fundadores e motoboys possuem cotas independentes de pilotos fundadores, inclusive com regras personalizadas por cidade.</p>
+              <p>• <strong>Pagamento Protegido Pós-Cota:</strong> Se as vagas gratuitas da sua categoria na sua cidade já estiverem esgotadas, o app exibirá o QR Code e chave Pix Copia e Cola para pagamento da taxa de ativação única. Assim que você paga no seu banco, o sistema reconhece o Pix em segundos via Asaas e conclui a criação da sua conta imediatamente.</p>
+              <p>• <strong>Subconta Asaas:</strong> Após o cadastro, o app abre a sua <strong>conta Asaas em seu nome</strong> (subconta); envie os documentos pedidos pelo Asaas para começar a vender ou pilotar.</p>
             </div>
           </div>
         </div>

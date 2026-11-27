@@ -120,9 +120,13 @@ export function AdminManualModal({ isOpen, onClose }: AdminManualModalProps) {
                 <p className="mt-2 text-blue-700 dark:text-blue-300 italic">Cada cidade cadastrada em <em>⚙️ Configurações → Cidades e taxas</em> pode ter suas próprias taxas locais!</p>
               </div>
 
-              <div className="text-xs bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                <p className="font-bold text-zinc-900 dark:text-white mb-2">🛡️ Taxa de ativação da plataforma AçaíFood:</p>
-                <p>Em <em>👥 Parceiros → Ativações</em>, ative ou desative a cobrança de taxa de adesão Pix para novas lojas e configure a quantidade de vagas promocionais gratuitas de fundadores.</p>
+              <div className="text-xs bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+                <p className="font-bold text-zinc-900 dark:text-white mb-2">🛡️ Vagas Fundador & Taxas Pix de Ativação (👥 Parceiros → Ativações):</p>
+                <p>• <strong>Cotas Separadas por Categoria:</strong> As vagas gratuitas subsidiadas e as taxas de ativação Pix são 100% independentes entre <strong>Batedeiras & Lojas</strong> (estabelecimentos) e <strong>Motoboys & Entregadores</strong> (pilotos).</p>
+                <p>• <strong>⚙️ Ajuste Independente por Cidade:</strong> Na tabela <em>Ocupação de Vagas por Cidade / Praça</em>, clique em <strong>⚙️ Ajustar</strong> em qualquer linha (ex: Belém, Afuá, Portel) para abrir o modal de personalização da praça. Você pode definir vagas gratuitas e valores de taxa Pix exclusivos para aquele município. Cidades com regras próprias exibem o selo <strong>✨ Personalizada</strong> e podem ter o padrão restaurado com 1 clique.</p>
+                <p>• <strong>Filtragem de Vagas:</strong> O seletor no topo da aba permite filtrar os cartões de ocupação por cidade ou visualizar o panorama consolidado de todas as praças.</p>
+                <p>• <strong>🔒 Blindagem Anti-Cadastro Fantasma:</strong> Quando as vagas gratuitas de uma categoria em determinada cidade se esgotam, o formulário de cadastro (<code>/cadastro</code>) gera a cobrança Pix Asaas e <strong>somente cria a conta do parceiro no banco após o Pix ser confirmado</strong>. Isso impede cadastros fantasmas que visualizavam o QR Code sem pagar.</p>
+                <p>• <strong>Chave Geral:</strong> A opção <em>Status Geral da Cobrança de Ativação</em> permite pausar globalmente a cobrança Pix quando desejar que novos cadastros entrem 100% gratuitos.</p>
               </div>
 
               <div className="text-xs bg-purple-50 dark:bg-purple-950/40 p-4 rounded-xl border border-purple-200 dark:border-purple-800 space-y-1.5">

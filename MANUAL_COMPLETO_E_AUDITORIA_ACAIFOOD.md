@@ -16,6 +16,9 @@
 8. [Mecanismo Universal de Segurança por PIN (4 Dígitos)](#8-mecanismo-universal-de-segurança-por-pin-4-dígitos)
 9. [Sistema Financeiro: Checkout Asaas, Split Automático e Saques PIX](#9-sistema-financeiro-checkout-asaas-split-automático-e-saques-pix)
 10. [Governança, Painel Administrativo e Auditoria de Segurança](#10-governança-painel-administrativo-e-auditoria-de-segurança)
+11. [Sistema de Parceiros Afiliados (Indicações & Comissões)](#11-sistema-de-parceiros-afiliados-indicações--comissões)
+12. [Sistema de Sócios Investidores (Profit Sharing)](#12-sistema-de-sócios-investidores-profit-sharing)
+13. [Gestão Territorial de Vagas Fundador & Ativação Segura por Cidade](#13-gestão-territorial-de-vagas-fundador--ativação-segura-por-cidade)
 
 ---
 
@@ -249,6 +252,25 @@ O protocolo de PIN é o núcleo anti-fraude e de conformidade do AçaíFood em t
   - Custos Deduzidos = Tarifas Asaas + Comissões de Afiliados Pagas + Outros Custos Operacionais Auditados.
   - Faturamento Líquido = Receita Bruta − Custos Operacionais.
 - **Repasse Individual via Pix:** Cada sócio recebe o valor correspondente à sua cota percentual (`share_pct`), com status auditado (`pending`, `paid`) e registro de comprovante/recibo.
+
+---
+
+## 13. Gestão Territorial de Vagas Fundador & Ativação Segura por Cidade
+
+O AçaíFood adota uma governança de expansão territorial desenhada para incentivar a adesão pioneira sem abrir mão da sustentabilidade financeira e da integridade da base de dados:
+
+### 🌟 1. Separação de Cotas: Batedeiras (Lojas) vs Motoboys (Entregadores)
+- **Independência Operacional:** A plataforma separa rigorosamente a contabilidade de vagas entre estabelecimentos comerciais (`storeFreeQuota`) e profissionais de entrega (`courierFreeQuota`).
+- **Valores Pós-Cota Customizáveis:** As taxas de ativação Pix cobradas após o preenchimento das vagas gratuitas são configuráveis de forma distinta (`storeActivationFee` e `courierActivationFee`).
+
+### 🏙️ 2. Parametrização Granular por Praça / Cidade (`cityConfigs`)
+- **Configuração Global vs. Sobrescreve por Município:** A plataforma possui valores padrão globais, mas permite que o administrador defina cotas e taxas exclusivas para qualquer cidade através do botão **`⚙️ Ajustar`** na tabela de praças do Painel Admin (`/admin → Parceiros → Ativações`).
+- **Selo de Identificação:** Cidades com parametrização própria exibem o distintivo **`✨ Personalizada`** e dispõem de um botão **`Restaurar Padrão`** para retorno instantâneo às diretrizes da plataforma.
+- **Filtro Rápido:** A visão do painel administrativo permite auditar vagas ocupadas e restantes no consolidado ou filtrar por praça individual (ex: Belém, Afuá, Portel).
+
+### 🔒 3. Blindagem Anti-Cadastro Fantasma (Fluxo Pix Pré-Criação de Conta)
+- **Validação de Pagamento Prévia:** Para usuários que tentam se cadastrar após o esgotamento da cota gratuita da sua cidade, o sistema gera a cobrança Pix via Asaas (com CPF/CNPJ de referência `ACTIVATE_CPF_...`).
+- **Bloqueio de Criação sem Pagamento:** O botão de finalização e criação do registro no banco de dados só é liberado após a confirmação do Pix em tempo real via webhook Asaas / polling seguro, eliminando contas fantasmas na base.
 
 ---
 
